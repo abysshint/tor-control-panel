@@ -1,0 +1,23 @@
+# Delphi
+*.dcu
+*.rsm
+*.local
+*.identcache
+*.~*
+__history/
+__Temp/
+
+# Windows
+*.lnk
+Thumbs.db
+[Dd]esktop.ini
+
+# Tcp
+Skins/
+Data/
+Tor/
+
+# Other
+*.zip
+TorControlPanel.res
+TorControlPanel.exe
