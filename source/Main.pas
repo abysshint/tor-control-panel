@@ -2328,7 +2328,7 @@ begin
   Socket := TTCPBlockSocket.Create;
   try
     repeat
-      Socket.Connect('127.0.0.1', IntToStr(Tcp.udControlPort.Position));
+      Socket.Connect(LOOPBACK_ADDRESS, IntToStr(Tcp.udControlPort.Position));
       if StopCode <> STOP_NORMAL then
         Terminate;
     until (Terminated = True) or (Socket.LastError = 0);
@@ -3240,8 +3240,8 @@ begin
     udHsNumIntroductionPoints.Position := 3;
     cbHsMaxStreams.Checked := False;
     cbxHsAddress.ItemIndex := 0;
-    udHsRealPort.Position := 80;
-    udHsVirtualPort.Position := 80;
+    udHsRealPort.Position := StrToInt(DEFAULT_PORT);
+    udHsVirtualPort.Position := StrToInt(DEFAULT_PORT);
     HsControlsEnable(False);
   end;
 end;
@@ -3256,8 +3256,8 @@ begin
   begin
     sgHs.Cells[HS_PORTS_DATA, sgHs.SelRow] := '';
     cbxHsAddress.ItemIndex := 0;
-    udHsRealPort.Position := 80;
-    udHsVirtualPort.Position := 80;
+    udHsRealPort.Position := StrToInt(DEFAULT_PORT);
+    udHsVirtualPort.Position := StrToInt(DEFAULT_PORT);
     HsPortsEnable(False);
   end
   else
@@ -4256,14 +4256,14 @@ begin
     ForceDirectories(LogsDir);
     ForceDirectories(OnionAuthDir);
     CheckOpenPorts(udSOCKSPort, cbxSocksHost.Text, PortStr);
-    CheckOpenPorts(udControlPort, '127.0.0.1', PortStr);
+    CheckOpenPorts(udControlPort, LOOPBACK_ADDRESS, PortStr);
     if cbxServerMode.ItemIndex > 0 then
     begin
-      CheckOpenPorts(udORPort, '127.0.0.1', PortStr);
+      CheckOpenPorts(udORPort, LOOPBACK_ADDRESS, PortStr);
       if cbUseDirPort.Checked then
-        CheckOpenPorts(udDirPort, '127.0.0.1', PortStr);
+        CheckOpenPorts(udDirPort, LOOPBACK_ADDRESS, PortStr);
       if cbxBridgeType.ItemIndex > 0 then
-        CheckOpenPorts(udTransportPort, '127.0.0.1', PortStr);
+        CheckOpenPorts(udTransportPort, LOOPBACK_ADDRESS, PortStr);
     end;
     Delete(PortStr, 1, 1);
     if PortStr <> '' then
@@ -4779,9 +4779,6 @@ begin
 end;
 
 function TTcp.GetTorHs: Integer;
-const
-  DEFAULT_ADDRESS = '127.0.0.1';
-  DEFAULT_PORT = '80';
 var
   Name, Version, MaxStreams, IntroPoints, Port, Temp, Data, Delimiter: string;
   VirtualPort, RealPort, Address: string;
@@ -4873,7 +4870,7 @@ begin
             VirtualPort := RealPort;
           if Tcp.cbxHsAddress.Items.IndexOf(Address) = -1 then
           begin
-            Address := DEFAULT_ADDRESS;
+            Address := LOOPBACK_ADDRESS;
             Reset := True;
           end;
         end
@@ -4885,13 +4882,13 @@ begin
             RealPort := VirtualPort;
             if Tcp.cbxHsAddress.Items.IndexOf(Address) = -1 then
             begin
-              Address := DEFAULT_ADDRESS;
+              Address := LOOPBACK_ADDRESS;
               Reset := True;
             end;
           end
           else
           begin
-            Address := DEFAULT_ADDRESS;
+            Address := LOOPBACK_ADDRESS;
             if ValidInt(ParseStr[1], 1, 65535) then
             begin
               RealPort := ParseStr[1];
@@ -4908,7 +4905,7 @@ begin
       end
       else
       begin
-        Address := DEFAULT_ADDRESS;
+        Address := LOOPBACK_ADDRESS;
         RealPort := VirtualPort;
       end;
       Data := Address + ',' + RealPort + ',' + VirtualPort;
@@ -4946,9 +4943,6 @@ begin
 end;
 
 function TTcp.LoadHiddenServices(ini: TMemIniFile): Integer;
-const
-  DEFAULT_ADDRESS = '127.0.0.1';
-  DEFAULT_PORT = '80';
 var
   HsList, PortList: TStringList;
   i, j, Min, Max: Integer;
@@ -5004,7 +4998,7 @@ begin
               RealPort := PortsStr[1];
               VirtualPort := PortsStr[2];
               if (ValidAddress(Address) = 0) or (cbxHsAddress.Items.IndexOf(Address) = -1) then
-                Address := DEFAULT_ADDRESS;
+                Address := LOOPBACK_ADDRESS;
               if not ValidInt(RealPort, 1, 65535) then
                 RealPort := DEFAULT_PORT;
               if not ValidInt(VirtualPort, 1, 65535) then
@@ -5012,7 +5006,7 @@ begin
             end
             else
             begin
-              Address := DEFAULT_ADDRESS;
+              Address := LOOPBACK_ADDRESS;
               RealPort := DEFAULT_PORT;
               VirtualPort := DEFAULT_PORT;
             end;
@@ -5050,9 +5044,11 @@ end;
 procedure TTcp.SaveHiddenServices(ini: TMemIniFile);
 var
   i, j, Count: Integer;
+  UpdateControls: Boolean;
   ParseStr, ParsePort: ArrOfStr;
   Name, PrevName, Version, MaxStreams, IntroPoints, PortsData, State: string;
 begin
+  UpdateControls := False;
   DeleteTorConfig('HiddenServiceDir', [cfMultiLine]);
   DeleteTorConfig('HiddenServiceVersion', [cfMultiLine]);
   DeleteTorConfig('HiddenServicePort', [cfMultiLine]);
@@ -5104,6 +5100,11 @@ begin
         for j := 0 to Length(ParseStr) - 1 do
         begin
           ParsePort := Explode(',', ParseStr[j]);
+          if (cbxHsAddress.Items.IndexOf(ParsePort[0]) = -1) then
+          begin
+            ParsePort[0] := LOOPBACK_ADDRESS;
+            UpdateControls := True;
+          end;
           TorConfig.Append('HiddenServicePort ' + ParsePort[2] + ' ' + FormatHost(ParsePort[0]) + ':' + ParsePort[1]);
         end;
         if IntroPoints <> '3' then
@@ -5123,6 +5124,11 @@ begin
     end;
     if Count > 0 then
       SetTorConfig('RendPostPeriod', IntToStr(Tcp.udRendPostPeriod.Position * 60));
+    if UpdateControls then
+    begin
+      LoadHiddenServices(ini);
+      SelectHs;
+    end;
   end;
 end;
 
@@ -5811,8 +5817,8 @@ begin
     LoadSettings(udControlPort, [cfAutoAppend]);
 
     LoadSettings('Network', udSOCKSPort, ini);
-    SocksHost := ini.ReadString('Network', 'SOCKSHost', '127.0.0.1');
-    ParseStr := Explode(' ', GetTorConfig('SOCKSPort', '127.0.0.1:9050', [cfAutoAppend]));
+    SocksHost := ini.ReadString('Network', 'SOCKSHost', LOOPBACK_ADDRESS);
+    ParseStr := Explode(' ', GetTorConfig('SOCKSPort', LOOPBACK_ADDRESS + ':' + IntToStr(udSOCKSPort.ResetValue), [cfAutoAppend]));
     Temp := '';
     if Length(ParseStr) > 1 then
     begin
@@ -5849,7 +5855,7 @@ begin
     end;
     if Fail or CheckSimilarPorts then
       SetTorConfig('SOCKSPort', FormatHost(SocksHost) + ':' + IntToStr(udSOCKSPort.Position) + cbxSocksHost.Hint);
-    GetLocalInterfaces(cbxSocksHost, SocksHost, True);
+    GetLocalInterfaces(cbxSocksHost, SocksHost);
 
     if ini.SectionExists('Transports') then
     begin
@@ -6848,6 +6854,7 @@ begin
     SetTorConfig('NewCircuitPeriod', IntToStr(udNewCircuitPeriod.Position));
     SetTorConfig('AvoidDiskWrites', IntToStr(Integer(cbAvoidDiskWrites.Checked)));
 
+    GetLocalInterfaces(cbxSocksHost);
     CheckSimilarPorts;
     if cbEnableSocks.Checked then
       SetTorConfig('SOCKSPort', FormatHost(cbxSocksHost.Text) + ':' + IntToStr(udSOCKSPort.Position) + cbxSocksHost.Hint)
@@ -6917,6 +6924,7 @@ begin
 
     SaveServerOptions(ini);
     SaveTransportsData(ini, False);
+    GetLocalInterfaces(cbxHsAddress);
     SaveHiddenServices(ini);
     SaveTrackHostExits(ini);
 
@@ -11451,7 +11459,7 @@ end;
 
 procedure TTcp.cbxSocksHostDropDown(Sender: TObject);
 begin
-  GetLocalInterfaces(cbxSocksHost, '', True);
+  GetLocalInterfaces(cbxSocksHost);
 end;
 
 procedure TTcp.cbxThemesChange(Sender: TObject);
@@ -12700,7 +12708,7 @@ begin
     sgHs.Cells[HS_INTRO_POINTS, sgHs.SelRow] := '3';
     sgHs.Cells[HS_MAX_STREAMS, sgHs.SelRow] := NONE_CHAR;
     sgHs.Cells[HS_STATE, sgHs.SelRow] := SELECT_CHAR;
-    sgHs.Cells[HS_PORTS_DATA, sgHs.SelRow] := '127.0.0.1,80,80';
+    sgHs.Cells[HS_PORTS_DATA, sgHs.SelRow] := LOOPBACK_ADDRESS + ',' + DEFAULT_PORT + ',' + DEFAULT_PORT;
     ClearGrid(sgHsPorts);
     SelectHs;
     if edHsName.CanFocus then
@@ -12716,9 +12724,9 @@ begin
       sgHsPorts.RowCount := sgHsPorts.RowCount + 1;
       sgHsPorts.Row := sgHsPorts.RowCount - 1;
     end;
-    sgHsPorts.Cells[HSP_INTERFACE, sgHsPorts.SelRow] := '127.0.0.1';
-    sgHsPorts.Cells[HSP_REAL_PORT, sgHsPorts.SelRow] := '80';
-    sgHsPorts.Cells[HSP_VIRTUAL_PORT, sgHsPorts.SelRow] := '80';
+    sgHsPorts.Cells[HSP_INTERFACE, sgHsPorts.SelRow] := LOOPBACK_ADDRESS;
+    sgHsPorts.Cells[HSP_REAL_PORT, sgHsPorts.SelRow] := DEFAULT_PORT;
+    sgHsPorts.Cells[HSP_VIRTUAL_PORT, sgHsPorts.SelRow] := DEFAULT_PORT;
     UpdateHsPorts;
     SelectHsPorts;
   end;

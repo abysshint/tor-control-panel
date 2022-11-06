@@ -162,7 +162,7 @@ var
   procedure EndUpdateTable(aSg: TStringGrid);
   procedure sgSort(aSg: TStringGrid; aCol: Integer; aCompare: TStringListSortCompare);
   procedure SetDesktopPosition(Left, Top: Integer; CheckBorders: Boolean = True; SaveToVar: Boolean = False);
-  procedure GetLocalInterfaces(ComboBox: TComboBox; RecentHost: string = ''; IsSocksPort: Boolean = False);
+  procedure GetLocalInterfaces(ComboBox: TComboBox; RecentHost: string = '');
   procedure ComboBoxAutoWidth(const AComboBox: TCombobox);
   procedure GridDrawIcon(aSg: TStringGrid; Rect: TRect; ls: TImageList; Index: Integer; W: Integer = 16; H: Integer = 16);
   procedure GridDrawSortArrows(aSg: TStringGrid; Rect: TRect);
@@ -2352,17 +2352,19 @@ begin
   end;
 end;
 
-procedure GetLocalInterfaces(ComboBox: TComboBox; RecentHost: string = ''; IsSocksPort: Boolean = False);
+procedure GetLocalInterfaces(ComboBox: TComboBox; RecentHost: string = '');
 var
-  i, Index: Integer;
+  i: Integer;
+  IsSocksPort: Boolean;
   ls: TStringList;
   TcpSock: TTCPBlockSocket;
 begin
-  Index := 0;
   if RecentHost = '' then
     RecentHost := Combobox.Text
   else
     RecentHost := RemoveBrackets(RecentHost, True);
+  IsSocksPort := ComboBox = Tcp.cbxSocksHost;
+
   ls := TStringList.Create;
   try
     TcpSock := TTCPBlockSocket.create;
@@ -2374,30 +2376,22 @@ begin
     for i := ls.Count - 1 downto 0 do
       if (Tcp.cbHideIPv6Addreses.Checked and (not IsIPv4(ls[i])) or (Pos('%', ls[i]) <> 0)) then
         ls.Delete(i);
-    if IsSocksPort then
-    begin
-      ComboBox.ResetValue := 1;
-      ls.Insert(0, '0.0.0.0');
-      Index := 1;
-    end;
     if ls.IndexOf('127.0.0.1') = -1 then
-      ls.Insert(Index, '127.0.0.1');
+      ls.Insert(0, '127.0.0.1');
+    if IsSocksPort then
+      ls.Insert(1, '0.0.0.0');
     if not Tcp.cbHideIPv6Addreses.Checked then
     begin
       if ls.IndexOf('::1') = -1 then
-        ls.Insert(Index + 1, '::1');
+        ls.Insert(2, '::1');
     end;
     ComboBox.items := ls;
     ComboBox.ItemIndex := ComboBox.Items.IndexOf(RecentHost);
     if ComboBox.ItemIndex = -1 then
     begin
+      ComboBox.ItemIndex := 0;
       if IsSocksPort then
-      begin
-        ComboBox.ItemIndex := 1;
         SetTorConfig('SOCKSPort', '127.0.0.1:' + IntToStr(Tcp.udSOCKSPort.Position) + ComboBox.Hint);
-      end
-      else
-        ComboBox.ItemIndex := 0;
     end;
     ComboBoxAutoWidth(ComboBox);
   finally
