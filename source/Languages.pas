@@ -910,6 +910,12 @@ begin
     Tcp.miClearRoutersFavorites.Caption := Load('584', 'Все избранные');
     Tcp.miClearRoutersIncorrect.Caption := Load('585', 'Неправильные узлы');
     Tcp.miClearRoutersAbsent.Caption := Load('586', 'Отсутствующие в консенсусе');
+    Tcp.miAutoSelNodesType.Caption := Load('592', 'Изменять список узлов при автоподборе');
+    Tcp.miAutoSelEntryEnabled.Caption := TransStr('288');
+    Tcp.miAutoSelMiddleEnabled.Caption := TransStr('289');
+    Tcp.miAutoSelExitEnabled.Caption := TransStr('290');
+    Tcp.miAutoSelNodesSA.Caption := TransStr('368');
+    Tcp.miAutoSelNodesUA.Caption := TransStr('369');
 
     Tcp.miTransportsInsert.Caption := TransStr('279');
     Tcp.miTransportsDelete.Caption := TransStr('280');

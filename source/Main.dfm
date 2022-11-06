@@ -5544,6 +5544,44 @@ object Tcp: TTcp
           OnClick = miDisableFiltersOnAuthorityOrBridgeClick
         end
       end
+      object miAutoSelNodesType: TMenuItem
+        Tag = 6
+        Caption = #1048#1079#1084#1077#1085#1103#1090#1100' '#1089#1087#1080#1089#1086#1082' '#1091#1079#1083#1086#1074' '#1087#1088#1080' '#1072#1074#1090#1086#1087#1086#1076#1073#1086#1088#1077
+        object miAutoSelEntryEnabled: TMenuItem
+          Tag = 1
+          AutoCheck = True
+          Caption = #1042#1093#1086#1076#1085#1099#1077
+          Checked = True
+          OnClick = AutoSelNodesType
+        end
+        object miAutoSelMiddleEnabled: TMenuItem
+          Tag = 2
+          AutoCheck = True
+          Caption = #1057#1088#1077#1076#1085#1080#1077
+          Checked = True
+          OnClick = AutoSelNodesType
+        end
+        object miAutoSelExitEnabled: TMenuItem
+          Tag = 4
+          AutoCheck = True
+          Caption = #1042#1099#1093#1086#1076#1085#1099#1077
+          Checked = True
+          OnClick = AutoSelNodesType
+        end
+        object miDelimiter65: TMenuItem
+          Caption = '-'
+        end
+        object miAutoSelNodesSA: TMenuItem
+          Caption = #1042#1099#1073#1088#1072#1090#1100' '#1074#1089#1077
+          ImageIndex = 51
+          OnClick = SelectorMenuClick
+        end
+        object miAutoSelNodesUA: TMenuItem
+          Caption = #1057#1085#1103#1090#1100' '#1074#1089#1077
+          ImageIndex = 52
+          OnClick = SelectorMenuClick
+        end
+      end
       object miDelimiter26: TMenuItem
         Caption = '-'
       end

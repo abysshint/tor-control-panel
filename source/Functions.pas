@@ -696,6 +696,7 @@ begin
     2: begin Default := ROUTER_FILTER_DEFAULT; Max := ROUTER_FILTER_MAX; end;
     3: begin Default := CIRCUIT_FILTER_DEFAULT; Max := CIRCUIT_FILTER_MAX;end;
   4,5: begin Default := TPL_MENU_DEFAULT; Max := TPL_MENU_MAX; end;
+    6: begin Default := AUTOSEL_NODES_DEFAULT; Max := AUTOSEL_NODES_MAX; end;
   end;
   if (Mask < 0) or (Mask > Max) then
     Mask := Default;

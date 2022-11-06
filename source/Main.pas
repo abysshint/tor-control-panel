@@ -901,6 +901,13 @@ type
     miSelectGraphUL: TMenuItem;
     tmTraffic: TTimer;
     cbAutoSelMiddleNodesWithoutDir: TCheckBox;
+    miAutoSelNodesType: TMenuItem;
+    miAutoSelEntryEnabled: TMenuItem;
+    miAutoSelMiddleEnabled: TMenuItem;
+    miAutoSelExitEnabled: TMenuItem;
+    miDelimiter65: TMenuItem;
+    miAutoSelNodesSA: TMenuItem;
+    miAutoSelNodesUA: TMenuItem;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -964,7 +971,7 @@ type
     procedure CheckShowRouters;
     procedure CheckCachedFiles;
     procedure ClearFilter(NodeType: TNodeType; Silent: Boolean = True);
-    procedure ClearRouters(NodeType: TNodeType; Silent: Boolean = True);
+    procedure ClearRouters(NodeTypes: TNodeTypes = []; Silent: Boolean = True);
     procedure ControlPortConnect;
     procedure LogListenerStart(hStdOut: THandle);
     procedure CheckVersionStart(hStdOut: THandle);
@@ -1398,6 +1405,7 @@ type
     procedure miSelectGraphDLClick(Sender: TObject);
     procedure miSelectGraphULClick(Sender: TObject);
     procedure FormPaint(Sender: TObject);
+    procedure AutoSelNodesType(Sender: TObject);
 
   private
      procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
@@ -3933,6 +3941,7 @@ begin
     3: SetCircuitsFilter(Sender);
     4: miTplSaveClick(Sender);
     5: miTplLoadClick(Sender);
+    6: AutoSelNodesType(Sender);
   end;
 end;
 
@@ -5723,6 +5732,7 @@ begin
     IntToMenu(miCircuitFilter, ini.ReadInteger('Circuits', 'PurposeFilter', CIRCUIT_FILTER_DEFAULT));
     IntToMenu(miTplSave, ini.ReadInteger('Filter', 'TplSave', TPL_MENU_DEFAULT));
     IntToMenu(miTplLoad, ini.ReadInteger('Filter', 'TplLoad', TPL_MENU_DEFAULT));
+    IntToMenu(miAutoSelNodesType, ini.ReadInteger('AutoSelNodes', 'AutoSelNodesType', AUTOSEL_NODES_DEFAULT));
 
     CheckSelectRowOptions(sgFilter, miFilterSelectRow.Checked);
     CheckSelectRowOptions(sgRouters, miRoutersSelectRow.Checked);
@@ -5895,7 +5905,7 @@ begin
     FavoritesExit := ini.ReadString('Routers', 'ExitNodes', '');
     ExcludeNodes := ini.ReadString('Routers', 'ExcludeNodes', '');
     if not FirstLoad then
-      ClearRouters(ntNone);
+      ClearRouters;
     GetNodes(FavoritesEntry, ntEntry, True, ini);
     GetNodes(FavoritesMiddle, ntMiddle, True, ini);
     GetNodes(FavoritesExit, ntExit, True, ini);
@@ -7018,22 +7028,22 @@ begin
   end;
 end;
 
-procedure TTcp.ClearRouters(NodeType: TNodeType; Silent: Boolean = True);
+procedure TTcp.ClearRouters(NodeTypes: TNodeTypes = []; Silent: Boolean = True);
 var
   Item: TPair<string, TNodeTypes>;
   Data, ExcludeData: TNodeTypes;
 begin
-  if NodeType = ntNone then
+  if NodeTypes = [] then
   begin
     NodesDic.Clear;
     RangesDic.Clear;
   end
   else
   begin
-    if NodeType = ntFavorites then
+    if NodeTypes = [ntFavorites] then
       ExcludeData := [ntEntry, ntMiddle, ntExit]
     else
-      ExcludeData := [NodeType];
+      ExcludeData := NodeTypes;
     for Item in NodesDic do
     begin
       Data := Item.Value;
@@ -7046,7 +7056,7 @@ begin
     CalculateTotalNodes(False);
     ShowRouters;
     RoutersUpdated := True;
-    if NodeType = ntExclude then
+    if NodeTypes = [ntExclude] then
       FilterUpdated := True;
     EnableOptionButtons;
   end;
@@ -7569,8 +7579,12 @@ begin
 end;
 
 procedure TTcp.ClearRoutersClick(Sender: TObject);
+var
+  NodeTypes: TNodeTypes;
 begin
-  ClearRouters(TNodeType(TMenuItem(Sender).Tag), False);
+  NodeTypes := [];
+  Include(NodeTypes, TNodeType(TMenuItem(Sender).Tag));
+  ClearRouters(NodeTypes, False);
 end;
 
 procedure TTcp.cbxExitPolicyTypeChange(Sender: TObject);
@@ -7664,9 +7678,9 @@ begin
         if LoadFavorites then
         begin
           if LoadExcludes then
-            ClearRouters(ntNone)
+            ClearRouters
           else
-            ClearRouters(ntFavorites);
+            ClearRouters([ntFavorites]);
           GetNodes(ParseStr[5], ntEntry, True);
           GetNodes(ParseStr[6], ntMiddle, True);
           GetNodes(ParseStr[7], ntExit, True);
@@ -7676,7 +7690,7 @@ begin
         if LoadExcludes then
         begin
           if not LoadFavorites then
-            ClearRouters(ntExclude);
+            ClearRouters([ntExclude]);
           GetNodes(ParseStr[8], ntExclude, True);
           RUpdated := True;
         end;
@@ -8132,6 +8146,7 @@ begin
   miAvoidAddingIncorrectNodes.Enabled := ActionState and TypeState;
 
   MenuSelectPrepare(miRtFilterSA, miRtFilterUA);
+  MenuSelectPrepare(miAutoSelNodesSA, miAutoSelNodesUA);
 
   if State then
   begin
@@ -11262,10 +11277,13 @@ end;
 procedure TTcp.SaveNodesList(NodesID: Integer);
 var
   FavoritesID: Integer;
+  NodeTypes: TNodeTypes;
   NodesList: string;
 begin
   FavoritesID := NodesToFavorites(NodesID);
-  ClearRouters(TNodeType(FavoritesID));
+  NodeTypes := [];
+  Include(NodeTypes, TNodeType(FavoritesID));
+  ClearRouters(NodeTypes);
   NodesList := MemoToLine(meNodesList, ltNode, True);
   GetNodes(NodesList, TNodeType(FavoritesID), True);
   CalculateTotalNodes;
@@ -12791,7 +12809,9 @@ begin
         SubMenu.Caption := TransStr('360');
         SubMenu.ImageIndex := 50;
         SubMenu.OnClick := RoutersAutoSelectClick;
-        Submenu.Enabled := (RoutersDic.Count > 0) and (InfoStage = 0) and not (Assigned(Consensus) or Assigned(Descriptors) or tmScanner.Enabled);
+        Submenu.Enabled := (RoutersDic.Count > 0) and (InfoStage = 0) and
+          (miAutoSelEntryEnabled.Checked or miAutoSelMiddleEnabled.Checked or miAutoSelExitEnabled.Checked) and
+          not (Assigned(Consensus) or Assigned(Descriptors) or tmScanner.Enabled);
         Submenu.Visible := not AutoSave;
       end;
     end;
@@ -13295,9 +13315,10 @@ var
   ParseStr: ArrOfStr;
   cdWeight, cdPing, CheckEntryPorts: Boolean;
   GeoIpInfo: TGeoIpInfo;
+  NodeItem: TPair<string, TNodeTypes>;
   Flags: TRouterFlags;
   PriorityType, PingData, PingSum, PingCount, PingAvg, i: Integer;
-  NodeTypes: TNodeTypes;
+  FilterNodeTypes, AutoSelNodeTypes: TNodeTypes;
   FilterInfo: TFilterInfo;
   CountryID: Byte;
   EntryStr, MiddleStr, ExitStr, CountryCode, PortsData: string;
@@ -13360,7 +13381,7 @@ var
 
   procedure AddRouterToList(ls: TStringList; NodeType: TNodeType);
   begin
-    if NodeType in NodeTypes then
+    if (NodeType in FilterNodeTypes) and (NodeType in AutoSelNodeTypes) then
     begin
       case PriorityType of
         PRIORITY_BALANCED:
@@ -13411,13 +13432,21 @@ begin
     end;
     CheckEntryPorts := PortsDic.Count > 0;
 
+    AutoSelNodeTypes := [];
+    if miAutoSelEntryEnabled.Checked then
+      Include(AutoSelNodeTypes, ntEntry);
+    if miAutoSelMiddleEnabled.Checked then
+      Include(AutoSelNodeTypes, ntMiddle);
+    if miAutoSelExitEnabled.Checked then
+      Include(AutoSelNodeTypes, ntExit);
+
     for Router in RoutersDic do
     begin
       Flags := Router.Value.Flags;
       CountryID := DEFAULT_COUNTRY_ID;
       PingData := MAXWORD;
       PortsData := '';
-      NodeTypes := [ntEntry, ntMiddle, ntExit];
+      FilterNodeTypes := [ntEntry, ntMiddle, ntExit];
 
       if PingNodesCount > 0 then
       begin
@@ -13445,7 +13474,7 @@ begin
         if cbAutoSelFilterCountriesOnly.Checked then
         begin
           if FilterDic.TryGetValue(CountryCode, FilterInfo) then
-            NodeTypes := FilterInfo.Data;
+            FilterNodeTypes := FilterInfo.Data;
         end;
 
         if (rfStable in Flags) or not cbAutoSelStableOnly.Checked then
@@ -13484,19 +13513,46 @@ begin
         SortCompare := CompIntObjectDesc;
     end;
 
-    EntryNodes.CustomSort(SortCompare);
-    ExitNodes.CustomSort(SortCompare);
-    MiddleNodes.CustomSort(SortCompare);
-
     UniqueList.Clear;
-    EntryStr := ListToStr(EntryNodes, udAutoSelEntryCount.Position);
-    ExitStr := ListToStr(ExitNodes, udAutoSelExitCount.Position);
-    MiddleStr := ListToStr(MiddleNodes, udAutoSelMiddleCount.Position);
+    if cbAutoSelUniqueNodes.Checked and not
+      (miAutoSelEntryEnabled.Checked and miAutoSelMiddleEnabled.Checked and miAutoSelExitEnabled.Checked) then
+    begin
+      for NodeItem in NodesDic do
+      begin
+        if ValidHash(NodeItem.Key) then
+        begin
+          if not miAutoSelEntryEnabled.Checked and (ntEntry in NodeItem.Value) then
+            UniqueList.AddOrSetValue(NodeItem.Key, 0);
+          if not miAutoSelMiddleEnabled.Checked and (ntMiddle in NodeItem.Value) then
+            UniqueList.AddOrSetValue(NodeItem.Key, 0);
+          if not miAutoSelExitEnabled.Checked and (ntExit in NodeItem.Value) then
+            UniqueList.AddOrSetValue(NodeItem.Key, 0);
+        end;
+      end;
+    end;
 
-    ClearRouters(ntFavorites);
-    GetNodes(ExitStr, ntExit, True);
-    GetNodes(EntryStr, ntEntry, True);
-    GetNodes(MiddleStr, ntMiddle, True);
+    ClearRouters(AutoSelNodeTypes);
+
+    if miAutoSelEntryEnabled.Checked then
+    begin
+      EntryNodes.CustomSort(SortCompare);
+      EntryStr := ListToStr(EntryNodes, udAutoSelEntryCount.Position);
+      GetNodes(EntryStr, ntEntry, True);
+    end;
+
+    if miAutoSelExitEnabled.Checked then
+    begin
+      ExitNodes.CustomSort(SortCompare);
+      ExitStr := ListToStr(ExitNodes, udAutoSelExitCount.Position);
+      GetNodes(ExitStr, ntExit, True);
+    end;
+
+    if miAutoSelMiddleEnabled.Checked then
+    begin
+      MiddleNodes.CustomSort(SortCompare);
+      MiddleStr := ListToStr(MiddleNodes, udAutoSelMiddleCount.Position);
+      GetNodes(MiddleStr, ntMiddle, True);
+    end;
 
     CheckNodesListState(FAVORITES_ID);
     CalculateTotalNodes;
@@ -13559,6 +13615,11 @@ procedure TTcp.miAutoScrollClick(Sender: TObject);
 begin
   SetConfigBoolean('Log', 'AutoScroll', miAutoScroll.Checked);
   CheckLogAutoScroll;
+end;
+
+procedure TTcp.AutoSelNodesType(Sender: TObject);
+begin
+  SetConfigInteger('AutoSelNodes', 'AutoSelNodesType', MenuToInt(miAutoSelNodesType));
 end;
 
 procedure TTcp.miAvoidAddingIncorrectNodesClick(Sender: TObject);
