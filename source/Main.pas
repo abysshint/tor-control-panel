@@ -13413,7 +13413,11 @@ begin
   MiddleNodes := TStringList.Create;
   ExitNodes := TStringList.Create;
   UniqueList := TDictionary<string, Byte>.Create;
-  PriorityType := cbxAutoSelPriority.ItemIndex;
+
+  if (PingNodesCount = 0) and (PriorityType in [PRIORITY_BALANCED, PRIORITY_PING]) then
+    PriorityType := PRIORITY_WEIGHT
+  else
+    PriorityType := cbxAutoSelPriority.ItemIndex;
 
   PingCount := 0;
   PingSum := 0;
@@ -13471,7 +13475,7 @@ begin
 
       if cdWeight and cdPing and (rfRelay in Flags) and not RouterInNodesList(Router.Key, Router.Value, ntExclude) then
       begin
-        if cbAutoSelFilterCountriesOnly.Checked then
+        if cbAutoSelFilterCountriesOnly.Checked and (PingNodesCount > 0) then
         begin
           if FilterDic.TryGetValue(CountryCode, FilterInfo) then
             FilterNodeTypes := FilterInfo.Data;
