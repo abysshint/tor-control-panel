@@ -1482,8 +1482,8 @@ var
   Scale: Real;
   HsToDelete: ArrOfStr;
   SystemLanguage: Word;
-  LastAuthCookieDate, LastConsensusDate, LastNewDescriptorsDate, LastTorrcDate: TDateTime;
-  LastFullScanDate, LastNonResponsedScanDate, TotalStartDate: Int64;
+  LastAuthCookieDate, LastConsensusDate, LastNewDescriptorsDate, LastTorrcDate, GeoIpDate: TDateTime;
+  LastFullScanDate, LastNonResponsedScanDate, TotalStartDate, LastGeoIpUpdateDate: Int64;
   LastPartialScansCounts: Integer;
   LockCircuits, LockCircuitInfo, LockStreams, LockStreamsInfo, UpdateTraffic: Boolean;
   FindObject: TMemo;
@@ -2503,7 +2503,12 @@ begin
 
         if InfoCount = 0 then
         begin
-          GeoIpUpdating := False;
+          if GeoIpUpdating then
+          begin
+            LastGeoIpUpdateDate := DateTimeToUnix(GeoIpDate);
+            SetConfigInteger('Main', 'LastGeoIpUpdateDate', LastGeoIpUpdateDate);
+            GeoIpUpdating := False;
+          end;
           InfoStage := 3;
         end
         else
@@ -4344,6 +4349,14 @@ begin
     end;
     OptionsLocked := False;
     FileAge(UserDir + 'control_auth_cookie', LastAuthCookieDate);
+
+    if GeoIpExists then
+    begin
+      FileAge(GeoIpFile, GeoIpDate);
+      if LastGeoIpUpdateDate <> DateTimeToUnix(GeoIpDate) then
+        GeoIpUpdating := True;
+    end;
+
     TorMainProcess := ExecuteProcess(TorExeFile + ' -f "' + TorConfigFile + '"', [pfHideWindow, pfReadStdOut], hJob);
     if TorMainProcess.hProcess <> 0 then
     begin
@@ -4365,7 +4378,6 @@ begin
         LastUserStreamProtocol := -1;
         ConnectState := 1;
         TotalsNeedSave := False;
-        GeoIpUpdating := False;
         SelectExitCircuit := False;
         LockCircuits := False;
         LockCircuitInfo := False;
@@ -5890,6 +5902,14 @@ begin
     LastFullScanDate := ini.ReadInt64('Scanner', 'LastFullScanDate', 0);
     LastNonResponsedScanDate := ini.ReadInt64('Scanner', 'LastNonResponsedScanDate', 0);
     LastPartialScansCounts := ini.ReadInteger('Scanner', 'LastPartialScansCounts', 0);
+
+    LastGeoIpUpdateDate := ini.ReadInt64('Main', 'LastGeoIpUpdateDate', 0);
+    if (LastGeoIpUpdateDate = 0) and not FileExists(NetworkCacheFile) then
+    begin
+      FileAge(GeoIpFile, GeoIpDate);
+      LastGeoIpUpdateDate := DateTimeToUnix(GeoIpDate);
+      ini.WriteInt64('Main', 'LastGeoIpUpdateDate', LastGeoIpUpdateDate);
+    end;
 
     tmCircuits.Interval := GetIntDef(ini.ReadInteger('Circuits', 'UpdateInterval', 1000), 1000, 0, 4000);
     case tmCircuits.Interval of
