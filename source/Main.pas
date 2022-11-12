@@ -1684,12 +1684,12 @@ begin
     if UseSocks then
     begin
       Http.Sock.SocksType := ST_Socks5;
-      Http.Sock.SocksIP := GetHost(Tcp.cbxSocksHost);
+      Http.Sock.SocksIP := GetHost(Tcp.cbxSocksHost.Text);
       Http.Sock.SocksPort := IntToStr(Tcp.udSOCKSPort.Position);
     end
     else
     begin
-      Http.ProxyHost := GetHost(Tcp.cbxHTTPTunnelHost);
+      Http.ProxyHost := GetHost(Tcp.cbxHTTPTunnelHost.Text);
       Http.ProxyPort := IntToStr(Tcp.udHTTPTunnelPort.Position);
     end;
     Http.HTTPMethod('HEAD', GetDefaultsValue('CheckUrl', CHECK_URL));
@@ -4237,12 +4237,12 @@ var
   ServerIsBridge, ServerEnabled: Boolean;
 begin
   if UsedProxyType in [ptSocks, ptBoth] then
-    lbStatusSocksAddr.Caption := FormatHost(GetHost(cbxSocksHost)) + ':' + IntToStr(udSOCKSPort.Position)
+    lbStatusSocksAddr.Caption := FormatHost(GetHost(cbxSocksHost.Text)) + ':' + IntToStr(udSOCKSPort.Position)
   else
     lbStatusSocksAddr.Caption := TransStr('226');
 
   if UsedProxyType in [ptHttp, ptBoth] then
-    lbStatusHttpAddr.Caption := FormatHost(GetHost(cbxHttpTunnelHost)) + ':' + IntToStr(udHttpTunnelPort.Position)
+    lbStatusHttpAddr.Caption := FormatHost(GetHost(cbxHttpTunnelHost.Text)) + ':' + IntToStr(udHttpTunnelPort.Position)
   else
     lbStatusHttpAddr.Caption := TransStr('226');
 
@@ -4320,7 +4320,8 @@ begin
     OptionsLocked := True;
     ForceDirectories(LogsDir);
     ForceDirectories(OnionAuthDir);
-    CheckOpenPorts(udSOCKSPort, cbxSocksHost.Text, PortStr);
+    CheckOpenPorts(udSOCKSPort, GetHost(cbxSocksHost.Text), PortStr);
+    CheckOpenPorts(udHTTPTunnelPort, GetHost(cbxHTTPTunnelHost.Text), PortStr);
     CheckOpenPorts(udControlPort, LOOPBACK_ADDRESS, PortStr);
     if cbxServerMode.ItemIndex > 0 then
     begin

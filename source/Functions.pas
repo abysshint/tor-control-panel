@@ -57,7 +57,7 @@ var
   function RegistryGetValue(Root: HKEY; Key, Param: string): string;
   function CreateShortcut(const CmdLine, Args, WorkDir, LinkFile, IconFile: string): IPersistFile;
   function GetFullFileName(FileName: string): string;
-  function GetHost(SocksHost: TCombobox): string;
+  function GetHost(Host: string): string;
   function GetAddressFromSocket(SocketStr: string): string;
   function GetPortFromSocket(SocketStr: string): Word;
   function FormatHost(HostStr: string): string;
@@ -916,15 +916,15 @@ begin
   Result := Round(GetPrefixSize(SeparateRight(SeparateLeft(SizeStr, '/'), ' '), True) * StrToFloatDef(SeparateLeft(SizeStr, ' '), 0.0));
 end;
 
-function GetHost(SocksHost: TCombobox): string;
+function GetHost(Host: string): string;
 begin
-  if SocksHost.Text = '0.0.0.0' then
+  if Host = '0.0.0.0' then
     Result := '127.0.0.1'
   else
-    if SocksHost.Text = '::' then
+    if Host = '::' then
       Result := '::1'
     else
-      Result := SocksHost.Text;
+      Result := Host;
 end;
 
 function GetAvailPhysMemory: Cardinal;
