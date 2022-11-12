@@ -236,6 +236,14 @@ const
   DNS_REQUEST = 29;
   USER = 30;
 
+  SOCKS4 = 31;
+  SOCKS5 = 32;
+  TRANS = 33;
+  NATD = 34;
+  DNS = 35;
+  HTTPCONNECT = 36;
+  UNKNOWN = 37;
+
   FILTER_BY_ALIVE = 5;
   FILTER_BY_TOTAL = 6;
   FILTER_BY_GUARD = 7;
@@ -271,6 +279,7 @@ type
   TTaskBarPos = (tbTop, tbBottom, tbLeft, tbRight, tbNone);
   TScanType = (stNone, stPing, stAlive, stBoth);
   TScanPurpose = (spNone, spNew, spFailed, spUserBridges, spAll, spNewAndFailed, spBridges, spAuto);
+  TProxyType = (ptNone, ptSocks, ptHttp, ptBoth);
 
   TConfigFlag = (cfAutoAppend, cfAutoSave, cfFindComments, cfExistCheck, cfMultiLine, cfBoolInvert);
   TConfigFlags = set of TConfigFlag;
@@ -405,6 +414,16 @@ var
     (Key: 'CLOSED'; Value: CLOSED),
     (Key: 'DETACHED'; Value: DETACHED),
     (Key: 'CONTROLLER_WAIT'; Value: CONTROLLER_WAIT)
+  );
+
+  ClientProtocols: array[0..6] of TStaticPair = (
+    (Key: 'SOCKS4'; Value: SOCKS4),
+    (Key: 'SOCKS5'; Value: SOCKS5),
+    (Key: 'TRANS'; Value: TRANS),
+    (Key: 'NATD'; Value: NATD),
+    (Key: 'DNS'; Value: DNS),
+    (Key: 'HTTPCONNECT'; Value: HTTPCONNECT),
+    (Key: 'UNKNOWN'; Value: UNKNOWN)
   );
 
 implementation

@@ -190,7 +190,9 @@ begin
     LoadStr('214', 'Получено');
     LoadStr('215', 'Отправлено');
     LoadStr('221', 'Дата создания');
+    LoadStr('225', 'SOCKS-прокси');
     LoadStr('226', 'Выключен');
+    LoadStr('228', 'Скопировать в буфер обмена');
     LoadStr('230', 'Название,Версия,Точек входа,Соединений');
     LoadStr('231', 'Интерфейс,Порт,Виртуальный');
     LoadStr('232', 'Ник,IP адрес,,Страна,Вес,Пинг');
@@ -205,7 +207,7 @@ begin
     LoadStr('241', 'Вы отключились от сети Tor');
     LoadStr('242', 'Устройств с поддержкой переадресации портов не найдено!');
     LoadStr('243', 'Результат');
-    LoadStr('244', 'Источник,Назначение,Цель');
+    LoadStr('244', 'Источник,Назначение,Тип');
     LoadStr('245', 'Успешно');
     LoadStr('246', 'Предупреждение');
     LoadStr('247', 'Ошибка');
@@ -301,7 +303,7 @@ begin
     LoadStr('371', 'Загрузка каталога');
     LoadStr('372', 'Тест порта каталога');
     LoadStr('373', 'DNS-запрос');
-    LoadStr('374', 'Обычный трафик');
+    LoadStr('374', 'Другой трафик');
     LoadStr('375', 'Другая цель');
     LoadStr('376', 'Внутренний сокет');
     LoadStr('377', 'Для нормальной работы программы требуется Tor Windows Expert Bundle версии 0.4.0.5 и выше.');
@@ -348,6 +350,10 @@ begin
     LoadStr('528', 'Соединения');
     LoadStr('530', 'Назначение');
     LoadStr('547', 'Тип узла');
+    LoadStr('593', 'HTTP-прокси');
+    LoadStr('594', 'SOCKS4-трафик');
+    LoadStr('595', 'SOCKS5-трафик');
+    LoadStr('596', 'HTTP/C-трафик');
 
     TranslateArray(HsHeader, TransStr('230'));
     TranslateArray(HsPortsHeader, TransStr('231'));
@@ -450,7 +456,7 @@ begin
 
     Tcp.cbUseReachableAddresses.Caption := Load('147', 'Мой сетевой экран разрешает подключаться только к этим портам');
     Tcp.lbReachableAddresses.Caption := Load('148', 'Список портов');
-    Tcp.cbEnableSocks.Caption := Load('149', 'Включить встроенный прокси');
+    Tcp.lbUseBuiltInProxy.Caption := Load('149', 'Параметры встроенных прокси');
     Tcp.cbUseProxy.Caption := Load('150', 'Я использую прокси для подключения к Интернету');
     Tcp.lbProxyType.Caption := TransStr('151');
     Tcp.lbProxyAddress.Caption := Load('152', 'Адрес');
@@ -477,7 +483,7 @@ begin
     Tcp.lbFilterMiddle.Caption := TransStr('289') + ': ' + IntToStr(Tcp.lbFilterMiddle.Tag);
     Tcp.lbFilterExit.Caption := TransStr('290') + ': ' + IntToStr(Tcp.lbFilterExit.Tag);
     Tcp.lbFilterExclude.Caption := TransStr('287') + ': ' + IntToStr(Tcp.lbFilterExclude.Tag);
-    LoadList(Tcp.cbxFilterMode, '165', '"Отключено", "Выбранные страны", "Избранные узлы"');
+    LoadList(Tcp.cbxFilterMode, '165', '"Без фильтрации", "Выбранные страны", "Избранные узлы"');
 
     Tcp.lbServerMode.Caption := Load('166', 'Режим работы');
     Tcp.lbNickname.Caption := Load('167', 'Ник');
@@ -632,8 +638,12 @@ begin
     Tcp.lbUserDirCaption.Caption := Load('224', 'Профиль') + ':';
     Tcp.lbClientVersion.Hint := Load('325', 'Перейти на страницу загрузки Tor');
     Tcp.lbUserDir.Hint := Load('227', 'Открыть папку профиля');
-    Tcp.lbStatusProxyAddrCaption.Caption := Load('225', 'Встроенный прокси') + ':';
-    Tcp.lbStatusProxyAddr.Hint := Load('228', 'Скопировать в буфер обмена');
+    Tcp.lbStatusFilterModeCaption.Caption := Load('599', 'Режим фильтра') + ':';
+    Tcp.lbStatusFilterMode.Hint := Load('600', 'Перейти в настройки фильтра');
+    Tcp.lbStatusSocksAddrCaption.Caption := TransStr('225') + ':';
+    Tcp.lbStatusSocksAddr.Hint := TransStr('228');
+    Tcp.lbStatusHttpAddrCaption.Caption := TransStr('593') + ':';
+    Tcp.lbStatusHttpAddr.Hint := TransStr('228');
     Tcp.lbStatusScannerCaption.Caption := TransStr('444') + ':';
 
     Tcp.gbServerInfo.Caption := Load('216', 'Сервер');
@@ -696,6 +706,10 @@ begin
     Tcp.miResetGuardsBridges.Caption := Load('498', 'Мостовые узлы');
     Tcp.miResetGuardsRestricted.Caption := Load('499', 'Выбранные входные узлы');
     Tcp.miResetGuardsDefault.Caption := Load('500', 'Входные узлы по умолчанию');
+    Tcp.miCheckIpProxyType.Caption := Load('597', 'Прокси для проверки IP-адреса');
+    Tcp.miCheckIpProxyAuto.Caption := Load('598', 'Выбирать автоматически');
+    Tcp.miCheckIpProxySocks.Caption := TransStr('225');
+    Tcp.miCheckIpProxyHttp.Caption := TransStr('593');
 
     Tcp.miDetailsUpdateIp.Caption := TransStr('284');
     Tcp.miDetailsCopy.Caption := TransStr('274');
@@ -749,6 +763,7 @@ begin
     Tcp.miLogSeparateNone.Caption := Load('512', 'Не разделять');
     Tcp.miLogSeparateMonth.Caption := Load('513', 'По месяцам');
     Tcp.miLogSeparateDay.Caption := Load('514', 'По дням');
+    Tcp.miOpenLogsFolder.Caption := Load('601', 'Перейти в каталог журналов');
 
     Tcp.miStat.Caption := Load('309', 'Статистика');
     Tcp.miStatRelays.Caption := Load('310', 'Все');
@@ -851,7 +866,7 @@ begin
     Tcp.miStreamsInfoSortID.Caption := TransStr('221');
     Tcp.miStreamsInfoSortSource.Caption := Load('544', 'Источник');
     Tcp.miStreamsInfoSortDest.Caption := Load('545', 'Назначение');
-    Tcp.miStreamsInfoSortPurpose.Caption := TransStr('530');
+    Tcp.miStreamsInfoSortPurpose.Caption := TransStr('151');
     Tcp.miStreamsInfoSortDL.Caption := TransStr('214');
     Tcp.miStreamsInfoSortUL.Caption := TransStr('215');
 

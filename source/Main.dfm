@@ -55,375 +55,6 @@ object Tcp: TTcp
       OnMouseUp = meLogMouseUp
     end
   end
-  object paStatus: TPanel
-    Left = 3
-    Top = 92
-    Width = 721
-    Height = 435
-    BevelInner = bvLowered
-    Color = clWindow
-    DoubleBuffered = True
-    ParentBackground = False
-    ParentDoubleBuffered = False
-    ShowCaption = False
-    TabOrder = 3
-    Visible = False
-    object gbSession: TGroupBox
-      Left = 12
-      Top = 126
-      Width = 155
-      Height = 57
-      Caption = #1042#1089#1077#1075#1086' '#1079#1072' '#1089#1077#1089#1089#1080#1102
-      ParentBackground = False
-      TabOrder = 2
-      object lbSessionDLCaption: TLabel
-        Left = 36
-        Top = 16
-        Width = 53
-        Height = 13
-        Alignment = taRightJustify
-        Caption = #1055#1086#1083#1091#1095#1077#1085#1086':'
-        Transparent = True
-      end
-      object lbSessionULCaption: TLabel
-        Left = 23
-        Top = 32
-        Width = 66
-        Height = 13
-        Alignment = taRightJustify
-        AutoSize = False
-        Caption = #1054#1090#1087#1088#1072#1074#1083#1077#1085#1086':'
-        Transparent = True
-      end
-      object lbSessionDL: TLabel
-        Left = 92
-        Top = 16
-        Width = 25
-        Height = 13
-        Caption = '0,0 '#1041
-        Transparent = True
-      end
-      object lbSessionUL: TLabel
-        Left = 92
-        Top = 32
-        Width = 25
-        Height = 13
-        Caption = '0,0 '#1041
-        Transparent = True
-      end
-    end
-    object gbServerInfo: TGroupBox
-      Left = 12
-      Top = 307
-      Width = 698
-      Height = 117
-      Caption = #1057#1077#1088#1074#1077#1088
-      ParentBackground = False
-      TabOrder = 6
-      Visible = False
-      object lbServerExternalIpCaption: TLabel
-        Left = 19
-        Top = 16
-        Width = 81
-        Height = 13
-        Alignment = taRightJustify
-        Caption = #1042#1085#1077#1096#1085#1080#1081' '#1072#1076#1088#1077#1089':'
-        Transparent = True
-      end
-      object lbFingerprintCaption: TLabel
-        Left = 14
-        Top = 33
-        Width = 86
-        Height = 13
-        Alignment = taRightJustify
-        Caption = #1048#1076#1077#1085#1090#1080#1092#1080#1082#1072#1090#1086#1088':'
-        Transparent = True
-      end
-      object lbServerExternalIp: TLabel
-        Left = 103
-        Top = 17
-        Width = 71
-        Height = 13
-        Caption = #1053#1077' '#1086#1087#1088#1077#1076#1077#1083#1105#1085
-        PopupMenu = mnServerInfo
-        Transparent = True
-        OnMouseMove = lbServerInfoMouseMove
-      end
-      object lbFingerprint: TLabel
-        Left = 103
-        Top = 33
-        Width = 71
-        Height = 13
-        Caption = #1053#1077' '#1086#1087#1088#1077#1076#1077#1083#1105#1085
-        PopupMenu = mnServerInfo
-        Transparent = True
-        OnMouseMove = lbServerInfoMouseMove
-      end
-      object lbBridgeCaption: TLabel
-        Left = 33
-        Top = 49
-        Width = 67
-        Height = 13
-        Alignment = taRightJustify
-        Caption = #1040#1076#1088#1077#1089' '#1084#1086#1089#1090#1072':'
-        Transparent = True
-      end
-      object lbBridge: TLabel
-        Left = 103
-        Top = 49
-        Width = 71
-        Height = 13
-        Caption = #1053#1077' '#1086#1087#1088#1077#1076#1077#1083#1105#1085
-        PopupMenu = mnServerInfo
-        Transparent = True
-        OnMouseMove = lbServerInfoMouseMove
-      end
-    end
-    object gbTraffic: TGroupBox
-      Left = 12
-      Top = 6
-      Width = 155
-      Height = 57
-      Caption = #1057#1082#1086#1088#1086#1089#1090#1100
-      ParentBackground = False
-      TabOrder = 0
-      object lbDownloadSpeedCaption: TLabel
-        Left = 39
-        Top = 16
-        Width = 50
-        Height = 13
-        Alignment = taRightJustify
-        Caption = #1047#1072#1075#1088#1091#1079#1082#1072':'
-        Transparent = True
-      end
-      object lbUploadSpeedCaption: TLabel
-        Left = 35
-        Top = 32
-        Width = 54
-        Height = 13
-        Alignment = taRightJustify
-        Caption = #1054#1090#1087#1088#1072#1074#1082#1072':'
-        Transparent = True
-      end
-      object lbDLSpeed: TLabel
-        Left = 92
-        Top = 16
-        Width = 34
-        Height = 13
-        Caption = '0,0 '#1041'/c'
-        Transparent = True
-      end
-      object lbULSpeed: TLabel
-        Left = 92
-        Top = 32
-        Width = 34
-        Height = 13
-        Caption = '0,0 '#1041'/c'
-        Transparent = True
-      end
-    end
-    object gbInfo: TGroupBox
-      Left = 12
-      Top = 247
-      Width = 698
-      Height = 57
-      Caption = #1057#1074#1077#1076#1077#1085#1080#1103
-      ParentBackground = False
-      TabOrder = 5
-      object lbClientVersionCaption: TLabel
-        Left = 16
-        Top = 16
-        Width = 84
-        Height = 13
-        Alignment = taRightJustify
-        Caption = #1042#1077#1088#1089#1080#1103' '#1082#1083#1080#1077#1085#1090#1072':'
-        Transparent = True
-      end
-      object lbClientVersion: TLabel
-        Left = 103
-        Top = 16
-        Width = 77
-        Height = 13
-        Cursor = crHandPoint
-        Hint = #1055#1077#1088#1077#1081#1090#1080' '#1085#1072' '#1089#1090#1088#1072#1085#1080#1094#1091' '#1079#1072#1075#1088#1091#1079#1082#1080' Tor'
-        Caption = #1053#1077' '#1086#1087#1088#1077#1076#1077#1083#1077#1085#1072
-        ParentShowHint = False
-        ShowHint = True
-        Transparent = True
-        OnClick = lbClientVersionClick
-      end
-      object lbUserDirCaption: TLabel
-        Left = 51
-        Top = 32
-        Width = 49
-        Height = 13
-        Alignment = taRightJustify
-        Caption = #1055#1088#1086#1092#1080#1083#1100':'
-        Transparent = True
-      end
-      object lbUserDir: TLabel
-        Left = 103
-        Top = 32
-        Width = 73
-        Height = 13
-        Cursor = crHandPoint
-        Hint = #1054#1090#1082#1088#1099#1090#1100' '#1087#1072#1087#1082#1091' '#1087#1088#1086#1092#1080#1083#1103
-        Caption = #1055#1086' '#1091#1084#1086#1083#1095#1072#1085#1080#1102
-        ParentShowHint = False
-        ShowHint = True
-        Transparent = True
-        OnClick = lbUserDirClick
-      end
-      object lbStatusProxyAddrCaption: TLabel
-        Left = 270
-        Top = 16
-        Width = 103
-        Height = 13
-        Alignment = taRightJustify
-        Caption = #1042#1089#1090#1088#1086#1077#1085#1085#1099#1081' '#1087#1088#1086#1082#1089#1080':'
-        Transparent = True
-      end
-      object lbStatusProxyAddr: TLabel
-        Left = 376
-        Top = 16
-        Width = 76
-        Height = 13
-        Cursor = crHandPoint
-        Hint = #1057#1082#1086#1087#1080#1088#1086#1074#1072#1090#1100' '#1074' '#1073#1091#1092#1077#1088' '#1086#1073#1084#1077#1085#1072
-        Caption = '127.0.0.1:9050'
-        ParentShowHint = False
-        ShowHint = True
-        Transparent = True
-        OnClick = lbStatusProxyAddrClick
-      end
-      object lbStatusScannerCaption: TLabel
-        Left = 288
-        Top = 32
-        Width = 85
-        Height = 13
-        Alignment = taRightJustify
-        Caption = #1057#1077#1090#1077#1074#1086#1081' '#1089#1082#1072#1085#1077#1088':'
-        Transparent = True
-      end
-      object lbStatusScanner: TLabel
-        Left = 376
-        Top = 32
-        Width = 53
-        Height = 13
-        Hint = #1057#1082#1086#1087#1080#1088#1086#1074#1072#1090#1100' '#1074' '#1073#1091#1092#1077#1088' '#1086#1073#1084#1077#1085#1072
-        Caption = #1054#1078#1080#1076#1072#1085#1080#1077
-        Transparent = True
-      end
-    end
-    object gbSpeedGraph: TGroupBox
-      Left = 176
-      Top = 6
-      Width = 534
-      Height = 238
-      Caption = #1043#1088#1072#1092#1080#1082' '#1089#1082#1086#1088#1086#1089#1090#1080
-      ParentBackground = False
-      TabOrder = 4
-      object pbTraffic: TPaintBox
-        Left = 2
-        Top = 15
-        Width = 530
-        Height = 221
-        Align = alClient
-        PopupMenu = mnTraffic
-        OnPaint = pbTrafficPaint
-      end
-    end
-    object gbMaxTraffic: TGroupBox
-      Left = 12
-      Top = 66
-      Width = 155
-      Height = 57
-      Caption = #1052#1072#1082#1089#1080#1084#1091#1084
-      ParentBackground = False
-      TabOrder = 1
-      object lbMaxDLSpeedCaption: TLabel
-        Left = 39
-        Top = 16
-        Width = 50
-        Height = 13
-        Alignment = taRightJustify
-        Caption = #1047#1072#1075#1088#1091#1079#1082#1072':'
-        Transparent = True
-      end
-      object lbMaxULSpeedCaption: TLabel
-        Left = 35
-        Top = 32
-        Width = 54
-        Height = 13
-        Alignment = taRightJustify
-        Caption = #1054#1090#1087#1088#1072#1074#1082#1072':'
-        Transparent = True
-      end
-      object lbMaxDLSpeed: TLabel
-        Left = 92
-        Top = 16
-        Width = 34
-        Height = 13
-        Caption = '0,0 '#1041'/c'
-        Transparent = True
-      end
-      object lbMaxULSpeed: TLabel
-        Left = 92
-        Top = 32
-        Width = 34
-        Height = 13
-        Caption = '0,0 '#1041'/c'
-        Transparent = True
-      end
-    end
-    object gbTotal: TGroupBox
-      Left = 12
-      Top = 187
-      Width = 155
-      Height = 57
-      Hint = #1053#1072#1095#1072#1083#1086' '#1091#1095#1105#1090#1072': 01.01.1970 00:00'
-      Caption = #1042#1089#1077#1075#1086' '#1079#1072' '#1074#1089#1105' '#1074#1088#1077#1084#1103
-      ParentBackground = False
-      ParentShowHint = False
-      ShowHint = True
-      TabOrder = 3
-      object lbTotalDLCaption: TLabel
-        Left = 36
-        Top = 16
-        Width = 53
-        Height = 13
-        Alignment = taRightJustify
-        Caption = #1055#1086#1083#1091#1095#1077#1085#1086':'
-        Transparent = True
-      end
-      object lbTotalULCaption: TLabel
-        Left = 23
-        Top = 32
-        Width = 66
-        Height = 13
-        Alignment = taRightJustify
-        AutoSize = False
-        Caption = #1054#1090#1087#1088#1072#1074#1083#1077#1085#1086':'
-        Transparent = True
-      end
-      object lbTotalDL: TLabel
-        Left = 92
-        Top = 16
-        Width = 25
-        Height = 13
-        Caption = '0,0 '#1041
-        Transparent = True
-      end
-      object lbTotalUL: TLabel
-        Left = 92
-        Top = 32
-        Width = 25
-        Height = 13
-        Caption = '0,0 '#1041
-        Transparent = True
-      end
-    end
-  end
   object paCircuits: TPanel
     Left = 3
     Top = 92
@@ -725,6 +356,14 @@ object Tcp: TTcp
       TabOrder = 0
       OnClick = btnSwitchTorClick
     end
+    object Button1: TButton
+      Left = 145
+      Top = 8
+      Width = 75
+      Height = 25
+      Caption = 'Button1'
+      TabOrder = 2
+    end
   end
   object paRouters: TPanel
     Left = 3
@@ -945,6 +584,419 @@ object Tcp: TTcp
       TextHint = #1042#1074#1077#1076#1080#1090#1077' '#1079#1072#1087#1088#1086#1089
       OnChange = edRoutersQueryChange
       OnKeyDown = edRoutersQueryKeyDown
+    end
+  end
+  object paStatus: TPanel
+    Left = 3
+    Top = 92
+    Width = 721
+    Height = 435
+    BevelInner = bvLowered
+    Color = clWindow
+    DoubleBuffered = True
+    ParentBackground = False
+    ParentDoubleBuffered = False
+    ShowCaption = False
+    TabOrder = 3
+    Visible = False
+    object gbSession: TGroupBox
+      Left = 12
+      Top = 126
+      Width = 155
+      Height = 57
+      Caption = #1042#1089#1077#1075#1086' '#1079#1072' '#1089#1077#1089#1089#1080#1102
+      ParentBackground = False
+      TabOrder = 2
+      object lbSessionDLCaption: TLabel
+        Left = 36
+        Top = 16
+        Width = 53
+        Height = 13
+        Alignment = taRightJustify
+        Caption = #1055#1086#1083#1091#1095#1077#1085#1086':'
+        Transparent = True
+      end
+      object lbSessionULCaption: TLabel
+        Left = 23
+        Top = 32
+        Width = 66
+        Height = 13
+        Alignment = taRightJustify
+        AutoSize = False
+        Caption = #1054#1090#1087#1088#1072#1074#1083#1077#1085#1086':'
+        Transparent = True
+      end
+      object lbSessionDL: TLabel
+        Left = 92
+        Top = 16
+        Width = 25
+        Height = 13
+        Caption = '0,0 '#1041
+        Transparent = True
+      end
+      object lbSessionUL: TLabel
+        Left = 92
+        Top = 32
+        Width = 25
+        Height = 13
+        Caption = '0,0 '#1041
+        Transparent = True
+      end
+    end
+    object gbServerInfo: TGroupBox
+      Left = 12
+      Top = 320
+      Width = 698
+      Height = 104
+      Caption = #1057#1077#1088#1074#1077#1088
+      ParentBackground = False
+      TabOrder = 6
+      Visible = False
+      object lbServerExternalIpCaption: TLabel
+        Left = 19
+        Top = 16
+        Width = 81
+        Height = 13
+        Alignment = taRightJustify
+        Caption = #1042#1085#1077#1096#1085#1080#1081' '#1072#1076#1088#1077#1089':'
+        Transparent = True
+      end
+      object lbFingerprintCaption: TLabel
+        Left = 14
+        Top = 33
+        Width = 86
+        Height = 13
+        Alignment = taRightJustify
+        Caption = #1048#1076#1077#1085#1090#1080#1092#1080#1082#1072#1090#1086#1088':'
+        Transparent = True
+      end
+      object lbServerExternalIp: TLabel
+        Left = 103
+        Top = 17
+        Width = 71
+        Height = 13
+        Caption = #1053#1077' '#1086#1087#1088#1077#1076#1077#1083#1105#1085
+        PopupMenu = mnServerInfo
+        Transparent = True
+        OnMouseMove = lbServerInfoMouseMove
+      end
+      object lbFingerprint: TLabel
+        Left = 103
+        Top = 33
+        Width = 71
+        Height = 13
+        Caption = #1053#1077' '#1086#1087#1088#1077#1076#1077#1083#1105#1085
+        PopupMenu = mnServerInfo
+        Transparent = True
+        OnMouseMove = lbServerInfoMouseMove
+      end
+      object lbBridgeCaption: TLabel
+        Left = 33
+        Top = 49
+        Width = 67
+        Height = 13
+        Alignment = taRightJustify
+        Caption = #1040#1076#1088#1077#1089' '#1084#1086#1089#1090#1072':'
+        Transparent = True
+      end
+      object lbBridge: TLabel
+        Left = 103
+        Top = 49
+        Width = 71
+        Height = 13
+        Caption = #1053#1077' '#1086#1087#1088#1077#1076#1077#1083#1105#1085
+        PopupMenu = mnServerInfo
+        Transparent = True
+        OnMouseMove = lbServerInfoMouseMove
+      end
+    end
+    object gbTraffic: TGroupBox
+      Left = 12
+      Top = 6
+      Width = 155
+      Height = 57
+      Caption = #1057#1082#1086#1088#1086#1089#1090#1100
+      ParentBackground = False
+      TabOrder = 0
+      object lbDownloadSpeedCaption: TLabel
+        Left = 39
+        Top = 16
+        Width = 50
+        Height = 13
+        Alignment = taRightJustify
+        Caption = #1047#1072#1075#1088#1091#1079#1082#1072':'
+        Transparent = True
+      end
+      object lbUploadSpeedCaption: TLabel
+        Left = 35
+        Top = 32
+        Width = 54
+        Height = 13
+        Alignment = taRightJustify
+        Caption = #1054#1090#1087#1088#1072#1074#1082#1072':'
+        Transparent = True
+      end
+      object lbDLSpeed: TLabel
+        Left = 92
+        Top = 16
+        Width = 34
+        Height = 13
+        Caption = '0,0 '#1041'/c'
+        Transparent = True
+      end
+      object lbULSpeed: TLabel
+        Left = 92
+        Top = 32
+        Width = 34
+        Height = 13
+        Caption = '0,0 '#1041'/c'
+        Transparent = True
+      end
+    end
+    object gbInfo: TGroupBox
+      Left = 12
+      Top = 247
+      Width = 698
+      Height = 70
+      Caption = #1057#1074#1077#1076#1077#1085#1080#1103
+      ParentBackground = False
+      TabOrder = 5
+      object lbClientVersionCaption: TLabel
+        Left = 16
+        Top = 16
+        Width = 84
+        Height = 13
+        Alignment = taRightJustify
+        Caption = #1042#1077#1088#1089#1080#1103' '#1082#1083#1080#1077#1085#1090#1072':'
+        Transparent = True
+      end
+      object lbClientVersion: TLabel
+        Left = 103
+        Top = 16
+        Width = 77
+        Height = 13
+        Cursor = crHandPoint
+        Hint = #1055#1077#1088#1077#1081#1090#1080' '#1085#1072' '#1089#1090#1088#1072#1085#1080#1094#1091' '#1079#1072#1075#1088#1091#1079#1082#1080' Tor'
+        Caption = #1053#1077' '#1086#1087#1088#1077#1076#1077#1083#1077#1085#1072
+        ParentShowHint = False
+        ShowHint = True
+        Transparent = True
+        OnClick = lbClientVersionClick
+      end
+      object lbUserDirCaption: TLabel
+        Left = 51
+        Top = 32
+        Width = 49
+        Height = 13
+        Alignment = taRightJustify
+        Caption = #1055#1088#1086#1092#1080#1083#1100':'
+        Transparent = True
+      end
+      object lbUserDir: TLabel
+        Left = 103
+        Top = 32
+        Width = 73
+        Height = 13
+        Cursor = crHandPoint
+        Hint = #1054#1090#1082#1088#1099#1090#1100' '#1087#1072#1087#1082#1091' '#1087#1088#1086#1092#1080#1083#1103
+        Caption = #1055#1086' '#1091#1084#1086#1083#1095#1072#1085#1080#1102
+        ParentShowHint = False
+        ShowHint = True
+        Transparent = True
+        OnClick = lbUserDirClick
+      end
+      object lbStatusSocksAddrCaption: TLabel
+        Left = 297
+        Top = 16
+        Width = 76
+        Height = 13
+        Alignment = taRightJustify
+        Caption = 'SOCKS-'#1087#1088#1086#1082#1089#1080':'
+        Transparent = True
+      end
+      object lbStatusSocksAddr: TLabel
+        Left = 376
+        Top = 16
+        Width = 76
+        Height = 13
+        Hint = #1057#1082#1086#1087#1080#1088#1086#1074#1072#1090#1100' '#1074' '#1073#1091#1092#1077#1088' '#1086#1073#1084#1077#1085#1072
+        Caption = '127.0.0.1:9050'
+        ParentShowHint = False
+        ShowHint = True
+        Transparent = True
+        OnClick = lbStatusProxyAddrClick
+        OnMouseMove = lbStatusProxyAddrMouseMove
+      end
+      object lbStatusScannerCaption: TLabel
+        Left = 288
+        Top = 48
+        Width = 85
+        Height = 13
+        Alignment = taRightJustify
+        Caption = #1057#1077#1090#1077#1074#1086#1081' '#1089#1082#1072#1085#1077#1088':'
+        Transparent = True
+      end
+      object lbStatusScanner: TLabel
+        Left = 376
+        Top = 48
+        Width = 53
+        Height = 13
+        Hint = #1057#1082#1086#1087#1080#1088#1086#1074#1072#1090#1100' '#1074' '#1073#1091#1092#1077#1088' '#1086#1073#1084#1077#1085#1072
+        Caption = #1054#1078#1080#1076#1072#1085#1080#1077
+        Transparent = True
+      end
+      object lbStatusHttpAddrCaption: TLabel
+        Left = 305
+        Top = 32
+        Width = 68
+        Height = 13
+        Alignment = taRightJustify
+        Caption = 'HTTP-'#1087#1088#1086#1082#1089#1080':'
+        Transparent = True
+      end
+      object lbStatusHttpAddr: TLabel
+        Left = 376
+        Top = 32
+        Width = 59
+        Height = 13
+        Hint = #1057#1082#1086#1087#1080#1088#1086#1074#1072#1090#1100' '#1074' '#1073#1091#1092#1077#1088' '#1086#1073#1084#1077#1085#1072
+        Caption = #1042#1099#1082#1083#1102#1095#1077#1085#1086
+        ParentShowHint = False
+        ShowHint = True
+        Transparent = True
+        OnClick = lbStatusProxyAddrClick
+        OnMouseMove = lbStatusProxyAddrMouseMove
+      end
+      object lbStatusFilterModeCaption: TLabel
+        Left = 17
+        Top = 48
+        Width = 83
+        Height = 13
+        Alignment = taRightJustify
+        Caption = #1056#1077#1078#1080#1084' '#1092#1080#1083#1100#1090#1088#1072':'
+        Transparent = True
+      end
+      object lbStatusFilterMode: TLabel
+        Left = 103
+        Top = 48
+        Width = 98
+        Height = 13
+        Cursor = crHandPoint
+        Hint = #1055#1077#1088#1077#1081#1090#1080' '#1074' '#1085#1072#1089#1090#1088#1086#1081#1082#1080' '#1092#1080#1083#1100#1090#1088#1072
+        Caption = #1042#1099#1073#1088#1072#1085#1085#1099#1077' '#1089#1090#1088#1072#1085#1099
+        ParentShowHint = False
+        ShowHint = True
+        Transparent = True
+        OnClick = lbStatusFilterModeClick
+      end
+    end
+    object gbSpeedGraph: TGroupBox
+      Left = 176
+      Top = 6
+      Width = 534
+      Height = 238
+      Caption = #1043#1088#1072#1092#1080#1082' '#1089#1082#1086#1088#1086#1089#1090#1080
+      ParentBackground = False
+      TabOrder = 4
+      object pbTraffic: TPaintBox
+        Left = 2
+        Top = 15
+        Width = 530
+        Height = 221
+        Align = alClient
+        PopupMenu = mnTraffic
+        OnPaint = pbTrafficPaint
+      end
+    end
+    object gbMaxTraffic: TGroupBox
+      Left = 12
+      Top = 66
+      Width = 155
+      Height = 57
+      Caption = #1052#1072#1082#1089#1080#1084#1091#1084
+      ParentBackground = False
+      TabOrder = 1
+      object lbMaxDLSpeedCaption: TLabel
+        Left = 39
+        Top = 16
+        Width = 50
+        Height = 13
+        Alignment = taRightJustify
+        Caption = #1047#1072#1075#1088#1091#1079#1082#1072':'
+        Transparent = True
+      end
+      object lbMaxULSpeedCaption: TLabel
+        Left = 35
+        Top = 32
+        Width = 54
+        Height = 13
+        Alignment = taRightJustify
+        Caption = #1054#1090#1087#1088#1072#1074#1082#1072':'
+        Transparent = True
+      end
+      object lbMaxDLSpeed: TLabel
+        Left = 92
+        Top = 16
+        Width = 34
+        Height = 13
+        Caption = '0,0 '#1041'/c'
+        Transparent = True
+      end
+      object lbMaxULSpeed: TLabel
+        Left = 92
+        Top = 32
+        Width = 34
+        Height = 13
+        Caption = '0,0 '#1041'/c'
+        Transparent = True
+      end
+    end
+    object gbTotal: TGroupBox
+      Left = 12
+      Top = 187
+      Width = 155
+      Height = 57
+      Hint = #1053#1072#1095#1072#1083#1086' '#1091#1095#1105#1090#1072': 01.01.1970 00:00'
+      Caption = #1042#1089#1077#1075#1086' '#1079#1072' '#1074#1089#1105' '#1074#1088#1077#1084#1103
+      ParentBackground = False
+      ParentShowHint = False
+      ShowHint = True
+      TabOrder = 3
+      object lbTotalDLCaption: TLabel
+        Left = 36
+        Top = 16
+        Width = 53
+        Height = 13
+        Alignment = taRightJustify
+        Caption = #1055#1086#1083#1091#1095#1077#1085#1086':'
+        Transparent = True
+      end
+      object lbTotalULCaption: TLabel
+        Left = 23
+        Top = 32
+        Width = 66
+        Height = 13
+        Alignment = taRightJustify
+        AutoSize = False
+        Caption = #1054#1090#1087#1088#1072#1074#1083#1077#1085#1086':'
+        Transparent = True
+      end
+      object lbTotalDL: TLabel
+        Left = 92
+        Top = 16
+        Width = 25
+        Height = 13
+        Caption = '0,0 '#1041
+        Transparent = True
+      end
+      object lbTotalUL: TLabel
+        Left = 92
+        Top = 32
+        Width = 25
+        Height = 13
+        Caption = '0,0 '#1041
+        Transparent = True
+      end
     end
   end
   object pcOptions: TPageControl
@@ -1545,7 +1597,7 @@ object Tcp: TTcp
       end
       object lbProxyAddress: TLabel
         Left = 117
-        Top = 79
+        Top = 81
         Width = 31
         Height = 13
         Alignment = taRightJustify
@@ -1555,7 +1607,7 @@ object Tcp: TTcp
       end
       object lbProxyUser: TLabel
         Left = 429
-        Top = 80
+        Top = 82
         Width = 30
         Height = 13
         Alignment = taRightJustify
@@ -1565,7 +1617,7 @@ object Tcp: TTcp
       end
       object lbProxyPort: TLabel
         Left = 333
-        Top = 80
+        Top = 82
         Width = 25
         Height = 13
         Alignment = taRightJustify
@@ -1574,8 +1626,8 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbProxyPassword: TLabel
-        Left = 571
-        Top = 80
+        Left = 570
+        Top = 82
         Width = 37
         Height = 13
         Alignment = taRightJustify
@@ -1585,7 +1637,7 @@ object Tcp: TTcp
       end
       object lbProxyType: TLabel
         Left = 28
-        Top = 80
+        Top = 82
         Width = 18
         Height = 13
         Alignment = taRightJustify
@@ -1595,7 +1647,7 @@ object Tcp: TTcp
       end
       object lbTotalBridges: TLabel
         Left = 666
-        Top = 131
+        Top = 133
         Width = 41
         Height = 13
         Alignment = taRightJustify
@@ -1605,7 +1657,7 @@ object Tcp: TTcp
       end
       object lbBridgesType: TLabel
         Left = 28
-        Top = 131
+        Top = 133
         Width = 18
         Height = 13
         Alignment = taRightJustify
@@ -1615,7 +1667,7 @@ object Tcp: TTcp
       end
       object lbBridgesList: TLabel
         Left = 178
-        Top = 132
+        Top = 134
         Width = 74
         Height = 13
         Alignment = taRightJustify
@@ -1624,7 +1676,7 @@ object Tcp: TTcp
       end
       object lbScanBridgesStatus: TLabel
         Left = 384
-        Top = 132
+        Top = 134
         Width = 172
         Height = 13
         Caption = #1054#1087#1088#1077#1076#1077#1083#1077#1085#1080#1077' '#1078#1080#1074#1099#1093' '#1084#1086#1089#1090#1086#1074' (0%)'
@@ -1639,6 +1691,15 @@ object Tcp: TTcp
         Alignment = taRightJustify
         Caption = #1052#1086#1089#1090
         Enabled = False
+        Transparent = True
+      end
+      object lbUseBuiltInProxy: TLabel
+        Left = 548
+        Top = 7
+        Width = 159
+        Height = 13
+        Alignment = taRightJustify
+        Caption = #1055#1072#1088#1072#1084#1077#1090#1088#1099' '#1074#1089#1090#1088#1086#1077#1085#1085#1099#1093' '#1087#1088#1086#1082#1089#1080
         Transparent = True
       end
       object cbUseReachableAddresses: TCheckBox
@@ -1667,53 +1728,53 @@ object Tcp: TTcp
       end
       object cbUseProxy: TCheckBox
         Left = 10
-        Top = 56
+        Top = 58
         Width = 402
         Height = 17
         Caption = #1071' '#1080#1089#1087#1086#1083#1100#1079#1091#1102' '#1087#1088#1086#1082#1089#1080' '#1076#1083#1103' '#1087#1086#1076#1082#1083#1102#1095#1077#1085#1080#1103' '#1082' '#1048#1085#1090#1077#1088#1085#1077#1090#1091
-        TabOrder = 6
+        TabOrder = 10
         OnClick = cbUseProxyClick
       end
       object edProxyAddress: TEdit
         Left = 153
-        Top = 77
+        Top = 79
         Width = 170
         Height = 21
         Enabled = False
         MaxLength = 255
         PopupMenu = EditMenu
-        TabOrder = 8
+        TabOrder = 12
         TextHint = 'IP-'#1072#1076#1088#1077#1089' '#1080#1083#1080' '#1080#1084#1103' '#1091#1079#1083#1072
         OnChange = EditChange
       end
       object edProxyUser: TEdit
         Left = 462
-        Top = 77
+        Top = 79
         Width = 97
         Height = 21
         Enabled = False
         MaxLength = 255
         PopupMenu = EditMenu
-        TabOrder = 11
+        TabOrder = 15
         TextHint = #1053#1077#1086#1073#1103#1079#1072#1090#1077#1083#1100#1085#1086
         OnChange = EditChange
       end
       object edProxyPassword: TEdit
-        Left = 611
-        Top = 77
+        Left = 610
+        Top = 79
         Width = 97
         Height = 21
         Enabled = False
         MaxLength = 255
         PasswordChar = '*'
         PopupMenu = EditMenu
-        TabOrder = 12
+        TabOrder = 16
         TextHint = #1053#1077#1086#1073#1103#1079#1072#1090#1077#1083#1100#1085#1086
         OnChange = EditChange
       end
       object cbxProxyType: TComboBox
         Left = 49
-        Top = 77
+        Top = 79
         Width = 63
         Height = 21
         AutoDropDown = True
@@ -1722,7 +1783,7 @@ object Tcp: TTcp
         Enabled = False
         ItemIndex = 1
         ParentDoubleBuffered = False
-        TabOrder = 7
+        TabOrder = 11
         Text = 'SOCKS5'
         OnChange = cbxProxyTypeChange
         Items.Strings = (
@@ -1732,62 +1793,61 @@ object Tcp: TTcp
       end
       object cbUseBridges: TCheckBox
         Left = 10
-        Top = 107
+        Top = 109
         Width = 313
         Height = 16
         Caption = #1048#1089#1087#1086#1083#1100#1079#1086#1074#1072#1090#1100' '#1084#1086#1089#1090#1099
-        TabOrder = 13
+        TabOrder = 17
         OnClick = cbUseBridgesClick
         OnExit = cbUseBridgesExit
       end
       object meBridges: TMemo
         Left = 10
-        Top = 154
+        Top = 156
         Width = 697
-        Height = 190
+        Height = 188
         Enabled = False
         PopupMenu = EditMenu
         ScrollBars = ssVertical
-        TabOrder = 16
+        TabOrder = 20
         WordWrap = False
         OnChange = meBridgesChange
         OnExit = MemoExit
         OnKeyPress = MemoKeyPress
       end
       object cbxSocksHost: TComboBox
-        Left = 473
+        Left = 515
         Top = 27
-        Width = 177
+        Width = 135
         Height = 21
         AutoDropDown = True
         Style = csDropDownList
         DoubleBuffered = False
-        ItemIndex = 1
+        ItemIndex = 0
         ParentDoubleBuffered = False
         TabOrder = 3
         Text = '127.0.0.1'
         OnChange = OptionsChange
-        OnDropDown = cbxSocksHostDropDown
+        OnDropDown = cbxProxyHostDropDown
         Items.Strings = (
-          '0.0.0.0'
           '127.0.0.1')
       end
       object edProxyPort: TEdit
         Left = 361
-        Top = 77
+        Top = 79
         Width = 42
         Height = 21
         Enabled = False
         MaxLength = 5
         NumbersOnly = True
         PopupMenu = EditMenu
-        TabOrder = 9
+        TabOrder = 13
         Text = '1080'
         OnChange = EditChange
       end
       object udProxyPort: TUpDown
         Left = 403
-        Top = 77
+        Top = 79
         Width = 13
         Height = 21
         Associate = edProxyPort
@@ -1795,7 +1855,7 @@ object Tcp: TTcp
         Min = 1
         Max = 65535
         Position = 1080
-        TabOrder = 10
+        TabOrder = 14
         Thousands = False
         OnChanging = SpinChanging
       end
@@ -1825,11 +1885,11 @@ object Tcp: TTcp
         OnChanging = SpinChanging
       end
       object cbEnableSocks: TCheckBox
-        Left = 456
-        Top = 6
-        Width = 251
+        Left = 462
+        Top = 29
+        Width = 50
         Height = 17
-        Caption = #1042#1082#1083#1102#1095#1080#1090#1100' '#1074#1089#1090#1088#1086#1077#1085#1085#1099#1081' '#1087#1088#1086#1082#1089#1080
+        Caption = 'SOCKS'
         Checked = True
         State = cbChecked
         TabOrder = 2
@@ -1837,7 +1897,7 @@ object Tcp: TTcp
       end
       object cbxBridgesType: TComboBox
         Left = 49
-        Top = 127
+        Top = 129
         Width = 120
         Height = 21
         AutoDropDown = True
@@ -1846,7 +1906,7 @@ object Tcp: TTcp
         Enabled = False
         ItemIndex = 0
         ParentDoubleBuffered = False
-        TabOrder = 14
+        TabOrder = 18
         Text = #1042#1089#1090#1088#1086#1077#1085#1085#1099#1077
         OnChange = cbxBridgesTypeChange
         OnCloseUp = cbxBridgesTypeCloseUp
@@ -1857,14 +1917,14 @@ object Tcp: TTcp
       end
       object cbxBridgesList: TComboBox
         Left = 255
-        Top = 129
+        Top = 131
         Width = 120
         Height = 21
         AutoDropDown = True
         Style = csDropDownList
         DoubleBuffered = False
         ParentDoubleBuffered = False
-        TabOrder = 15
+        TabOrder = 19
         OnChange = cbxBridgesListChange
         OnCloseUp = cbxBridgesListCloseUp
         OnKeyDown = cbxBridgesListKeyDown
@@ -1875,7 +1935,7 @@ object Tcp: TTcp
         Width = 313
         Height = 16
         Caption = #1047#1072#1076#1072#1090#1100' '#1087#1088#1077#1076#1087#1086#1095#1080#1090#1072#1077#1084#1099#1081' '#1084#1086#1089#1090' '#1074#1088#1091#1095#1085#1091#1102
-        TabOrder = 17
+        TabOrder = 21
         OnClick = cbUsePreferredBridgeClick
         OnExit = cbUsePreferredBridgeExit
       end
@@ -1887,7 +1947,7 @@ object Tcp: TTcp
         Enabled = False
         MaxLength = 255
         PopupMenu = EditMenu
-        TabOrder = 18
+        TabOrder = 22
         TextHint = #1069#1090#1072' '#1085#1072#1089#1090#1088#1086#1081#1082#1072' '#1087#1077#1088#1077#1086#1087#1088#1077#1076#1077#1083#1103#1077#1090' '#1074#1099#1073#1088#1072#1085#1085#1099#1081' '#1089#1087#1080#1089#1086#1082'  '#1084#1086#1089#1090#1086#1074
         OnChange = edPreferredBridgeChange
         OnExit = edPreferredBridgeExit
@@ -1901,8 +1961,62 @@ object Tcp: TTcp
         DoubleBuffered = True
         Enabled = False
         ParentDoubleBuffered = False
-        TabOrder = 19
+        TabOrder = 23
         OnClick = btnFindPreferredBridgeClick
+      end
+      object cbEnableHttp: TCheckBox
+        Left = 462
+        Top = 53
+        Width = 50
+        Height = 17
+        Caption = 'HTTP'
+        TabOrder = 6
+        OnClick = cbEnableHttpClick
+      end
+      object cbxHTTPTunnelHost: TComboBox
+        Left = 515
+        Top = 51
+        Width = 135
+        Height = 21
+        AutoDropDown = True
+        Style = csDropDownList
+        DoubleBuffered = False
+        Enabled = False
+        ItemIndex = 0
+        ParentDoubleBuffered = False
+        TabOrder = 7
+        Text = '127.0.0.1'
+        OnChange = OptionsChange
+        OnDropDown = cbxProxyHostDropDown
+        Items.Strings = (
+          '127.0.0.1')
+      end
+      object edHTTPTunnelPort: TEdit
+        Left = 653
+        Top = 51
+        Width = 42
+        Height = 21
+        Enabled = False
+        MaxLength = 5
+        NumbersOnly = True
+        PopupMenu = EditMenu
+        TabOrder = 8
+        Text = '9080'
+        OnChange = EditChange
+      end
+      object udHTTPTunnelPort: TUpDown
+        Left = 695
+        Top = 51
+        Width = 13
+        Height = 21
+        Associate = edHTTPTunnelPort
+        Enabled = False
+        Min = 1
+        Max = 65535
+        Position = 9080
+        TabOrder = 9
+        Thousands = False
+        OnChanging = SpinChanging
       end
     end
     object tsFilter: TTabSheet
@@ -4492,6 +4606,11 @@ object Tcp: TTcp
         ImageIndex = 19
         OnClick = miOpenFileLogClick
       end
+      object miOpenLogsFolder: TMenuItem
+        Caption = #1055#1077#1088#1077#1081#1090#1080' '#1074' '#1082#1072#1090#1072#1083#1086#1075' '#1078#1091#1088#1085#1072#1083#1086#1074
+        ImageIndex = 39
+        OnClick = miOpenLogsFolderClick
+      end
     end
     object miDelimiter3: TMenuItem
       Caption = '-'
@@ -4676,6 +4795,30 @@ object Tcp: TTcp
         Tag = 3
         Caption = #1042#1093#1086#1076#1085#1099#1077' '#1091#1079#1083#1099' '#1087#1086' '#1091#1084#1086#1083#1095#1072#1085#1080#1102
         OnClick = SetResetGuards
+      end
+    end
+    object miDelimiter66: TMenuItem
+      Caption = '-'
+    end
+    object miCheckIpProxyType: TMenuItem
+      Caption = #1055#1088#1086#1082#1089#1080' '#1076#1083#1103' '#1087#1088#1086#1074#1077#1088#1082#1080' IP-'#1072#1076#1088#1077#1089#1072
+      object miCheckIpProxyAuto: TMenuItem
+        Caption = #1042#1099#1073#1080#1088#1072#1090#1100' '#1072#1074#1090#1086#1084#1072#1090#1080#1095#1077#1089#1082#1080
+        Checked = True
+        RadioItem = True
+        OnClick = SelectCheckIpProxy
+      end
+      object miCheckIpProxySocks: TMenuItem
+        Tag = 1
+        Caption = 'SOCKS-'#1087#1088#1086#1082#1089#1080
+        RadioItem = True
+        OnClick = SelectCheckIpProxy
+      end
+      object miCheckIpProxyHttp: TMenuItem
+        Tag = 2
+        Caption = 'HTTP-'#1087#1088#1086#1082#1089#1080
+        RadioItem = True
+        OnClick = SelectCheckIpProxy
       end
     end
   end

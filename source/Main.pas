@@ -74,6 +74,7 @@ type
     SourceAddr: string;
     DestAddr: string;
     PurposeID: Integer;
+    Protocol: Integer;
     BytesRead: int64;
     BytesWritten: int64;
   end;
@@ -505,8 +506,8 @@ type
     lbAddress: TLabel;
     cbUseAddress: TCheckBox;
     edAddress: TEdit;
-    lbStatusProxyAddrCaption: TLabel;
-    lbStatusProxyAddr: TLabel;
+    lbStatusSocksAddrCaption: TLabel;
+    lbStatusSocksAddr: TLabel;
     miCircuitFilter: TMenuItem;
     miCircOneHop: TMenuItem;
     miCircInternal: TMenuItem;
@@ -908,6 +909,22 @@ type
     miDelimiter65: TMenuItem;
     miAutoSelNodesSA: TMenuItem;
     miAutoSelNodesUA: TMenuItem;
+    Button1: TButton;
+    lbUseBuiltInProxy: TLabel;
+    cbEnableHttp: TCheckBox;
+    cbxHTTPTunnelHost: TComboBox;
+    edHTTPTunnelPort: TEdit;
+    udHTTPTunnelPort: TUpDown;
+    lbStatusHttpAddrCaption: TLabel;
+    lbStatusHttpAddr: TLabel;
+    miCheckIpProxyType: TMenuItem;
+    miDelimiter66: TMenuItem;
+    miCheckIpProxyAuto: TMenuItem;
+    miCheckIpProxySocks: TMenuItem;
+    miCheckIpProxyHttp: TMenuItem;
+    lbStatusFilterModeCaption: TLabel;
+    lbStatusFilterMode: TLabel;
+    miOpenLogsFolder: TMenuItem;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1021,6 +1038,7 @@ type
     procedure ResetTransports;
     procedure LoadTransportsData(Data: TStringList);
     procedure LoadUserOverrides;
+    procedure LoadProxyPorts(PortControl: TUpdown; HostControl: TCombobox; EnabledControl: TCheckBox; ini: TMemIniFile);
     procedure SaveReachableAddresses(ini: TMemIniFile);
     procedure SaveProxyData(ini: TMemIniFile);
     procedure SaveTransportsData(ini: TMemIniFile; ReloadServerTransport: Boolean);
@@ -1064,6 +1082,7 @@ type
     procedure UpdateBridgeCopyMenu(Menu: TMenuItem; RouterID: string; Router: TRouterInfo; UseIPv6: Boolean);
     procedure UpdateHs;
     procedure UpdateHsPorts;
+    procedure UpdateUsedProxyTypes(ini: TMemIniFile);
     procedure UpdateTransports;
     procedure UseDirPortEnable(State: Boolean);
     procedure SaveSortData;
@@ -1082,6 +1101,7 @@ type
     procedure SelectStreamsSort(Sender: TObject);
     procedure SelectStreamsInfoSort(Sender: TObject);
     procedure ClearScannerCacheClick(Sender: TObject);
+    procedure lbStatusProxyAddrClick(Sender: TObject);
     procedure SetLogLevel(Sender: TObject);
     procedure EditMenuClick(Sender: TObject);
     procedure ConnectOnStartupTimer(Sender: TObject);
@@ -1139,14 +1159,13 @@ type
     procedure cbxHsVersionChange(Sender: TObject);
     procedure cbxProxyTypeChange(Sender: TObject);
     procedure cbxServerModeChange(Sender: TObject);
-    procedure cbxSocksHostDropDown(Sender: TObject);
+    procedure cbxProxyHostDropDown(Sender: TObject);
     procedure edHsChange(Sender: TObject);
     procedure edTransportsChange(Sender: TObject);
     procedure edReachableAddressesKeyPress(Sender: TObject; var Key: Char);
     procedure MemoKeyPress(Sender: TObject; var Key: Char);
     procedure imGeneratePasswordClick(Sender: TObject);
     procedure imUPnPTestClick(Sender: TObject);
-    procedure lbStatusProxyAddrClick(Sender: TObject);
     procedure lbUserDirClick(Sender: TObject);
     procedure meNodesListChange(Sender: TObject);
     procedure meTrackHostExitsChange(Sender: TObject);
@@ -1406,7 +1425,11 @@ type
     procedure miSelectGraphULClick(Sender: TObject);
     procedure FormPaint(Sender: TObject);
     procedure AutoSelNodesType(Sender: TObject);
-
+    procedure cbEnableHttpClick(Sender: TObject);
+    procedure lbStatusProxyAddrMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+    procedure SelectCheckIpProxy(Sender: TObject);
+    procedure miOpenLogsFolderClick(Sender: TObject);
+    procedure lbStatusFilterModeClick(Sender: TObject);
   private
      procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
      procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -1469,6 +1492,8 @@ var
   CurrentScanPurpose, CurrentAutoScanPurpose: TScanPurpose;
   ScanThreads, CurrentScans, TotalScans, AliveNodesCount, PingNodesCount: Integer;
   Scanner: TScanThread;
+  UsedProxyType: TProxyType;
+  LastUserStreamProtocol: Integer;
 
 implementation
 
@@ -1642,12 +1667,32 @@ end;
 procedure TSendHttpThread.Execute;
 var
   Http: THTTPSend;
+  UseSocks, SocksEnabled: Boolean;
 begin
+  SocksEnabled := UsedProxyType in [ptSocks, ptBoth];
+  if Tcp.miCheckIpProxyAuto.Checked then
+  begin
+    if Circuit = '' then
+      UseSocks := SocksEnabled
+    else
+      UseSocks := (LastUserStreamProtocol in [SOCKS4, SOCKS5]);
+  end
+  else
+    UseSocks := SocksEnabled and Tcp.miCheckIpProxySocks.Checked;
+  Tcp.button1.Caption := IntToStr(LastUserStreamProtocol);
   Http := THTTPSend.Create;
   try
-    Http.Sock.SocksType := ST_Socks5;
-    Http.Sock.SocksIP := GetHost(Tcp.cbxSocksHost);
-    Http.Sock.SocksPort := IntToStr(Tcp.udSOCKSPort.Position);
+    if UseSocks then
+    begin
+      Http.Sock.SocksType := ST_Socks5;
+      Http.Sock.SocksIP := GetHost(Tcp.cbxSocksHost);
+      Http.Sock.SocksPort := IntToStr(Tcp.udSOCKSPort.Position);
+    end
+    else
+    begin
+      Http.ProxyHost := GetHost(Tcp.cbxHTTPTunnelHost);
+      Http.ProxyPort := IntToStr(Tcp.udHTTPTunnelPort.Position);
+    end;
     Http.HTTPMethod('HEAD', GetDefaultsValue('CheckUrl', CHECK_URL));
   finally
     Http.Free;
@@ -2557,8 +2602,7 @@ begin
         Tcp.miSwitchTor.Caption := Tcp.btnSwitchTor.Caption;
         Tcp.SetOptionsEnable(True);
         Tcp.GetServerInfo;
-        if Tcp.cbEnableSocks.Checked then
-          Tcp.SendDataThroughProxy;
+        Tcp.SendDataThroughProxy;
       end;
       Exit;
     end;
@@ -2624,6 +2668,7 @@ begin
         StreamInfo.Target := ParseStr[5];
         StreamInfo.SourceAddr := '';
         StreamInfo.DestAddr := '';
+        StreamInfo.Protocol := -1;
         StreamInfo.BytesRead := 0;
         StreamInfo.BytesWritten := 0;
         for i := 6 to Length(ParseStr) - 1 do
@@ -2631,8 +2676,10 @@ begin
           if Pos('SOURCE_ADDR', ParseStr[i]) = 1 then
             StreamInfo.SourceAddr := SeparateRight(ParseStr[i], '=');
           if Pos('PURPOSE', ParseStr[i]) = 1 then
-          begin
             StreamInfo.PurposeID := GetConstantIndex(SeparateRight(ParseStr[i], '='));
+          if Pos('CLIENT_PROTOCOL', ParseStr[i]) = 1 then
+          begin
+            StreamInfo.Protocol := GetConstantIndex(SeparateRight(ParseStr[i], '='));
             Break;
           end;
         end;
@@ -2655,6 +2702,7 @@ begin
                 Temp := ParseStr[Length(ParseStr) - 1];
                 if RoutersDic.TryGetValue(Temp, RouterInfo) then
                 begin
+                  LastUserStreamProtocol := StreamInfo.Protocol;
                   Circuit := CircuitID;
                   Ip := RouterInfo.IPv4;
                   CountryCode := GetCountryValue(Ip);
@@ -2718,7 +2766,7 @@ begin
     begin
       if StreamStatusID = CLOSED then
       begin
-        if Tcp.cbEnableSocks.Checked and (ConnectState = 2) and (ExitNodeID = '') then
+        if (UsedProxyType <> ptNone) and (ConnectState = 2) and (ExitNodeID = '') then
         begin
           if ExtractDomain(ParseStr[5], True) = ExtractDomain(GetDefaultsValue('CheckUrl', CHECK_URL)) then
             Tcp.SendDataThroughProxy;
@@ -3978,7 +4026,7 @@ procedure TTcp.SendDataThroughProxy;
 var
   Http: TSendHttpThread;
 begin
-  if cbEnableSocks.Checked and (ConnectState = 2) then
+  if (UsedProxyType <> ptNone) and (ConnectState = 2) then
   begin
     Http := TSendHttpThread.Create(True);
     Http.FreeOnTerminate := True;
@@ -4189,11 +4237,18 @@ procedure TTcp.CheckStatusControls;
 var
   ServerIsBridge, ServerEnabled: Boolean;
 begin
-  if cbEnableSocks.Checked then
-    lbStatusProxyAddr.Caption := FormatHost(GetHost(cbxSocksHost)) + ':' + IntToStr(udSOCKSPort.Position)
+  if UsedProxyType in [ptSocks, ptBoth] then
+    lbStatusSocksAddr.Caption := FormatHost(GetHost(cbxSocksHost)) + ':' + IntToStr(udSOCKSPort.Position)
   else
-    lbStatusProxyAddr.Caption := TransStr('226');
-  CheckLabelEndEllipsis(lbStatusProxyAddr, 300, epPathEllipsis, False, True);
+    lbStatusSocksAddr.Caption := TransStr('226');
+
+  if UsedProxyType in [ptHttp, ptBoth] then
+    lbStatusHttpAddr.Caption := FormatHost(GetHost(cbxHttpTunnelHost)) + ':' + IntToStr(udHttpTunnelPort.Position)
+  else
+    lbStatusHttpAddr.Caption := TransStr('226');
+
+  CheckLabelEndEllipsis(lbStatusSocksAddr, 300, epPathEllipsis, False, True);
+  CheckLabelEndEllipsis(lbStatusHttpAddr, 300, epPathEllipsis, False, True);
 
   ServerEnabled := cbxServerMode.ItemIndex > 0;
   ServerIsBridge := cbxServerMode.ItemIndex = 3;
@@ -4218,6 +4273,8 @@ begin
     lbClientVersion.Caption := TransStr('110')
   else
     lbClientVersion.Caption := TorVersion;
+
+  lbStatusFilterMode.Caption := cbxFilterMode.Text;
 end;
 
 procedure TTcp.SetOptionsEnable(State: Boolean);
@@ -4305,6 +4362,7 @@ begin
         SessionUL := 0;
         MaxDLSpeed := 0;
         MaxULSpeed := 0;
+        LastUserStreamProtocol := -1;
         ConnectState := 1;
         TotalsNeedSave := False;
         GeoIpUpdating := False;
@@ -4319,7 +4377,7 @@ begin
         btnSwitchTor.ImageIndex := 1;
         btnSwitchTor.Caption := TransStr('101');
         btnChangeCircuit.Caption := '0 %';
-        if cbEnableSocks.Checked then
+        if UsedProxyType <> ptNone then
         begin
           lbExitIp.Caption := TransStr('111');
           lbExitCountry.Caption := TransStr('112');
@@ -5578,20 +5636,115 @@ begin
   end;
 end;
 
+procedure TTCP.LoadProxyPorts(PortControl: TUpdown; HostControl: TCombobox; EnabledControl: TCheckBox; ini: TMemIniFile);
+var
+  Host, TempHost, Params, ParamStr: string;
+  Port, i: Integer;
+  Update: Boolean;
+  ParseStr: ArrOfStr;
+begin
+  if FirstLoad then
+  begin
+    EnabledControl.ResetValue := EnabledControl.Checked;
+    PortControl.ResetValue := PortControl.Position;
+  end;
+  GetLocalInterfaces(HostControl);
+  Update := False;
+
+  ParamStr := StringReplace(PortControl.Name, 'ud', '', [rfIgnoreCase]);
+  Port := GetIntDef(ini.ReadInteger('Network', ParamStr, PortControl.ResetValue), PortControl.ResetValue, PortControl.Min, PortControl.Max);
+  Host := RemoveBrackets(ini.ReadString('Network', StringReplace(HostControl.Name, 'cbx', '', [rfIgnoreCase]), LOOPBACK_ADDRESS), True);
+  if (ValidAddress(Host) = 0) or (HostControl.Items.IndexOf(Host) = -1) then
+    Host := LOOPBACK_ADDRESS;
+
+  Params := '';
+  ParseStr := Explode(' ', GetTorConfig(ParamStr, ''));
+  if Length(ParseStr) > 1 then
+  begin
+    for i := 1 to Length(ParseStr) - 1 do
+    begin
+      ParseStr[i] := Trim(ParseStr[i]);
+      if ParseStr[i] <> '' then
+        Params := Params + ' ' + ParseStr[i];
+    end;
+  end;
+  HostControl.Hint := Params;
+
+  if ValidSocket(ParseStr[0]) then
+  begin
+    EnabledControl.Checked := True;
+    Port := GetPortFromSocket(ParseStr[0]);
+    TempHost := GetAddressFromSocket(ParseStr[0]);
+    if HostControl.Items.IndexOf(TempHost) <> -1 then
+      Host := TempHost
+    else
+      Update := True;
+  end
+  else
+  begin
+    if ValidInt(ParseStr[0], 0, PortControl.Max) then
+    begin
+      EnabledControl.Checked := StrToBool(ParseStr[0]);
+      if StrToInt(ParseStr[0]) > 0 then
+      begin
+        Port := StrToInt(ParseStr[0]);
+        Host := LOOPBACK_ADDRESS;
+      end;
+    end
+    else
+      Update := True;
+  end;
+  HostControl.ItemIndex := HostControl.Items.IndexOf(Host);
+  PortControl.Position := Port;
+
+  if (Update or CheckSimilarPorts) and ((ParseStr[0] <> '') or EnabledControl.Checked) then
+    SetTorConfig(ParamStr, FormatHost(Host) + ':' + IntToStr(Port) + Params);
+end;
+
+procedure TTcp.UpdateUsedProxyTypes(ini: TMemIniFile);
+var
+  UpdateControls: Boolean;
+begin
+  if cbEnableSocks.Checked and cbEnableHttp.Checked then
+    UsedProxyType := ptBoth
+  else
+  begin
+    if cbEnableSocks.Checked then
+      UsedProxyType := ptSocks
+    else
+    begin
+      if cbEnableHttp.Checked then
+        UsedProxyType := ptHttp
+      else
+        UsedProxyType := ptNone;
+    end;
+  end;
+  UpdateControls := False;
+  if not miCheckIpProxyAuto.Checked then
+  begin
+    case UsedProxyType of
+      ptSocks: if miCheckIpProxyHttp.Checked then UpdateControls := True;
+      ptHttp: if miCheckIpProxySocks.Checked then UpdateControls := True;
+    end;
+    if UpdateControls then
+    begin
+      miCheckIpProxyAuto.Checked := True;
+      ini.WriteInteger('Network', 'CheckIpProxyType', 0);
+    end;
+  end;
+end;
+
 procedure TTcp.ResetOptions;
 var
-  i, Search, LogID: Integer;
+  i, LogID: Integer;
   ini: TMemIniFile;
   ScrollBars, SeparateType: Byte;
   ParseStr: ArrOfStr;
   Transports: TStringList;
-  SocksHost, Temp: string;
-  FilterEntry, FilterMiddle, FilterExit: string;
+  FilterEntry, FilterMiddle, FilterExit, Temp: string;
   FavoritesEntry, FavoritesMiddle, FavoritesExit, ExcludeNodes: string;
-  Fail: Boolean;
 begin
   OptionsLocked := False;
-  Fail := False;
   LoadTorConfig;
   LoadUserOverrides;
   ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
@@ -5776,7 +5929,6 @@ begin
     SeparateType := GetIntDef(ini.ReadInteger('Log', 'SeparateType', 1), 1, 0, 2);
     miLogSeparate.items[SeparateType].Checked := True;
     TorLogFile := GetLogFileName(SeparateType);
-
     ScrollBars := GetIntDef(ini.ReadInteger('Log', 'ScrollBars', 0), 0, 0, 3);
     miScrollBars.items[ScrollBars].Checked := True;
     SetLogScrollBar(ScrollBars);
@@ -5826,46 +5978,10 @@ begin
     LoadSettings(udMaxClientCircuitsPending);
     LoadSettings(udControlPort, [cfAutoAppend]);
 
-    LoadSettings('Network', udSOCKSPort, ini);
-    SocksHost := ini.ReadString('Network', 'SOCKSHost', LOOPBACK_ADDRESS);
-    ParseStr := Explode(' ', GetTorConfig('SOCKSPort', LOOPBACK_ADDRESS + ':' + IntToStr(udSOCKSPort.ResetValue), [cfAutoAppend]));
-    Temp := '';
-    if Length(ParseStr) > 1 then
-    begin
-      for i := 1 to Length(ParseStr) - 1 do
-      begin
-        ParseStr[i] := Trim(ParseStr[i]);
-        if ParseStr[i] <> '' then
-          Temp := Temp + ' ' + ParseStr[i];
-      end;
-    end;
-    cbxSocksHost.Hint := Temp;
-    Search := RPos(':', ParseStr[0]);
-    if Search = 0 then
-    begin
-      if ValidInt(ParseStr[0], 0, udSOCKSPort.Max) then
-      begin
-        cbEnableSocks.Checked := StrToBool(ParseStr[0]);
-        if StrToInt(ParseStr[0]) > 0 then
-          udSOCKSPort.Position := StrToInt(ParseStr[0]);
-      end
-      else
-        Fail := True;
-    end
-    else
-    begin
-      cbEnableSocks.Checked := True;
-      if ValidSocket(ParseStr[0]) then
-      begin
-        udSOCKSPort.Position := GetPortFromSocket(ParseStr[0]);
-        SocksHost := GetAddressFromSocket(ParseStr[0]);
-      end
-      else
-        Fail := True;
-    end;
-    if Fail or CheckSimilarPorts then
-      SetTorConfig('SOCKSPort', FormatHost(SocksHost) + ':' + IntToStr(udSOCKSPort.Position) + cbxSocksHost.Hint);
-    GetLocalInterfaces(cbxSocksHost, SocksHost);
+    miCheckIpProxyType.Items[GetIntDef(ini.ReadInteger('Network', 'CheckIpProxyType', 0), 0, 0, 2)].Checked := True;
+    LoadProxyPorts(udSOCKSPort, cbxSocksHost, cbEnableSocks, ini);
+    LoadProxyPorts(udHttpTunnelPort, cbxHttpTunnelHost, cbEnableHttp, ini);
+    UpdateUsedProxyTypes(ini);
 
     if ini.SectionExists('Transports') then
     begin
@@ -6864,14 +6980,23 @@ begin
     SetTorConfig('NewCircuitPeriod', IntToStr(udNewCircuitPeriod.Position));
     SetTorConfig('AvoidDiskWrites', IntToStr(Integer(cbAvoidDiskWrites.Checked)));
 
+    UpdateUsedProxyTypes(ini);
     GetLocalInterfaces(cbxSocksHost);
+    GetLocalInterfaces(cbxHTTPTunnelHost);
     CheckSimilarPorts;
-    if cbEnableSocks.Checked then
+    if UsedProxyType in [ptSocks, ptBoth] then
       SetTorConfig('SOCKSPort', FormatHost(cbxSocksHost.Text) + ':' + IntToStr(udSOCKSPort.Position) + cbxSocksHost.Hint)
     else
       SetTorConfig('SOCKSPort', '0' + cbxSocksHost.Hint);
+    if UsedProxyType in [ptHttp, ptBoth] then
+      SetTorConfig('HTTPTunnelPort', FormatHost(cbxHTTPTunnelHost.Text) + ':' + IntToStr(udHTTPTunnelPort.Position) + cbxHTTPTunnelHost.Hint)
+    else
+      SetTorConfig('HTTPTunnelPort', '0' + cbxHTTPTunnelHost.Hint);
     ini.WriteString('Network', 'SOCKSHost', FormatHost(cbxSocksHost.Text));
     ini.WriteInteger('Network', 'SOCKSPort', udSOCKSPort.Position);
+    ini.WriteString('Network', 'HTTPTunnelHost', FormatHost(cbxHTTPTunnelHost.Text));
+    ini.WriteInteger('Network', 'HTTPTunnelPort', udHTTPTunnelPort.Position);
+
     SetTorConfig('ControlPort', IntToStr(udControlPort.Position));
 
     SaveReachableAddresses(ini);
@@ -8327,6 +8452,11 @@ begin
   miResetGuards.Enabled := NotStarting;
   miResetTotalsCounter.Enabled := NotStarting and (TotalDL <> 0) and (TotalUL <> 0);
   miResetScannerSchedule.Enabled := ScanState;
+
+  miCheckIpProxyType.Enabled := NotStarting;
+  miCheckIpProxyAuto.Enabled := UsedProxyType <> ptNone;
+  miCheckIpProxySocks.Enabled := UsedProxyType in [ptSocks, ptBoth];
+  miCheckIpProxyHttp.Enabled := UsedProxyType in [ptHttp, ptBoth];
 end;
 
 procedure TTcp.EditMenuPopup(Sender: TObject);
@@ -8387,9 +8517,24 @@ begin
     mnServerInfo.AutoPopup := False;
 end;
 
+procedure TTcp.lbStatusFilterModeClick(Sender: TObject);
+begin
+  sbShowOptions.Click;
+  pcOptions.TabIndex := tsFilter.TabIndex;
+end;
+
 procedure TTcp.lbStatusProxyAddrClick(Sender: TObject);
 begin
-  Clipboard.AsText := lbStatusProxyAddr.Caption;
+  Clipboard.AsText := TLabel(Sender).Caption;
+end;
+
+procedure TTcp.lbStatusProxyAddrMouseMove(Sender: TObject; Shift: TShiftState;
+  X, Y: Integer);
+begin
+  if ValidSocket(TLabel(Sender).Caption, False) then
+    TLabel(Sender).Cursor := crHandPoint
+  else
+    TLabel(Sender).Cursor := crDefault;
 end;
 
 procedure TTcp.lbUserDirClick(Sender: TObject);
@@ -8579,13 +8724,27 @@ begin
 end;
 
 function TTcp.CheckSimilarPorts: Boolean;
+  function NoSimilar: Boolean;
+  begin
+    Result := (udSOCKSPort.Position <> udControlPort.Position) and
+      (udHTTPTunnelPort.Position <> udControlPort.Position) and
+        (udHTTPTunnelPort.Position <> udSOCKSPort.Position);
+  end;
 begin
-  if udControlPort.Position <> udSOCKSPort.Position then
+  if NoSimilar then
     Result := False
   else
   begin
     Result := True;
-    udSOCKSPort.Position := udControlPort.Position - 1;
+    Randomize;
+    repeat
+      if (udControlPort.Position = udSOCKSPort.Position) then
+        udControlPort.Position := RandomRange(9000, 10000);
+      if (udControlPort.Position = udHTTPTunnelPort.Position) then
+        udControlPort.Position := RandomRange(9000, 10000);
+      if (udSOCKSPort.Position = udHTTPTunnelPort.Position) then
+        udHTTPTunnelPort.Position := RandomRange(9000, 10000);
+    until NoSimilar;
   end;
 end;
 
@@ -10222,7 +10381,16 @@ begin
             DIR_UPLOAD: PurposeStr := TransStr('371');
             DIRPORT_TEST: PurposeStr := TransStr('372');
             DNS_REQUEST: PurposeStr := TransStr('373');
-            USER: PurposeStr := TransStr('374');
+            USER:
+            begin
+              case Item.Value.Protocol of
+                SOCKS4: PurposeStr := TransStr('594');
+                SOCKS5: PurposeStr := TransStr('595');
+                HTTPCONNECT: PurposeStr := TransStr('596');
+                else
+                  PurposeStr := TransStr('374');
+              end;
+            end;
             else
               PurposeStr := TransStr('375');
           end;
@@ -10500,6 +10668,17 @@ begin
       ConsensusUpdated := True;
     EnableOptionButtons;
   end;
+end;
+
+procedure TTcp.cbEnableHttpClick(Sender: TObject);
+var
+  State: Boolean;
+begin
+  State := cbEnableHttp.Checked;
+  edHTTPTunnelPort.Enabled := State;
+  udHTTPTunnelPort.Enabled := State;
+  cbxHTTPTunnelHost.Enabled := State;
+  EnableOptionButtons;
 end;
 
 procedure TTcp.cbHsMaxStreamsClick(Sender: TObject);
@@ -11475,9 +11654,9 @@ begin
   EnableOptionButtons;
 end;
 
-procedure TTcp.cbxSocksHostDropDown(Sender: TObject);
+procedure TTcp.cbxProxyHostDropDown(Sender: TObject);
 begin
-  GetLocalInterfaces(cbxSocksHost);
+  GetLocalInterfaces(TComboBox(Sender));
 end;
 
 procedure TTcp.cbxThemesChange(Sender: TObject);
@@ -12261,7 +12440,7 @@ procedure TTcp.btnChangeCircuitClick(Sender: TObject);
 begin
   if CheckSplitButton(btnChangeCircuit) then
     Exit;
-  if cbEnableSocks.Checked and (ConnectState = 2) and (Circuit <> '') then
+  if (UsedProxyType <> ptNone) and (ConnectState = 2) and (Circuit <> '') then
   begin
     btnChangeCircuit.Enabled := False;
     miChangeCircuit.Enabled := False;
@@ -12309,6 +12488,12 @@ end;
 procedure TTcp.miChangeCircuitClick(Sender: TObject);
 begin
   btnChangeCircuit.Click;
+end;
+
+procedure TTcp.SelectCheckIpProxy(Sender: TObject);
+begin
+  TMenuItem(Sender).Checked := True;
+  SetConfigInteger('Network', 'CheckIpProxyType', TMenuItem(Sender).Tag);
 end;
 
 procedure TTcp.SetCircuitsUpdateInterval(Sender: TObject);
@@ -13856,7 +14041,6 @@ begin
   DefaultsDic.AddOrSetValue('RendPostPeriod', '3600');
   DefaultsDic.AddOrSetValue('StrictNodes', '0');
 
-  cbEnableSocks.ResetValue := cbEnableSocks.Checked;
   udHsMaxStreams.ResetValue := udHsMaxStreams.Position;
   udHsNumIntroductionPoints.ResetValue := udHsNumIntroductionPoints.Position;
   udHsRealPort.ResetValue := udHsRealPort.Position;
@@ -13879,6 +14063,7 @@ begin
   LoadStaticArray(CircuitPurposes);
   LoadStaticArray(StreamStatuses);
   LoadStaticArray(StreamPurposes);
+  LoadStaticArray(ClientProtocols);
 
   sgHs.ColsDefaultAlignment[HS_VERSION] := taCenter;
   sgHs.ColsDefaultAlignment[HS_INTRO_POINTS] := taCenter;
@@ -14037,7 +14222,7 @@ var
 begin
   if AutoSelect then
     SelectExitCircuit := True;
-  if (not cbEnableSocks.Checked) or
+  if (UsedProxyType = ptNone) or
      (not miAlwaysShowExitCircuit.Checked and
      (miHideCircuitsWithoutStreams.Checked or not miCircExit.Checked)) then
   begin
@@ -14065,14 +14250,14 @@ end;
 
 procedure TTcp.lbExitCountryDblClick(Sender: TObject);
 begin
-  if cbEnableSocks.Checked and (ConnectState = 2) then
+  if (UsedProxyType <> ptNone) and (ConnectState = 2) then
     FindInFilter(lbExitIp.Caption);
 end;
 
 procedure TTcp.lbExitIpMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
-  if cbEnableSocks.Checked and (ConnectState = 2) then
+  if (UsedProxyType <> ptNone) and (ConnectState = 2) then
   begin
     if (Button = mbLeft) and (ssDouble in Shift) then
     begin
@@ -14092,7 +14277,7 @@ procedure TTcp.lbExitMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Intege
 var
   State: Boolean;
 begin
-  State := cbEnableSocks.Checked and (ConnectState = 2);
+  State := (UsedProxyType <> ptNone) and (ConnectState = 2);
   if State then
   begin
     lbExitIp.Tag := 1;
@@ -14389,6 +14574,11 @@ end;
 procedure TTcp.miOpenFileLogClick(Sender: TObject);
 begin
   ShellOpen(TorLogFile);
+end;
+
+procedure TTcp.miOpenLogsFolderClick(Sender: TObject);
+begin
+  ShellOpen(GetFullFileName(LogsDir));
 end;
 
 procedure TTcp.SelectTrafficPeriod(Sender: TObject);

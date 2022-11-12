@@ -921,7 +921,10 @@ begin
   if SocksHost.Text = '0.0.0.0' then
     Result := '127.0.0.1'
   else
-    Result := SocksHost.Text;
+    if SocksHost.Text = '::' then
+      Result := '::1'
+    else
+      Result := SocksHost.Text;
 end;
 
 function GetAvailPhysMemory: Cardinal;
@@ -2355,16 +2358,29 @@ end;
 
 procedure GetLocalInterfaces(ComboBox: TComboBox; RecentHost: string = '');
 var
-  i: Integer;
-  IsSocksPort: Boolean;
+  i, Index: Integer;
   ls: TStringList;
   TcpSock: TTCPBlockSocket;
+  FindIPv6, ShowIPv6, ShowMask: Boolean;
+
+  procedure AddToList(Str: string);
+  var
+    Search: Integer;
+  begin
+    Search := ls.IndexOf(Str);
+    if Search <> -1 then
+      ls.Delete(Search);
+    Inc(Index);
+    ls.Insert(Index, Str);
+  end;
+
 begin
   if RecentHost = '' then
     RecentHost := Combobox.Text
   else
     RecentHost := RemoveBrackets(RecentHost, True);
-  IsSocksPort := ComboBox = Tcp.cbxSocksHost;
+  ShowMask := ComboBox <> Tcp.cbxHsAddress;
+  FindIPv6 := False;
 
   ls := TStringList.Create;
   try
@@ -2374,26 +2390,30 @@ begin
     finally
       TcpSock.Free;
     end;
+
     for i := ls.Count - 1 downto 0 do
-      if (Tcp.cbHideIPv6Addreses.Checked and (not IsIPv4(ls[i])) or (Pos('%', ls[i]) <> 0)) then
-        ls.Delete(i);
-    if ls.IndexOf('127.0.0.1') = -1 then
-      ls.Insert(0, '127.0.0.1');
-    if IsSocksPort then
-      ls.Insert(1, '0.0.0.0');
-    if not Tcp.cbHideIPv6Addreses.Checked then
     begin
-      if ls.IndexOf('::1') = -1 then
-        ls.Insert(2, '::1');
+      if not IsIPv4(ls[i]) then
+      begin
+        FindIPv6 := True;
+        if Tcp.cbHideIPv6Addreses.Checked or (Pos('%', ls[i]) <> 0) then
+          ls.Delete(i);
+      end;
     end;
+    ShowIPv6 := FindIPv6 and not Tcp.cbHideIPv6Addreses.Checked;
+    Index := -1;
+    AddToList('127.0.0.1');
+    if ShowIPv6 then
+      AddToList('::1');
+    if ShowMask then
+      AddToList('0.0.0.0');
+    if ShowMask and ShowIPv6 then
+      AddToList('::');
+
     ComboBox.items := ls;
     ComboBox.ItemIndex := ComboBox.Items.IndexOf(RecentHost);
     if ComboBox.ItemIndex = -1 then
-    begin
       ComboBox.ItemIndex := 0;
-      if IsSocksPort then
-        SetTorConfig('SOCKSPort', '127.0.0.1:' + IntToStr(Tcp.udSOCKSPort.Position) + ComboBox.Hint);
-    end;
     ComboBoxAutoWidth(ComboBox);
   finally
     ls.Free;
@@ -2604,7 +2624,9 @@ var
   Flag: Boolean;
   i, j, n, WordCount, PartsCount, Totals: Integer;
 begin
-  Result := False;
+  Result := IpStr = '::';
+  if Result then
+    Exit;
   Flag := False;
   IpStr := StringReplace(IpStr, '::', '|', [rfReplaceAll]);
   Parts := Explode('|', IpStr);
