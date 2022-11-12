@@ -356,14 +356,6 @@ object Tcp: TTcp
       TabOrder = 0
       OnClick = btnSwitchTorClick
     end
-    object Button1: TButton
-      Left = 145
-      Top = 8
-      Width = 75
-      Height = 25
-      Caption = 'Button1'
-      TabOrder = 2
-    end
   end
   object paRouters: TPanel
     Left = 3
@@ -2666,7 +2658,7 @@ object Tcp: TTcp
         Width = 42
         Height = 21
         Enabled = False
-        MaxLength = 2
+        MaxLength = 3
         NumbersOnly = True
         PopupMenu = EditMenu
         TabOrder = 13
@@ -2681,7 +2673,7 @@ object Tcp: TTcp
         Associate = edNumCPUs
         Enabled = False
         Min = 1
-        Max = 32
+        Max = 128
         Position = 1
         TabOrder = 14
         Thousands = False

@@ -909,7 +909,6 @@ type
     miDelimiter65: TMenuItem;
     miAutoSelNodesSA: TMenuItem;
     miAutoSelNodesUA: TMenuItem;
-    Button1: TButton;
     lbUseBuiltInProxy: TLabel;
     cbEnableHttp: TCheckBox;
     cbxHTTPTunnelHost: TComboBox;
@@ -1047,6 +1046,7 @@ type
     procedure LoadStaticArray(Data: array of TStaticPair);
     procedure ResetOptions;
     procedure RestartTor(RestartCode: Byte = 0);
+    procedure UpdateSystemInfo;
     procedure RestoreForm;
     procedure SelectHs;
     procedure SelectHsPorts;
@@ -1679,7 +1679,6 @@ begin
   end
   else
     UseSocks := SocksEnabled and Tcp.miCheckIpProxySocks.Checked;
-  Tcp.button1.Caption := IntToStr(LastUserStreamProtocol);
   Http := THTTPSend.Create;
   try
     if UseSocks then
@@ -5734,6 +5733,28 @@ begin
   end;
 end;
 
+procedure TTcp.UpdateSystemInfo;
+var
+  MaxCPU, SystemCPU, SystemMemory: Integer;
+begin
+  if FirstLoad then
+  begin
+    if CheckFileVersion(TorVersion, '0.4.7.11') then
+      MaxCPU := 128
+    else
+      MaxCPU := 16;
+    SystemCPU := GetCPUCount;
+    if SystemCPU > MaxCPU then
+      SystemCPU := MaxCPU;
+    udNumCPUs.Max := SystemCPU;
+    edNumCPUs.MaxLength := Length(IntToStr(udNumCPUs.Max));
+  end;
+  SystemMemory := GetAvailPhysMemory;
+  udMaxMemInQueues.Max := SystemMemory - (SystemMemory mod udMaxMemInQueues.Min);
+  if udMaxMemInQueues.Position > udMaxMemInQueues.Max then
+    udMaxMemInQueues.Position := udMaxMemInQueues.Max;
+end;
+
 procedure TTcp.ResetOptions;
 var
   i, LogID: Integer;
@@ -6049,6 +6070,7 @@ begin
     SetNodes(FilterEntry, FilterMiddle, FilterExit, FavoritesEntry, FavoritesMiddle, FavoritesExit, ExcludeNodes);
     ini.WriteInteger('Filter', 'FilterMode', cbxFilterMode.ItemIndex);
 
+    UpdateSystemInfo;
     LoadSettings('Server', edNickname, ini);
     LoadSettings('Server', edContactInfo, ini);
     LoadSettings('Server', edAddress, ini);
@@ -6062,7 +6084,6 @@ begin
     LoadSettings('Server', udNumCPUs, ini);
     LoadSettings('Server', udTransportPort, ini);
     LoadSettings('Server', cbUseNumCPUs, ini);
-    LoadSettings('Server', udNumCPUs, ini);
     LoadSettings('Server', cbUseMaxMemInQueues, ini);
     LoadSettings('Server', udMaxMemInQueues, ini);
     LoadSettings('Server', cbUseRelayBandwidth, ini);
@@ -7057,6 +7078,7 @@ begin
     ini.WriteInteger('Filter', 'FilterMode', cbxFilterMode.ItemIndex);
     ini.WriteBool('Filter', 'ReplaceDisabledFavoritesWithCountries', miReplaceDisabledFavoritesWithCountries.Checked);
 
+    UpdateSystemInfo;
     SaveServerOptions(ini);
     SaveTransportsData(ini, False);
     GetLocalInterfaces(cbxHsAddress);
@@ -10841,6 +10863,8 @@ end;
 
 procedure TTcp.cbUseMaxMemInQueuesClick(Sender: TObject);
 begin
+  if not cbUseMaxMemInQueues.Focused then
+    Exit;
   MaxMemInQueuesEnable(cbUseMaxMemInQueues.Checked);
   EnableOptionButtons;
 end;
@@ -10860,6 +10884,8 @@ end;
 
 procedure TTcp.cbUseNumCPUsClick(Sender: TObject);
 begin
+  if not cbUseNumCPUs.Focused then
+    Exit;
   NumCPUsEnable(cbUseNumCPUs.Checked);
   EnableOptionButtons;
 end;
@@ -13959,8 +13985,6 @@ begin
   FirstLoad := True;
   FormSize := 1;
 
-  udNumCPUs.Max := GetCPUCount;
-  udMaxMemInQueues.Max := GetAvailPhysMemory;
   LoadIconsFromResource(lsFlags, 'ICON_FLAGS');
   if not StyleServices.Enabled then
   begin
