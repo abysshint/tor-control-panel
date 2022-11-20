@@ -8535,17 +8535,21 @@ end;
 
 procedure TTcp.ResetFocus;
 begin
-  if FormSize = 0 then
+  if Closing or not Tcp.Visible then
     Exit;
-  if Closing then
-    Exit;
-  case LastPlace of
-    LP_OPTIONS: if pcOptions.CanFocus then pcOptions.SetFocus;
-    LP_LOG: if meLog.CanFocus then meLog.SetFocus;
-    LP_STATUS: if paStatus.CanFocus then paStatus.SetFocus;
-    LP_CIRCUITS: if paCircuits.CanFocus then paCircuits.SetFocus;
-    LP_ROUTERS: if paRouters.CanFocus then paRouters.SetFocus;
-  end;
+
+  if FormSize = 1 then
+  begin
+    case LastPlace of
+      LP_OPTIONS: if pcOptions.CanFocus then pcOptions.SetFocus;
+      LP_LOG: if meLog.CanFocus then meLog.SetFocus;
+      LP_STATUS: if paStatus.CanFocus then paStatus.SetFocus;
+      LP_CIRCUITS: if paCircuits.CanFocus then paCircuits.SetFocus;
+      LP_ROUTERS: if paRouters.CanFocus then paRouters.SetFocus;
+    end;
+  end
+  else
+    if paButtons.CanFocus then paButtons.SetFocus;
 end;
 
 procedure TTcp.lbServerInfoMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
@@ -12528,8 +12532,7 @@ begin
   end
   else
     StopTor;
-  if paButtons.CanFocus then
-    paButtons.SetFocus;
+  ResetFocus;
 end;
 
 procedure TTcp.miChangeCircuitClick(Sender: TObject);
