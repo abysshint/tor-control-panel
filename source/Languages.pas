@@ -698,6 +698,7 @@ begin
     Tcp.miScanNonResponsed.Caption := Load('490', 'Не отвечающие узлы');
     Tcp.miScanCachedBridges.Caption := Load('491', 'Кэшированные мосты');
     Tcp.miScanAll.Caption := Load('492', 'Все узлы');
+    Tcp.miScanGuards.Caption := Load('602', 'Сторожевые узлы');
     Tcp.miManualPingMeasure.Caption := Load('493', 'Измерять пинг');
     Tcp.miManualDetectAliveNodes.Caption := Load('494', 'Определять живые узлы');
     Tcp.miStopScan.Caption := Load('495', 'Остановить сканирование');

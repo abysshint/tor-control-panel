@@ -278,7 +278,7 @@ type
   TParamType = (ptString, ptInteger, ptBoolean, ptSocket, ptHost, ptSize, ptBridge);
   TTaskBarPos = (tbTop, tbBottom, tbLeft, tbRight, tbNone);
   TScanType = (stNone, stPing, stAlive, stBoth);
-  TScanPurpose = (spNone, spNew, spFailed, spUserBridges, spAll, spNewAndFailed, spBridges, spAuto);
+  TScanPurpose = (spNone, spNew, spFailed, spUserBridges, spAll, spNewAndFailed, spBridges, spGuards, spAuto);
   TProxyType = (ptNone, ptSocks, ptHttp, ptBoth);
 
   TConfigFlag = (cfAutoAppend, cfAutoSave, cfFindComments, cfExistCheck, cfMultiLine, cfBoolInvert);

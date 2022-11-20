@@ -924,6 +924,7 @@ type
     lbStatusFilterModeCaption: TLabel;
     lbStatusFilterMode: TLabel;
     miOpenLogsFolder: TMenuItem;
+    miScanGuards: TMenuItem;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1874,6 +1875,7 @@ begin
               end;
             end;
             spBridges: NeedScan := rfBridge in Item.Value.Flags;
+            spGuards: NeedScan := rfGuard in Item.Value.Flags;
           end;
 
           if NeedScan then
@@ -8488,6 +8490,7 @@ begin
   miScanNonResponsed.Enabled := StartScanState;
   miScanCachedBridges.Enabled := StartScanState;
   miScanAll.Enabled := StartScanState;
+  miScanGuards.Enabled := StartScanState;
   miManualPingMeasure.Enabled := cbEnablePingMeasure.Checked and ScanState;
   miManualDetectAliveNodes.Enabled := cbEnableDetectAliveNodes.Checked and ScanState;
   miStopScan.Enabled := NotStarting and tmScanner.Enabled;
@@ -12429,6 +12432,7 @@ begin
     2: ScanPurpose := spFailed;
     3: ScanPurpose := spBridges;
     4: ScanPurpose := spAll;
+    5: ScanPurpose := spGuards;
     else
       ScanPurpose := spNone;
   end;

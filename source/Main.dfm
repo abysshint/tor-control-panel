@@ -4735,6 +4735,11 @@ object Tcp: TTcp
         Caption = #1050#1101#1096#1080#1088#1086#1074#1072#1085#1085#1099#1077' '#1084#1086#1089#1090#1099
         OnClick = StartScannerManual
       end
+      object miScanGuards: TMenuItem
+        Tag = 5
+        Caption = #1057#1090#1086#1088#1086#1078#1077#1074#1099#1077' '#1091#1079#1083#1099
+        OnClick = StartScannerManual
+      end
       object miScanAll: TMenuItem
         Tag = 4
         Caption = #1042#1089#1077' '#1091#1079#1083#1099
