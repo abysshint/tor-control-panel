@@ -116,4 +116,5 @@ This program is free software and distributed under the [MIT license](https://gi
 * [Tor Specifications and Proposals](https://gitlab.torproject.org/tpo/core/torspec)
 * [Tor Project Distribution Server](https://dist.torproject.org/)
 * [Tor Project File Archive](https://archive.torproject.org/tor-package-archive/)
+* [Fresh GeoIP databases](https://gitlab.torproject.org/tpo/network-health/metrics/geoip-data/-/packages)
 <p align="right">[<a href="#readme-top">↑ Up</a>]</p>

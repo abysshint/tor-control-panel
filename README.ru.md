@@ -116,5 +116,5 @@
 * [Спецификации и предложения Tor](https://gitlab.torproject.org/tpo/core/torspec)
 * [Сервер дистрибутивов проекта Tor Project](https://dist.torproject.org/)
 * [Файловый архив проекта Tor Project](https://archive.torproject.org/tor-package-archive/)
+* [Свежие GeoIp-базы](https://gitlab.torproject.org/tpo/network-health/metrics/geoip-data/-/packages)
 <p align="right">[<a href="#readme-top">↑ Вверх</a>]</p>
-
