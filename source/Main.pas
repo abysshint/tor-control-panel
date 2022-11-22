@@ -925,6 +925,9 @@ type
     lbStatusFilterMode: TLabel;
     miOpenLogsFolder: TMenuItem;
     miScanGuards: TMenuItem;
+    lbAutoScanType: TLabel;
+    cbxAutoScanType: TComboBox;
+    miScanAliveNodes: TMenuItem;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1431,6 +1434,8 @@ type
     procedure SelectCheckIpProxy(Sender: TObject);
     procedure miOpenLogsFolderClick(Sender: TObject);
     procedure lbStatusFilterModeClick(Sender: TObject);
+    procedure cbxAutoScanTypeDropDown(Sender: TObject);
+    procedure cbxAutoScanTypeChange(Sender: TObject);
   private
      procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
      procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -1874,8 +1879,16 @@ begin
                 stAlive: NeedScan := LastResult < 1;
               end;
             end;
+            spNewAndAlive:
+            begin
+              case sScanType of
+                stPing: NeedScan := (GeoIpInfo.ping = 0) or (GeoIpInfo.ping > 500);
+                stAlive: NeedScan := LastResult <> -1;
+              end;
+            end;
             spBridges: NeedScan := rfBridge in Item.Value.Flags;
             spGuards: NeedScan := rfGuard in Item.Value.Flags;
+            spAlive: NeedScan := LastResult <> -1;
           end;
 
           if NeedScan then
@@ -5881,6 +5894,7 @@ begin
     LoadSettings('Scanner', udFullScanInterval, ini);
     LoadSettings('Scanner', udNonResponsedScanInterval, ini);
     LoadSettings('Scanner', udPartialScansCounts, ini);
+    LoadSettings('Scanner', cbxAutoScanType, ini);
 
     LoadSettings('AutoSelNodes', cbxAutoSelPriority, ini);
     LoadSettings('AutoSelNodes', udAutoSelEntryCount, ini);
@@ -6953,6 +6967,7 @@ begin
     ini.WriteInteger('Scanner', 'FullScanInterval', udFullScanInterval.Position);
     ini.WriteInteger('Scanner', 'NonResponsedScanInterval', udNonResponsedScanInterval.Position);
     ini.WriteInteger('Scanner', 'PartialScansCounts', udPartialScansCounts.Position);
+    ini.WriteInteger('Scanner', 'AutoScanType', cbxAutoScanType.ItemIndex);
 
     ini.WriteInteger('AutoSelNodes', 'AutoSelEntryCount', udAutoSelEntryCount.Position);
     ini.WriteInteger('AutoSelNodes', 'AutoSelMiddleCount', udAutoSelMiddleCount.Position);
@@ -8491,6 +8506,7 @@ begin
   miScanCachedBridges.Enabled := StartScanState;
   miScanAll.Enabled := StartScanState;
   miScanGuards.Enabled := StartScanState;
+  miScanAliveNodes.Enabled := StartScanState;
   miManualPingMeasure.Enabled := cbEnablePingMeasure.Checked and ScanState;
   miManualDetectAliveNodes.Enabled := cbEnableDetectAliveNodes.Checked and ScanState;
   miStopScan.Enabled := NotStarting and tmScanner.Enabled;
@@ -9225,6 +9241,7 @@ end;
 procedure TTcp.ScanNetwork(ScanType: TScanType; ScanPurpose: TScanPurpose);
 var
   CurrentDate: Int64;
+  MaxPartialScans: Integer;
 begin
   if (ScanType = stNone) or (ScanPurpose = spNone) then
     Exit;
@@ -9250,22 +9267,35 @@ begin
 
       if CurrentScanPurpose = spAuto then
       begin
+        MaxPartialScans := udPartialScansCounts.Position;
         if CurrentDate >= (LastFullScanDate + (udFullScanInterval.Position * 3600)) then
         begin
           CurrentAutoScanPurpose := spAll;
           LastFullScanDate := CurrentDate;
-          LastPartialScansCounts := udPartialScansCounts.Position;
+          LastPartialScansCounts := MaxPartialScans;
         end
         else
         begin
-          if (LastPartialScansCounts > 0) and (CurrentDate >= (LastNonResponsedScanDate + (udNonResponsedScanInterval.Position * 3600))) then
+          CurrentAutoScanPurpose := spNew;
+          if cbxAutoScanType.ItemIndex <> 3 then
           begin
-            CurrentAutoScanPurpose := spNewAndFailed;
-            LastNonResponsedScanDate := CurrentDate;
-            Dec(LastPartialScansCounts);
-          end
-          else
-            CurrentAutoScanPurpose := spNew;
+            if (LastPartialScansCounts > 0) and (CurrentDate >= (LastNonResponsedScanDate + (udNonResponsedScanInterval.Position * 3600))) then
+            begin
+              case cbxAutoScanType.ItemIndex of
+                0:
+                begin
+                  if LastPartialScansCounts mod 3 = 0 then
+                    CurrentAutoScanPurpose := spNewAndFailed
+                  else
+                    CurrentAutoScanPurpose := spNewAndAlive
+                end;
+                1: CurrentAutoScanPurpose := spNewAndFailed;
+                2: CurrentAutoScanPurpose := spNewAndAlive;
+              end;
+              LastNonResponsedScanDate := CurrentDate;
+              Dec(LastPartialScansCounts);
+            end;
+          end;
         end;
         AutoScanStage := 2;
       end
@@ -10593,16 +10623,17 @@ end;
 
 procedure TTcp.CheckScannerControls;
 var
-  PingState, AliveState, State, AutoState: Boolean;
+  PingState, AliveState, State, AutoState, TypeState: Boolean;
 begin
   PingState := cbEnablePingMeasure.Checked;
   AliveState := cbEnableDetectAliveNodes.Checked;
   State := PingState or AliveState;
   AutoState := State and cbAutoScanNewNodes.Checked;
+  TypeState := cbxAutoScanType.ItemIndex <> 3;
 
   edFullScanInterval.Enabled := AutoState;
-  edNonResponsedScanInterval.Enabled := AutoState;
-  edPartialScansCounts.Enabled := AutoState;
+  edNonResponsedScanInterval.Enabled := AutoState and TypeState;
+  edPartialScansCounts.Enabled := AutoState and TypeState;
   edScanPingTimeout.Enabled := PingState;
   edScanPortTimeout.Enabled := AliveState;
   edDelayBetweenAttempts.Enabled := State;
@@ -10612,8 +10643,8 @@ begin
   edScanPortionTimeout.Enabled := State;
   edScanPortionSize.Enabled := State;
   udFullScanInterval.Enabled := AutoState;
-  udNonResponsedScanInterval.Enabled := AutoState;
-  udPartialScansCounts.Enabled := AutoState;
+  udNonResponsedScanInterval.Enabled := AutoState and TypeState;
+  udPartialScansCounts.Enabled := AutoState and TypeState;
   udScanPingTimeout.Enabled := PingState;
   udScanPortTimeout.Enabled := AliveState;
   udDelayBetweenAttempts.Enabled := State;
@@ -10624,9 +10655,9 @@ begin
   udScanPortionSize.Enabled := State;
   lbFullScanInterval.Enabled := AutoState;
   lbHours1.Enabled := AutoState;
-  lbNonResponsedScanInterval.Enabled := AutoState;
-  lbHours2.Enabled := AutoState;
-  lbPartialScansCounts.Enabled := AutoState;
+  lbNonResponsedScanInterval.Enabled := AutoState and TypeState;
+  lbHours2.Enabled := AutoState and TypeState;
+  lbPartialScansCounts.Enabled := AutoState and TypeState;
   lbScanPingTimeout.Enabled := PingState;
   lbMiliseconds1.Enabled := PingState;
   lbScanPortTimeout.Enabled := AliveState;
@@ -10639,6 +10670,8 @@ begin
   lbScanPortionTimeout.Enabled := State;
   lbMiliseconds4.Enabled := State;
   lbScanPortionSize.Enabled := State;
+  lbAutoScanType.Enabled := AutoState;
+  cbxAutoScanType.Enabled := AutoState;
   cbAutoScanNewNodes.Enabled := State;
 
   if PingState and AliveState then
@@ -11229,6 +11262,17 @@ procedure TTcp.cbxAuthMetodChange(Sender: TObject);
 begin
   CheckAuthMetodContols;
   EnableOptionButtons;
+end;
+
+procedure TTcp.cbxAutoScanTypeChange(Sender: TObject);
+begin
+  CheckScannerControls;
+  EnableOptionButtons;
+end;
+
+procedure TTcp.cbxAutoScanTypeDropDown(Sender: TObject);
+begin
+  ComboBoxAutoWidth(cbxAutoScanType);
 end;
 
 procedure TTcp.cbxAutoSelPriorityChange(Sender: TObject);
@@ -12433,6 +12477,7 @@ begin
     3: ScanPurpose := spBridges;
     4: ScanPurpose := spAll;
     5: ScanPurpose := spGuards;
+    6: ScanPurpose := spAlive;
     else
       ScanPurpose := spNone;
   end;

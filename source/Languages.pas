@@ -571,7 +571,7 @@ begin
     Tcp.lbScanPortionSize.Caption := Load('454', 'Количество сканирований на порцию');
     Tcp.cbAutoScanNewNodes.Caption := Load('455', 'Автоматически определять пинг и живые узлы');
     Tcp.lbFullScanInterval.Caption := Load('456', 'Полное сканирование каждые');
-    Tcp.lbNonResponsedScanInterval.Caption := Load('457', 'Сканирование узлов без ответа каждые');
+    Tcp.lbNonResponsedScanInterval.Caption := Load('457', 'Частичное сканирование каждые');
     Tcp.lbPartialScansCounts.Caption := Load('458', 'Количество частичных сканирований');
     Tcp.lbMiliseconds1.Caption := TransStr('459');
     Tcp.lbMiliseconds2.Caption := TransStr('459');
@@ -579,6 +579,8 @@ begin
     Tcp.lbMiliseconds4.Caption := TransStr('459');
     Tcp.lbHours1.Caption := TransStr('477');
     Tcp.lbHours2.Caption := TransStr('477');
+    Tcp.lbAutoScanType.Caption := Load('603', 'Узлы для сканирования');
+    LoadList(Tcp.cbxAutoScanType, '604', '"Автовыбор","Новые и без ответа","Новые и живые","Только новые"');
 
     Tcp.gbTransports.Caption := Load('460', 'Подключаемые транспорты');
     Tcp.lbTransports.Caption := Load('461', 'Транспорты');
@@ -683,7 +685,7 @@ begin
     Tcp.miServerInfo.Caption := TransStr('281');
 
     Tcp.miCacheOperations.Caption := Load('478', 'Операции с кэшем');
-    Tcp.miUpdateIpToCountryCache.Caption := Load('479', 'Обновить страны в сетевом кэше');;
+    Tcp.miUpdateIpToCountryCache.Caption := Load('479', 'Обновить страны в сетевом кэше');
     Tcp.miClearDNSCache.Caption := Load('283', 'Очистить DNS-кэш');
     Tcp.miClearServerCache.Caption := Load('480', 'Очистить серверный кэш');
     Tcp.miClearBridgeCacheUnnecessary.Caption := Load('481', 'Очистить кэш от ненужных мостов');
@@ -699,6 +701,7 @@ begin
     Tcp.miScanCachedBridges.Caption := Load('491', 'Кэшированные мосты');
     Tcp.miScanAll.Caption := Load('492', 'Все узлы');
     Tcp.miScanGuards.Caption := Load('602', 'Сторожевые узлы');
+    Tcp.miScanAliveNodes.Caption := Load('605', 'Живые узлы');
     Tcp.miManualPingMeasure.Caption := Load('493', 'Измерять пинг');
     Tcp.miManualDetectAliveNodes.Caption := Load('494', 'Определять живые узлы');
     Tcp.miStopScan.Caption := Load('495', 'Остановить сканирование');
