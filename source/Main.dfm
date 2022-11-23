@@ -994,7 +994,7 @@ object Tcp: TTcp
   end
   object pcOptions: TPageControl
     Left = 4
-    Top = 94
+    Top = 93
     Width = 721
     Height = 433
     ActivePage = tsMain
@@ -3645,7 +3645,7 @@ object Tcp: TTcp
           ParentShowHint = False
           PopupMenu = EditMenu
           ShowHint = True
-          TabOrder = 19
+          TabOrder = 20
           Text = '72'
           OnChange = EditChange
         end
@@ -3658,7 +3658,7 @@ object Tcp: TTcp
           Min = 3
           Max = 720
           Position = 72
-          TabOrder = 20
+          TabOrder = 21
           Thousands = False
           OnChanging = SpinChanging
         end
@@ -3672,7 +3672,7 @@ object Tcp: TTcp
           ParentShowHint = False
           PopupMenu = EditMenu
           ShowHint = True
-          TabOrder = 21
+          TabOrder = 22
           Text = '12'
           OnChange = EditChange
         end
@@ -3685,7 +3685,7 @@ object Tcp: TTcp
           Min = 1
           Max = 360
           Position = 12
-          TabOrder = 22
+          TabOrder = 23
           Thousands = False
           OnChanging = SpinChanging
         end
@@ -3699,7 +3699,7 @@ object Tcp: TTcp
           ParentShowHint = False
           PopupMenu = EditMenu
           ShowHint = True
-          TabOrder = 23
+          TabOrder = 24
           Text = '6'
           OnChange = EditChange
         end
@@ -3712,7 +3712,7 @@ object Tcp: TTcp
           Min = 1
           Max = 24
           Position = 6
-          TabOrder = 24
+          TabOrder = 25
           Thousands = False
           OnChanging = SpinChanging
         end
@@ -3947,7 +3947,7 @@ object Tcp: TTcp
           DoubleBuffered = False
           ItemIndex = 0
           ParentDoubleBuffered = False
-          TabOrder = 25
+          TabOrder = 19
           Text = #1040#1074#1090#1086#1074#1099#1073#1086#1088
           OnChange = cbxAutoScanTypeChange
           OnDropDown = cbxAutoScanTypeDropDown
