@@ -833,9 +833,10 @@ object Tcp: TTcp
         Top = 48
         Width = 53
         Height = 13
-        Hint = #1057#1082#1086#1087#1080#1088#1086#1074#1072#1090#1100' '#1074' '#1073#1091#1092#1077#1088' '#1086#1073#1084#1077#1085#1072
         Caption = #1054#1078#1080#1076#1072#1085#1080#1077
         Transparent = True
+        OnClick = lbStatusScannerClick
+        OnMouseMove = lbStatusScannerMouseMove
       end
       object lbStatusHttpAddrCaption: TLabel
         Left = 305

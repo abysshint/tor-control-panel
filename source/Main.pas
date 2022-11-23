@@ -1440,6 +1440,9 @@ type
     procedure cbxAutoScanTypeDropDown(Sender: TObject);
     procedure cbxAutoScanTypeChange(Sender: TObject);
     procedure miExcludeBridgesWhenCountingClick(Sender: TObject);
+    procedure lbStatusScannerClick(Sender: TObject);
+    procedure lbStatusScannerMouseMove(Sender: TObject; Shift: TShiftState; X,
+      Y: Integer);
   private
      procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
      procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -7771,6 +7774,7 @@ end;
 procedure TTcp.miExcludeBridgesWhenCountingClick(Sender: TObject);
 begin
   LoadFilterTotals;
+  LoadRoutersCountries;
   ShowFilter;
   SetConfigBoolean('Filter', 'ExcludeBridgesWhenCounting', miExcludeBridgesWhenCounting.Checked);
 end;
@@ -8625,6 +8629,26 @@ begin
     TLabel(Sender).Cursor := crDefault;
 end;
 
+procedure TTcp.lbStatusScannerClick(Sender: TObject);
+begin
+  if tmScanner.Enabled then
+  begin
+    if not ShowMsg(Format(TransStr('405'),[TransStr('495')]), '', mtQuestion, True) then
+      Exit;
+    if tmScanner.Enabled then
+      StopScan := True;
+  end;
+end;
+
+procedure TTcp.lbStatusScannerMouseMove(Sender: TObject; Shift: TShiftState; X,
+  Y: Integer);
+begin
+  if tmScanner.Enabled then
+    TLabel(Sender).Cursor := crHandPoint
+  else
+    TLabel(Sender).Cursor := crDefault;
+end;
+
 procedure TTcp.lbUserDirClick(Sender: TObject);
 begin
   ShellOpen(GetFullFileName(UserDir));
@@ -8991,6 +9015,8 @@ end;
 
 procedure TTcp.miStopScanClick(Sender: TObject);
 begin
+  if not ShowMsg(Format(TransStr('405'),[TransStr('495')]), '', mtQuestion, True) then
+    Exit;
   if tmScanner.Enabled then
     StopScan := True;
 end;
@@ -9333,7 +9359,9 @@ begin
         lbScanBridgesStatus.Visible := True;
         lbScanBridgesStatus.Caption := TransStr('396') + ' (0%)';
         SetOptionsEnable(False);
-      end;
+      end
+      else
+        lbStatusScanner.ShowHint := True;
       tmScanner.Enabled := True;
     end;
   end;
@@ -9450,6 +9478,7 @@ begin
       CurrentAutoScanPurpose := spNone;
       CurrentScanType := stNone;
       StopScan := False;
+      lbStatusScanner.ShowHint := False;
       tmScanner.Enabled := False
     end;
   end

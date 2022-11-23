@@ -340,6 +340,7 @@ begin
     LoadStr('459', 'мсек.');
     LoadStr('470', 'шт.');
     LoadStr('477', 'ч.');
+    LoadStr('495', 'Остановить сканирование');
     LoadStr('515', 'Выделять все ячейки в строке');
     LoadStr('521', 'Выбранные страны');
     LoadStr('522', 'Избранные узлы');
@@ -647,6 +648,7 @@ begin
     Tcp.lbStatusHttpAddrCaption.Caption := TransStr('593') + ':';
     Tcp.lbStatusHttpAddr.Hint := TransStr('228');
     Tcp.lbStatusScannerCaption.Caption := TransStr('444') + ':';
+    Tcp.lbStatusScanner.Hint := TransStr('495');
 
     Tcp.gbServerInfo.Caption := Load('216', 'Сервер');
     Tcp.lbServerExternalIpCaption.Caption := Load('217', 'Внешний адрес') + ':';
@@ -704,7 +706,7 @@ begin
     Tcp.miScanAliveNodes.Caption := Load('605', 'Живые узлы');
     Tcp.miManualPingMeasure.Caption := Load('493', 'Измерять пинг');
     Tcp.miManualDetectAliveNodes.Caption := Load('494', 'Определять живые узлы');
-    Tcp.miStopScan.Caption := Load('495', 'Остановить сканирование');
+    Tcp.miStopScan.Caption := TransStr('495');
     Tcp.miResetGuards.Caption := Load('496', 'Сбросить сторожевые узлы');
     Tcp.miResetGuardsAll.Caption := Load('497', 'Все сторожевые узлы');
     Tcp.miResetGuardsBridges.Caption := Load('498', 'Мостовые узлы');
