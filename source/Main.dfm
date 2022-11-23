@@ -4908,12 +4908,6 @@ object Tcp: TTcp
     object miFilterOptions: TMenuItem
       Caption = #1053#1072#1089#1090#1088#1086#1081#1082#1080
       ImageIndex = 11
-      object miFilterHideUnused: TMenuItem
-        AutoCheck = True
-        Caption = #1057#1082#1088#1099#1090#1100' '#1085#1077#1080#1089#1087#1086#1083#1100#1079#1091#1077#1084#1099#1077' '#1089#1090#1088#1072#1085#1099
-        Checked = True
-        OnClick = miFilterHideUnusedClick
-      end
       object miFilterScrollTop: TMenuItem
         AutoCheck = True
         Caption = #1055#1088#1086#1082#1088#1091#1095#1080#1074#1072#1090#1100' '#1074#1074#1077#1088#1093' '#1087#1088#1080' '#1089#1086#1088#1090#1080#1088#1086#1074#1082#1077
@@ -4925,6 +4919,20 @@ object Tcp: TTcp
         Caption = #1042#1099#1076#1077#1083#1103#1090#1100' '#1074#1089#1077' '#1103#1095#1077#1081#1082#1080' '#1074' '#1089#1090#1088#1086#1082#1077
         Checked = True
         OnClick = miFilterSelectRowClick
+      end
+      object miDelimiter67: TMenuItem
+        Caption = '-'
+      end
+      object miFilterHideUnused: TMenuItem
+        AutoCheck = True
+        Caption = #1057#1082#1088#1099#1090#1100' '#1085#1077#1080#1089#1087#1086#1083#1100#1079#1091#1077#1084#1099#1077' '#1089#1090#1088#1072#1085#1099
+        Checked = True
+        OnClick = miFilterHideUnusedClick
+      end
+      object miExcludeBridgesWhenCounting: TMenuItem
+        AutoCheck = True
+        Caption = #1048#1089#1082#1083#1102#1095#1080#1090#1100' '#1084#1086#1089#1090#1099' '#1087#1088#1080' '#1087#1086#1076#1089#1095#1105#1090#1077' '#1091#1079#1083#1086#1074
+        OnClick = miExcludeBridgesWhenCountingClick
       end
       object miDelimiter35: TMenuItem
         Caption = '-'
@@ -5383,6 +5391,12 @@ object Tcp: TTcp
       Tag = 4
       AutoCheck = True
       Caption = #1050#1086#1088#1085#1077#1074#1086#1081
+      OnClick = SetRoutersFilter
+    end
+    object miShowConsensus: TMenuItem
+      Tag = 8192
+      AutoCheck = True
+      Caption = #1059#1079#1077#1083' '#1082#1086#1085#1089#1077#1085#1089#1091#1089#1072
       OnClick = SetRoutersFilter
     end
     object miShowBridge: TMenuItem

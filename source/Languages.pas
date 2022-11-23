@@ -802,6 +802,7 @@ begin
     Tcp.miTplLoadExcludes.Caption := TransStr('523');
     Tcp.miTplLoadSA.Caption := TransStr('368');
     Tcp.miTplLoadUA.Caption := TransStr('369');
+    Tcp.miExcludeBridgesWhenCounting.Caption := Load('607', 'Исключить мосты при подсчёте узлов');
 
     Tcp.miChangeCircuit.Caption := TransStr('103');
     Tcp.miShowStatus.Caption := TransStr('282');
@@ -879,6 +880,7 @@ begin
     Tcp.miShowOther.Caption := Load('552', 'Обычный');
     Tcp.miShowAuthority.Caption := Load('553', 'Корневой');
     Tcp.miShowBridge.Caption := Load('554', 'Кэшированный мост');
+    Tcp.miShowConsensus.Caption := Load('606', 'Узел консенсуса');
     Tcp.miShowFast.Caption := Load('555', 'Быстрый');
     Tcp.miShowStable.Caption := Load('556', 'Стабильный');
     Tcp.miShowV2Dir.Caption := Load('557', 'Вторая версия каталога');

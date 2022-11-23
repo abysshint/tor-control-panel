@@ -928,6 +928,9 @@ type
     lbAutoScanType: TLabel;
     cbxAutoScanType: TComboBox;
     miScanAliveNodes: TMenuItem;
+    miShowConsensus: TMenuItem;
+    miExcludeBridgesWhenCounting: TMenuItem;
+    miDelimiter67: TMenuItem;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1436,6 +1439,7 @@ type
     procedure lbStatusFilterModeClick(Sender: TObject);
     procedure cbxAutoScanTypeDropDown(Sender: TObject);
     procedure cbxAutoScanTypeChange(Sender: TObject);
+    procedure miExcludeBridgesWhenCountingClick(Sender: TObject);
   private
      procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
      procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -1882,13 +1886,13 @@ begin
             spNewAndAlive:
             begin
               case sScanType of
-                stPing: NeedScan := (GeoIpInfo.ping = 0) or (GeoIpInfo.ping > 500);
+                stPing: NeedScan := GeoIpInfo.ping = 0;
                 stAlive: NeedScan := LastResult <> -1;
               end;
             end;
             spBridges: NeedScan := rfBridge in Item.Value.Flags;
             spGuards: NeedScan := rfGuard in Item.Value.Flags;
-            spAlive: NeedScan := LastResult <> -1;
+            spAlive: NeedScan := LastResult = 1;
           end;
 
           if NeedScan then
@@ -3185,7 +3189,14 @@ begin
     begin
       LoadRoutersFilterData(LastRoutersFilter, False, True);
       case sgFilter.MovCol of
-        FILTER_TOTAL: RoutersCustomFilter := FILTER_BY_TOTAL;
+        FILTER_TOTAL:
+        begin
+          RoutersCustomFilter := FILTER_BY_TOTAL;
+          if miExcludeBridgesWhenCounting.Checked then
+            IntToMenu(mnShowNodes.Items, 8192)
+          else
+            IntToMenu(mnShowNodes.Items, 0);
+        end;
         FILTER_GUARD:
         begin
           RoutersCustomFilter := FILTER_BY_GUARD;
@@ -3199,7 +3210,10 @@ begin
         FILTER_ALIVE:
         begin
           RoutersCustomFilter := FILTER_BY_ALIVE;
-          IntToMenu(mnShowNodes.Items, 2048);
+          if miExcludeBridgesWhenCounting.Checked then
+            IntToMenu(mnShowNodes.Items, 10240)
+          else
+            IntToMenu(mnShowNodes.Items, 2048);
         end;
       end;
       CountryIndex := FilterDic.Items[AnsiLowerCase(sgFilter.Cells[FILTER_ID, sgFilter.MovRow])].cc;
@@ -5854,6 +5868,7 @@ begin
     LoadSettings('Filter', miIgnoreTplLoadParamsOutsideTheFilter, ini);
     LoadSettings('Filter', miNotLoadEmptyTplData, ini, False);
     LoadSettings('Filter', miReplaceDisabledFavoritesWithCountries, ini);
+    LoadSettings('Filter', miExcludeBridgesWhenCounting, ini, False);
 
     LoadSettings('Routers', miRoutersScrollTop, ini);
     LoadSettings('Routers', miRoutersSelectRow, ini);
@@ -7753,6 +7768,13 @@ begin
   SetConfigBoolean('Routers', 'ConvertIpNodes', miConvertIpNodes.Checked);
 end;
 
+procedure TTcp.miExcludeBridgesWhenCountingClick(Sender: TObject);
+begin
+  LoadFilterTotals;
+  ShowFilter;
+  SetConfigBoolean('Filter', 'ExcludeBridgesWhenCounting', miExcludeBridgesWhenCounting.Checked);
+end;
+
 procedure TTcp.miIgnoreConvertExcludeNodesClick(Sender: TObject);
 begin
   SetConfigBoolean('Routers', 'IgnoreConvertExcludeNodes', miIgnoreConvertExcludeNodes.Checked);
@@ -9631,7 +9653,7 @@ end;
 procedure TTcp.ShowRouters;
 var
   RoutersCount, i, j: Integer;
-  cdExit, cdGuard, cdAuthority, cdOther, cdBridge, cdFast, cdStable, cdV2Dir, cdHSDir, cdRecommended, cdDirMirror, cdAlive: Boolean;
+  cdExit, cdGuard, cdAuthority, cdOther, cdBridge, cdFast, cdStable, cdV2Dir, cdHSDir, cdRecommended, cdDirMirror, cdAlive, cdConsensus: Boolean;
   cdRouterType, cdCountry, cdWeight, cdQuery, cdFavorites: Boolean;
   Item: TPair<string, TRouterInfo>;
   CountryCode: string;
@@ -9841,6 +9863,7 @@ begin
         cdExit := CheckRouterType(miShowExit, rfExit in Item.Value.Flags);
         cdGuard := CheckRouterType(miShowGuard, rfGuard in Item.Value.Flags);
         cdOther := CheckRouterType(miShowOther, not (rfExit in Item.Value.Flags) and not (rfGuard in Item.Value.Flags) and not (rfBridge in Item.Value.Flags) and not (rfAuthority in Item.Value.Flags));
+        cdConsensus := CheckRouterType(miShowConsensus, rfRelay in Item.Value.Flags);
         cdFast := CheckRouterType(miShowFast, rfFast in Item.Value.Flags);
         cdStable := CheckRouterType(miShowStable, rfStable in Item.Value.Flags);
         cdHSDir := CheckRouterType(miShowHSDir, rfHSDir in Item.Value.Flags);
@@ -9849,7 +9872,7 @@ begin
         cdAlive := CheckRouterType(miShowAlive, Item.Value.Params and ROUTER_ALIVE <> 0);
         cdRecommended := CheckRouterType(miShowRecommend, VersionsDic.ContainsKey(Item.Value.Version));
 
-        cdRouterType := cdExit and cdGuard and cdBridge and cdAuthority and cdOther and cdFast and cdStable and cdV2Dir and cdHSDir and cdDirMirror and cdRecommended and cdAlive;
+        cdRouterType := cdExit and cdGuard and cdBridge and cdAuthority and cdOther and cdConsensus and cdFast and cdStable and cdV2Dir and cdHSDir and cdDirMirror and cdRecommended and cdAlive;
       end
       else
         cdRouterType := True;
@@ -10042,6 +10065,11 @@ begin
 
   for Item in RoutersDic do
   begin
+    if miExcludeBridgesWhenCounting.Checked then
+    begin
+      if not (rfRelay in Item.Value.Flags) then
+        Continue;
+    end;
     if GeoIpDic.TryGetValue(Item.Value.IPv4, GeoIpInfo) then
     begin
       CountryID := GeoIpInfo.cc;
@@ -12160,7 +12188,7 @@ begin
   begin
     case RoutersCustomFilter of
       FILTER_BY_ALIVE: IntToMenu(miRtFilters, 3);
-      FILTER_BY_TOTAL: IntToMenu(miRtFilters, 2);
+      FILTER_BY_TOTAL: IntToMenu(miRtFilters, 3);
       FILTER_BY_GUARD: IntToMenu(miRtFilters, 3);
       FILTER_BY_EXIT:  IntToMenu(miRtFilters, 3);
       FILTER_BY_QUERY: IntToMenu(miRtFilters, 8);
@@ -12168,7 +12196,7 @@ begin
     end;
   end;
 
-  if miShowOther.Checked or miShowBridge.Checked or miShowAuthority.Checked then
+  if miShowOther.Checked or miShowBridge.Checked or miShowAuthority.Checked or miShowConsensus.Checked then
   begin
     miShowExit.Checked := False;
     miShowGuard.Checked := False;
@@ -12217,34 +12245,29 @@ end;
 procedure TTcp.SetRoutersFilter(Sender: TObject);
 var
   Mask: Integer;
+
+  procedure Selector(Other, Bridge, Authority, Consensus: Boolean);
+  begin
+    miShowOther.Checked := Other;
+    miShowBridge.Checked := Bridge;
+    miShowAuthority.Checked := Authority;
+    miShowConsensus.Checked := Consensus;
+  end;
+
 begin
   Mask := TMenuItem(Sender).Tag;
   case Mask of
-    1:if miShowExit.Checked then
-      begin
-        miShowOther.Checked := False; miShowBridge.Checked := False; miShowAuthority.Checked := False;
-      end;
-    2:if miShowGuard.Checked then
-      begin
-        miShowOther.Checked := False; miShowBridge.Checked := False; miShowAuthority.Checked := False;
-      end;
-    4:if miShowAuthority.Checked then
-      begin
-        miShowBridge.Checked := False; miShowOther.Checked := False;
-      end;
-    8:if miShowOther.Checked then
-      begin
-        miShowBridge.Checked := False; miShowAuthority.Checked := False;
-      end;
-   16:if miShowBridge.Checked then
-      begin
-        miShowOther.Checked := False; miShowAuthority.Checked := False;
-      end;
+    1: if miShowExit.Checked then Selector(False, False, False, False);
+    2: if miShowGuard.Checked then Selector(False, False, False, False);
+    4: if miShowAuthority.Checked then Selector(False, False, True, False);
+    8: if miShowOther.Checked then Selector(True, False, False, False);
+   16: if miShowBridge.Checked then Selector(False, True, False, False);
+ 8192: if miShowConsensus.Checked then Selector(False, False, False, True);
   end;
 
   if ShowNodesChanged and miDisableFiltersOnAuthorityOrBridge.Checked then
   begin
-    if (Mask in [1,2,8]) or ((Mask in [4,16]) and not TMenuItem(Sender).Checked) then
+    if (Mask in [1,2,8]) or (Mask = 8192) or ((Mask in [4,16]) and not TMenuItem(Sender).Checked) then
     begin
       if LastFilters > -1 then
       begin
