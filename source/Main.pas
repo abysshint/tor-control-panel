@@ -1442,8 +1442,10 @@ type
     procedure lbStatusScannerMouseMove(Sender: TObject; Shift: TShiftState; X,
       Y: Integer);
   private
-     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
-     procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
+    procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
+    procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
+    procedure WMQueryEndSession(var Message: TWMQueryEndSession); message WM_QUERYENDSESSION;
+    procedure WMEndSession(var Message: TWMEndSession); message WM_ENDSESSION;
   end;
 
 var
@@ -1481,7 +1483,7 @@ var
   SearchTimer: Cardinal;
   DecFormPos, IncFormPos: TPoint;
   RoutersCustomFilter, LastRoutersCustomFilter, RoutersFilters, LastFilters: Integer;
-  GeoIpExists, FirstLoad, Restarting, Closing, CursorShow, GeoIpUpdating, ServerIsObfs4: Boolean;
+  GeoIpExists, FirstLoad, Restarting, Closing, WindowsShutdown, CursorShow, GeoIpUpdating, ServerIsObfs4: Boolean;
   CursorStop, StartTimer, RestartTimeout: TTimer;
   Controller: TControlThread;
   Consensus: TConsensusThread;
@@ -1510,6 +1512,18 @@ implementation
 
 {$R *.dfm}
 {$R TorControlPanel.icons.res}
+
+procedure TTcp.WMQueryEndSession(var Message: TWMQueryEndSession);
+begin
+  WindowsShutdown := True;
+  inherited;
+end;
+
+procedure TTcp.WMEndSession(var Message: TWMEndSession);
+begin
+  WindowsShutdown := Message.EndSession;
+  inherited;
+end;
 
 function TTcp.GetCheckBorders: Boolean;
 begin
@@ -12117,6 +12131,7 @@ end;
 procedure TTcp.RestoreForm;
 begin
   Tcp.Visible := True;
+  Tcp.WindowState := wsNormal;
   Application.Restore;
   Application.BringToFront;
 end;
@@ -14024,10 +14039,11 @@ end;
 
 procedure TTcp.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 begin
-  if (cbMinimizeOnClose.Checked) and not Closing then
+  if (cbMinimizeOnClose.Checked) and not Closing and not WindowsShutdown then
   begin
-    CanClose := False;
-    Hide;
+    CanClose := WindowsShutdown;
+    Tcp.Visible := False;
+    Tcp.WindowState := wsMinimized;
   end;
 end;
 
@@ -14114,6 +14130,7 @@ var
   i: Integer;
   Filter: TFilterInfo;
 begin
+  WindowsShutdown := False;
   FirstLoad := True;
   FormSize := 1;
 
@@ -14546,7 +14563,7 @@ end;
 
 procedure TTcp.UpdateTrayHint;
 var
-  CountryStr, IpStr, DataStr: string;
+  DataStr: string;
 begin
   if (UsedProxyType <> ptNone) then
   begin
@@ -14566,6 +14583,7 @@ begin
   begin
     FindDialog.CloseDialog;
     Tcp.Visible := False;
+    Tcp.WindowState := wsMinimized;
   end
   else
     RestoreForm;
