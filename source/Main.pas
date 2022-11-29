@@ -333,7 +333,7 @@ type
     cbxProxyType: TComboBox;
     cbUseBridges: TCheckBox;
     meBridges: TMemo;
-    cbxSocksHost: TComboBox;
+    cbxSOCKSHost: TComboBox;
     edProxyPort: TEdit;
     udProxyPort: TUpDown;
     edSOCKSPort: TEdit;
@@ -816,7 +816,6 @@ type
     lbTotalULCaption: TLabel;
     lbTotalDL: TLabel;
     lbTotalUL: TLabel;
-    tmSaveTotals: TTimer;
     miDelimiter60: TMenuItem;
     miResetTotalsCounter: TMenuItem;
     miResetScannerSchedule: TMenuItem;
@@ -1401,7 +1400,6 @@ type
     procedure cbUseBridgesExit(Sender: TObject);
     procedure btnFindPreferredBridgeClick(Sender: TObject);
     procedure ClearBridgesCache(Sender: TObject);
-    procedure tmSaveTotalsTimer(Sender: TObject);
     procedure miResetTotalsCounterClick(Sender: TObject);
     procedure miResetScannerScheduleClick(Sender: TObject);
     procedure miDisableFiltersOnUserQueryClick(Sender: TObject);
@@ -1468,7 +1466,7 @@ var
   ConstDic: TDictionary<string, Integer>;
   DefaultsDic: TDictionary<string, string>;
   ProgramDir, UserDir, HsDir, ThemesDir, TransportsDir, OnionAuthDir, LogsDir: string;
-  DefaultsFile, UserConfigFile, TorConfigFile, TorStateFile, TorLogFile,
+  DefaultsFile, UserConfigFile, UserBackupFile, TorConfigFile, TorStateFile, TorLogFile,
   TorExeFile, GeoIpFile, GeoIpv6File, NetworkCacheFile, BridgesCacheFile,
   UserProfile, LangFile, ConsensusFile, DescriptorsFile, NewDescriptorsFile: string;
   ControlPassword, SelectedNode, SearchStr, UPnPMsg: string;
@@ -1697,7 +1695,7 @@ begin
     if UseSocks then
     begin
       Http.Sock.SocksType := ST_Socks5;
-      Http.Sock.SocksIP := GetHost(Tcp.cbxSocksHost.Text);
+      Http.Sock.SocksIP := GetHost(Tcp.cbxSOCKSHost.Text);
       Http.Sock.SocksPort := IntToStr(Tcp.udSOCKSPort.Position);
     end
     else
@@ -1891,6 +1889,13 @@ begin
               case sScanType of
                 stPing: NeedScan := GeoIpInfo.ping = 0;
                 stAlive: NeedScan := LastResult <> -1;
+              end;
+            end;
+            spNewAndBridges:
+            begin
+              case sScanType of
+                stPing: NeedScan := (GeoIpInfo.ping = 0) or (rfBridge in Item.Value.Flags);
+                stAlive: NeedScan := (LastResult = 0) or (rfBridge in Item.Value.Flags);
               end;
             end;
             spBridges: NeedScan := rfBridge in Item.Value.Flags;
@@ -4192,23 +4197,23 @@ var
   i: Integer;
 begin
   UPnPMsg := '';
-  GetLocalInterfaces(cbxSocksHost);
+  GetLocalInterfaces(cbxSOCKSHost);
   if (cbxServerMode.ItemIndex > 0) and (cbUseUPnP.Checked) then
   begin
-    for i := 0 to cbxSocksHost.items.Count - 1 do
+    for i := 0 to cbxSOCKSHost.items.Count - 1 do
     begin
-      if not IpInRanges(cbxSocksHost.Items[i], PrivateRanges) then
+      if not IpInRanges(cbxSOCKSHost.Items[i], PrivateRanges) then
         Continue;
-      AddUPnPEntry(udORPort.Position, 'ORPort', cbxSocksHost.Items[i], Test, UPnPMsg);
+      AddUPnPEntry(udORPort.Position, 'ORPort', cbxSOCKSHost.Items[i], Test, UPnPMsg);
       udORPort.Tag := udORPort.Position;
       if cbUseDirPort.Checked then
       begin
-        AddUPnPEntry(udDirPort.Position, 'DirPort', cbxSocksHost.Items[i], Test, UPnPMsg);
+        AddUPnPEntry(udDirPort.Position, 'DirPort', cbxSOCKSHost.Items[i], Test, UPnPMsg);
         udDirPort.Tag := udDirPort.Position;
       end;
       if (cbxServerMode.ItemIndex = 3) and (cbxBridgeType.ItemIndex > 0) then
       begin
-        AddUPnPEntry(udTransportPort.Position, 'PTPort', cbxSocksHost.Items[i], Test, UPnPMsg);
+        AddUPnPEntry(udTransportPort.Position, 'PTPort', cbxSOCKSHost.Items[i], Test, UPnPMsg);
         udTransportPort.Tag := udTransportPort.Position;
       end;
     end;
@@ -4274,7 +4279,7 @@ var
   ServerIsBridge, ServerEnabled: Boolean;
 begin
   if UsedProxyType in [ptSocks, ptBoth] then
-    lbStatusSocksAddr.Caption := FormatHost(GetHost(cbxSocksHost.Text)) + ':' + IntToStr(udSOCKSPort.Position)
+    lbStatusSocksAddr.Caption := FormatHost(GetHost(cbxSOCKSHost.Text)) + ':' + IntToStr(udSOCKSPort.Position)
   else
     lbStatusSocksAddr.Caption := TransStr('226');
 
@@ -4357,7 +4362,7 @@ begin
     OptionsLocked := True;
     ForceDirectories(LogsDir);
     ForceDirectories(OnionAuthDir);
-    CheckOpenPorts(udSOCKSPort, GetHost(cbxSocksHost.Text), PortStr);
+    CheckOpenPorts(udSOCKSPort, GetHost(cbxSOCKSHost.Text), PortStr);
     CheckOpenPorts(udHTTPTunnelPort, GetHost(cbxHTTPTunnelHost.Text), PortStr);
     CheckOpenPorts(udControlPort, LOOPBACK_ADDRESS, PortStr);
     if cbxServerMode.ItemIndex > 0 then
@@ -4417,7 +4422,6 @@ begin
         LockStreamsInfo := False;
         tmTraffic.Enabled := True;
         tmCircuits.Enabled := True;
-        tmSaveTotals.Enabled := True;
         btnSwitchTor.ImageIndex := 1;
         btnSwitchTor.Caption := TransStr('101');
         btnChangeCircuit.Caption := '0 %';
@@ -4502,7 +4506,6 @@ begin
   tmUpdateIp.Enabled := False;
   tmConsensus.Enabled := False;
   tmCircuits.Enabled := False;
-  tmSaveTotals.Enabled := False;
   btnChangeCircuit.Caption := TransStr('103');
   btnChangeCircuit.Enabled := True;
   btnSwitchTor.ImageIndex := 0;
@@ -4768,33 +4771,33 @@ begin
     FirstRun := True;
   ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
   try
-    ConfigVersion := ini.ReadInteger('Main', 'ConfigVersion', 1);
+    ConfigVersion := GetSettings('Main', 'ConfigVersion', 1, ini);
     if ConfigVersion = CURRENT_CONFIG_VERSION then
       Exit;
     if not FirstRun then
     begin
       if ConfigVersion = 1 then
       begin
-        case ini.ReadInteger('Main', 'Language', 0) of
-          1: ini.WriteInteger('Main', 'Language', 1033);
-          2: ini.WriteInteger('Main', 'Language', 1031);
+        case GetSettings('Main', 'Language', 0, ini) of
+          1: SetSettings('Main', 'Language', 1033, ini);
+          2: SetSettings('Main', 'Language', 1031, ini);
           else
-            ini.WriteInteger('Main', 'Language', 1049);
+            SetSettings('Main', 'Language', 1049, ini);
         end;
 
-        if ini.ReadInteger('Server', 'BridgeType', 0) = 1 then
-          ini.WriteString('Server', 'BridgeType', 'obfs4');
+        if GetSettings('Server', 'BridgeType', 0, ini) = 1 then
+          SetSettings('Server', 'BridgeType', 'obfs4', ini);
 
         ParseStr := Explode(';', ConvertNodes(
-          ';' + IntToStr(ini.ReadInteger('Main', 'FilterMode', 0)) +
+          ';' + IntToStr(GetSettings('Main', 'FilterMode', 0, ini)) +
           ';' + GetTorConfig('ExcludeExitNodes', '', [cfFindComments]) +
           ';' + GetTorConfig('ExitNodes', '', [cfFindComments]) +
-          ';' + IntToStr(ini.ReadInteger('Main', 'FilterNodes', 4)), True
+          ';' + IntToStr(GetSettings('Main', 'FilterNodes', 4, ini)), True
         ));
-        ini.WriteInteger('Filter', 'FilterMode', StrToInt(ParseStr[1]));
-        ini.WriteString('Filter', 'EntryNodes', ParseStr[2]);
-        ini.WriteString('Filter', 'MiddleNodes', ParseStr[3]);
-        ini.WriteString('Filter', 'ExitNodes', ParseStr[4]);
+        SetSettings('Filter', 'FilterMode', StrToInt(ParseStr[1]), ini);
+        SetSettings('Filter', 'EntryNodes', ParseStr[2], ini);
+        SetSettings('Filter', 'MiddleNodes', ParseStr[3], ini);
+        SetSettings('Filter', 'ExitNodes', ParseStr[4], ini);
 
         SetTorConfig('EntryNodes', ParseStr[2], [cfFindComments]);
         SetTorConfig('MiddleNodes', ParseStr[3], [cfFindComments]);
@@ -4802,26 +4805,26 @@ begin
         DeleteTorConfig('ExcludeExitNodes', [cfFindComments]);
 
         Temp := GetTorConfig('ExcludeNodes', '', [cfFindComments]);
-        ini.WriteString('Routers', 'ExcludeNodes', Temp);
+        SetSettings('Routers', 'ExcludeNodes', Temp, ini);
         if GetTorConfig('ExcludeNodes', '0', [cfExistCheck]) = '1' then
-          ini.WriteBool('Lists', 'UseExcludeNodes', True)
+          SetSettings('Lists', 'UseExcludeNodes', True, ini)
         else
           DeleteTorConfig('ExcludeNodes', [cfFindComments]);
 
         Temp := GetTorConfig('TrackHostExits', '', [cfFindComments]);
-        ini.WriteString('Lists', 'TrackHostExits', Temp);
+        SetSettings('Lists', 'TrackHostExits', Temp, ini);
         if GetTorConfig('TrackHostExits', '0', [cfExistCheck]) = '1' then
-          ini.WriteBool('Lists', 'UseTrackHostExits', True)
+          SetSettings('Lists', 'UseTrackHostExits', True, ini)
         else
           DeleteTorConfig('TrackHostExits', [cfFindComments]);
 
         Temp := GetTorConfig('TrackHostExitsExpire', '1800', [cfFindComments], ptInteger, Tcp.udTrackHostExitsExpire.Min, Tcp.udTrackHostExitsExpire.Max);
-        ini.WriteInteger('Lists', 'TrackHostExitsExpire', StrToInt(Temp));
+        SetSettings('Lists', 'TrackHostExitsExpire', StrToInt(Temp), ini);
         if GetTorConfig('TrackHostExitsExpire', '0', [cfExistCheck]) = '0' then
           DeleteTorConfig('TrackHostExitsExpire', [cfFindComments]);
 
         Temp := GetTorConfig('HashedControlPassword', '', [cfFindComments]);
-        ini.WriteString('Main', 'HashedControlPassword', Temp);
+        SetSettings('Main', 'HashedControlPassword', Temp, ini);
         if GetTorConfig('HashedControlPassword', '0', [cfExistCheck]) = '0' then
           DeleteTorConfig('HashedControlPassword', [cfFindComments]);
 
@@ -4830,36 +4833,36 @@ begin
         begin
           ParseStr := Explode('|', Temp);
           for i := 0 to Length(ParseStr) - 1 do
-            ini.WriteString('Bridges', IntToStr(i), ParseStr[i]);
-          ini.WriteBool('Network', 'UseBridges', StrToBool(GetTorConfig('UseBridges', '0', [], ptBoolean)));
-          ini.WriteInteger('Network', 'BridgesType', 1);
+            SetSettings('Bridges', IntToStr(i), ParseStr[i], ini);
+          SetSettings('Network', 'UseBridges', StrToBool(GetTorConfig('UseBridges', '0', [], ptBoolean)), ini);
+          SetSettings('Network', 'BridgesType', 1, ini);
           DeleteTorConfig('Bridge', [cfMultiLine, cfFindComments]);
         end;
 
-        ini.WriteBool('Server', 'UseNumCPUs', StrToBool(GetTorConfig('NumCPUs', '0', [cfExistCheck])));
-        ini.WriteBool('Server', 'UseRelayBandwidth', StrToBool(GetTorConfig('RelayBandwidthRate', '0', [cfExistCheck])) or StrToBool(GetTorConfig('RelayBandwidthBurst', '0', [cfExistCheck])) or StrToBool(GetTorConfig('MaxAdvertisedBandwidth', '0', [cfExistCheck])));
-        ini.WriteBool('Server', 'UseMaxMemInQueues', StrToBool(GetTorConfig('MaxMemInQueues', '0', [cfExistCheck])));
-        ini.WriteBool('Server', 'UseDirPort', StrToBool(GetTorConfig('DirPort', '0', [cfExistCheck])));
-        ini.WriteBool('Server', 'PublishServerDescriptor', StrToBool(GetTorConfig('PublishServerDescriptor', '1', [], ptBoolean)));
-        ini.WriteBool('Server', 'DirReqStatistics', StrToBool(GetTorConfig('DirReqStatistics', '1', [], ptBoolean)));
-        ini.WriteBool('Server', 'HiddenServiceStatistics', StrToBool(GetTorConfig('HiddenServiceStatistics', '1', [], ptBoolean)));
-        ini.WriteBool('Server', 'IPv6Exit', StrToBool(GetTorConfig('IPv6Exit', '0', [], ptBoolean)));
+        SetSettings('Server', 'UseNumCPUs', StrToBool(GetTorConfig('NumCPUs', '0', [cfExistCheck])), ini);
+        SetSettings('Server', 'UseRelayBandwidth', StrToBool(GetTorConfig('RelayBandwidthRate', '0', [cfExistCheck])) or StrToBool(GetTorConfig('RelayBandwidthBurst', '0', [cfExistCheck])) or StrToBool(GetTorConfig('MaxAdvertisedBandwidth', '0', [cfExistCheck])), ini);
+        SetSettings('Server', 'UseMaxMemInQueues', StrToBool(GetTorConfig('MaxMemInQueues', '0', [cfExistCheck])), ini);
+        SetSettings('Server', 'UseDirPort', StrToBool(GetTorConfig('DirPort', '0', [cfExistCheck])), ini);
+        SetSettings('Server', 'PublishServerDescriptor', StrToBool(GetTorConfig('PublishServerDescriptor', '1', [], ptBoolean)), ini);
+        SetSettings('Server', 'DirReqStatistics', StrToBool(GetTorConfig('DirReqStatistics', '1', [], ptBoolean)), ini);
+        SetSettings('Server', 'HiddenServiceStatistics', StrToBool(GetTorConfig('HiddenServiceStatistics', '1', [], ptBoolean)), ini);
+        SetSettings('Server', 'IPv6Exit', StrToBool(GetTorConfig('IPv6Exit', '0', [], ptBoolean)), ini);
 
         GetLocalInterfaces(cbxHsAddress);
         GetTorHs;
         SaveHiddenServices(ini);
 
-        ini.WriteString('Main', 'FormPosition',
-          IntToStr(ini.ReadInteger('Main', 'PositionLeft', -1)) + ',' +
-          IntToStr(ini.ReadInteger('Main', 'PositionTop', -1)) + ',-1,-1');
+        SetSettings('Main', 'FormPosition',
+          IntToStr(GetSettings('Main', 'PositionLeft', -1, ini)) + ',' +
+          IntToStr(GetSettings('Main', 'PositionTop', -1, ini)) + ',-1,-1', ini);
 
-        ini.DeleteKey('Main', 'ConfirmBanRelay');
-        ini.DeleteKey('Main', 'PositionLeft');
-        ini.DeleteKey('Main', 'PositionTop');
-        ini.DeleteKey('Main', 'FilterMode');
-        ini.DeleteKey('Main', 'FilterNodes');
-        ini.DeleteKey('Main', 'UseExcludeNodes');
-        ini.DeleteKey('Main', 'UseTrackHostExits');
+        DeleteSettings('Main', 'ConfirmBanRelay', ini);
+        DeleteSettings('Main', 'PositionLeft', ini);
+        DeleteSettings('Main', 'PositionTop', ini);
+        DeleteSettings('Main', 'FilterMode', ini);
+        DeleteSettings('Main', 'FilterNodes', ini);
+        DeleteSettings('Main', 'UseExcludeNodes', ini);
+        DeleteSettings('Main', 'UseTrackHostExits', ini);
 
         TemplateList := TStringlist.Create;
         try
@@ -4869,7 +4872,7 @@ begin
             for i := 0 to TemplateList.Count - 1 do
             begin
               TemplateName := SeparateLeft(TemplateList[i], '=');
-              ini.WriteString('Templates', TemplateName, ConvertNodes(ini.ReadString('Templates', TemplateName, ''), False));
+              SetSettings('Templates', TemplateName, ConvertNodes(GetSettings('Templates', TemplateName, '', ini), False), ini);
             end;
           end;
         finally
@@ -4879,13 +4882,18 @@ begin
         RenameFile(UserDir + 'console.log', LogsDir + 'console.log');
         ConfigVersion := 2;
       end;
+      if ConfigVersion = 2 then
+      begin
+        SetSettings('AutoSelNodes', 'AutoSelStableOnly', GetSettings('AutoSelNodes', 'AutoSelFastAndStableOnly', False, ini), ini);
+        DeleteSettings('AutoSelNodes', 'AutoSelFastAndStableOnly', ini);
+        ConfigVersion := 3;
+      end;
     end
     else
       ConfigVersion := CURRENT_CONFIG_VERSION;
-    ini.WriteInteger('Main', 'ConfigVersion', ConfigVersion);
+    SetSettings('Main', 'ConfigVersion', ConfigVersion, ini);
   finally
-    ini.UpdateFile;
-    ini.Free;
+    UpdateConfigFile(ini);
   end;
 end;
 
@@ -5069,7 +5077,7 @@ begin
   HsList := TStringList.Create;
   PortList := TStringList.Create;
   try
-    LoadSettings('HiddenServices', udRendPostPeriod, ini);
+    GetSettings('HiddenServices', udRendPostPeriod, ini);
     ini.ReadSectionValues('HiddenServices', HsList);
     for i := 0 to HsList.Count - 1 do
     begin
@@ -5174,7 +5182,7 @@ begin
       DeleteDir(HsDir + HsToDelete[i]);
     HsToDelete := nil;
   end;
-  ini.WriteInteger('HiddenServices', 'RendPostPeriod', Tcp.udRendPostPeriod.Position);
+  SetSettings('HiddenServices', udRendPostPeriod, ini);
 
   if not IsEmptyGrid(sgHs) then
   begin
@@ -5224,14 +5232,14 @@ begin
           TorConfig.Append('HiddenServiceMaxStreams ' + MaxStreams);
       end;
 
-      ini.WriteString('HiddenServices', IntToStr(i - 1),
+      SetSettings('HiddenServices', IntToStr(i - 1),
         Name + ';' +
         Version + ';' +
         IntroPoints + ';' +
         MaxStreams + ';' +
         State + ';' +
-        PortsData
-      );
+        PortsData,
+      ini);
     end;
     if Count > 0 then
       SetTorConfig('RendPostPeriod', IntToStr(Tcp.udRendPostPeriod.Position * 60));
@@ -5274,12 +5282,12 @@ begin
   begin
     ini := TMemIniFile.Create(DefaultsFile, TEncoding.UTF8);
     try
-      DefaultsDic.AddOrSetValue('BridgesBot', ini.ReadString('UserOverrides', 'BridgesBot', BRIDGES_BOT));
-      DefaultsDic.AddOrSetValue('BridgesEmail', ini.ReadString('UserOverrides', 'BridgesEmail', BRIDGES_EMAIL));
-      DefaultsDic.AddOrSetValue('BridgesSite', ini.ReadString('UserOverrides', 'BridgesSite', BRIDGES_SITE));
-      DefaultsDic.AddOrSetValue('CheckUrl', ini.ReadString('UserOverrides', 'CheckUrl', CHECK_URL));
-      DefaultsDic.AddOrSetValue('DownloadUrl', ini.ReadString('UserOverrides', 'DownloadUrl', DOWNLOAD_URL));
-      DefaultsDic.AddOrSetValue('MetricsUrl', ini.ReadString('UserOverrides', 'MetricsUrl', METRICS_URL));
+      DefaultsDic.AddOrSetValue('BridgesBot', GetSettings('UserOverrides', 'BridgesBot', BRIDGES_BOT, ini));
+      DefaultsDic.AddOrSetValue('BridgesEmail', GetSettings('UserOverrides', 'BridgesEmail', BRIDGES_EMAIL, ini));
+      DefaultsDic.AddOrSetValue('BridgesSite', GetSettings('UserOverrides', 'BridgesSite', BRIDGES_SITE, ini));
+      DefaultsDic.AddOrSetValue('CheckUrl', GetSettings('UserOverrides', 'CheckUrl', CHECK_URL, ini));
+      DefaultsDic.AddOrSetValue('DownloadUrl', GetSettings('UserOverrides', 'DownloadUrl', DOWNLOAD_URL, ini));
+      DefaultsDic.AddOrSetValue('MetricsUrl', GetSettings('UserOverrides', 'MetricsUrl', METRICS_URL, ini));
     finally
       ini.Free;
     end;
@@ -5393,7 +5401,7 @@ begin
   ini.EraseSection('Transports');
 
   if ReloadServerTransport then
-    ServerTransport := ini.ReadString('Server', 'BridgeType', '')
+    ServerTransport := GetSettings('Server', 'BridgeType', '', ini)
   else
     ServerTransport := cbxBridgeType.Text;
 
@@ -5449,12 +5457,12 @@ begin
       if Params <> '' then
         Params := '|' + Params;
 
-      ini.WriteString('Transports', IntToStr(i - 1),
-        Transports + '|' + Handler + '|' + IntToStr(TransportID) + Params);
+      SetSettings('Transports', IntToStr(i - 1),
+        Transports + '|' + Handler + '|' + IntToStr(TransportID) + Params, ini);
     end;
   end;
   cbxBridgeType.ItemIndex := GetIntDef(cbxBridgeType.Items.IndexOf(ServerTransport), 0, 0, MAXINT);
-  ini.WriteString('Server', 'BridgeType', cbxBridgeType.Text);
+  SetSettings('Server', cbxBridgeType, ini, False);
   ServerIsObfs4 := cbxBridgeType.Text = 'obfs4';
 end;
 
@@ -5584,14 +5592,13 @@ begin
   begin
     ini.EraseSection('Bridges');
     for i := 0 to meBridges.Lines.Count - 1 do
-      ini.WriteString('Bridges', IntToStr(i), meBridges.Lines[i]);
+      SetSettings('Bridges', IntToStr(i), meBridges.Lines[i], ini);
   end;
-
-  ini.WriteBool('Network', 'UseBridges', cbUseBridges.Checked);
-  ini.WriteString('Network', 'BridgesList', cbxBridgesList.Text);
-  ini.WriteInteger('Network', 'BridgesType', cbxBridgesType.ItemIndex);
-  ini.WriteBool('Network', 'UsePreferredBridge', cbUsePreferredBridge.Checked);
-  ini.WriteString('Network', 'PreferredBridge', edPreferredBridge.Text);
+  SetSettings('Network', cbUseBridges, ini);
+  SetSettings('Network', cbUsePreferredBridge, ini);
+  SetSettings('Network', cbxBridgesList, ini, False);
+  SetSettings('Network', cbxBridgesType, ini);
+  SetSettings('Network', edPreferredBridge, ini);
   BridgesCheckControls;
 end;
 
@@ -5632,12 +5639,12 @@ begin
   end
   else
     cbUseProxy.Checked := False;
-  ini.WriteBool('Network', 'UseProxy', cbUseProxy.Checked);
-  ini.WriteInteger('Network', 'ProxyType', cbxProxyType.ItemIndex);
-  ini.WriteString('Network', 'ProxyAddress', FormatHost(edProxyAddress.Text));
-  ini.WriteInteger('Network', 'ProxyPort', udProxyPort.Position);
-  ini.WriteString('Network', 'ProxyUser', edProxyUser.Text);
-  ini.WriteString('Network', 'ProxyPassword', edProxyPassword.Text);
+  SetSettings('Network', cbUseProxy, ini);
+  SetSettings('Network', cbxProxyType, ini);
+  SetSettings('Network', edProxyAddress, ini, True);
+  SetSettings('Network', udProxyPort, ini);
+  SetSettings('Network', edProxyUser, ini);
+  SetSettings('Network', edProxyPassword, ini);
 end;
 
 procedure TTcp.SaveReachableAddresses(ini: TMemIniFile);
@@ -5673,8 +5680,8 @@ begin
       cbUseReachableAddresses.Checked := False;
       edReachableAddresses.Text := DEFAULT_ALLOWED_PORTS;
     end;
-    ini.WriteBool('Network', 'UseReachableAddresses', cbUseReachableAddresses.Checked);
-    ini.WriteString('Network', 'ReachableAddresses', edReachableAddresses.Text);
+    SetSettings('Network', cbUseReachableAddresses, ini);
+    SetSettings('Network', edReachableAddresses, ini);
   finally
     AllowedPorts.Free;
   end;
@@ -5696,8 +5703,8 @@ begin
   Update := False;
 
   ParamStr := StringReplace(PortControl.Name, 'ud', '', [rfIgnoreCase]);
-  Port := GetIntDef(ini.ReadInteger('Network', ParamStr, PortControl.ResetValue), PortControl.ResetValue, PortControl.Min, PortControl.Max);
-  Host := RemoveBrackets(ini.ReadString('Network', StringReplace(HostControl.Name, 'cbx', '', [rfIgnoreCase]), LOOPBACK_ADDRESS), True);
+  Port := GetIntDef(GetSettings('Network', ParamStr, PortControl.ResetValue, ini), PortControl.ResetValue, PortControl.Min, PortControl.Max);
+  Host := RemoveBrackets(GetSettings('Network', StringReplace(HostControl.Name, 'cbx', '', [rfIgnoreCase]), LOOPBACK_ADDRESS, ini), True);
   if (ValidAddress(Host) = 0) or (HostControl.Items.IndexOf(Host) = -1) then
     Host := LOOPBACK_ADDRESS;
 
@@ -5773,7 +5780,7 @@ begin
     if UpdateControls then
     begin
       miCheckIpProxyAuto.Checked := True;
-      ini.WriteInteger('Network', 'CheckIpProxyType', 0);
+      SetSettings('Network', 'CheckIpProxyType', 0, ini);
     end;
   end;
 end;
@@ -5815,18 +5822,18 @@ begin
   LoadUserOverrides;
   ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
   try
-    cbxLanguage.ItemIndex := cbxLanguage.Items.IndexOfObject(TObject(Integer(ini.ReadInteger('Main', 'Language', GetLangList))));
+    cbxLanguage.ItemIndex := cbxLanguage.Items.IndexOfObject(TObject(Integer(GetSettings('Main', 'Language', GetLangList, ini))));
     cbxLanguage.ResetValue := cbxLanguage.Items.IndexOf('Русский');
     if cbxLanguage.ItemIndex = -1 then
     begin
       cbxLanguage.ItemIndex := cbxLanguage.ResetValue;
-      ini.WriteInteger('Main', 'Language', 1049);
+      SetSettings('Main', 'Language', 1049, ini);
     end;
     cbxLanguage.Tag := cbxLanguage.ItemIndex;
     if FirstLoad then
       Translate(cbxLanguage.Text);
 
-    LoadThemesList(cbxThemes, ini.ReadString('Main', 'Theme', 'Windows'));
+    LoadThemesList(cbxThemes, GetSettings('Main', 'Theme', 'Windows', ini));
     LoadStyle(cbxThemes);
     SetIconsColor;
 
@@ -5837,115 +5844,115 @@ begin
     end;
     CheckRequiredFiles;
 
-    LoadSettings('Main', cbConnectOnStartup, ini);
-    LoadSettings('Main', cbRestartOnControlFail, ini);
-    LoadSettings('Main', cbMinimizeOnClose, ini);
-    LoadSettings('Main', cbMinimizeOnStartup, ini);
-    LoadSettings('Main', cbShowBalloonHint, ini);
-    LoadSettings('Main', cbShowBalloonOnlyWhenHide, ini);
-    LoadSettings('Main', cbStayOnTop, ini);
-    LoadSettings('Main', cbNoDesktopBorders, ini);
-    LoadSettings('Main', cbNoDesktopBordersOnlyEnlarged, ini);
-    LoadSettings('Main', cbHideIPv6Addreses, ini);
-    LoadSettings('Main', cbUseNetworkCache, ini);
-    LoadSettings('Main', cbUseOpenDNS, ini);
-    LoadSettings('Main', cbUseOpenDNSOnlyWhenUnknown, ini);
-    LoadSettings('Main', cbRememberEnlargedPosition, ini);
-    LoadSettings('Main', cbClearPreviousSearchQuery, ini);
+    GetSettings('Main', cbConnectOnStartup, ini);
+    GetSettings('Main', cbRestartOnControlFail, ini);
+    GetSettings('Main', cbMinimizeOnClose, ini);
+    GetSettings('Main', cbMinimizeOnStartup, ini);
+    GetSettings('Main', cbShowBalloonHint, ini);
+    GetSettings('Main', cbShowBalloonOnlyWhenHide, ini);
+    GetSettings('Main', cbStayOnTop, ini);
+    GetSettings('Main', cbNoDesktopBorders, ini);
+    GetSettings('Main', cbNoDesktopBordersOnlyEnlarged, ini);
+    GetSettings('Main', cbHideIPv6Addreses, ini);
+    GetSettings('Main', cbUseNetworkCache, ini);
+    GetSettings('Main', cbUseOpenDNS, ini);
+    GetSettings('Main', cbUseOpenDNSOnlyWhenUnknown, ini);
+    GetSettings('Main', cbRememberEnlargedPosition, ini);
+    GetSettings('Main', cbClearPreviousSearchQuery, ini);
 
-    LoadSettings('Log', miWriteLogFile, ini);
-    LoadSettings('Log', miAutoScroll, ini);
-    LoadSettings('Log', miWordWrap, ini, False);
-    LoadSettings('Log', miAutoClear, ini);
+    GetSettings('Log', miWriteLogFile, ini);
+    GetSettings('Log', miAutoScroll, ini);
+    GetSettings('Log', miWordWrap, ini, False);
+    GetSettings('Log', miAutoClear, ini);
 
-    LoadSettings('Network', miPreferWebTelegram, ini);
-    LoadSettings('Network', miRequestIPv6Bridges, ini, False);
-    LoadSettings('Network', miRequestObfuscatedBridges, ini);
+    GetSettings('Network', miPreferWebTelegram, ini);
+    GetSettings('Network', miRequestIPv6Bridges, ini, False);
+    GetSettings('Network', miRequestObfuscatedBridges, ini);
 
-    LoadSettings('Lists', cbUseHiddenServiceVanguards, ini);
-    LoadSettings('Lists', cbxVanguardLayerType, ini);
+    GetSettings('Lists', cbUseHiddenServiceVanguards, ini);
+    GetSettings('Lists', cbxVanguardLayerType, ini);
 
-    LoadSettings('Filter', miFilterHideUnused, ini);
-    LoadSettings('Filter', miFilterScrollTop, ini);
-    LoadSettings('Filter', miFilterSelectRow, ini);
-    LoadSettings('Filter', miIgnoreTplLoadParamsOutsideTheFilter, ini);
-    LoadSettings('Filter', miNotLoadEmptyTplData, ini, False);
-    LoadSettings('Filter', miReplaceDisabledFavoritesWithCountries, ini);
-    LoadSettings('Filter', miExcludeBridgesWhenCounting, ini, False);
+    GetSettings('Filter', miFilterHideUnused, ini);
+    GetSettings('Filter', miFilterScrollTop, ini);
+    GetSettings('Filter', miFilterSelectRow, ini);
+    GetSettings('Filter', miIgnoreTplLoadParamsOutsideTheFilter, ini);
+    GetSettings('Filter', miNotLoadEmptyTplData, ini, False);
+    GetSettings('Filter', miReplaceDisabledFavoritesWithCountries, ini);
+    GetSettings('Filter', miExcludeBridgesWhenCounting, ini, False);
 
-    LoadSettings('Routers', miRoutersScrollTop, ini);
-    LoadSettings('Routers', miRoutersSelectRow, ini);
-    LoadSettings('Routers', miShowFlagsHint, ini);
-    LoadSettings('Routers', miDisableSelectionUnSuitableAsBridge, ini);
-    LoadSettings('Routers', miDisableFiltersOnAuthorityOrBridge, ini);
-    LoadSettings('Routers', miLoadCachedRoutersOnStartup, ini);
-    LoadSettings('Routers', miDisableFiltersOnUserQuery, ini);
-    LoadSettings('Routers', miEnableConvertNodesOnIncorrectClear, ini);
-    LoadSettings('Routers', miEnableConvertNodesOnAddToNodesList, ini);
-    LoadSettings('Routers', miEnableConvertNodesOnRemoveFromNodesList, ini);
-    LoadSettings('Routers', miConvertIpNodes, ini);
-    LoadSettings('Routers', miConvertCidrNodes, ini);
-    LoadSettings('Routers', miConvertCountryNodes, ini);
-    LoadSettings('Routers', miIgnoreConvertExcludeNodes, ini);
-    LoadSettings('Routers', miAvoidAddingIncorrectNodes, ini);
+    GetSettings('Routers', miRoutersScrollTop, ini);
+    GetSettings('Routers', miRoutersSelectRow, ini);
+    GetSettings('Routers', miShowFlagsHint, ini);
+    GetSettings('Routers', miDisableSelectionUnSuitableAsBridge, ini);
+    GetSettings('Routers', miDisableFiltersOnAuthorityOrBridge, ini);
+    GetSettings('Routers', miLoadCachedRoutersOnStartup, ini);
+    GetSettings('Routers', miDisableFiltersOnUserQuery, ini);
+    GetSettings('Routers', miEnableConvertNodesOnIncorrectClear, ini);
+    GetSettings('Routers', miEnableConvertNodesOnAddToNodesList, ini);
+    GetSettings('Routers', miEnableConvertNodesOnRemoveFromNodesList, ini);
+    GetSettings('Routers', miConvertIpNodes, ini);
+    GetSettings('Routers', miConvertCidrNodes, ini);
+    GetSettings('Routers', miConvertCountryNodes, ini);
+    GetSettings('Routers', miIgnoreConvertExcludeNodes, ini);
+    GetSettings('Routers', miAvoidAddingIncorrectNodes, ini);
 
-    LoadSettings('Circuits', miHideCircuitsWithoutStreams, ini, False);
-    LoadSettings('Circuits', miAlwaysShowExitCircuit, ini);
-    LoadSettings('Circuits', miSelectExitCircuitWhetItChanges, ini);
-    LoadSettings('Circuits', miShowCircuitsTraffic, ini);
-    LoadSettings('Circuits', miShowStreamsTraffic, ini);
-    LoadSettings('Circuits', miShowStreamsInfo, ini);
+    GetSettings('Circuits', miHideCircuitsWithoutStreams, ini, False);
+    GetSettings('Circuits', miAlwaysShowExitCircuit, ini);
+    GetSettings('Circuits', miSelectExitCircuitWhetItChanges, ini);
+    GetSettings('Circuits', miShowCircuitsTraffic, ini);
+    GetSettings('Circuits', miShowStreamsTraffic, ini);
+    GetSettings('Circuits', miShowStreamsInfo, ini);
 
-    LoadSettings('Scanner', cbEnablePingMeasure, ini);
-    LoadSettings('Scanner', cbEnableDetectAliveNodes, ini);
-    LoadSettings('Scanner', cbAutoScanNewNodes, ini);
-    LoadSettings('Scanner', miManualPingMeasure, ini);
-    LoadSettings('Scanner', miManualDetectAliveNodes, ini);
-    LoadSettings('Scanner', udScanPortTimeout, ini);
-    LoadSettings('Scanner', udScanPingTimeout, ini);
-    LoadSettings('Scanner', udScanPortionTimeout, ini);
-    LoadSettings('Scanner', udDelayBetweenAttempts, ini);
-    LoadSettings('Scanner', udScanPingAttempts, ini);
-    LoadSettings('Scanner', udScanPortAttempts, ini);
-    LoadSettings('Scanner', udScanMaxThread, ini);
-    LoadSettings('Scanner', udScanPortionSize, ini);
-    LoadSettings('Scanner', udFullScanInterval, ini);
-    LoadSettings('Scanner', udNonResponsedScanInterval, ini);
-    LoadSettings('Scanner', udPartialScansCounts, ini);
-    LoadSettings('Scanner', cbxAutoScanType, ini);
+    GetSettings('Scanner', cbEnablePingMeasure, ini);
+    GetSettings('Scanner', cbEnableDetectAliveNodes, ini);
+    GetSettings('Scanner', cbAutoScanNewNodes, ini);
+    GetSettings('Scanner', miManualPingMeasure, ini);
+    GetSettings('Scanner', miManualDetectAliveNodes, ini);
+    GetSettings('Scanner', udScanPortTimeout, ini);
+    GetSettings('Scanner', udScanPingTimeout, ini);
+    GetSettings('Scanner', udScanPortionTimeout, ini);
+    GetSettings('Scanner', udDelayBetweenAttempts, ini);
+    GetSettings('Scanner', udScanPingAttempts, ini);
+    GetSettings('Scanner', udScanPortAttempts, ini);
+    GetSettings('Scanner', udScanMaxThread, ini);
+    GetSettings('Scanner', udScanPortionSize, ini);
+    GetSettings('Scanner', udFullScanInterval, ini);
+    GetSettings('Scanner', udNonResponsedScanInterval, ini);
+    GetSettings('Scanner', udPartialScansCounts, ini);
+    GetSettings('Scanner', cbxAutoScanType, ini);
 
-    LoadSettings('AutoSelNodes', cbxAutoSelPriority, ini);
-    LoadSettings('AutoSelNodes', udAutoSelEntryCount, ini);
-    LoadSettings('AutoSelNodes', udAutoSelMiddleCount, ini);
-    LoadSettings('AutoSelNodes', udAutoSelExitCount, ini);
-    LoadSettings('AutoSelNodes', udAutoSelMinWeight, ini);
-    LoadSettings('AutoSelNodes', udAutoSelMaxPing, ini);
-    LoadSettings('AutoSelNodes', cbAutoSelStableOnly, ini);
-    LoadSettings('AutoSelNodes', cbAutoSelFilterCountriesOnly, ini);
-    LoadSettings('AutoSelNodes', cbAutoSelUniqueNodes, ini);
-    LoadSettings('AutoSelNodes', cbAutoSelNodesWithPingOnly, ini);
-    LoadSettings('AutoSelNodes', cbAutoSelMiddleNodesWithoutDir, ini);
+    GetSettings('AutoSelNodes', cbxAutoSelPriority, ini);
+    GetSettings('AutoSelNodes', udAutoSelEntryCount, ini);
+    GetSettings('AutoSelNodes', udAutoSelMiddleCount, ini);
+    GetSettings('AutoSelNodes', udAutoSelExitCount, ini);
+    GetSettings('AutoSelNodes', udAutoSelMinWeight, ini);
+    GetSettings('AutoSelNodes', udAutoSelMaxPing, ini);
+    GetSettings('AutoSelNodes', cbAutoSelStableOnly, ini);
+    GetSettings('AutoSelNodes', cbAutoSelFilterCountriesOnly, ini);
+    GetSettings('AutoSelNodes', cbAutoSelUniqueNodes, ini);
+    GetSettings('AutoSelNodes', cbAutoSelNodesWithPingOnly, ini);
+    GetSettings('AutoSelNodes', cbAutoSelMiddleNodesWithoutDir, ini);
 
     CheckAutoSelControls;
 
-    LoadSettings('Status', miSelectGraphDL, ini);
-    LoadSettings('Status', miSelectGraphUL, ini);
-    CurrentTrafficPeriod := GetIntDef(ini.ReadInteger('Status', 'CurrentTrafficPeriod', 1), 1, 0, 8);
+    GetSettings('Status', miSelectGraphDL, ini);
+    GetSettings('Status', miSelectGraphUL, ini);
+    CurrentTrafficPeriod := GetIntDef(GetSettings('Status', 'CurrentTrafficPeriod', 1, ini), 1, 0, 8);
     miTrafficPeriod.items[CurrentTrafficPeriod].Checked := True;
 
-    LastFullScanDate := ini.ReadInt64('Scanner', 'LastFullScanDate', 0);
-    LastNonResponsedScanDate := ini.ReadInt64('Scanner', 'LastNonResponsedScanDate', 0);
-    LastPartialScansCounts := ini.ReadInteger('Scanner', 'LastPartialScansCounts', 0);
+    LastFullScanDate := GetSettings('Scanner', 'LastFullScanDate', 0, ini);
+    LastNonResponsedScanDate := GetSettings('Scanner', 'LastNonResponsedScanDate', 0, ini);
+    LastPartialScansCounts := GetSettings('Scanner', 'LastPartialScansCounts', 0, ini);
 
-    LastGeoIpUpdateDate := ini.ReadInt64('Main', 'LastGeoIpUpdateDate', 0);
+    LastGeoIpUpdateDate := GetSettings('Main', 'LastGeoIpUpdateDate', 0, ini);
     if (LastGeoIpUpdateDate = 0) and not FileExists(NetworkCacheFile) then
     begin
       FileAge(GeoIpFile, GeoIpDate);
       LastGeoIpUpdateDate := DateTimeToUnix(GeoIpDate);
-      ini.WriteInt64('Main', 'LastGeoIpUpdateDate', LastGeoIpUpdateDate);
+      SetSettings('Main', 'LastGeoIpUpdateDate', LastGeoIpUpdateDate, ini);
     end;
 
-    tmCircuits.Interval := GetIntDef(ini.ReadInteger('Circuits', 'UpdateInterval', 1000), 1000, 0, 4000);
+    tmCircuits.Interval := GetIntDef(GetSettings('Circuits', 'UpdateInterval', 1000, ini), 1000, 0, 4000);
     case tmCircuits.Interval of
       0: miCircuitsUpdateManual.Checked := True;
       500: miCircuitsUpdateHigh.Checked := True;
@@ -5958,23 +5965,23 @@ begin
       end;
     end;
 
-    IntToMenu(miCircuitFilter, ini.ReadInteger('Circuits', 'PurposeFilter', CIRCUIT_FILTER_DEFAULT));
-    IntToMenu(miTplSave, ini.ReadInteger('Filter', 'TplSave', TPL_MENU_DEFAULT));
-    IntToMenu(miTplLoad, ini.ReadInteger('Filter', 'TplLoad', TPL_MENU_DEFAULT));
-    IntToMenu(miAutoSelNodesType, ini.ReadInteger('AutoSelNodes', 'AutoSelNodesType', AUTOSEL_NODES_DEFAULT));
+    IntToMenu(miCircuitFilter, GetSettings('Circuits', 'PurposeFilter', CIRCUIT_FILTER_DEFAULT, ini));
+    IntToMenu(miTplSave, GetSettings('Filter', 'TplSave', TPL_MENU_DEFAULT, ini));
+    IntToMenu(miTplLoad, GetSettings('Filter', 'TplLoad', TPL_MENU_DEFAULT, ini));
+    IntToMenu(miAutoSelNodesType, GetSettings('AutoSelNodes', 'AutoSelNodesType', AUTOSEL_NODES_DEFAULT, ini));
 
     CheckSelectRowOptions(sgFilter, miFilterSelectRow.Checked);
     CheckSelectRowOptions(sgRouters, miRoutersSelectRow.Checked);
 
-    ParseStr := Explode(',', ini.ReadString('Main', 'SortData',
+    ParseStr := Explode(',', GetSettings('Main', 'SortData',
       Format('%d,%d,%d,%d,%d,%d,%d,%d,%d,%d', [
         SORT_DESC, FILTER_TOTAL,
         SORT_DESC, ROUTER_WEIGHT,
         SORT_DESC, CIRC_ID,
         SORT_DESC, STREAMS_ID,
         SORT_DESC, STREAMS_INFO_ID
-      ])
-    ));
+      ]),
+    ini));
     for i := 0 to Length(ParseStr) - 1 do
       case i of
         0: sgFilter.SortType := StrToIntDef(ParseStr[i], SORT_DESC);
@@ -5989,23 +5996,23 @@ begin
         9: sgStreamsInfo.SortCol := StrToIntDef(ParseStr[i], STREAMS_INFO_ID);
       end;
 
-    LoadSettings('Network', cbUseProxy, ini);
-    LoadSettings('Network', cbxProxyType, ini, PROXY_TYPE_SOCKS5);
-    LoadSettings('Network', edProxyAddress, ini);
-    LoadSettings('Network', udProxyPort, ini);
-    LoadSettings('Network', edProxyUser, ini);
-    LoadSettings('Network', edProxyPassword, ini);
+    GetSettings('Network', cbUseProxy, ini);
+    GetSettings('Network', cbxProxyType, ini, PROXY_TYPE_SOCKS5);
+    GetSettings('Network', edProxyAddress, ini);
+    GetSettings('Network', udProxyPort, ini);
+    GetSettings('Network', edProxyUser, ini);
+    GetSettings('Network', edProxyPassword, ini);
     SaveProxyData(ini);
 
-    LoadSettings('Network', edReachableAddresses, ini);
-    LoadSettings('Network', cbUseReachableAddresses, ini);
+    GetSettings('Network', edReachableAddresses, ini);
+    GetSettings('Network', cbUseReachableAddresses, ini);
     SaveReachableAddresses(ini);
 
     meLog.WordWrap := miWordWrap.Checked;
-    SeparateType := GetIntDef(ini.ReadInteger('Log', 'SeparateType', 1), 1, 0, 2);
+    SeparateType := GetIntDef(GetSettings('Log', 'SeparateType', 1, ini), 1, 0, 2);
     miLogSeparate.items[SeparateType].Checked := True;
     TorLogFile := GetLogFileName(SeparateType);
-    ScrollBars := GetIntDef(ini.ReadInteger('Log', 'ScrollBars', 0), 0, 0, 3);
+    ScrollBars := GetIntDef(GetSettings('Log', 'ScrollBars', 0, ini), 0, 0, 3);
     miScrollBars.items[ScrollBars].Checked := True;
     SetLogScrollBar(ScrollBars);
     LogID := GetArrayIndex(LogLevels, AnsiLowerCase(SeparateLeft(GetTorConfig('Log', 'notice stdout', [cfAutoAppend]), ' ')));
@@ -6017,12 +6024,12 @@ begin
       SetTorConfig('Log', 'notice stdout');
     end;
 
-    ControlPassword := ini.ReadString('Main', 'ControlPassword', '');
-    Temp := ini.ReadString('Main', 'HashedControlPassword', '');
+    ControlPassword := GetSettings('Main', 'ControlPassword', '', ini);
+    Temp := GetSettings('Main', 'HashedControlPassword', '', ini);
     if Temp = '' then
     begin
       ControlPassword := '';
-      ini.WriteString('Main', 'ControlPassword', '');
+      SetSettings('Main', 'ControlPassword', '', ini);
     end;
     if (ControlPassword = '')then
     begin
@@ -6043,19 +6050,19 @@ begin
     end;
     CheckAuthMetodContols;
 
-    LoadSettings(miSafeLogging);
-    LoadSettings(cbLearnCircuitBuildTimeout);
-    LoadSettings(cbAvoidDiskWrites);
-    LoadSettings(cbStrictNodes, [cfBoolInvert]);
-    LoadSettings(cbEnforceDistinctSubnets);
-    LoadSettings(udMaxCircuitDirtiness);
-    LoadSettings(udCircuitBuildTimeout);
-    LoadSettings(udNewCircuitPeriod);
-    LoadSettings(udMaxClientCircuitsPending);
-    LoadSettings(udControlPort, [cfAutoAppend]);
+    GetSettings(miSafeLogging);
+    GetSettings(cbLearnCircuitBuildTimeout);
+    GetSettings(cbAvoidDiskWrites);
+    GetSettings(cbStrictNodes, [cfBoolInvert]);
+    GetSettings(cbEnforceDistinctSubnets);
+    GetSettings(udMaxCircuitDirtiness);
+    GetSettings(udCircuitBuildTimeout);
+    GetSettings(udNewCircuitPeriod);
+    GetSettings(udMaxClientCircuitsPending);
+    GetSettings(udControlPort, [cfAutoAppend]);
 
-    miCheckIpProxyType.Items[GetIntDef(ini.ReadInteger('Network', 'CheckIpProxyType', 0), 0, 0, 2)].Checked := True;
-    LoadProxyPorts(udSOCKSPort, cbxSocksHost, cbEnableSocks, ini);
+    miCheckIpProxyType.Items[GetIntDef(GetSettings('Network', 'CheckIpProxyType', 0, ini), 0, 0, 2)].Checked := True;
+    LoadProxyPorts(udSOCKSPort, cbxSOCKSHost, cbEnableSocks, ini);
     LoadProxyPorts(udHttpTunnelPort, cbxHttpTunnelHost, cbEnableHttp, ini);
     UpdateUsedProxyTypes(ini);
 
@@ -6073,29 +6080,29 @@ begin
     else
       ResetTransports;
 
-    LoadSettings('Network', cbUseBridges, ini);
-    LoadSettings('Network', cbUsePreferredBridge, ini);
-    LoadSettings('Network', cbxBridgesType, ini);
-    LoadSettings('Network', edPreferredBridge, ini);
-    LoadBuiltinBridges(cbxBridgesType.ItemIndex = BRIDGES_TYPE_BUILTIN, True, ini.ReadString('Network', 'BridgesList', ''));
+    GetSettings('Network', cbUseBridges, ini);
+    GetSettings('Network', cbUsePreferredBridge, ini);
+    GetSettings('Network', cbxBridgesType, ini);
+    GetSettings('Network', edPreferredBridge, ini);
+    LoadBuiltinBridges(cbxBridgesType.ItemIndex = BRIDGES_TYPE_BUILTIN, True, GetSettings('Network', 'BridgesList', '', ini));
     if cbxBridgesType.ItemIndex = BRIDGES_TYPE_USER then
       LoadUserBridges(ini);
     SaveBridgesData(ini);
 
-    LoadSettings('Filter', cbxFilterMode, ini, FILTER_TYPE_COUNTRIES);
-    FilterEntry := ini.ReadString('Filter', 'EntryNodes', DEFAULT_ENTRY_NODES);
-    FilterMiddle := ini.ReadString('Filter', 'MiddleNodes', DEFAULT_MIDDLE_NODES);
-    FilterExit := ini.ReadString('Filter', 'ExitNodes', DEFAULT_EXIT_NODES);
+    GetSettings('Filter', cbxFilterMode, ini, FILTER_TYPE_COUNTRIES);
+    FilterEntry := GetSettings('Filter', 'EntryNodes', DEFAULT_ENTRY_NODES, ini);
+    FilterMiddle := GetSettings('Filter', 'MiddleNodes', DEFAULT_MIDDLE_NODES, ini);
+    FilterExit := GetSettings('Filter', 'ExitNodes', DEFAULT_EXIT_NODES, ini);
     if not FirstLoad then
       ClearFilter(ntNone);
     GetNodes(FilterEntry, ntEntry, False, ini);
     GetNodes(FilterMiddle, ntMiddle, False, ini);
     GetNodes(FilterExit, ntExit, False, ini);
 
-    FavoritesEntry := ini.ReadString('Routers', 'EntryNodes', '');
-    FavoritesMiddle := ini.ReadString('Routers', 'MiddleNodes', '');
-    FavoritesExit := ini.ReadString('Routers', 'ExitNodes', '');
-    ExcludeNodes := ini.ReadString('Routers', 'ExcludeNodes', '');
+    FavoritesEntry := GetSettings('Routers', 'EntryNodes', '', ini);
+    FavoritesMiddle := GetSettings('Routers', 'MiddleNodes', '', ini);
+    FavoritesExit := GetSettings('Routers', 'ExitNodes', '', ini);
+    ExcludeNodes := GetSettings('Routers', 'ExcludeNodes', '', ini);
     if not FirstLoad then
       ClearRouters;
     GetNodes(FavoritesEntry, ntEntry, True, ini);
@@ -6106,12 +6113,12 @@ begin
     CalculateTotalNodes;
     CalculateFilterNodes;
 
-    lbFavoritesEntry.HelpContext := GetIntDef(ini.ReadInteger('Lists', 'UseFavoritesEntry', 0), 0, 0, 1);
-    lbFavoritesMiddle.HelpContext := GetIntDef(ini.ReadInteger('Lists', 'UseFavoritesMiddle', 0), 0, 0, 1);
-    lbFavoritesExit.HelpContext := GetIntDef(ini.ReadInteger('Lists', 'UseFavoritesExit', 0), 0, 0, 1);
-    lbExcludeNodes.HelpContext := GetIntDef(ini.ReadInteger('Lists', 'UseExcludeNodes', 0), 0, 0, 1);
+    lbFavoritesEntry.HelpContext := GetIntDef(GetSettings('Lists', 'UseFavoritesEntry', 0, ini), 0, 0, 1);
+    lbFavoritesMiddle.HelpContext := GetIntDef(GetSettings('Lists', 'UseFavoritesMiddle', 0, ini), 0, 0, 1);
+    lbFavoritesExit.HelpContext := GetIntDef(GetSettings('Lists', 'UseFavoritesExit', 0, ini), 0, 0, 1);
+    lbExcludeNodes.HelpContext := GetIntDef(GetSettings('Lists', 'UseExcludeNodes', 0, ini), 0, 0, 1);
 
-    LoadSettings('Lists', cbxNodesListType, ini, NL_TYPE_EXLUDE);
+    GetSettings('Lists', cbxNodesListType, ini, NL_TYPE_EXLUDE);
     case cbxNodesListType.ItemIndex of
       NL_TYPE_ENTRY: LoadNodesList(False, FavoritesEntry);
       NL_TYPE_MIDDLE: LoadNodesList(False, FavoritesMiddle);
@@ -6123,46 +6130,46 @@ begin
     CheckVanguards(True);
 
     SetNodes(FilterEntry, FilterMiddle, FilterExit, FavoritesEntry, FavoritesMiddle, FavoritesExit, ExcludeNodes);
-    ini.WriteInteger('Filter', 'FilterMode', cbxFilterMode.ItemIndex);
+    SetSettings('Filter', cbxFilterMode, ini);
 
     UpdateSystemInfo;
-    LoadSettings('Server', edNickname, ini);
-    LoadSettings('Server', edContactInfo, ini);
-    LoadSettings('Server', edAddress, ini);
-    LoadSettings('Server', cbxServerMode, ini);
-    LoadSettings('Server', udORPort, ini);
-    LoadSettings('Server', udDirPort, ini);
-    LoadSettings('Server', cbUseDirPort, ini);
-    LoadSettings('Server', cbDirCache, ini);
-    LoadSettings('Server', cbListenIPv6, ini);
-    LoadSettings('Server', cbUseAddress, ini);
-    LoadSettings('Server', udNumCPUs, ini);
-    LoadSettings('Server', udTransportPort, ini);
-    LoadSettings('Server', cbUseNumCPUs, ini);
-    LoadSettings('Server', cbUseMaxMemInQueues, ini);
-    LoadSettings('Server', udMaxMemInQueues, ini);
-    LoadSettings('Server', cbUseRelayBandwidth, ini);
-    LoadSettings('Server', udRelayBandwidthRate, ini);
-    LoadSettings('Server', udRelayBandwidthBurst, ini);
-    LoadSettings('Server', udMaxAdvertisedBandwidth,ini);
-    LoadSettings('Server', cbUseUPnP, ini);
-    LoadSettings('Server', cbIPv6Exit, ini);
-    LoadSettings('Server', cbPublishServerDescriptor, ini);
-    LoadSettings('Server', cbDirReqStatistics, ini);
-    LoadSettings('Server', cbHiddenServiceStatistics, ini);
-    LoadSettings('Server', cbAssumeReachable, ini);
-    LoadSettings('Server', cbUseMyFamily, ini);
-    LoadSettings('Server', cbxBridgeDistribution, ini);
-    LoadSettings('Server', cbxExitPolicyType, ini);
-    LineToMemo(ini.ReadString('Server', 'CustomExitPolicy', DEFAULT_CUSTOM_EXIT_POLICY), meExitPolicy, ltPolicy);
-    LineToMemo(ini.ReadString('Server', 'MyFamily', ''), meMyFamily, ltHash, True);
+    GetSettings('Server', edNickname, ini);
+    GetSettings('Server', edContactInfo, ini);
+    GetSettings('Server', edAddress, ini);
+    GetSettings('Server', cbxServerMode, ini);
+    GetSettings('Server', udORPort, ini);
+    GetSettings('Server', udDirPort, ini);
+    GetSettings('Server', cbUseDirPort, ini);
+    GetSettings('Server', cbDirCache, ini);
+    GetSettings('Server', cbListenIPv6, ini);
+    GetSettings('Server', cbUseAddress, ini);
+    GetSettings('Server', udNumCPUs, ini);
+    GetSettings('Server', udTransportPort, ini);
+    GetSettings('Server', cbUseNumCPUs, ini);
+    GetSettings('Server', cbUseMaxMemInQueues, ini);
+    GetSettings('Server', udMaxMemInQueues, ini);
+    GetSettings('Server', cbUseRelayBandwidth, ini);
+    GetSettings('Server', udRelayBandwidthRate, ini);
+    GetSettings('Server', udRelayBandwidthBurst, ini);
+    GetSettings('Server', udMaxAdvertisedBandwidth,ini);
+    GetSettings('Server', cbUseUPnP, ini);
+    GetSettings('Server', cbIPv6Exit, ini);
+    GetSettings('Server', cbPublishServerDescriptor, ini);
+    GetSettings('Server', cbDirReqStatistics, ini);
+    GetSettings('Server', cbHiddenServiceStatistics, ini);
+    GetSettings('Server', cbAssumeReachable, ini);
+    GetSettings('Server', cbUseMyFamily, ini);
+    GetSettings('Server', cbxBridgeDistribution, ini);
+    GetSettings('Server', cbxExitPolicyType, ini);
+    LineToMemo(GetSettings('Server', 'CustomExitPolicy', DEFAULT_CUSTOM_EXIT_POLICY, ini), meExitPolicy, ltPolicy);
+    LineToMemo(GetSettings('Server', 'MyFamily', '', ini), meMyFamily, ltHash, True);
     SaveServerOptions(ini);
 
     SaveTransportsData(ini, True);
 
-    LoadSettings('Lists', cbUseTrackHostExits, ini);
-    LoadSettings('Lists', udTrackHostExitsExpire, ini);
-    LineToMemo(ini.ReadString('Lists', 'TrackHostExits', ''), meTrackHostExits, ltHost, True);
+    GetSettings('Lists', cbUseTrackHostExits, ini);
+    GetSettings('Lists', udTrackHostExitsExpire, ini);
+    LineToMemo(GetSettings('Lists', 'TrackHostExits', '', ini), meTrackHostExits, ltHost, True);
     SaveTrackHostExits(ini);
 
     CheckServerControls;
@@ -6184,35 +6191,35 @@ begin
     end;
     SaveHiddenServices(ini);
 
-    LoadRoutersFilterData(ini.ReadString('Routers', 'CurrentFilter', DEFAULT_ROUTERS_FILTER_DATA), False);
-    ParseStr := Explode(';', ini.ReadString('Routers', 'DefaultFilter', DEFAULT_ROUTERS_FILTER_DATA));
+    LoadRoutersFilterData(GetSettings('Routers', 'CurrentFilter', DEFAULT_ROUTERS_FILTER_DATA, ini), False);
+    ParseStr := Explode(';', GetSettings('Routers', 'DefaultFilter', DEFAULT_ROUTERS_FILTER_DATA, ini));
     if Length(ParseStr) > 4 then
       udRoutersWeight.ResetValue := StrToIntDef(ParseStr[4], 10);
 
     CheckShowRouters;
     if FirstLoad then
     begin
-      if ini.ReadBool('Main', 'Terminated', False) = True then
+      if GetSettings('Main', 'Terminated', False, ini) = True then
       begin
         if (cbUseUPnP.Checked) and (cbxServerMode.ItemIndex > 0) then
           RemoveUPnPEntry(udORPort.Position, udDirPort.Position, udTransportPort.Position);
       end;
-      TotalDL := ini.ReadInt64('Status', 'TotalDL', 0);
-      TotalUL := ini.ReadInt64('Status', 'TotalUL', 0);
-      TotalStartDate := ini.ReadInt64('Status', 'TotalStartDate', 0);
+      TotalDL := GetSettings('Status', 'TotalDL', 0, ini);
+      TotalUL := GetSettings('Status', 'TotalUL', 0, ini);
+      TotalStartDate := GetSettings('Status', 'TotalStartDate', 0, ini);
 
       lbTotalDL.Caption := BytesFormat(TotalDL);
       lbTotalUL.Caption := BytesFormat(TotalUL);
       if (TotalStartDate = 0) then
       begin
         TotalStartDate := DateTimeToUnix(Now);
-        ini.WriteInteger('Status', 'TotalStartDate', TotalStartDate);
+        SetSettings('Status', 'TotalStartDate', TotalStartDate, ini);
       end;
       gbTotal.Hint := Format(TransStr('402'), [DateTimeToStr(UnixToDateTime(TotalStartDate))]);
 
-      LastPlace := GetIntDef(ini.ReadInteger('Main', 'LastPlace', LP_OPTIONS), LP_OPTIONS, LP_OPTIONS, LP_ROUTERS);
-      pcOptions.TabIndex := GetIntDef(ini.ReadInteger('Main', 'OptionsPage', 0), 0, 0, pcOptions.PageCount - 1);
-      ParseStr := Explode(',', ini.ReadString('Main', 'FormPosition', '-1,-1,-1,-1'));
+      LastPlace := GetIntDef(GetSettings('Main', 'LastPlace', LP_OPTIONS, ini), LP_OPTIONS, LP_OPTIONS, LP_ROUTERS);
+      pcOptions.TabIndex := GetIntDef(GetSettings('Main', 'OptionsPage', 0, ini), 0, 0, pcOptions.PageCount - 1);
+      ParseStr := Explode(',', GetSettings('Main', 'FormPosition', '-1,-1,-1,-1', ini));
       for i := 0 to Length(ParseStr) - 1 do
         case i of
           0: DecFormPos.X := StrToIntDef(ParseStr[i], -1);
@@ -6224,7 +6231,7 @@ begin
       SetDesktopPosition(IncFormPos.X, IncFormPos.Y, GetCheckBorders, True);
       DecreaseFormSize;
       SetDesktopPosition(DecFormPos.X, DecFormPos.Y, GetCheckBorders, True);
-      ini.WriteBool('Main', 'Terminated', True);
+      SetSettings('Main', 'Terminated', True, ini);
       LoadNetworkCache;
       LoadBridgesCache;
       if miLoadCachedRoutersOnStartup.Checked then
@@ -6257,8 +6264,7 @@ begin
     SaveTorConfig;
     EnableOptionButtons(False);
   finally
-    ini.UpdateFile;
-    ini.Free;
+    UpdateConfigFile(ini);
   end;
 end;
 
@@ -6943,66 +6949,66 @@ begin
       StyleName := cbxThemes.Text;
 
     if (ConnectState = 2) and (AutoScanStage = 0) and not ConsensusUpdated and
-      (ini.ReadBool('Scanner', 'AutoScanNewNodes', True) = False) then
+      (GetSettings('Scanner', 'AutoScanNewNodes', True, ini) = False) then
     begin
       if Tcp.cbAutoScanNewNodes.Checked and
         (Tcp.cbEnablePingMeasure.Checked or Tcp.cbEnableDetectAliveNodes.Checked) then
           AutoScanStage := 1;
     end;
 
-    ini.WriteInteger('Main', 'Language', Integer(cbxLanguage.Items.Objects[cbxLanguage.ItemIndex]));
-    ini.WriteString('Main', 'Theme', StyleName);
-    ini.WriteInteger('Main', 'LastPlace', LastPlace);
-    ini.WriteInteger('Main', 'OptionsPage', pcOptions.TabIndex);
+    SetSettings('Main', 'Language', Integer(cbxLanguage.Items.Objects[cbxLanguage.ItemIndex]), ini);
+    SetSettings('Main', 'Theme', StyleName, ini);
+    SetSettings('Main', 'LastPlace', LastPlace, ini);
+    SetSettings('Main', 'OptionsPage', pcOptions.TabIndex, ini);
 
-    ini.WriteBool('Main', 'ConnectOnStartup', cbConnectOnStartup.Checked);
-    ini.WriteBool('Main', 'RestartOnControlFail', cbRestartOnControlFail.Checked);
-    ini.WriteBool('Main', 'MinimizeOnClose', cbMinimizeOnClose.Checked);
-    ini.WriteBool('Main', 'MinimizeOnStartup', cbMinimizeOnStartup.Checked);
-    ini.WriteBool('Main', 'ShowBalloonHint', cbShowBalloonHint.Checked);
-    ini.WriteBool('Main', 'ShowBalloonOnlyWhenHide', cbShowBalloonOnlyWhenHide.Checked);
-    ini.WriteBool('Main', 'StayOnTop', cbStayOnTop.Checked);
-    ini.WriteBool('Main', 'NoDesktopBorders', cbNoDesktopBorders.Checked);
-    ini.WriteBool('Main', 'NoDesktopBordersOnlyEnlarged', cbNoDesktopBordersOnlyEnlarged.Checked);
-    ini.WriteBool('Main', 'HideIPv6Addreses', cbHideIPv6Addreses.Checked);
-    ini.WriteBool('Main', 'UseOpenDNS', cbUseOpenDNS.Checked);
-    ini.WriteBool('Main', 'UseOpenDNSOnlyWhenUnknown', cbUseOpenDNSOnlyWhenUnknown.Checked);
-    ini.WriteBool('Main', 'RememberEnlargedPosition', cbRememberEnlargedPosition.Checked);
-    ini.WriteBool('Main', 'ClearPreviousSearchQuery', cbClearPreviousSearchQuery.Checked);
-    ini.WriteBool('Main', 'UseNetworkCache', cbUseNetworkCache.Checked);
+    SetSettings('Main', cbConnectOnStartup, ini);
+    SetSettings('Main', cbRestartOnControlFail, ini);
+    SetSettings('Main', cbMinimizeOnClose, ini);
+    SetSettings('Main', cbMinimizeOnStartup, ini);
+    SetSettings('Main', cbShowBalloonHint, ini);
+    SetSettings('Main', cbShowBalloonOnlyWhenHide, ini);
+    SetSettings('Main', cbStayOnTop, ini);
+    SetSettings('Main', cbNoDesktopBorders, ini);
+    SetSettings('Main', cbNoDesktopBordersOnlyEnlarged, ini);
+    SetSettings('Main', cbHideIPv6Addreses, ini);
+    SetSettings('Main', cbUseOpenDNS, ini);
+    SetSettings('Main', cbUseOpenDNSOnlyWhenUnknown, ini);
+    SetSettings('Main', cbRememberEnlargedPosition, ini);
+    SetSettings('Main', cbClearPreviousSearchQuery, ini);
+    SetSettings('Main', cbUseNetworkCache, ini);
 
-    ini.WriteBool('Scanner', 'EnablePingMeasure', cbEnablePingMeasure.Checked);
-    ini.WriteBool('Scanner', 'EnableDetectAliveNodes', cbEnableDetectAliveNodes.Checked);
-    ini.WriteBool('Scanner', 'AutoScanNewNodes', cbAutoScanNewNodes.Checked);
-    ini.WriteInteger('Scanner', 'ScanPortTimeout', udScanPortTimeout.Position);
-    ini.WriteInteger('Scanner', 'ScanPingTimeout', udScanPingTimeout.Position);
-    ini.WriteInteger('Scanner', 'ScanPortionTimeout', udScanPortionTimeout.Position);
-    ini.WriteInteger('Scanner', 'DelayBetweenAttempts', udDelayBetweenAttempts.Position);
-    ini.WriteInteger('Scanner', 'ScanPingAttempts', udScanPingAttempts.Position);
-    ini.WriteInteger('Scanner', 'ScanPortAttempts', udScanPortAttempts.Position);
-    ini.WriteInteger('Scanner', 'ScanMaxThread', udScanMaxThread.Position);
-    ini.WriteInteger('Scanner', 'ScanPortionSize', udScanPortionSize.Position);
-    ini.WriteInteger('Scanner', 'FullScanInterval', udFullScanInterval.Position);
-    ini.WriteInteger('Scanner', 'NonResponsedScanInterval', udNonResponsedScanInterval.Position);
-    ini.WriteInteger('Scanner', 'PartialScansCounts', udPartialScansCounts.Position);
-    ini.WriteInteger('Scanner', 'AutoScanType', cbxAutoScanType.ItemIndex);
+    SetSettings('Scanner', cbEnablePingMeasure, ini);
+    SetSettings('Scanner', cbEnableDetectAliveNodes, ini);
+    SetSettings('Scanner', cbAutoScanNewNodes, ini);
+    SetSettings('Scanner', udScanPortTimeout, ini);
+    SetSettings('Scanner', udScanPingTimeout, ini);
+    SetSettings('Scanner', udScanPortionTimeout, ini);
+    SetSettings('Scanner', udDelayBetweenAttempts, ini);
+    SetSettings('Scanner', udScanPingAttempts, ini);
+    SetSettings('Scanner', udScanPortAttempts, ini);
+    SetSettings('Scanner', udScanMaxThread, ini);
+    SetSettings('Scanner', udScanPortionSize, ini);
+    SetSettings('Scanner', udFullScanInterval, ini);
+    SetSettings('Scanner', udNonResponsedScanInterval, ini);
+    SetSettings('Scanner', udPartialScansCounts, ini);
+    SetSettings('Scanner', cbxAutoScanType, ini);
 
-    ini.WriteInteger('AutoSelNodes', 'AutoSelEntryCount', udAutoSelEntryCount.Position);
-    ini.WriteInteger('AutoSelNodes', 'AutoSelMiddleCount', udAutoSelMiddleCount.Position);
-    ini.WriteInteger('AutoSelNodes', 'AutoSelExitCount', udAutoSelExitCount.Position);
-    ini.WriteInteger('AutoSelNodes', 'AutoSelMinWeight', udAutoSelMinWeight.Position);
-    ini.WriteInteger('AutoSelNodes', 'AutoSelMaxPing', udAutoSelMaxPing.Position);
-    ini.WriteInteger('AutoSelNodes', 'AutoSelPriority', cbxAutoSelPriority.ItemIndex);
-    ini.WriteBool('AutoSelNodes', 'AutoSelFastAndStableOnly', cbAutoSelStableOnly.Checked);
-    ini.WriteBool('AutoSelNodes', 'AutoSelFilterCountriesOnly', cbAutoSelFilterCountriesOnly.Checked);
-    ini.WriteBool('AutoSelNodes', 'AutoSelUniqueNodes', cbAutoSelUniqueNodes.Checked);
-    ini.WriteBool('AutoSelNodes', 'AutoSelNodesWithPingOnly', cbAutoSelNodesWithPingOnly.Checked);
-    ini.WriteBool('AutoSelNodes', 'AutoSelMiddleNodesWithoutDir', cbAutoSelMiddleNodesWithoutDir.Checked);
+    SetSettings('AutoSelNodes', udAutoSelEntryCount, ini);
+    SetSettings('AutoSelNodes', udAutoSelMiddleCount, ini);
+    SetSettings('AutoSelNodes', udAutoSelExitCount, ini);
+    SetSettings('AutoSelNodes', udAutoSelMinWeight, ini);
+    SetSettings('AutoSelNodes', udAutoSelMaxPing, ini);
+    SetSettings('AutoSelNodes', cbxAutoSelPriority, ini);
+    SetSettings('AutoSelNodes', cbAutoSelStableOnly, ini);
+    SetSettings('AutoSelNodes', cbAutoSelFilterCountriesOnly, ini);
+    SetSettings('AutoSelNodes', cbAutoSelUniqueNodes, ini);
+    SetSettings('AutoSelNodes', cbAutoSelNodesWithPingOnly, ini);
+    SetSettings('AutoSelNodes', cbAutoSelMiddleNodesWithoutDir, ini);
 
     SetDesktopPosition(Tcp.Left, Tcp.Top, GetCheckBorders, True);
-    ini.WriteString('Main', 'FormPosition', GetFormPositionStr);    
+    SetSettings('Main', 'FormPosition', GetFormPositionStr, ini);
 
-    edControlPassword.Hint := ini.ReadString('Main', 'HashedControlPassword', '');
+    edControlPassword.Hint := GetSettings('Main', 'HashedControlPassword', '', ini);
     if cbxAuthMetod.ItemIndex = 1 then
     begin
       if edControlPassword.Text <> '' then
@@ -7012,7 +7018,7 @@ begin
           ControlPassword := Crypt(edControlPassword.Text, 'True');
           Temp := GetPasswordHash(edControlPassword.Text);
           SetTorConfig('HashedControlPassword', Temp);
-          ini.WriteString('Main', 'HashedControlPassword', Temp);
+          SetSettings('Main', 'HashedControlPassword', Temp, ini);
           ShowBalloon(TransStr('253'));
         end
         else
@@ -7025,17 +7031,17 @@ begin
     begin
       SetTorConfig('CookieAuthentication', '1');
       if edControlPassword.Text <> '' then
-        ini.WriteString('Main', 'HashedControlPassword', edControlPassword.Hint)
+        SetSettings('Main', 'HashedControlPassword', edControlPassword.Hint, ini)
       else
       begin
         ControlPassword := '';
-        ini.WriteString('Main', 'HashedControlPassword', '');
+        SetSettings('Main', 'HashedControlPassword', '', ini);
       end;
       DeleteTorConfig('HashedControlPassword');
     end
     else
       DeleteTorConfig('CookieAuthentication');
-    ini.WriteString('Main', 'ControlPassword', ControlPassword);
+    SetSettings('Main', 'ControlPassword', ControlPassword, ini);
     CheckAuthMetodContols;
 
     for i := 0 to miLogLevel.Count - 1 do
@@ -7058,22 +7064,21 @@ begin
     SetTorConfig('AvoidDiskWrites', IntToStr(Integer(cbAvoidDiskWrites.Checked)));
 
     UpdateUsedProxyTypes(ini);
-    GetLocalInterfaces(cbxSocksHost);
+    GetLocalInterfaces(cbxSOCKSHost);
     GetLocalInterfaces(cbxHTTPTunnelHost);
     CheckSimilarPorts;
     if UsedProxyType in [ptSocks, ptBoth] then
-      SetTorConfig('SOCKSPort', FormatHost(cbxSocksHost.Text) + ':' + IntToStr(udSOCKSPort.Position) + cbxSocksHost.Hint)
+      SetTorConfig('SOCKSPort', FormatHost(cbxSOCKSHost.Text) + ':' + IntToStr(udSOCKSPort.Position) + cbxSOCKSHost.Hint)
     else
-      SetTorConfig('SOCKSPort', '0' + cbxSocksHost.Hint);
+      SetTorConfig('SOCKSPort', '0' + cbxSOCKSHost.Hint);
     if UsedProxyType in [ptHttp, ptBoth] then
       SetTorConfig('HTTPTunnelPort', FormatHost(cbxHTTPTunnelHost.Text) + ':' + IntToStr(udHTTPTunnelPort.Position) + cbxHTTPTunnelHost.Hint)
     else
       SetTorConfig('HTTPTunnelPort', '0' + cbxHTTPTunnelHost.Hint);
-    ini.WriteString('Network', 'SOCKSHost', FormatHost(cbxSocksHost.Text));
-    ini.WriteInteger('Network', 'SOCKSPort', udSOCKSPort.Position);
-    ini.WriteString('Network', 'HTTPTunnelHost', FormatHost(cbxHTTPTunnelHost.Text));
-    ini.WriteInteger('Network', 'HTTPTunnelPort', udHTTPTunnelPort.Position);
-
+    SetSettings('Network', cbxSOCKSHost, ini, False, True);
+    SetSettings('Network', udSOCKSPort, ini);
+    SetSettings('Network', cbxHTTPTunnelHost, ini, False, True);
+    SetSettings('Network', udHTTPTunnelPort, ini);
     SetTorConfig('ControlPort', IntToStr(udControlPort.Position));
 
     SaveReachableAddresses(ini);
@@ -7093,9 +7098,9 @@ begin
     Delete(FilterEntry, 1, 1);
     Delete(FilterMiddle, 1, 1);
     Delete(FilterExit, 1, 1);
-    ini.WriteString('Filter', 'EntryNodes', FilterEntry);
-    ini.WriteString('Filter', 'MiddleNodes', FilterMiddle);
-    ini.WriteString('Filter', 'ExitNodes', FilterExit);
+    SetSettings('Filter', 'EntryNodes', FilterEntry, ini);
+    SetSettings('Filter', 'MiddleNodes', FilterMiddle, ini);
+    SetSettings('Filter', 'ExitNodes', FilterExit, ini);
 
     for NodeItem in NodesDic do
     begin
@@ -7120,19 +7125,21 @@ begin
     CheckFavoritesState;
     SetNodes(FilterEntry, FilterMiddle, FilterExit, FavoritesEntry, FavoritesMiddle, FavoritesExit, ExcludeNodes);
 
-    ini.WriteString('Routers', 'EntryNodes', FavoritesEntry);
-    ini.WriteString('Routers', 'MiddleNodes', FavoritesMiddle);
-    ini.WriteString('Routers', 'ExitNodes', FavoritesExit);
-    ini.WriteString('Routers', 'ExcludeNodes', ExcludeNodes);
-    ini.WriteInteger('Lists', 'UseFavoritesEntry', lbFavoritesEntry.HelpContext);
-    ini.WriteInteger('Lists', 'UseFavoritesMiddle', lbFavoritesMiddle.HelpContext);
-    ini.WriteInteger('Lists', 'UseFavoritesExit', lbFavoritesExit.HelpContext);
-    ini.WriteInteger('Lists', 'UseExcludeNodes', lbExcludeNodes.HelpContext);
-    ini.WriteInteger('Lists', 'NodesListType', cbxNodesListType.ItemIndex);
-    ini.WriteBool('Lists', 'UseHiddenServiceVanguards', cbUseHiddenServiceVanguards.Checked);
-    ini.WriteInteger('Lists', 'VanguardLayerType', cbxVanguardLayerType.ItemIndex);
-    ini.WriteInteger('Filter', 'FilterMode', cbxFilterMode.ItemIndex);
-    ini.WriteBool('Filter', 'ReplaceDisabledFavoritesWithCountries', miReplaceDisabledFavoritesWithCountries.Checked);
+    SetSettings('Routers', 'EntryNodes', FavoritesEntry, ini);
+    SetSettings('Routers', 'MiddleNodes', FavoritesMiddle, ini);
+    SetSettings('Routers', 'ExitNodes', FavoritesExit, ini);
+    SetSettings('Routers', 'ExcludeNodes', ExcludeNodes, ini);
+
+    SetSettings('Lists', 'UseFavoritesEntry', lbFavoritesEntry.HelpContext, ini);
+    SetSettings('Lists', 'UseFavoritesMiddle', lbFavoritesMiddle.HelpContext, ini);
+    SetSettings('Lists', 'UseFavoritesExit', lbFavoritesExit.HelpContext, ini);
+    SetSettings('Lists', 'UseExcludeNodes', lbExcludeNodes.HelpContext, ini);
+    SetSettings('Lists', cbxNodesListType, ini);
+    SetSettings('Lists', cbUseHiddenServiceVanguards, ini);
+    SetSettings('Lists', cbxVanguardLayerType, ini);
+
+    SetSettings('Filter', cbxFilterMode, ini);
+    SetSettings('Filter', miReplaceDisabledFavoritesWithCountries, ini);
 
     UpdateSystemInfo;
     SaveServerOptions(ini);
@@ -7176,8 +7183,7 @@ begin
       GetServerInfo;
     end;
   finally
-    ini.UpdateFile;
-    ini.Free;
+    UpdateConfigFile(ini);
   end;
 end;
 
@@ -7832,8 +7838,7 @@ begin
       else
         ini.DeleteKey('Templates', IntToStr(TMenuItem(Sender).Tag));
     finally
-      ini.UpdateFile;
-      ini.Free;
+      UpdateConfigFile(ini);
     end;
     ShowBalloon(Format(TransStr('365'), [TemplateName]));
   end;
@@ -7851,7 +7856,7 @@ begin
 
   ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
   try
-    ParseStr := Explode(';', ini.ReadString('Templates', IntToStr(TMenuItem(Sender).Tag), ''));
+    ParseStr := Explode(';', GetSettings('Templates', IntToStr(TMenuItem(Sender).Tag), '', ini));
     n := Length(ParseStr);
     if n in [5,9] then
     begin
@@ -8021,9 +8026,9 @@ begin
           else
           begin
             TimeStamp := DateTimeToUnix(Now);
-            ini.WriteString('Templates', IntToStr(TimeStamp), SeparateRight(TemplateList[i], '='));
-            ini.DeleteKey('Templates', TimeStampStr);
-            ini.UpdateFile;
+            SetSettings('Templates', IntToStr(TimeStamp), SeparateRight(TemplateList[i], '='), ini);
+            DeleteSettings('Templates', TimeStampStr, ini);
+            UpdateConfigFile(ini);
           end;
           TemplateName := copy(TemplateList[i], TimeStampIndex + 1, (TemplateNameIndex - TimeStampIndex) - 1);
           SelectMenu := TMenuItem.Create(self);
@@ -8173,9 +8178,9 @@ begin
           else
           begin
             TimeStamp := DateTimeToUnix(Now);
-            ini.WriteString('Templates', IntToStr(TimeStamp), SeparateRight(TemplateList[i], '='));
-            ini.DeleteKey('Templates', TimeStampStr);
-            ini.UpdateFile;
+            SetSettings('Templates', IntToStr(TimeStamp), SeparateRight(TemplateList[i], '='), ini);
+            DeleteSettings('Templates', TimeStampStr, ini);
+            UpdateConfigFile(ini);
           end;
           TemplateName := copy(TemplateList[i], TimeStampIndex + 1, (TemplateNameIndex - TimeStampIndex) - 1);
           LoadMenu := TMenuItem.Create(self);
@@ -8274,6 +8279,7 @@ begin
   miLogLevel.Enabled := State;
   miSafeLogging.Enabled := State;
   miOpenFileLog.Enabled := FileExists(TorLogFile);
+  miOpenLogsFolder.Enabled := DirectoryExists(LogsDir);
   miLogSeparate.Enabled := miWriteLogFile.Checked;
 
   EditMenuEnableCheck(miLogCopy, emCopy);
@@ -8633,7 +8639,7 @@ procedure TTcp.lbStatusScannerClick(Sender: TObject);
 begin
   if tmScanner.Enabled then
   begin
-    if not ShowMsg(Format(TransStr('405'),[TransStr('495')]), '', mtQuestion, True) then
+    if not ShowMsg(Format(TransStr('608'),[TransStr('495')]), '', mtQuestion, True) then
       Exit;
     if tmScanner.Enabled then
       StopScan := True;
@@ -9015,7 +9021,7 @@ end;
 
 procedure TTcp.miStopScanClick(Sender: TObject);
 begin
-  if not ShowMsg(Format(TransStr('405'),[TransStr('495')]), '', mtQuestion, True) then
+  if not ShowMsg(Format(TransStr('608'),[TransStr('495')]), '', mtQuestion, True) then
     Exit;
   if tmScanner.Enabled then
     StopScan := True;
@@ -9063,9 +9069,9 @@ begin
     DeleteTorConfig('TrackHostExits');
     DeleteTorConfig('TrackHostExitsExpire');
   end;
-  ini.WriteBool('Lists', 'UseTrackHostExits', cbUseTrackHostExits.Checked);
-  ini.WriteString('Lists', 'TrackHostExits', TrackHostExits);
-  ini.WriteInteger('Lists', 'TrackHostExitsExpire', udTrackHostExitsExpire.Position);
+  SetSettings('Lists', cbUseTrackHostExits, ini);
+  SetSettings('Lists', udTrackHostExitsExpire, ini);
+  SetSettings('Lists', 'TrackHostExits', TrackHostExits, ini);
   if UseDic and (ConnectState = 2) then
   begin
     if cbUseTrackHostExits.Checked then
@@ -9188,36 +9194,36 @@ begin
     SetTorConfig('AssumeReachable', IntToStr(Integer(cbAssumeReachable.Checked)));
   end;
 
-  ini.WriteInteger('Server', 'ServerMode', cbxServerMode.ItemIndex);
-  ini.WriteString('Server', 'Nickname', edNickname.Text);
-  ini.WriteString('Server', 'ContactInfo', edContactInfo.Text);
-  ini.WriteString('Server', 'Address', FormatHost(edAddress.Text));
-  ini.WriteInteger('Server', 'ORPort', udORPort.Position);
-  ini.WriteInteger('Server', 'DirPort', udDirPort.Position);
-  ini.WriteInteger('Server', 'TransportPort', udTransportPort.Position);
-  ini.WriteInteger('Server', 'RelayBandwidthRate', udRelayBandwidthRate.Position);
-  ini.WriteInteger('Server', 'RelayBandwidthBurst', udRelayBandwidthBurst.Position);
-  ini.WriteInteger('Server', 'MaxAdvertisedBandwidth', udMaxAdvertisedBandwidth.Position);
-  ini.WriteInteger('Server', 'MaxMemInQueues', udMaxMemInQueues.Position);
-  ini.WriteInteger('Server', 'NumCPUs', udNumCPUs.Position);
-  ini.WriteInteger('Server', 'ExitPolicyType', cbxExitPolicyType.ItemIndex);
-  ini.WriteInteger('Server', 'BridgeDistribution', cbxBridgeDistribution.ItemIndex);
-  ini.WriteString('Server', 'CustomExitPolicy', ExitPolicy);
-  ini.WriteBool('Server', 'UseRelayBandwidth', cbUseRelayBandwidth.Checked);
-  ini.WriteBool('Server', 'UseNumCPUs', cbUseNumCPUs.Checked);
-  ini.WriteBool('Server', 'UseMaxMemInQueues', cbUseMaxMemInQueues.Checked);
-  ini.WriteBool('Server', 'UseAddress', cbUseAddress.Checked);
-  ini.WriteBool('Server', 'UseDirPort', cbUseDirPort.Checked);
-  ini.WriteBool('Server', 'UseUPnP', cbUseUPnP.Checked);
-  ini.WriteBool('Server', 'AssumeReachable', cbAssumeReachable.Checked);
-  ini.WriteBool('Server', 'DirCache', cbDirCache.Checked);
-  ini.WriteBool('Server', 'DirReqStatistics', cbDirReqStatistics.Checked);
-  ini.WriteBool('Server', 'IPv6Exit', cbIPv6Exit.Checked);
-  ini.WriteBool('Server', 'ListenIPv6', cbListenIPv6.Checked);
-  ini.WriteBool('Server', 'HiddenServiceStatistics', cbHiddenServiceStatistics.Checked);
-  ini.WriteBool('Server', 'PublishServerDescriptor', cbPublishServerDescriptor.Checked);
-  ini.WriteBool('Server', 'UseMyFamily', cbUseMyFamily.Checked);
-  ini.WriteString('Server', 'MyFamily', MyFamily);
+  SetSettings('Server', cbxServerMode, ini);
+  SetSettings('Server', edNickname, ini);
+  SetSettings('Server', edContactInfo, ini);
+  SetSettings('Server', edAddress, ini, True);
+  SetSettings('Server', udORPort, ini);
+  SetSettings('Server', udDirPort, ini);
+  SetSettings('Server', udTransportPort, ini);
+  SetSettings('Server', udRelayBandwidthRate, ini);
+  SetSettings('Server', udRelayBandwidthBurst, ini);
+  SetSettings('Server', udMaxAdvertisedBandwidth, ini);
+  SetSettings('Server', udMaxMemInQueues, ini);
+  SetSettings('Server', udNumCPUs, ini);
+  SetSettings('Server', cbxExitPolicyType, ini);
+  SetSettings('Server', cbxBridgeDistribution, ini);
+  SetSettings('Server', 'CustomExitPolicy', ExitPolicy, ini);
+  SetSettings('Server', cbUseRelayBandwidth, ini);
+  SetSettings('Server', cbUseNumCPUs, ini);
+  SetSettings('Server', cbUseMaxMemInQueues, ini);
+  SetSettings('Server', cbUseAddress, ini);
+  SetSettings('Server', cbUseDirPort, ini);
+  SetSettings('Server', cbUseUPnP, ini);
+  SetSettings('Server', cbAssumeReachable, ini);
+  SetSettings('Server', cbDirCache, ini);
+  SetSettings('Server', cbDirReqStatistics, ini);
+  SetSettings('Server', cbIPv6Exit, ini);
+  SetSettings('Server', cbListenIPv6, ini);
+  SetSettings('Server', cbHiddenServiceStatistics, ini);
+  SetSettings('Server', cbPublishServerDescriptor, ini);
+  SetSettings('Server', cbUseMyFamily, ini);
+  SetSettings('Server', 'MyFamily', MyFamily, ini);
 end;
 
 procedure TTcp.BindToExitNodeClick(Sender: TObject);
@@ -9241,8 +9247,7 @@ begin
   try
     SaveTrackHostExits(ini, True);
   finally
-    ini.UpdateFile;
-    ini.Free;
+    UpdateConfigFile(ini);
   end;
   OptionsLocked := False;
   SaveTorConfig;
@@ -9325,7 +9330,7 @@ begin
         else
         begin
           CurrentAutoScanPurpose := spNew;
-          if cbxAutoScanType.ItemIndex <> 3 then
+          if cbxAutoScanType.ItemIndex <> 4 then
           begin
             if (LastPartialScansCounts > 0) and (CurrentDate >= (LastNonResponsedScanDate + (udNonResponsedScanInterval.Position * 3600))) then
             begin
@@ -9339,6 +9344,7 @@ begin
                 end;
                 1: CurrentAutoScanPurpose := spNewAndFailed;
                 2: CurrentAutoScanPurpose := spNewAndAlive;
+                3: CurrentAutoScanPurpose := spNewAndBridges;
               end;
               LastNonResponsedScanDate := CurrentDate;
               Dec(LastPartialScansCounts);
@@ -9364,24 +9370,6 @@ begin
         lbStatusScanner.ShowHint := True;
       tmScanner.Enabled := True;
     end;
-  end;
-end;
-
-procedure TTcp.tmSaveTotalsTimer(Sender: TObject);
-var
-  ini: TMemIniFile;
-begin
-  if TotalsNeedSave then
-  begin
-    ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
-    try
-      ini.WriteInt64('Status', 'TotalDL', TotalDL);
-      ini.WriteInt64('Status', 'TotalUL', TotalUL);
-    finally
-      ini.UpdateFile;
-      ini.Free;
-    end;
-    TotalsNeedSave := False;
   end;
 end;
 
@@ -9456,13 +9444,12 @@ begin
             ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
             try
               case CurrentAutoScanPurpose of
-                spAll: ini.WriteInt64('Scanner', 'LastFullScanDate', LastFullScanDate);
-                spFailed, spNewAndFailed: ini.WriteInt64('Scanner', 'LastNonResponsedScanDate', LastNonResponsedScanDate);
+                spAll: SetSettings('Scanner', 'LastFullScanDate', LastFullScanDate, ini);
+                spFailed, spNewAndFailed: SetSettings('Scanner', 'LastNonResponsedScanDate', LastNonResponsedScanDate, ini);
               end;
-              ini.WriteInteger('Scanner', 'LastPartialScansCounts', LastPartialScansCounts);
+              SetSettings('Scanner', 'LastPartialScansCounts', LastPartialScansCounts, ini);
             finally
-              ini.UpdateFile;
-              ini.Free;
+              UpdateConfigFile(ini);
             end;
           end;
         end;
@@ -10618,7 +10605,7 @@ begin
   State := cbEnableSocks.Checked;
   edSOCKSPort.Enabled := State;
   udSOCKSPort.Enabled := State;
-  cbxSocksHost.Enabled := State;
+  cbxSOCKSHost.Enabled := State;
   EnableOptionButtons;
 end;
 
@@ -10686,7 +10673,7 @@ begin
   AliveState := cbEnableDetectAliveNodes.Checked;
   State := PingState or AliveState;
   AutoState := State and cbAutoScanNewNodes.Checked;
-  TypeState := cbxAutoScanType.ItemIndex <> 3;
+  TypeState := cbxAutoScanType.ItemIndex <> 4;
 
   edFullScanInterval.Enabled := AutoState;
   edNonResponsedScanInterval.Enabled := AutoState and TypeState;
@@ -12768,12 +12755,11 @@ begin
   LastPartialScansCounts := udPartialScansCounts.Position;
   ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
   try
-    ini.WriteInt64('Scanner', 'LastFullScanDate', LastFullScanDate);
-    ini.WriteInt64('Scanner', 'LastNonResponsedScanDate', LastNonResponsedScanDate);
-    ini.WriteInteger('Scanner', 'LastPartialScansCounts', LastPartialScansCounts);
+    SetSettings('Scanner', 'LastFullScanDate', LastFullScanDate, ini);
+    SetSettings('Scanner', 'LastNonResponsedScanDate', LastNonResponsedScanDate, ini);
+    SetSettings('Scanner', 'LastPartialScansCounts', LastPartialScansCounts, ini);
   finally
-    ini.UpdateFile;
-    ini.Free;
+    UpdateConfigFile(ini);
   end;
 end;
 
@@ -12788,15 +12774,14 @@ begin
     TotalDL := 0;
     TotalUL := 0;
     TotalStartDate := DateTimeToUnix(Now);
-    ini.WriteInt64('Status', 'TotalDL', TotalDL);
-    ini.WriteInt64('Status', 'TotalUL', TotalUL);
-    ini.WriteInt64('Status', 'TotalStartDate', TotalStartDate);
+    SetSettings('Status', 'TotalDL', TotalDL, ini);
+    SetSettings('Status', 'TotalUL', TotalUL, ini);
+    SetSettings('Status', 'TotalStartDate', TotalStartDate, ini);
     lbTotalDL.Caption := BytesFormat(TotalDL);
     lbTotalUL.Caption := BytesFormat(TotalUL);
     gbTotal.Hint := Format(TransStr('402'), [DateTimeToStr(UnixToDateTime(TotalStartDate))]);
   finally
-    ini.UpdateFile;
-    ini.Free;
+    UpdateConfigFile(ini);
   end;
 end;
 
@@ -14145,6 +14130,7 @@ begin
   DescriptorsFile := UserDir + 'cached-descriptors';
   NewDescriptorsFile := UserDir + 'cached-descriptors.new';
   UserConfigFile := UserDir + 'settings.ini';
+  UserBackupFile := UserConfigFile + '.backup';
   LangFile := ProgramDir + 'Translations.ini';
   DefaultsFile := ProgramDir + 'Defaults.ini';
   TorConfigFile := UserDir + 'torrc';
@@ -14304,7 +14290,7 @@ end;
 
 procedure TTcp.LoadOptions;
 begin
-  CheckFileEncoding(UserConfigFile);
+  CheckFileEncoding(UserConfigFile, UserBackupFile);
   UpdateConfigVersion;
   ResetOptions;
   if cbMinimizeOnStartup.Checked then
@@ -14489,15 +14475,14 @@ begin
     StopTor;
   ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
   try
-    ini.WriteString('Main', 'FormPosition', GetFormPositionStr);
-    ini.WriteInteger('Main', 'OptionsPage', pcOptions.TabIndex);
-    ini.WriteInteger('Main', 'LastPlace', LastPlace);
-    ini.WriteBool('Main', 'Terminated', False);
-    ini.WriteInt64('Status', 'TotalDL', TotalDL);
-    ini.WriteInt64('Status', 'TotalUL', TotalUL);
+    SetSettings('Main', 'FormPosition', GetFormPositionStr, ini);
+    SetSettings('Main', 'OptionsPage', pcOptions.TabIndex, ini);
+    SetSettings('Main', 'LastPlace', LastPlace, ini);
+    SetSettings('Main', 'Terminated', False, ini);
+    SetSettings('Status', 'TotalDL', TotalDL, ini);
+    SetSettings('Status', 'TotalUL', TotalUL, ini);
   finally
-    ini.UpdateFile;
-    ini.Free;
+    UpdateConfigFile(ini);
   end;
   tiTray.Free;
   StreamsDic.Free;
@@ -14653,15 +14638,14 @@ begin
             Delete(ExcludeNodes, 1, 1);
         end;
 
-        ini.WriteString('Templates', IntToStr(DateTimeToUnix(Now)), TemplateName + ';' +
+        SetSettings('Templates', IntToStr(DateTimeToUnix(Now)), TemplateName + ';' +
           IntToStr(cbxFilterMode.ItemIndex) + ';' +
           EntryNodes + ';' + MiddleNodes + ';' + ExitNodes + ';' +
-          FavoritesEntry + ';' + FavoritesMiddle + ';' + FavoritesExit + ';' + ExcludeNodes
-        );
+          FavoritesEntry + ';' + FavoritesMiddle + ';' + FavoritesExit + ';' + ExcludeNodes,
+        ini);
 
       finally
-        ini.UpdateFile;
-        ini.Free;
+        UpdateConfigFile(ini);
       end;
       ShowBalloon(Format(TransStr('363'), [TemplateName]));
     end
@@ -14824,7 +14808,7 @@ var
 begin
   ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
   try
-    Data := ini.ReadString('Routers', 'DefaultFilter', DEFAULT_ROUTERS_FILTER_DATA);
+    Data := GetSettings('Routers', 'DefaultFilter', DEFAULT_ROUTERS_FILTER_DATA, ini);
     LoadRoutersFilterData(Data);
     ParseStr := Explode(';', Data);
     if Length(ParseStr) > 7 then
@@ -14836,11 +14820,9 @@ begin
         Data := Data + ';' + ParseStr[i];
       Delete(Data, 1, 1);
     end;
-
-    ini.WriteString('Routers', 'CurrentFilter', Data);
+    SetSettings('Routers', 'CurrentFilter', Data, ini);
   finally
-    ini.UpdateFile;
-    ini.Free;
+    UpdateConfigFile(ini);
   end;
 end;
 

@@ -33,7 +33,7 @@ const
 
   LOOPBACK_ADDRESS = '127.0.0.1';
 
-  CURRENT_CONFIG_VERSION = 2;
+  CURRENT_CONFIG_VERSION = 3;
   MAX_SPEED_DATA_LENGTH = 24 * 60 * 60;
   BUFSIZE = 1024 * 1024;
 
@@ -278,7 +278,7 @@ type
   TParamType = (ptString, ptInteger, ptBoolean, ptSocket, ptHost, ptSize, ptBridge);
   TTaskBarPos = (tbTop, tbBottom, tbLeft, tbRight, tbNone);
   TScanType = (stNone, stPing, stAlive, stBoth);
-  TScanPurpose = (spNone, spNew, spFailed, spUserBridges, spAll, spNewAndFailed, spNewAndAlive, spBridges, spGuards, spAlive, spAuto);
+  TScanPurpose = (spNone, spNew, spFailed, spUserBridges, spAll, spNewAndFailed, spNewAndAlive, spNewAndBridges, spBridges, spGuards, spAlive, spAuto);
   TProxyType = (ptNone, ptSocks, ptHttp, ptBoth);
 
   TConfigFlag = (cfAutoAppend, cfAutoSave, cfFindComments, cfExistCheck, cfMultiLine, cfBoolInvert);

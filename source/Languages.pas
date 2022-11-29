@@ -355,6 +355,7 @@ begin
     LoadStr('594', 'SOCKS4-трафик');
     LoadStr('595', 'SOCKS5-трафик');
     LoadStr('596', 'HTTP/C-трафик');
+    LoadStr('608', 'Вы действительно хотите: "%s"?');
 
     TranslateArray(HsHeader, TransStr('230'));
     TranslateArray(HsPortsHeader, TransStr('231'));
@@ -581,7 +582,7 @@ begin
     Tcp.lbHours1.Caption := TransStr('477');
     Tcp.lbHours2.Caption := TransStr('477');
     Tcp.lbAutoScanType.Caption := Load('603', 'Узлы для сканирования');
-    LoadList(Tcp.cbxAutoScanType, '604', '"Автовыбор","Новые и без ответа","Новые и живые","Только новые"');
+    LoadList(Tcp.cbxAutoScanType, '604', '"Автовыбор","Новые и без ответа","Новые и живые","Новые и мосты","Только новые"');
 
     Tcp.gbTransports.Caption := Load('460', 'Подключаемые транспорты');
     Tcp.lbTransports.Caption := Load('461', 'Транспорты');

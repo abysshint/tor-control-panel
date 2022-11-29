@@ -997,7 +997,7 @@ object Tcp: TTcp
     Top = 93
     Width = 721
     Height = 433
-    ActivePage = tsMain
+    ActivePage = tsOther
     DoubleBuffered = True
     Images = lsMain
     ParentDoubleBuffered = False
@@ -1808,7 +1808,7 @@ object Tcp: TTcp
         OnExit = MemoExit
         OnKeyPress = MemoKeyPress
       end
-      object cbxSocksHost: TComboBox
+      object cbxSOCKSHost: TComboBox
         Left = 515
         Top = 27
         Width = 135
@@ -3955,6 +3955,7 @@ object Tcp: TTcp
             #1040#1074#1090#1086#1074#1099#1073#1086#1088
             #1053#1086#1074#1099#1077' '#1080' '#1073#1077#1079' '#1086#1090#1074#1077#1090#1072
             #1053#1086#1074#1099#1077' '#1080' '#1078#1080#1074#1099#1077
+            #1053#1086#1074#1099#1077' '#1080' '#1084#1086#1089#1090#1099
             #1058#1086#1083#1100#1082#1086' '#1085#1086#1074#1099#1077)
         end
       end
@@ -5486,7 +5487,7 @@ object Tcp: TTcp
     Interval = 3000
     OnTimer = tmConsensusTimer
     Left = 642
-    Top = 318
+    Top = 275
   end
   object mnRouters: TPopupMenu
     AutoHotkeys = maManual
@@ -5831,7 +5832,7 @@ object Tcp: TTcp
     Enabled = False
     OnTimer = tmCircuitsTimer
     Left = 641
-    Top = 185
+    Top = 142
   end
   object mnCircuits: TPopupMenu
     AutoHotkeys = maManual
@@ -6289,13 +6290,13 @@ object Tcp: TTcp
   object FindDialog: TFindDialog
     OnFind = FindDialogFind
     Left = 644
-    Top = 361
+    Top = 318
   end
   object tmScanner: TTimer
     Enabled = False
     OnTimer = tmScannerTimer
     Left = 642
-    Top = 229
+    Top = 186
   end
   object mnTransports: TPopupMenu
     AutoHotkeys = maManual
@@ -6335,13 +6336,6 @@ object Tcp: TTcp
       ImageIndex = 13
       OnClick = miTransportsClearClick
     end
-  end
-  object tmSaveTotals: TTimer
-    Enabled = False
-    Interval = 2000
-    OnTimer = tmSaveTotalsTimer
-    Left = 641
-    Top = 143
   end
   object mnTraffic: TPopupMenu
     AutoHotkeys = maManual
@@ -6424,6 +6418,6 @@ object Tcp: TTcp
     Enabled = False
     OnTimer = tmTrafficTimer
     Left = 642
-    Top = 274
+    Top = 231
   end
 end

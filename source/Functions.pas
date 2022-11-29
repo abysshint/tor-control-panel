@@ -156,7 +156,9 @@ var
   procedure FindInGridColumn(aSg: TStringGrid; ACol: Integer; Key: Char);
   procedure InitCharUpCaseTable(var Table: TCharUpCaseTable);
   procedure DeleteARow(aSg: TStringGrid; ARow: Integer);
-  procedure CheckFileEncoding(FileName: string);
+  procedure CheckFileEncoding(FileName, BackupFile: string);
+  procedure Flush(FileName: string);
+  procedure UpdateConfigFile(ini: TMemIniFile);
   procedure CheckLabelEndEllipsis(lbComponent: TLabel; MaxWidth: Integer; EllipsisType: TEllipsisPosition; UseHint: Boolean; IgnoreFormSize: Boolean);
   procedure BeginUpdateTable(aSg: TStringGrid);
   procedure EndUpdateTable(aSg: TStringGrid);
@@ -187,14 +189,28 @@ var
   procedure EditMenuEnableCheck(MenuItem: TMenuItem; MenuType: TEditMenuType);
   procedure MenuSelectPrepare(SelMenu: TMenuItem = nil; UnSelMenu: TMenuItem = nil; HandleDisabled: Boolean = False);
   procedure ShellOpen(Url: string);
-  procedure LoadSettings(Section: string; UpDownControl: TUpDown; ini: TMemIniFile); overload;
-  procedure LoadSettings(Section: string; CheckBoxControl: TCheckBox; ini: TMemIniFile); overload;
-  procedure LoadSettings(Section: string; MenuControl: TMenuItem; ini: TMemIniFile; Default: Boolean = True); overload;
-  procedure LoadSettings(Section: string; ComboBoxControl: TComboBox; ini: TMemIniFile; Default: Integer = 0); overload;
-  procedure LoadSettings(Section: string; EditControl: TEdit; ini: TMemIniFile; UseSquareBrackets: Boolean = False); overload;
-  procedure LoadSettings(UpDownControl: TUpDown; Flags: TConfigFlags = []); overload;
-  procedure LoadSettings(CheckBoxControl: TCheckBox; Flags: TConfigFlags = []); overload;
-  procedure LoadSettings(MenuControl: TMenuItem; Flags: TConfigFlags = []; Default: Boolean = True); overload;
+  procedure GetSettings(Section: string; UpDownControl: TUpDown; ini: TMemIniFile); overload;
+  procedure GetSettings(Section: string; CheckBoxControl: TCheckBox; ini: TMemIniFile); overload;
+  procedure GetSettings(Section: string; MenuControl: TMenuItem; ini: TMemIniFile; Default: Boolean = True); overload;
+  procedure GetSettings(Section: string; ComboBoxControl: TComboBox; ini: TMemIniFile; Default: Integer = 0); overload;
+  procedure GetSettings(Section: string; EditControl: TEdit; ini: TMemIniFile; RemoveSquareBrackets: Boolean = False); overload;
+  procedure GetSettings(UpDownControl: TUpDown; Flags: TConfigFlags = []); overload;
+  procedure GetSettings(CheckBoxControl: TCheckBox; Flags: TConfigFlags = []); overload;
+  procedure GetSettings(MenuControl: TMenuItem; Flags: TConfigFlags = []; Default: Boolean = True); overload;
+  procedure SetSettings(Section: string; UpDownControl: TUpDown; ini: TMemIniFile); overload;
+  procedure SetSettings(Section: string; CheckBoxControl: TCheckBox; ini: TMemIniFile); overload;
+  procedure SetSettings(Section: string; MenuControl: TMenuItem; ini: TMemIniFile); overload;
+  procedure SetSettings(Section: string; ComboBoxControl: TComboBox; ini: TMemIniFile; SaveIndex: Boolean = True; UseFormatHost: Boolean = False); overload;
+  procedure SetSettings(Section: string; EditControl: TEdit; ini: TMemIniFile; UseFormatHost: Boolean = False); overload;
+  procedure SetSettings(Section, Ident: string; Value: string; ini: TMemIniFile); overload;
+  procedure SetSettings(Section, Ident: string; Value: Integer; ini: TMemIniFile); overload;
+  procedure SetSettings(Section, Ident: string; Value: Int64; ini: TMemIniFile); overload;
+  procedure SetSettings(Section, Ident: string; Value: Boolean; ini: TMemIniFile); overload;
+  procedure DeleteSettings(Section, Ident: string; ini: TMemIniFile);
+  function GetSettings(Section, Ident: string; Default: string; ini: TMemIniFile): string; overload;
+  function GetSettings(Section, Ident: string; Default: Integer; ini: TMemIniFile): Integer; overload;
+  function GetSettings(Section, Ident: string; Default: Int64; ini: TMemIniFile): Int64; overload;
+  function GetSettings(Section, Ident: string; Default: Boolean; ini: TMemIniFile): Boolean; overload;
   procedure EnableComposited(WinControl: TWinControl);
 
 implementation
@@ -891,9 +907,9 @@ begin
         ntExclude: NodeStr := 'ExcludeNodes';
       end;
       if Favorites then
-        ini.WriteString('Routers', NodeStr, Nodeslist)
+        SetSettings('Routers', NodeStr, Nodeslist, ini)
       else
-        ini.WriteString('Filter', NodeStr, Nodeslist);
+        SetSettings('Filter', NodeStr, Nodeslist, ini);
     end;
   end;
 end;
@@ -1206,7 +1222,7 @@ begin
     Result := Default;
 end;
 
-procedure LoadSettings(Section: string; EditControl: TEdit; ini: TMemIniFile; UseSquareBrackets: Boolean = False);
+procedure GetSettings(Section: string; EditControl: TEdit; ini: TMemIniFile; RemoveSquareBrackets: Boolean = False);
 var
   Str: string;
 begin
@@ -1214,13 +1230,24 @@ begin
     EditControl.ResetValue := EditControl.Text;
   Str := ini.ReadString(Section, StringReplace(EditControl.Name, 'ed', '', [rfIgnoreCase]), EditControl.ResetValue);
 
-  if UseSquareBrackets then
+  if RemoveSquareBrackets then
     EditControl.Text := RemoveBrackets(Str, True)
   else
     EditControl.Text := Str;
 end;
 
-procedure LoadSettings(Section: string; ComboBoxControl: TComboBox; ini: TMemIniFile; Default: Integer = 0);
+procedure SetSettings(Section: string; EditControl: TEdit; ini: TMemIniFile; UseFormatHost: Boolean = False); overload;
+var
+  Str: string;
+begin
+  if UseFormatHost then
+    Str := FormatHost(EditControl.Text)
+  else
+    Str := EditControl.Text;
+  ini.WriteString(Section, StringReplace(EditControl.Name, 'ed', '', [rfIgnoreCase]), Str);
+end;
+
+procedure GetSettings(Section: string; ComboBoxControl: TComboBox; ini: TMemIniFile; Default: Integer = 0);
 var
   Value: Integer;
 begin
@@ -1234,7 +1261,24 @@ begin
     ComboBoxControl.ItemIndex := Default;
 end;
 
-procedure LoadSettings(Section: string; UpDownControl: TUpDown; ini: TMemIniFile);
+procedure SetSettings(Section: string; ComboBoxControl: TComboBox; ini: TMemIniFile; SaveIndex: Boolean = True; UseFormatHost: Boolean = False);
+var
+  Ident, Str: string;
+begin
+  Ident := StringReplace(ComboBoxControl.Name, 'cbx', '', [rfIgnoreCase]);
+  if SaveIndex then
+    ini.WriteInteger(Section, Ident, ComboBoxControl.ItemIndex)
+  else
+  begin
+    if UseFormatHost then
+      Str := FormatHost(ComboBoxControl.Text)
+    else
+      Str := ComboBoxControl.Text;
+    ini.WriteString(Section, Ident, Str);
+  end;
+end;
+
+procedure GetSettings(Section: string; UpDownControl: TUpDown; ini: TMemIniFile);
 var
   Value: Integer;
   Ident: string;
@@ -1250,35 +1294,95 @@ begin
     UpDownControl.Position := UpDownControl.ResetValue;
 end;
 
-procedure LoadSettings(UpDownControl: TUpDown; Flags: TConfigFlags = []);
+procedure SetSettings(Section: string; UpDownControl: TUpDown; ini: TMemIniFile); overload;
+begin
+  ini.WriteInteger(Section, StringReplace(UpDownControl.Name, 'ud', '', [rfIgnoreCase]), UpDownControl.Position)
+end;
+
+procedure GetSettings(UpDownControl: TUpDown; Flags: TConfigFlags = []);
 begin
   if FirstLoad then
     UpDownControl.ResetValue := UpDownControl.Position;
   UpDownControl.Position := StrToInt(GetTorConfig(StringReplace(UpDownControl.Name, 'ud', '', [rfIgnoreCase]), IntToStr(UpDownControl.ResetValue), Flags, ptInteger, UpDownControl.Min, UpDownControl.Max));
 end;
 
-procedure LoadSettings(Section: string; CheckBoxControl: TCheckBox; ini: TMemIniFile);
+procedure GetSettings(Section: string; CheckBoxControl: TCheckBox; ini: TMemIniFile);
 begin
   if FirstLoad then
     CheckBoxControl.ResetValue := CheckBoxControl.Checked;
   CheckBoxControl.Checked := ini.ReadBool(Section, StringReplace(CheckBoxControl.Name, 'cb', '', [rfIgnoreCase]), CheckBoxControl.ResetValue)
 end;
 
-procedure LoadSettings(CheckBoxControl: TCheckBox; Flags: TConfigFlags = []);
+procedure SetSettings(Section: string; CheckBoxControl: TCheckBox; ini: TMemIniFile);
+begin
+  ini.WriteBool(Section, StringReplace(CheckBoxControl.Name, 'cb', '', [rfIgnoreCase]), CheckBoxControl.Checked);
+end;
+
+procedure GetSettings(CheckBoxControl: TCheckBox; Flags: TConfigFlags = []);
 begin
   if FirstLoad then
     CheckBoxControl.ResetValue := CheckBoxControl.Checked;
   CheckBoxControl.Checked := StrToBool(GetTorConfig(StringReplace(CheckBoxControl.Name, 'cb', '', [rfIgnoreCase]), BoolToStrDef(CheckBoxControl.ResetValue), Flags, ptBoolean));
 end;
 
-procedure LoadSettings(Section: string; MenuControl: TMenuItem; ini: TMemIniFile; Default: Boolean = True);
+procedure GetSettings(Section: string; MenuControl: TMenuItem; ini: TMemIniFile; Default: Boolean = True);
 begin
   MenuControl.Checked := ini.ReadBool(Section, StringReplace(MenuControl.Name, 'mi', '', [rfIgnoreCase]), Default)
 end;
 
-procedure LoadSettings(MenuControl: TMenuItem; Flags: TConfigFlags = []; Default: Boolean = True);
+procedure SetSettings(Section: string; MenuControl: TMenuItem; ini: TMemIniFile);
+begin
+  ini.WriteBool(Section, StringReplace(MenuControl.Name, 'cb', '', [rfIgnoreCase]), MenuControl.Checked);
+end;
+
+procedure GetSettings(MenuControl: TMenuItem; Flags: TConfigFlags = []; Default: Boolean = True);
 begin
   MenuControl.Checked := StrToBool(GetTorConfig(StringReplace(MenuControl.Name, 'mi', '', [rfIgnoreCase]), BoolToStrDef(Default), Flags, ptBoolean));
+end;
+
+procedure SetSettings(Section, Ident: string; Value: string; ini: TMemIniFile);
+begin
+  ini.WriteString(Section, Ident, Value)
+end;
+
+procedure SetSettings(Section, Ident: string; Value: Integer; ini: TMemIniFile);
+begin
+  ini.WriteInteger(Section, Ident, Value)
+end;
+
+procedure SetSettings(Section, Ident: string; Value: Int64; ini: TMemIniFile);
+begin
+  ini.WriteInt64(Section, Ident, Value)
+end;
+
+procedure SetSettings(Section, Ident: string; Value: Boolean; ini: TMemIniFile);
+begin
+  ini.WriteBool(Section, Ident, Value)
+end;
+
+procedure DeleteSettings(Section, Ident: string; ini: TMemIniFile);
+begin
+  ini.DeleteKey(Section, Ident)
+end;
+
+function GetSettings(Section, Ident: string; Default: string; ini: TMemIniFile): string;
+begin
+  Result := ini.ReadString(Section, Ident, Default)
+end;
+
+function GetSettings(Section, Ident: string; Default: Integer; ini: TMemIniFile): Integer;
+begin
+  Result := ini.ReadInteger(Section, Ident, Default)
+end;
+
+function GetSettings(Section, Ident: string; Default: Int64; ini: TMemIniFile): Int64;
+begin
+  Result := ini.ReadInt64(Section, Ident, Default)
+end;
+
+function GetSettings(Section, Ident: string; Default: Boolean; ini: TMemIniFile): Boolean;
+begin
+  Result := ini.ReadBool(Section, Ident, Default)
 end;
 
 procedure LoadTorConfig;
@@ -1517,8 +1621,7 @@ begin
   try
     ini.WriteBool(Section, Ident, Value);
   finally
-    ini.UpdateFile;
-    ini.Free;
+    UpdateConfigFile(ini);
   end;
 end;
 
@@ -1530,8 +1633,7 @@ begin
   try
     ini.WriteInteger(Section, Ident, Value);
   finally
-    ini.UpdateFile;
-    ini.Free;
+    UpdateConfigFile(ini);
   end;
 end;
 
@@ -1543,8 +1645,7 @@ begin
   try
     ini.WriteInt64(Section, Ident, Value);
   finally
-    ini.UpdateFile;
-    ini.Free;
+    UpdateConfigFile(ini);
   end;
 end;
 
@@ -1556,8 +1657,7 @@ begin
   try
     ini.WriteString(Section, Ident, Value);
   finally
-    ini.UpdateFile;
-    ini.Free;
+    UpdateConfigFile(ini);
   end;
 end;
 
@@ -2052,14 +2152,19 @@ begin;
   end;
 end;
 
-procedure CheckFileEncoding(FileName: string);
+procedure CheckFileEncoding(FileName, BackupFile: string);
 var
   AStream: TFileStream;
   Options: TStringList;
   Hdr: string;
 begin
   if not FileExists(FileName) then
-    Exit;
+  begin
+    if not FileExists(BackupFile) then
+      Exit
+    else
+      FileName := BackupFile;
+  end;
   Hdr := '';
   AStream := TFileStream.Create(FileName, fmOpenRead);
   try
@@ -2074,9 +2179,56 @@ begin
   Options := TStringList.Create;
   try
     Options.LoadFromFile(FileName);
+    if FileExists(BackupFile) and (FileName <> BackupFile) then
+    begin
+      if Length(Trim(Options.Text)) = 0 then
+      begin
+        Options.Clear;
+        Options.LoadFromFile(BackupFile);
+      end;
+    end;
     Options.SaveToFile(FileName, TEncoding.UTF8);
+    Flush(FileName);
   finally
     Options.Free;
+  end;
+end;
+
+procedure Flush(FileName: string);
+var
+  Handle: HFILE;
+begin
+  if not FileExists(FileName) then
+    Exit;
+  Handle := CreateFile(PWideChar(FileName),
+    GENERIC_READ or GENERIC_WRITE, 0, nil,
+    OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0
+  );
+  if Handle <> INVALID_HANDLE_VALUE then
+  begin
+    FlushFileBuffers(Handle);
+    CloseHandle(Handle)
+  end;
+end;
+
+procedure UpdateConfigFile(ini: TMemIniFile);
+begin
+  try
+    if ini.Modified then
+    begin
+      DeleteFile(UserBackupFile);
+      RenameFile(UserConfigFile, UserBackupFile);
+      Flush(UserBackupFile);
+      try
+        ini.UpdateFile;
+      except
+        DeleteFile(UserConfigFile);
+        RenameFile(UserBackupFile, UserConfigFile);
+      end;
+      Flush(UserConfigFile);
+    end;
+  finally
+    ini.Free;
   end;
 end;
 
