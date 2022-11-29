@@ -56,6 +56,8 @@ type
   end;
 
   TButton = class (Vcl.StdCtrls.TButton)
+  protected
+    procedure WMPaint(var Message: TWMPaint); message WM_PAINT;
   strict private
     class constructor Create;
     class destructor Destroy;
@@ -187,24 +189,55 @@ begin
   inherited;
 end;
 
-procedure TSplitButtonStyleHook.Paint(Canvas: TCanvas);
+procedure DrawSplitButton(Control: TWinControl; Handle: HDC = 0);
 var
   Icon: TIcon;
+  ControlCanvas: TControlCanvas;
+  Color: TColor;
 begin
-  Inherited;
-  if (Win32MajorVersion = 5) and (TButton(Control).Style = bsSplitButton) then
+  if (Win32MajorVersion = 5) and (Control is TButton) then
   begin
-    Icon := TIcon.Create;
-    try
-      Tcp.lsMain.GetIcon(14, Icon);
-      Canvas.MoveTo(Control.Width - 15, 2);
-      Canvas.LineTo(Control.Width - 15, Control.Height - 2);
-      Canvas.Draw(Control.Width - 16, (Control.Height - 16) div 2, Icon);
-      ReleaseDC(Handle, Canvas.Handle);
-    finally
-      Icon.Free;
+    if TButton(Control).Style = bsSplitButton then
+    begin
+      Icon := TIcon.Create;
+      try
+        Tcp.lsMain.GetIcon(14, Icon);
+        ControlCanvas := TControlCanvas.Create;
+        try
+          if Handle <> 0 then
+            ControlCanvas.Handle := Handle
+          else
+            ControlCanvas.Control := Control;
+          ControlCanvas.Pen.Width := 2;
+          if StyleServices.IsSystemStyle then
+            Color := clGray
+          else
+            Color := StyleServices.GetStyleColor(scBorder);
+          ControlCanvas.Pen.Color := Color;
+          ControlCanvas.MoveTo(Control.Width - 15, 4);
+          ControlCanvas.LineTo(Control.Width - 15, Control.Height - 5);
+          ControlCanvas.Draw(Control.Width - 17, (Control.Height - 16) div 2, Icon);
+          ReleaseDC(Control.Handle, ControlCanvas.Handle);
+        finally
+          ControlCanvas.Free;
+        end;
+      finally
+        Icon.Free;
+      end;
     end;
   end;
+end;
+
+procedure TSplitButtonStyleHook.Paint(Canvas: TCanvas);
+begin
+  Inherited;
+  DrawSplitButton(Control, Canvas.Handle);
+end;
+
+procedure TButton.WMPaint(var Message: TWMPaint);
+begin
+  inherited;
+  DrawSplitButton(Self);
 end;
 
 class procedure TStyleManagerHelper.RemoveStyle(StyleName: string);

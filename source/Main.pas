@@ -1439,8 +1439,7 @@ type
     procedure cbxAutoScanTypeChange(Sender: TObject);
     procedure miExcludeBridgesWhenCountingClick(Sender: TObject);
     procedure lbStatusScannerClick(Sender: TObject);
-    procedure lbStatusScannerMouseMove(Sender: TObject; Shift: TShiftState; X,
-      Y: Integer);
+    procedure lbStatusScannerMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
     procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -12600,6 +12599,7 @@ begin
     CursorShow := False;
     btnChangeCircuit.Enabled := True;
     btnChangeCircuit.Cursor := crDefault;
+    btnChangeCircuit.Refresh;
     FreeAndNil(CursorStop);
   end
   else
