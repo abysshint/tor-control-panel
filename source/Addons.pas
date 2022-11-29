@@ -4,7 +4,8 @@ interface
 
 uses
   Winapi.Windows, Vcl.Graphics, Winapi.Messages, System.Classes, System.SysUtils,
-  Vcl.Controls, Vcl.Forms, Vcl.Grids, Vcl.StdCtrls, Vcl.Themes, Vcl.ComCtrls, Vcl.Menus;
+  Vcl.Controls, Vcl.Forms, Vcl.Grids, Vcl.StdCtrls, Vcl.Themes, Vcl.ComCtrls, Vcl.Menus,
+  Vcl.Clipbrd;
 
 type
   TColsDataType = (dtInteger, dtText, dtSize, dtParams);
@@ -40,6 +41,7 @@ type
   private
     FTextHint: TStrings;
     FTextHintFont: TFont;
+    procedure WMPaste(var msg: TMessage); message WM_PASTE;
   protected
     FCanvas: TCanvas;
     procedure WMPaint(var Message: TWMPaint); message WM_PAINT;
@@ -239,6 +241,12 @@ begin
   FTextHint.Clear;
   FreeAndNil(FTextHint);
   inherited;
+end;
+
+procedure TMemo.WMPaste(var msg: TMessage);
+begin
+  if Clipboard.HasFormat(cf_Text) then
+    SelText := AdjustLineBreaks(Clipboard.AsText);
 end;
 
 procedure TMemo.WMPaint(var Message: TWMPaint);
