@@ -1094,6 +1094,7 @@ type
     procedure SaveSortData;
     procedure UpdateScaleFactor;
     procedure CheckTorAutoStart;
+    procedure UpdateTrayHint;
     procedure CheckPrefferedBridgeExclude(RouterID: string);
     function PrepareNodesToRemove(Data: string; NodeType: TNodeType; out Nodes: ArrOfNodes): Boolean;
     procedure RemoveFromNodesListWithConvert(Nodes: ArrOfNodes; NodeType: TNodeType);
@@ -2760,6 +2761,7 @@ begin
                   Tcp.tmUpdateIp.Enabled := True;
                   if Tcp.miSelectExitCircuitWhetItChanges.Checked then
                     SelectExitCircuit := True;
+                  Tcp.UpdateTrayHint;
                 end;
               end;
             end;
@@ -4315,6 +4317,7 @@ begin
     lbClientVersion.Caption := TorVersion;
 
   lbStatusFilterMode.Caption := cbxFilterMode.Text;
+  UpdateTrayHint;
 end;
 
 procedure TTcp.SetOptionsEnable(State: Boolean);
@@ -4521,6 +4524,7 @@ begin
   miChangeCircuit.Enabled := False;
   miSwitchTor.ImageIndex := 0;
   miSwitchTor.Caption := btnSwitchTor.Caption;
+  UpdateTrayHint;
   if not Restarting then
   begin
     SetOptionsEnable(True);
@@ -14538,6 +14542,22 @@ end;
 procedure TTcp.FormResize(Sender: TObject);
 begin
   UpdateFormSize;
+end;
+
+procedure TTcp.UpdateTrayHint;
+var
+  CountryStr, IpStr, DataStr: string;
+begin
+  if (UsedProxyType <> ptNone) then
+  begin
+    DataStr := lbExitIpCaption.Caption + ' ' + lbExitIp.Caption + BR +
+      lbExitCountryCaption.Caption + ' ' + lbExitCountry.Caption + BR;
+  end
+  else
+  begin
+    DataStr := TransStr('609') + ': ' + TransStr('226') + BR;
+  end;
+  tiTray.Hint := Format(TransStr('106'), [DataStr, Tcp.lbUserDir.Caption]);
 end;
 
 procedure TTcp.tiTrayClick(Sender: TObject);

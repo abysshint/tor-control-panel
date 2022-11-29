@@ -156,7 +156,7 @@ begin
     LoadLns('103', 'Сменить\nцепочку');
     LoadStr('104', 'По умолчанию');
     LoadStr('105', 'Панель управления Tor');
-    LoadLns('106', '%s\nПрофиль: %s');
+    LoadLns('106', '%sПрофиль: %s');
     LoadStr('107', 'Настройки');
     LoadStr('108', 'Журнал');
     LoadStr('109', 'Не получен');
@@ -356,6 +356,7 @@ begin
     LoadStr('595', 'SOCKS5-трафик');
     LoadStr('596', 'HTTP/C-трафик');
     LoadStr('608', 'Вы действительно хотите: "%s"?');
+    LoadStr('609', 'Прокси');
 
     TranslateArray(HsHeader, TransStr('230'));
     TranslateArray(HsPortsHeader, TransStr('231'));
@@ -377,7 +378,6 @@ begin
       Tcp.lbUserDir.Caption := TransStr('104')
     else
       Tcp.lbUserDir.Caption := UserProfile;
-    Tcp.tiTray.Hint := Format(TransStr('106'), [TransStr('105'), Tcp.lbUserDir.Caption]);
     Tcp.Caption := TransStr('105');
     Application.Title := TransStr('105');
     if ConnectState = 0 then
