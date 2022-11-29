@@ -1296,7 +1296,6 @@ type
     procedure cbUseHiddenServiceVanguardsClick(Sender: TObject);
     procedure miLoadCachedRoutersOnStartupClick(Sender: TObject);
     procedure miUpdateIpToCountryCacheClick(Sender: TObject);
-    procedure pcOptionsChange(Sender: TObject);
     procedure cbUseNetworkCacheClick(Sender: TObject);
     procedure cbUseReachableAddressesClick(Sender: TObject);
     procedure miSelectExitCircuitWhetItChangesClick(Sender: TObject);
@@ -1494,7 +1493,7 @@ var
   HsToDelete: ArrOfStr;
   SystemLanguage: Word;
   LastAuthCookieDate, LastConsensusDate, LastNewDescriptorsDate, LastTorrcDate, GeoIpDate: TDateTime;
-  LastFullScanDate, LastNonResponsedScanDate, TotalStartDate, LastGeoIpUpdateDate: Int64;
+  LastFullScanDate, LastNonResponsedScanDate, TotalStartDate, LastGeoIpUpdateDate, LastSaveStats: Int64;
   LastPartialScansCounts: Integer;
   LockCircuits, LockCircuitInfo, LockStreams, LockStreamsInfo, UpdateTraffic: Boolean;
   FindObject: TMemo;
@@ -4413,6 +4412,7 @@ begin
         MaxDLSpeed := 0;
         MaxULSpeed := 0;
         LastUserStreamProtocol := -1;
+        LastSaveStats := DateTimeToUnix(Now);
         ConnectState := 1;
         TotalsNeedSave := False;
         SelectExitCircuit := False;
@@ -7129,6 +7129,7 @@ begin
     SetSettings('Routers', 'MiddleNodes', FavoritesMiddle, ini);
     SetSettings('Routers', 'ExitNodes', FavoritesExit, ini);
     SetSettings('Routers', 'ExcludeNodes', ExcludeNodes, ini);
+    SetSettings('Routers', 'CurrentFilter', LastRoutersFilter, ini);
 
     SetSettings('Lists', 'UseFavoritesEntry', lbFavoritesEntry.HelpContext, ini);
     SetSettings('Lists', 'UseFavoritesMiddle', lbFavoritesMiddle.HelpContext, ini);
@@ -7140,6 +7141,10 @@ begin
 
     SetSettings('Filter', cbxFilterMode, ini);
     SetSettings('Filter', miReplaceDisabledFavoritesWithCountries, ini);
+
+    SetSettings('Status', 'TotalDL', TotalDL, ini);
+    SetSettings('Status', 'TotalUL', TotalUL, ini);
+    LastSaveStats := DateTimeToUnix(Now);
 
     UpdateSystemInfo;
     SaveServerOptions(ini);
@@ -8836,11 +8841,6 @@ begin
   end;
 end;
 
-procedure TTcp.pcOptionsChange(Sender: TObject);
-begin
-  SetConfigInteger('Main', 'OptionsPage', pcOptions.TabIndex);
-end;
-
 function TTcp.CheckSimilarPorts: Boolean;
   function NoSimilar: Boolean;
   begin
@@ -8994,7 +8994,6 @@ begin
     LP_ROUTERS: SetVisible(False, False, False, False, True, True);
   end;
   paButtons.Visible := True;
-  SetConfigInteger('Main', 'LastPlace', LastPlace);
 end;
 
 procedure TTcp.MainButtonssMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
@@ -9496,6 +9495,9 @@ begin
 end;
 
 procedure TTcp.tmTrafficTimer(Sender: TObject);
+var
+  CurrentDate: TDateTime;
+  ini: TMemIniFile;
 begin
   if ConnectState = 0 then
   begin
@@ -9516,6 +9518,20 @@ begin
   end
   else
     UpdateTraffic := True;
+
+  CurrentDate := Now;
+  if (CurrentDate >= (LastSaveStats + 600)) and TotalsNeedSave then
+  begin
+    ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
+    try
+      SetSettings('Status', 'TotalDL', TotalDL, ini);
+      SetSettings('Status', 'TotalUL', TotalUL, ini);
+      LastSaveStats := DateTimeToUnix(CurrentDate);
+    finally
+      UpdateConfigFile(ini);
+    end;
+    TotalsNeedSave := False;
+  end;
 end;
 
 procedure TTCp.LoadConsensus;
@@ -12426,7 +12442,8 @@ begin
     IntToStr(LastRoutersCustomFilter) + ';' +
     IntToStr(cbxRoutersQuery.ItemIndex) + ';' +
     UserQuery;
-  SetConfigString('Routers', Ident, LastRoutersFilter);
+  if Default then
+    SetConfigString('Routers', Ident, LastRoutersFilter);
 end;
 
 procedure TTcp.miShowRoutersClick(Sender: TObject);
@@ -12774,6 +12791,7 @@ begin
     TotalDL := 0;
     TotalUL := 0;
     TotalStartDate := DateTimeToUnix(Now);
+    LastSaveStats := DateTimeToUnix(Now);
     SetSettings('Status', 'TotalDL', TotalDL, ini);
     SetSettings('Status', 'TotalUL', TotalUL, ini);
     SetSettings('Status', 'TotalStartDate', TotalStartDate, ini);
@@ -14481,6 +14499,7 @@ begin
     SetSettings('Main', 'Terminated', False, ini);
     SetSettings('Status', 'TotalDL', TotalDL, ini);
     SetSettings('Status', 'TotalUL', TotalUL, ini);
+    SetSettings('Routers', 'CurrentFilter', LastRoutersFilter, ini);
   finally
     UpdateConfigFile(ini);
   end;

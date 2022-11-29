@@ -1004,7 +1004,6 @@ object Tcp: TTcp
     TabHeight = 26
     TabOrder = 1
     TabPosition = tpBottom
-    OnChange = pcOptionsChange
     object tsMain: TTabSheet
       Caption = #1054#1073#1097#1080#1077
       object gbProfile: TGroupBox
