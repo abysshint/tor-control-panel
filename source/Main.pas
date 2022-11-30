@@ -10105,6 +10105,7 @@ var
   CountryID: Byte;
   ParseStr: ArrOfStr;
   i, j: Integer;
+  NeedCount: Boolean;
 begin
   AliveNodesCount := 0;
   PingNodesCount := 0;
@@ -10114,15 +10115,11 @@ begin
 
   for Item in RoutersDic do
   begin
-    if miExcludeBridgesWhenCounting.Checked then
-    begin
-      if not (rfRelay in Item.Value.Flags) then
-        Continue;
-    end;
+    NeedCount := not miExcludeBridgesWhenCounting.Checked or (rfRelay in Item.Value.Flags);
     if GeoIpDic.TryGetValue(Item.Value.IPv4, GeoIpInfo) then
     begin
       CountryID := GeoIpInfo.cc;
-      if GeoIpInfo.ping > 0 then
+      if (GeoIpInfo.ping > 0) and NeedCount then
       begin
         Inc(CountryTotals[TOTAL_PING_SUM][CountryID], GeoIpInfo.ping);
         Inc(CountryTotals[TOTAL_PING_COUNTS][CountryID]);
@@ -10135,13 +10132,15 @@ begin
         begin
           if Pos(IntToStr(Item.Value.OrPort) + ':1', ParseStr[i]) = 1 then
           begin
-            Inc(CountryTotals[TOTAL_ALIVES][CountryID]);
+            if NeedCount then
+              Inc(CountryTotals[TOTAL_ALIVES][CountryID]);
             if Item.Value.Params and ROUTER_ALIVE = 0 then
             begin
               RouterInfo := Item.Value;
               Inc(RouterInfo.Params, ROUTER_ALIVE);
               RoutersDic.AddOrSetValue(Item.Key, RouterInfo);
-              Inc(AliveNodesCount);
+              if NeedCount then
+                Inc(AliveNodesCount);
             end;
             Break;
           end;
@@ -10151,12 +10150,14 @@ begin
     else
       CountryID := DEFAULT_COUNTRY_ID;
     Flags := Item.Value.Flags;
-
-    Inc(CountryTotals[TOTAL_RELAYS][CountryID]);
-    if rfGuard in Flags then
-      Inc(CountryTotals[TOTAL_GUARDS][CountryID]);
-    if rfExit in Flags then
-      Inc(CountryTotals[TOTAL_EXITS][CountryID]);
+    if NeedCount then
+    begin
+      Inc(CountryTotals[TOTAL_RELAYS][CountryID]);
+      if rfGuard in Flags then
+        Inc(CountryTotals[TOTAL_GUARDS][CountryID]);
+      if rfExit in Flags then
+        Inc(CountryTotals[TOTAL_EXITS][CountryID]);
+    end;
   end;
 end;
 
@@ -11600,7 +11601,9 @@ begin
     if ntEntry in NodeItem.Value then Inc(Counters[0]);
     if ntMiddle in NodeItem.Value then Inc(Counters[1]);
     if ntExit in NodeItem.Value then Inc(Counters[2]);
-    if ntExclude in NodeItem.Value then Inc(Counters[3]) else Inc(Counters[4]);
+    if ntExclude in NodeItem.Value then Inc(Counters[3]);
+    if NodeItem.Value <> [ntExclude] then
+      Inc(Counters[4]);
   end;
 
   for i := ENTRY_ID to FAVORITES_ID do
@@ -12362,8 +12365,9 @@ var
   ParseStr: ArrOfStr;
   i, QueryType: Integer;
 begin
-  if not FirstLoad then
-    LastRoutersFilter := Data;
+  if Trim(Data) = '' then
+    Data := DEFAULT_ROUTERS_FILTER_DATA;
+  LastRoutersFilter := Data;
   ParseStr := Explode(';', Data);
 
   for i := 0 to Length(ParseStr) - 1 do
