@@ -930,6 +930,7 @@ type
     miShowConsensus: TMenuItem;
     miExcludeBridgesWhenCounting: TMenuItem;
     miDelimiter67: TMenuItem;
+    cbMinimizeToTray: TCheckBox;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1127,6 +1128,7 @@ type
     procedure SelectNodeAsBridge(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure FormCreate(Sender: TObject);
+    procedure FormMinimize(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure lbExitCountryDblClick(Sender: TObject);
     procedure lbExitMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
@@ -5863,6 +5865,7 @@ begin
 
     GetSettings('Main', cbConnectOnStartup, ini);
     GetSettings('Main', cbRestartOnControlFail, ini);
+    GetSettings('Main', cbMinimizeToTray, ini);
     GetSettings('Main', cbMinimizeOnClose, ini);
     GetSettings('Main', cbMinimizeOnStartup, ini);
     GetSettings('Main', cbShowBalloonHint, ini);
@@ -6980,6 +6983,7 @@ begin
 
     SetSettings('Main', cbConnectOnStartup, ini);
     SetSettings('Main', cbRestartOnControlFail, ini);
+    SetSettings('Main', cbMinimizeToTray, ini);
     SetSettings('Main', cbMinimizeOnClose, ini);
     SetSettings('Main', cbMinimizeOnStartup, ini);
     SetSettings('Main', cbShowBalloonHint, ini);
@@ -12132,8 +12136,8 @@ end;
 
 procedure TTcp.RestoreForm;
 begin
-  Tcp.Visible := True;
   Tcp.WindowState := wsNormal;
+  Tcp.Visible := True;
   Application.Restore;
   Application.BringToFront;
 end;
@@ -14046,8 +14050,8 @@ begin
   if (cbMinimizeOnClose.Checked) and not Closing and not WindowsShutdown then
   begin
     CanClose := WindowsShutdown;
-    Tcp.Visible := False;
     Tcp.WindowState := wsMinimized;
+    Tcp.Visible := False;
   end;
 end;
 
@@ -14129,6 +14133,15 @@ begin
   CheckStreamsControls;
 end;
 
+procedure TTcp.FormMinimize(Sender: TObject);
+begin
+  if cbMinimizeToTray.Checked then
+  begin
+    Tcp.WindowState := wsMinimized;
+    Tcp.Visible := False;
+  end;
+end;
+
 procedure TTcp.FormCreate(Sender: TObject);
 var
   i: Integer;
@@ -14162,8 +14175,9 @@ begin
     jLimit.BasicLimitInformation.LimitFlags := JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
     SetInformationJobObject(hJob, JobObjectExtendedLimitInformation, @jLimit, SizeOf(TJobObjectExtendedLimitInformation));
   end;
-
   EncodingNoBom := TUTF8EncodingNoBOM.Create;
+  Application.OnMinimize := FormMinimize;
+
   ThemesDir := ProgramDir + 'Skins\';
   TransportsDir := ProgramDir + 'Tor\PluggableTransports\';
   HsDir := UserDir + 'services\';
@@ -14586,8 +14600,8 @@ begin
   if Tcp.Visible then
   begin
     FindDialog.CloseDialog;
-    Tcp.Visible := False;
     Tcp.WindowState := wsMinimized;
+    Tcp.Visible := False;
   end
   else
     RestoreForm;

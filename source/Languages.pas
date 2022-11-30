@@ -451,6 +451,7 @@ begin
     Tcp.cbRememberEnlargedPosition.Caption := Load('416', 'Запоминать позицию увеличенного окна');
     Tcp.cbHideIPv6Addreses.Caption := Load('417', 'Скрывать IPv6-адреса в списках интерфейсов');
     Tcp.cbClearPreviousSearchQuery.Caption := Load('418', 'Очищать предыдущий поисковый запрос в списках');
+    Tcp.cbMinimizeToTray.Caption := Load('610', 'Сворачивать в трей вместо панели задач');
 
     Tcp.gbProfile.Caption := Load('134', 'Профиль');
     Tcp.btnCreateProfile.Caption := Load('117', 'Создать..');

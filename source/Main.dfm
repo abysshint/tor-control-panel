@@ -997,7 +997,7 @@ object Tcp: TTcp
     Top = 93
     Width = 721
     Height = 433
-    ActivePage = tsOther
+    ActivePage = tsMain
     DoubleBuffered = True
     Images = lsMain
     ParentDoubleBuffered = False
@@ -1145,58 +1145,58 @@ object Tcp: TTcp
         TabOrder = 2
         object cbStayOnTop: TCheckBox
           Left = 10
-          Top = 165
+          Top = 177
           Width = 300
           Height = 17
           Caption = #1054#1089#1090#1072#1074#1072#1090#1100#1089#1103' '#1087#1086#1074#1077#1088#1093' '#1074#1089#1077#1093' '#1086#1082#1086#1085
-          TabOrder = 6
+          TabOrder = 7
           OnClick = cbStayOnTopClick
         end
         object cbShowBalloonOnlyWhenHide: TCheckBox
           Left = 29
-          Top = 141
+          Top = 154
           Width = 280
           Height = 17
           Caption = #1058#1086#1083#1100#1082#1086' '#1082#1086#1075#1076#1072' '#1087#1088#1086#1075#1088#1072#1084#1084#1072' '#1089#1074#1105#1088#1085#1091#1090#1072
           Checked = True
           State = cbChecked
-          TabOrder = 5
+          TabOrder = 6
           OnClick = OptionsChange
         end
         object cbShowBalloonHint: TCheckBox
           Left = 10
-          Top = 117
+          Top = 131
           Width = 300
           Height = 17
           Caption = #1055#1086#1082#1072#1079#1099#1074#1072#1090#1100' '#1074#1089#1087#1083#1099#1074#1072#1102#1097#1080#1077' '#1089#1086#1086#1073#1097#1077#1085#1080#1103
           Checked = True
           State = cbChecked
-          TabOrder = 4
+          TabOrder = 5
           OnClick = cbShowBalloonHintClick
         end
         object cbMinimizeOnClose: TCheckBox
           Left = 10
-          Top = 93
+          Top = 108
           Width = 300
           Height = 17
           Caption = #1057#1074#1086#1088#1072#1095#1080#1074#1072#1090#1100' '#1074' '#1090#1088#1077#1081' '#1087#1088#1080' '#1079#1072#1082#1088#1099#1090#1080#1080
           Checked = True
           State = cbChecked
-          TabOrder = 3
+          TabOrder = 4
           OnClick = OptionsChange
         end
         object cbMinimizeOnStartup: TCheckBox
           Left = 10
-          Top = 69
+          Top = 85
           Width = 300
           Height = 17
           Caption = #1057#1074#1086#1088#1072#1095#1080#1074#1072#1090#1100' '#1074' '#1090#1088#1077#1081' '#1087#1088#1080' '#1079#1072#1087#1091#1089#1082#1077
-          TabOrder = 2
+          TabOrder = 3
           OnClick = OptionsChange
         end
         object cbConnectOnStartup: TCheckBox
           Left = 10
-          Top = 21
+          Top = 16
           Width = 300
           Height = 17
           Caption = #1055#1086#1076#1082#1083#1102#1095#1072#1090#1100#1089#1103' '#1087#1088#1080' '#1079#1072#1087#1091#1089#1082#1077' '#1087#1088#1086#1075#1088#1072#1084#1084#1099
@@ -1205,7 +1205,7 @@ object Tcp: TTcp
         end
         object cbRestartOnControlFail: TCheckBox
           Left = 10
-          Top = 45
+          Top = 39
           Width = 300
           Height = 17
           Caption = #1055#1077#1088#1077#1079#1072#1087#1091#1089#1082' '#1087#1088#1080' '#1086#1073#1088#1099#1074#1077' '#1089#1074#1103#1079#1080' '#1089' '#1082#1083#1080#1077#1085#1090#1086#1084
@@ -1216,53 +1216,62 @@ object Tcp: TTcp
         end
         object cbNoDesktopBorders: TCheckBox
           Left = 10
-          Top = 189
+          Top = 200
           Width = 300
           Height = 17
           Caption = #1056#1072#1079#1088#1077#1096#1080#1090#1100' '#1086#1082#1085#1091' '#1074#1099#1093#1086#1076#1080#1090#1100' '#1079#1072' '#1075#1088#1072#1085#1080#1094#1099' '#1101#1082#1088#1072#1085#1072
           Checked = True
           State = cbChecked
-          TabOrder = 7
+          TabOrder = 8
           OnClick = cbNoDesktopBordersClick
         end
         object cbRememberEnlargedPosition: TCheckBox
           Left = 10
-          Top = 237
+          Top = 246
           Width = 300
           Height = 17
           Caption = #1047#1072#1087#1086#1084#1080#1085#1072#1090#1100' '#1087#1086#1079#1080#1094#1080#1102' '#1091#1074#1077#1083#1080#1095#1077#1085#1085#1086#1075#1086' '#1086#1082#1085#1072
-          TabOrder = 9
+          TabOrder = 10
           OnClick = OptionsChange
         end
         object cbHideIPv6Addreses: TCheckBox
           Left = 10
-          Top = 261
+          Top = 269
           Width = 300
           Height = 17
           Caption = #1057#1082#1088#1099#1074#1072#1090#1100' IPv6-'#1072#1076#1088#1077#1089#1072' '#1074' '#1089#1087#1080#1089#1082#1072#1093' '#1080#1085#1090#1077#1088#1092#1077#1081#1089#1086#1074
           Checked = True
           State = cbChecked
-          TabOrder = 10
+          TabOrder = 11
           OnClick = OptionsChange
         end
         object cbNoDesktopBordersOnlyEnlarged: TCheckBox
           Left = 29
-          Top = 213
+          Top = 223
           Width = 280
           Height = 17
           Caption = #1058#1086#1083#1100#1082#1086' '#1087#1088#1080' '#1091#1074#1077#1083#1080#1095#1077#1085#1085#1086#1084' '#1086#1082#1085#1077' '#1087#1088#1086#1075#1088#1072#1084#1084#1099
           Checked = True
           State = cbChecked
-          TabOrder = 8
+          TabOrder = 9
           OnClick = OptionsChange
         end
         object cbClearPreviousSearchQuery: TCheckBox
           Left = 10
-          Top = 284
+          Top = 290
           Width = 300
           Height = 17
           Caption = #1054#1095#1080#1097#1072#1090#1100' '#1087#1088#1077#1076#1099#1076#1091#1097#1080#1081' '#1087#1086#1080#1089#1082#1086#1074#1099#1081' '#1079#1072#1087#1088#1086#1089' '#1074' '#1089#1087#1080#1089#1082#1072#1093
-          TabOrder = 11
+          TabOrder = 12
+          OnClick = OptionsChange
+        end
+        object cbMinimizeToTray: TCheckBox
+          Left = 10
+          Top = 62
+          Width = 300
+          Height = 17
+          Caption = #1057#1074#1086#1088#1072#1095#1080#1074#1072#1090#1100' '#1074' '#1090#1088#1077#1081' '#1074#1084#1077#1089#1090#1086' '#1087#1072#1085#1077#1083#1080' '#1079#1072#1076#1072#1095
+          TabOrder = 2
           OnClick = OptionsChange
         end
       end
@@ -1275,7 +1284,7 @@ object Tcp: TTcp
         TabOrder = 0
         object lbMaxCircuitDirtiness: TLabel
           Left = 58
-          Top = 22
+          Top = 17
           Width = 222
           Height = 13
           Alignment = taRightJustify
@@ -1284,7 +1293,7 @@ object Tcp: TTcp
         end
         object lbSeconds1: TLabel
           Left = 344
-          Top = 22
+          Top = 17
           Width = 21
           Height = 13
           Caption = #1089#1077#1082'.'
@@ -1294,7 +1303,7 @@ object Tcp: TTcp
         end
         object lbCircuitBuildTimeout: TLabel
           Left = 96
-          Top = 70
+          Top = 63
           Width = 184
           Height = 13
           Alignment = taRightJustify
@@ -1304,7 +1313,7 @@ object Tcp: TTcp
         end
         object lbSeconds2: TLabel
           Left = 344
-          Top = 70
+          Top = 63
           Width = 21
           Height = 13
           Caption = #1089#1077#1082'.'
@@ -1313,7 +1322,7 @@ object Tcp: TTcp
         end
         object lbSeconds3: TLabel
           Left = 344
-          Top = 46
+          Top = 40
           Width = 21
           Height = 13
           Caption = #1089#1077#1082'.'
@@ -1321,7 +1330,7 @@ object Tcp: TTcp
         end
         object lbNewCircuitPeriod: TLabel
           Left = 35
-          Top = 46
+          Top = 40
           Width = 245
           Height = 13
           Alignment = taRightJustify
@@ -1348,7 +1357,7 @@ object Tcp: TTcp
         end
         object lbMaxClientCircuitsPending: TLabel
           Left = 64
-          Top = 94
+          Top = 86
           Width = 216
           Height = 13
           Alignment = taRightJustify
@@ -1357,7 +1366,7 @@ object Tcp: TTcp
         end
         object cbAvoidDiskWrites: TCheckBox
           Left = 10
-          Top = 189
+          Top = 177
           Width = 350
           Height = 17
           Caption = #1042#1099#1087#1086#1083#1085#1103#1090#1100' '#1084#1077#1085#1100#1096#1077' '#1086#1087#1077#1088#1072#1094#1080#1081' '#1089' '#1076#1080#1089#1082#1086#1084
@@ -1366,7 +1375,7 @@ object Tcp: TTcp
         end
         object cbLearnCircuitBuildTimeout: TCheckBox
           Left = 10
-          Top = 117
+          Top = 108
           Width = 350
           Height = 17
           Caption = #1040#1074#1090#1086#1084#1072#1090#1080#1095#1077#1089#1082#1080' '#1074#1099#1073#1080#1088#1072#1090#1100' '#1074#1088#1077#1084#1103' '#1085#1072' '#1087#1086#1089#1090#1088#1086#1077#1085#1080#1077' '#1094#1077#1087#1086#1095#1082#1080
@@ -1377,7 +1386,7 @@ object Tcp: TTcp
         end
         object cbEnforceDistinctSubnets: TCheckBox
           Left = 10
-          Top = 141
+          Top = 131
           Width = 350
           Height = 17
           Caption = #1053#1077' '#1089#1090#1088#1086#1080#1090#1100' '#1094#1077#1087#1086#1095#1082#1080' '#1080#1079' '#1091#1079#1083#1086#1074' '#1086#1076#1085#1086#1081' '#1087#1086#1076#1089#1077#1090#1080
@@ -1388,7 +1397,7 @@ object Tcp: TTcp
         end
         object edMaxCircuitDirtiness: TEdit
           Left = 283
-          Top = 19
+          Top = 14
           Width = 42
           Height = 21
           MaxLength = 7
@@ -1402,7 +1411,7 @@ object Tcp: TTcp
         end
         object udMaxCircuitDirtiness: TUpDown
           Left = 325
-          Top = 19
+          Top = 14
           Width = 16
           Height = 21
           Associate = edMaxCircuitDirtiness
@@ -1416,7 +1425,7 @@ object Tcp: TTcp
         end
         object edNewCircuitPeriod: TEdit
           Left = 283
-          Top = 43
+          Top = 37
           Width = 42
           Height = 21
           MaxLength = 7
@@ -1428,7 +1437,7 @@ object Tcp: TTcp
         end
         object udNewCircuitPeriod: TUpDown
           Left = 325
-          Top = 43
+          Top = 37
           Width = 16
           Height = 21
           Associate = edNewCircuitPeriod
@@ -1442,7 +1451,7 @@ object Tcp: TTcp
         end
         object edCircuitBuildTimeout: TEdit
           Left = 283
-          Top = 67
+          Top = 60
           Width = 42
           Height = 21
           Enabled = False
@@ -1455,7 +1464,7 @@ object Tcp: TTcp
         end
         object udCircuitBuildTimeout: TUpDown
           Left = 325
-          Top = 67
+          Top = 60
           Width = 16
           Height = 21
           Associate = edCircuitBuildTimeout
@@ -1470,7 +1479,7 @@ object Tcp: TTcp
         end
         object cbUseOpenDNS: TCheckBox
           Left = 10
-          Top = 213
+          Top = 200
           Width = 350
           Height = 17
           Caption = #1054#1087#1088#1077#1076#1077#1083#1103#1090#1100' '#1074#1085#1077#1096#1085#1080#1081' '#1072#1076#1088#1077#1089' '#1089#1077#1088#1074#1077#1088#1072' '#1095#1077#1088#1077#1079' OpenDNS'
@@ -1481,7 +1490,7 @@ object Tcp: TTcp
         end
         object cbUseOpenDNSOnlyWhenUnknown: TCheckBox
           Left = 26
-          Top = 237
+          Top = 223
           Width = 334
           Height = 17
           Caption = #1058#1086#1083#1100#1082#1086' '#1077#1089#1083#1080' TOR '#1085#1077' '#1084#1086#1078#1077#1090' '#1086#1087#1088#1077#1076#1077#1083#1080#1090#1100' '#1077#1075#1086' '#1089#1072#1084
@@ -1492,7 +1501,7 @@ object Tcp: TTcp
         end
         object cbUseNetworkCache: TCheckBox
           Left = 10
-          Top = 261
+          Top = 246
           Width = 350
           Height = 17
           Caption = #1050#1101#1096#1080#1088#1086#1074#1072#1090#1100' IP-cc-'#1079#1072#1087#1088#1086#1089#1099' '#1080' '#1088#1077#1079#1091#1083#1100#1090#1072#1090#1099' '#1089#1077#1090#1077#1074#1086#1075#1086' '#1089#1082#1072#1085#1077#1088#1072
@@ -1537,7 +1546,7 @@ object Tcp: TTcp
         end
         object cbStrictNodes: TCheckBox
           Left = 10
-          Top = 165
+          Top = 154
           Width = 350
           Height = 17
           Caption = #1056#1072#1079#1088#1077#1096#1080#1090#1100' '#1079#1072#1087#1088#1077#1097#1105#1085#1085#1099#1077' '#1091#1079#1083#1099' '#1076#1083#1103' '#1074#1085#1091#1090#1088#1077#1085#1085#1080#1093' '#1094#1077#1087#1086#1095#1077#1082
@@ -1548,7 +1557,7 @@ object Tcp: TTcp
         end
         object edMaxClientCircuitsPending: TEdit
           Left = 283
-          Top = 91
+          Top = 83
           Width = 42
           Height = 21
           MaxLength = 4
@@ -1560,7 +1569,7 @@ object Tcp: TTcp
         end
         object udMaxClientCircuitsPending: TUpDown
           Left = 325
-          Top = 91
+          Top = 83
           Width = 16
           Height = 21
           Associate = edMaxClientCircuitsPending
