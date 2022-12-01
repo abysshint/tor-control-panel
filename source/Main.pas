@@ -817,7 +817,6 @@ type
     lbTotalDL: TLabel;
     lbTotalUL: TLabel;
     miDelimiter60: TMenuItem;
-    miResetTotalsCounter: TMenuItem;
     miResetScannerSchedule: TMenuItem;
     miLogSeparate: TMenuItem;
     miDelimiter59: TMenuItem;
@@ -932,6 +931,11 @@ type
     miDelimiter67: TMenuItem;
     cbMinimizeToTray: TCheckBox;
     miShowPortAlongWithIp: TMenuItem;
+    miResetTotalsCounter: TMenuItem;
+    miEnableTotalsCounter: TMenuItem;
+    miTotalsCounter: TMenuItem;
+    miDelimiter68: TMenuItem;
+    miDelimiter69: TMenuItem;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1444,6 +1448,8 @@ type
     procedure lbStatusScannerClick(Sender: TObject);
     procedure lbStatusScannerMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure miShowPortAlongWithIpClick(Sender: TObject);
+    procedure mnTrafficPopup(Sender: TObject);
+    procedure miEnableTotalsCounterClick(Sender: TObject);
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
     procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -2844,18 +2850,24 @@ begin
     if DLSpeed > 0 then
     begin
       Inc(SessionDL, DLSpeed);
-      inc(TotalDL, DLSpeed);
       Tcp.lbSessionDL.Caption := BytesFormat(SessionDL);
-      Tcp.lbTotalDL.Caption := BytesFormat(TotalDL);
-      TotalsNeedSave := True;
+      if Tcp.miEnableTotalsCounter.Checked then
+      begin
+        inc(TotalDL, DLSpeed);
+        Tcp.lbTotalDL.Caption := BytesFormat(TotalDL);
+        TotalsNeedSave := True;
+      end;
     end;
     if ULSpeed > 0 then
     begin
       Inc(SessionUL, ULSpeed);
-      inc(TotalUL, ULSpeed);
       Tcp.lbSessionUL.Caption := BytesFormat(SessionUL);
-      Tcp.lbTotalUL.Caption := BytesFormat(TotalUL);
-      TotalsNeedSave := True;
+      if Tcp.miEnableTotalsCounter.Checked then
+      begin
+        inc(TotalUL, ULSpeed);
+        Tcp.lbTotalUL.Caption := BytesFormat(TotalUL);
+        TotalsNeedSave := True;
+      end;
     end;
 
     Exit;
@@ -4340,6 +4352,22 @@ begin
     lbClientVersion.Caption := TorVersion;
 
   lbStatusFilterMode.Caption := cbxFilterMode.Text;
+
+  if miEnableTotalsCounter.Checked then
+  begin
+    lbTotalDL.Caption := BytesFormat(TotalDL);
+    lbTotalUL.Caption := BytesFormat(TotalUL);
+    gbTotal.Hint := Format(TransStr('402'), [DateTimeToStr(UnixToDateTime(TotalStartDate))]);
+    gbTotal.ShowHint := True;
+  end
+  else
+  begin
+    lbTotalDL.Caption := INFINITY_CHAR;
+    lbTotalUL.Caption := INFINITY_CHAR;
+    gbTotal.ShowHint := False;
+    gbTotal.Hint := '';
+  end;
+
   UpdateTrayHint;
 end;
 
@@ -5966,6 +5994,8 @@ begin
 
     GetSettings('Status', miSelectGraphDL, ini);
     GetSettings('Status', miSelectGraphUL, ini);
+    GetSettings('Status', miEnableTotalsCounter, ini);
+
     CurrentTrafficPeriod := GetIntDef(GetSettings('Status', 'CurrentTrafficPeriod', 1, ini), 1, 0, 8);
     miTrafficPeriod.items[CurrentTrafficPeriod].Checked := True;
 
@@ -6203,7 +6233,8 @@ begin
 
     CheckServerControls;
     CheckScannerControls;
-    CheckStatusControls;
+    if not FirstLoad then
+      CheckStatusControls;
     CheckStreamsControls;
     CheckCachedFiles;
 
@@ -6236,15 +6267,12 @@ begin
       TotalDL := GetSettings('Status', 'TotalDL', 0, ini);
       TotalUL := GetSettings('Status', 'TotalUL', 0, ini);
       TotalStartDate := GetSettings('Status', 'TotalStartDate', 0, ini);
-
-      lbTotalDL.Caption := BytesFormat(TotalDL);
-      lbTotalUL.Caption := BytesFormat(TotalUL);
-      if (TotalStartDate = 0) then
+      if (TotalStartDate = 0) or ((TotalDL = 0) and (TotalUL = 0)) then
       begin
         TotalStartDate := DateTimeToUnix(Now);
         SetSettings('Status', 'TotalStartDate', TotalStartDate, ini);
       end;
-      gbTotal.Hint := Format(TransStr('402'), [DateTimeToStr(UnixToDateTime(TotalStartDate))]);
+      CheckStatusControls;
 
       LastPlace := GetIntDef(GetSettings('Main', 'LastPlace', LP_OPTIONS, ini), LP_OPTIONS, LP_OPTIONS, LP_ROUTERS);
       pcOptions.TabIndex := GetIntDef(GetSettings('Main', 'OptionsPage', 0, ini), 0, 0, pcOptions.PageCount - 1);
@@ -7175,6 +7203,7 @@ begin
     SetSettings('Status', 'TotalDL', TotalDL, ini);
     SetSettings('Status', 'TotalUL', TotalUL, ini);
     LastSaveStats := DateTimeToUnix(Now);
+    TotalsNeedSave := False;
 
     UpdateSystemInfo;
     SaveServerOptions(ini);
@@ -8525,6 +8554,11 @@ begin
   end;
 end;
 
+procedure TTcp.mnTrafficPopup(Sender: TObject);
+begin
+  miResetTotalsCounter.Enabled := (ConnectState <> 1) and ((TotalDL <> 0) or (TotalUL <> 0));
+end;
+
 procedure TTcp.mnTransportsPopup(Sender: TObject);
 begin
   SelectRowPopup(sgTransports, mnTransports);
@@ -8579,7 +8613,6 @@ begin
   miStopScan.Enabled := NotStarting and tmScanner.Enabled;
 
   miResetGuards.Enabled := NotStarting;
-  miResetTotalsCounter.Enabled := NotStarting and (TotalDL <> 0) and (TotalUL <> 0);
   miResetScannerSchedule.Enabled := ScanState;
 
   miCheckIpProxyType.Enabled := NotStarting;
@@ -9549,18 +9582,21 @@ begin
   else
     UpdateTraffic := True;
 
-  CurrentDate := Now;
-  if (CurrentDate >= (LastSaveStats + 600)) and TotalsNeedSave then
+  if miEnableTotalsCounter.Checked then
   begin
-    ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
-    try
-      SetSettings('Status', 'TotalDL', TotalDL, ini);
-      SetSettings('Status', 'TotalUL', TotalUL, ini);
-      LastSaveStats := DateTimeToUnix(CurrentDate);
-    finally
-      UpdateConfigFile(ini);
+    CurrentDate := Now;
+    if (CurrentDate >= (LastSaveStats + 600)) and TotalsNeedSave then
+    begin
+      ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
+      try
+        SetSettings('Status', 'TotalDL', TotalDL, ini);
+        SetSettings('Status', 'TotalUL', TotalUL, ini);
+        LastSaveStats := DateTimeToUnix(CurrentDate);
+        TotalsNeedSave := False;
+      finally
+        UpdateConfigFile(ini);
+      end;
     end;
-    TotalsNeedSave := False;
   end;
 end;
 
@@ -9861,7 +9897,6 @@ begin
 
   if not WrongQuery then
   begin
-    LastPreferredBridgeHash := '';
     if cbUseBridges.Checked and cbUsePreferredBridge.Checked then
       TryParseBridge(edPreferredBridge.Text, PreferredBridge);
 
@@ -12726,6 +12761,12 @@ begin
   SetConfigBoolean('Routers', 'EnableConvertNodesOnRemoveFromNodesList', miEnableConvertNodesOnRemoveFromNodesList.Checked);
 end;
 
+procedure TTcp.miEnableTotalsCounterClick(Sender: TObject);
+begin
+  CheckStatusControls;
+  SetConfigBoolean('Status', 'EnableTotalsCounter', miEnableTotalsCounter.Checked);
+end;
+
 procedure TTcp.miEnableConvertNodesOnAddToNodesListClick(Sender: TObject);
 begin
   SetConfigBoolean('Routers', 'EnableConvertNodesOnAddToNodesList', miEnableConvertNodesOnAddToNodesList.Checked);
@@ -12835,14 +12876,13 @@ begin
   try
     TotalDL := 0;
     TotalUL := 0;
+    TotalsNeedSave := False;
     TotalStartDate := DateTimeToUnix(Now);
     LastSaveStats := DateTimeToUnix(Now);
     SetSettings('Status', 'TotalDL', TotalDL, ini);
     SetSettings('Status', 'TotalUL', TotalUL, ini);
     SetSettings('Status', 'TotalStartDate', TotalStartDate, ini);
-    lbTotalDL.Caption := BytesFormat(TotalDL);
-    lbTotalUL.Caption := BytesFormat(TotalUL);
-    gbTotal.Hint := Format(TransStr('402'), [DateTimeToStr(UnixToDateTime(TotalStartDate))]);
+    CheckStatusControls;
   finally
     UpdateConfigFile(ini);
   end;

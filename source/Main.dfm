@@ -4753,10 +4753,6 @@ object Tcp: TTcp
         Caption = #1057#1073#1088#1086#1089#1080#1090#1100' '#1088#1072#1089#1087#1080#1089#1072#1085#1080#1077' '#1089#1082#1072#1085#1080#1088#1086#1074#1072#1085#1080#1103' '#1091#1079#1083#1086#1074
         OnClick = miResetScannerScheduleClick
       end
-      object miResetTotalsCounter: TMenuItem
-        Caption = #1057#1073#1088#1086#1089#1080#1090#1100' '#1089#1095#1105#1090#1095#1080#1082' '#1090#1088#1072#1092#1080#1082#1072
-        OnClick = miResetTotalsCounterClick
-      end
     end
     object miStartScan: TMenuItem
       Caption = #1047#1072#1087#1091#1089#1090#1080#1090#1100' '#1089#1082#1072#1085#1080#1088#1086#1074#1072#1085#1080#1077
@@ -6083,7 +6079,7 @@ object Tcp: TTcp
       end
       object miShowPortAlongWithIp: TMenuItem
         AutoCheck = True
-        Caption = #1055#1086#1082#1072#1079#1099#1074#1072#1090#1100' OR-'#1087#1086#1088#1090' '#1074#1084#1077#1089#1090#1077' '#1089' IP '#1072#1076#1088#1077#1089#1086#1084
+        Caption = #1055#1086#1082#1072#1079#1099#1074#1072#1090#1100' '#1087#1086#1088#1090' '#1074#1084#1077#1089#1090#1077' '#1089' IP '#1072#1076#1088#1077#1089#1086#1084' '#1088#1086#1091#1090#1077#1088#1072
         OnClick = miShowPortAlongWithIpClick
       end
       object miDelimiter41: TMenuItem
@@ -6352,6 +6348,8 @@ object Tcp: TTcp
   end
   object mnTraffic: TPopupMenu
     AutoHotkeys = maManual
+    Images = lsMenus
+    OnPopup = mnTrafficPopup
     Left = 693
     Top = 1
     object miTrafficPeriod: TMenuItem
@@ -6424,6 +6422,26 @@ object Tcp: TTcp
         Caption = #1054#1090#1087#1088#1072#1074#1082#1072
         Checked = True
         OnClick = miSelectGraphULClick
+      end
+    end
+    object miDelimiter68: TMenuItem
+      Caption = '-'
+    end
+    object miTotalsCounter: TMenuItem
+      Caption = #1057#1095#1105#1090#1095#1080#1082' '#1090#1088#1072#1092#1080#1082#1072
+      object miEnableTotalsCounter: TMenuItem
+        AutoCheck = True
+        Caption = #1042#1082#1083#1102#1095#1080#1090#1100' '#1087#1086#1076#1089#1095#1105#1090
+        Checked = True
+        OnClick = miEnableTotalsCounterClick
+      end
+      object miDelimiter69: TMenuItem
+        Caption = '-'
+      end
+      object miResetTotalsCounter: TMenuItem
+        Caption = #1057#1073#1088#1086#1089#1080#1090#1100' '#1089#1095#1105#1090#1095#1080#1082' '#1090#1088#1072#1092#1080#1082#1072
+        ImageIndex = 18
+        OnClick = miResetTotalsCounterClick
       end
     end
   end

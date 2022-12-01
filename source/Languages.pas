@@ -632,11 +632,8 @@ begin
     Tcp.lbSessionUL.Caption := BytesFormat(SessionUL);
 
     Tcp.gbTotal.Caption := Load('403', 'Итого за всё время');
-    Tcp.gbTotal.Hint := Format(TransStr('402'), [DateTimeToStr(UnixToDateTime(TotalStartDate))]);
     Tcp.lbTotalDLCaption.Caption := TransStr('214') + ':';
     Tcp.lbTotalULCaption.Caption := TransStr('215') + ':';
-    Tcp.lbTotalDL.Caption := BytesFormat(TotalDL);
-    Tcp.lbTotalUL.Caption := BytesFormat(TotalUL);
 
     Tcp.gbInfo.Caption := Load('222', 'Сведения');
     Tcp.lbClientVersionCaption.Caption := Load('223', 'Версия клиента') + ':';
@@ -698,7 +695,6 @@ begin
     Tcp.miClearAliveCache.Caption := Load('484', 'Очистить кэш живых узлов');
     Tcp.miClearUnusedNetworkCache.Caption := Load('485', 'Очистить неиспользуемый сетевой кэш');
     Tcp.miResetScannerSchedule.Caption := Load('486', 'Сбросить расписание сканирования узлов');
-    Tcp.miResetTotalsCounter.Caption := Load('487', 'Сбросить счётчик трафика');
     Tcp.miStartScan.Caption := Load('488', 'Запустить сканирование');
     Tcp.miScanNewNodes.Caption := Load('489', 'Новые узлы');
     Tcp.miScanNonResponsed.Caption := Load('490', 'Не отвечающие узлы');
@@ -962,6 +958,9 @@ begin
     Tcp.miSelectGraph.Caption := Load('590', 'Показывать графики');
     Tcp.miSelectGraphDL.Caption := TransStr('212');
     Tcp.miSelectGraphUL.Caption := TransStr('213');
+    Tcp.miResetTotalsCounter.Caption := Load('487', 'Сбросить счётчик трафика');
+    Tcp.miTotalsCounter.Caption := Load('612', 'Счётчик трафика');
+    Tcp.miEnableTotalsCounter.Caption := Load('613', 'Включить подсчёт');
 
     if ValidInt(TransStr('Locale'), 0, 65535) then
       CurrentLanguage := StrToInt(TransStr('Locale'))
