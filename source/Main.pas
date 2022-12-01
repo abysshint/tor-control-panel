@@ -931,6 +931,7 @@ type
     miExcludeBridgesWhenCounting: TMenuItem;
     miDelimiter67: TMenuItem;
     cbMinimizeToTray: TCheckBox;
+    miShowPortAlongWithIp: TMenuItem;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1442,6 +1443,7 @@ type
     procedure miExcludeBridgesWhenCountingClick(Sender: TObject);
     procedure lbStatusScannerClick(Sender: TObject);
     procedure lbStatusScannerMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+    procedure miShowPortAlongWithIpClick(Sender: TObject);
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
     procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -2941,8 +2943,9 @@ begin
   end;
 end;
 
-procedure TTcp.sgCircuitInfoDrawCell(Sender: TObject; ACol, ARow: Integer;
-  Rect: TRect; State: TGridDrawState);
+procedure TTcp.sgCircuitInfoDrawCell(Sender: TObject; ACol, ARow: Integer; Rect: TRect; State: TGridDrawState);
+var
+  IpStr: string;
 begin
   if (ARow = 0) and (ACol > 0) then
   begin
@@ -2956,8 +2959,13 @@ begin
   begin
     if ACol = CIRC_INFO_FLAG then
     begin
-      if sgCircuitInfo.Cells[CIRC_INFO_IP, ARow] <> '' then
-        GridDrawIcon(sgCircuitInfo, Rect, lsFlags,  GetCountryValue(sgCircuitInfo.Cells[CIRC_INFO_IP, ARow]), 20, 13);
+      IpStr := sgCircuitInfo.Cells[CIRC_INFO_IP, ARow];
+      if IpStr <> '' then
+      begin
+        if miShowPortAlongWithIp.Checked then
+          IpStr := GetAddressFromSocket(IpStr);
+        GridDrawIcon(sgCircuitInfo, Rect, lsFlags,  GetCountryValue(IpStr), 20, 13);
+      end;
     end;
   end;
 end;
@@ -5922,6 +5930,7 @@ begin
     GetSettings('Circuits', miShowCircuitsTraffic, ini);
     GetSettings('Circuits', miShowStreamsTraffic, ini);
     GetSettings('Circuits', miShowStreamsInfo, ini);
+    GetSettings('Circuits', miShowPortAlongWithIp, ini);
 
     GetSettings('Scanner', cbEnablePingMeasure, ini);
     GetSettings('Scanner', cbEnableDetectAliveNodes, ini);
@@ -10306,7 +10315,10 @@ begin
         CountryCode := GetCountryValue(Router.IPv4);
         sgCircuitInfo.Cells[CIRC_INFO_ID, NodesCount] := NodesData[i];
         sgCircuitInfo.Cells[CIRC_INFO_NAME, NodesCount] := Router.Name;
-        sgCircuitInfo.Cells[CIRC_INFO_IP, NodesCount] := Router.IPv4;
+        if miShowPortAlongWithIp.Checked then
+          sgCircuitInfo.Cells[CIRC_INFO_IP, NodesCount] := Router.IPv4 + ':' + IntToStr(Router.OrPort)
+        else
+          sgCircuitInfo.Cells[CIRC_INFO_IP, NodesCount] := Router.IPv4;
         sgCircuitInfo.Cells[CIRC_INFO_COUNTRY, NodesCount] := TransStr(CountryCodes[CountryCode]);
         sgCircuitInfo.Cells[CIRC_INFO_WEIGHT, NodesCount] := BytesFormat(Router.Bandwidth * 1024) + '/' + TransStr('180');
         if GeoIpDic.TryGetValue(Router.IPv4, GeoIpInfo) then
@@ -10789,9 +10801,9 @@ begin
 
   if PingState then
   begin
-    sgCircuitInfo.ColWidths[CIRC_INFO_NAME] := Round(111 * Scale);
-    sgCircuitInfo.ColWidths[CIRC_INFO_IP] := Round(100 * Scale);
-    sgCircuitInfo.ColWidths[CIRC_INFO_COUNTRY] := Round(120 * Scale);
+    sgCircuitInfo.ColWidths[CIRC_INFO_NAME] := Round(109 * Scale);
+    sgCircuitInfo.ColWidths[CIRC_INFO_IP] := Round(120 * Scale);
+    sgCircuitInfo.ColWidths[CIRC_INFO_COUNTRY] := Round(108 * Scale);
     sgCircuitInfo.ColWidths[CIRC_INFO_PING] := Round(48 * Scale);
     sgRouters.ColWidths[ROUTER_NAME] := Round(90 * Scale);
     sgRouters.ColWidths[ROUTER_IP] := Round(88 * Scale);
@@ -10800,9 +10812,9 @@ begin
   end
   else
   begin
-    sgCircuitInfo.ColWidths[CIRC_INFO_NAME] := Round(126 * Scale);
-    sgCircuitInfo.ColWidths[CIRC_INFO_IP] := Round(115 * Scale);
-    sgCircuitInfo.ColWidths[CIRC_INFO_COUNTRY] := Round(140 * Scale);
+    sgCircuitInfo.ColWidths[CIRC_INFO_NAME] := Round(124 * Scale);
+    sgCircuitInfo.ColWidths[CIRC_INFO_IP] := Round(135 * Scale);
+    sgCircuitInfo.ColWidths[CIRC_INFO_COUNTRY] := Round(128 * Scale);
     sgCircuitInfo.ColWidths[CIRC_INFO_PING] := -1;
     sgRouters.ColWidths[ROUTER_NAME] := Round(105 * Scale);
     sgRouters.ColWidths[ROUTER_IP] := Round(98 * Scale);
@@ -12152,6 +12164,12 @@ procedure TTcp.miShowOptionsClick(Sender: TObject);
 begin
   RestoreForm;
   sbShowOptions.Click;
+end;
+
+procedure TTcp.miShowPortAlongWithIpClick(Sender: TObject);
+begin
+  ShowCircuitInfo(sgCircuits.Cells[CIRC_ID, sgCircuits.SelRow]);
+  SetConfigBoolean('Circuits', 'ShowPortAlongWithIp', miShowPortAlongWithIp.Checked);
 end;
 
 procedure TTcp.miShowStatusClick(Sender: TObject);
@@ -14121,7 +14139,7 @@ begin
   sgCircuits.ColWidths[CIRC_BYTES_WRITTEN] := 0;
   sgCircuitInfo.ColWidths[CIRC_INFO_ID] := -1;
   sgCircuitInfo.ColWidths[CIRC_INFO_FLAG] := Round(23 * Scale);
-  sgCircuitInfo.ColWidths[CIRC_INFO_WEIGHT] := Round(72 * Scale);
+  sgCircuitInfo.ColWidths[CIRC_INFO_WEIGHT] := Round(64 * Scale);
   sgStreams.ColWidths[STREAMS_ID] := -1;
   sgStreams.ColWidths[STREAMS_TRACK] := Round(24 * Scale);
   sgStreams.ColWidths[STREAMS_COUNT] := Round(30 * Scale);

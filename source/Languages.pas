@@ -859,6 +859,7 @@ begin
     Tcp.miCircuitsUpdateNormal.Caption := Load('539', 'Нормальная');
     Tcp.miCircuitsUpdateLow.Caption := Load('540', 'Низкая');
     Tcp.miCircuitsUpdateManual.Caption := Load('541', 'Обновлять вручную');
+    Tcp.miShowPortAlongWithIp.Caption := Load('611', 'Показывать порт вместе с IP адресом роутера');
 
     Tcp.miStreamsDestroyStream.Caption := TransStr('524');
     Tcp.miStreamsOpenInBrowser.Caption := Load('542', 'Открыть в браузере');

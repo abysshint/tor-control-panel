@@ -6081,6 +6081,11 @@ object Tcp: TTcp
         Checked = True
         OnClick = miShowStreamsInfoClick
       end
+      object miShowPortAlongWithIp: TMenuItem
+        AutoCheck = True
+        Caption = #1055#1086#1082#1072#1079#1099#1074#1072#1090#1100' OR-'#1087#1086#1088#1090' '#1074#1084#1077#1089#1090#1077' '#1089' IP '#1072#1076#1088#1077#1089#1086#1084
+        OnClick = miShowPortAlongWithIpClick
+      end
       object miDelimiter41: TMenuItem
         Caption = '-'
       end
