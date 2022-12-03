@@ -41,7 +41,7 @@ var
 
   function BoolToStrDef(Value: Boolean): string;
   function GetCommandLineFileName(const CommandLine: string): string;
-  function CheckSplitButton(Button: TButton): Boolean;
+  function CheckSplitButton(Button: TButton; DirectClick: Boolean): Boolean;
   function GetAssocUpDown(AName: string): TUpdown;
   function GetCountryValue(IpStr: string): Byte;
   function GetIntDef(const Value, Default, Min, Max: Integer): Integer;
@@ -3424,12 +3424,12 @@ begin
   CheckMask(ROUTER_BAD_EXIT);
 end;
 
-function CheckSplitButton(Button: TButton): Boolean;
+function CheckSplitButton(Button: TButton; DirectClick: Boolean): Boolean;
 var
   MousePoint, MenuPoint: TPoint;
 begin
   Result := False;
-  if (Win32MajorVersion = 5) and (Button.Style = bsSplitButton) then
+  if (Win32MajorVersion = 5) and (Button.Style = bsSplitButton) and DirectClick then
   begin
     MousePoint := Button.ScreenToClient(Mouse.CursorPos);
     if not InRange(MousePoint.X, 0, Button.Width - 16) then

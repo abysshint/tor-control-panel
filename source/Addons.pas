@@ -58,6 +58,8 @@ type
   TButton = class (Vcl.StdCtrls.TButton)
   protected
     procedure WMPaint(var Message: TWMPaint); message WM_PAINT;
+    procedure CMTextChanged(var Msg: TMessage); message CM_TEXTCHANGED;
+    procedure CMEnabledChanged(var Msg: TMessage); message CM_ENABLEDCHANGED;
   strict private
     class constructor Create;
     class destructor Destroy;
@@ -238,6 +240,26 @@ procedure TButton.WMPaint(var Message: TWMPaint);
 begin
   inherited;
   DrawSplitButton(Self);
+end;
+
+procedure TButton.CMTextChanged(var Msg: TMessage);
+begin
+  inherited;
+  if Win32MajorVersion = 5 then
+  begin
+    if (Style = bsSplitButton) and TStyleManager.ActiveStyle.IsSystemStyle then
+      Invalidate;
+  end;
+end;
+
+procedure TButton.CMEnabledChanged(var Msg: TMessage);
+begin
+  inherited;
+  if Win32MajorVersion = 5 then
+  begin
+    if (Style = bsSplitButton) and TStyleManager.ActiveStyle.IsSystemStyle then
+      Invalidate;
+  end;
 end;
 
 class procedure TStyleManagerHelper.RemoveStyle(StyleName: string);

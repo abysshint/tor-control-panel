@@ -1064,6 +1064,7 @@ type
     procedure SelectHsPorts;
     procedure SelectTransports;
     procedure CheckStreamsControls;
+    procedure ChangeCircuit(DirectClick: Boolean = True);
     procedure SendCommand(const cmd: string);
     procedure CheckSelectRowOptions(aSg: TStringGrid; Checked: Boolean; Save: Boolean = False);
     procedure SetButtonsProp(Btn: TSpeedButton; LeftSmall, LeftBig: Integer);
@@ -1083,6 +1084,8 @@ type
     procedure SetOptionsEnable(State: Boolean);
     procedure StartTor(AutoResolveErrors: Boolean = False);
     procedure StopTor;
+    procedure UpdateConnectProgress(Value: Integer);
+    procedure UpdateConnectControls(State: Byte);
     procedure SetSortMenuData(aSg: TStringGrid);
     procedure SetCustomFilterStyle(CustomFilterID: Integer);
     procedure ResetGuards(GuardType: TGuardType);
@@ -2475,7 +2478,7 @@ end;
 
 procedure TControlThread.GetData;
 var
-  i: Integer;
+  i, ConnectProgress: Integer;
   UpdateCountry: Boolean;
   Item: TPair<string, TRouterInfo>;
   GeoIpItem: TPair<string, TGeoIpInfo>;
@@ -2636,27 +2639,19 @@ begin
     SearchPos := Pos('BOOTSTRAP PROGRESS', Data);
     if SearchPos <> 0 then
     begin
-      Temp := copy(Data, SearchPos + 19, Pos('TAG', Data) - (SearchPos + 20));
-      Tcp.btnChangeCircuit.Caption := Temp + ' %';
-
-      if Temp = '75' then
-      begin
-        Tcp.LoadConsensus;
-        Exit;
-      end;
-      if Temp = '100' then
-      begin
-        ConnectState := 2;
-        AlreadyStarted := True;
-        Tcp.btnChangeCircuit.Caption := TransStr('103');
-        Tcp.tiTray.IconIndex := 2;
-        Tcp.btnSwitchTor.ImageIndex := 2;
-        Tcp.btnSwitchTor.Caption := TransStr('102');
-        Tcp.miSwitchTor.ImageIndex := 2;
-        Tcp.miSwitchTor.Caption := Tcp.btnSwitchTor.Caption;
-        Tcp.SetOptionsEnable(True);
-        Tcp.GetServerInfo;
-        Tcp.SendDataThroughProxy;
+      ConnectProgress := StrToIntDef(copy(Data, SearchPos + 19, Pos('TAG', Data) - (SearchPos + 20)), 0);
+      Tcp.UpdateConnectProgress(ConnectProgress);
+      case ConnectProgress of
+         75: Tcp.LoadConsensus;
+        100:
+        begin
+          ConnectState := 2;
+          AlreadyStarted := True;
+          Tcp.UpdateConnectControls(ConnectState);
+          Tcp.SetOptionsEnable(True);
+          Tcp.GetServerInfo;
+          Tcp.SendDataThroughProxy;        
+        end
       end;
       Exit;
     end;
@@ -2764,7 +2759,6 @@ begin
                   begin
                     Tcp.lbExitIp.Cursor := crHandPoint;
                     Tcp.lbExitCountry.Cursor := crHandPoint;
-                    Tcp.miChangeCircuit.Enabled := True;
                   end;
                   ExitNodeID := Temp;
                   Tcp.lbExitIp.Caption := Ip;
@@ -4476,9 +4470,7 @@ begin
         LockStreamsInfo := False;
         tmTraffic.Enabled := True;
         tmCircuits.Enabled := True;
-        btnSwitchTor.ImageIndex := 1;
-        btnSwitchTor.Caption := TransStr('101');
-        btnChangeCircuit.Caption := '0 %';
+        UpdateConnectControls(ConnectState);
         if UsedProxyType <> ptNone then
         begin
           lbExitIp.Caption := TransStr('111');
@@ -4497,9 +4489,6 @@ begin
           lbControlPassword.Enabled := False;
           imGeneratePassword.Enabled := False;
         end;
-        tiTray.IconIndex := 1;
-        miSwitchTor.ImageIndex := 1;
-        miSwitchTor.Caption := btnSwitchTor.Caption;
         CheckStatusControls;
         if(cbShowBalloonHint.Checked and not cbShowBalloonOnlyWhenHide.Checked)
           or (not cbConnectOnStartup.Checked or (cbConnectOnStartup.Checked and cbMinimizeOnStartup.Checked)) then
@@ -4537,6 +4526,41 @@ begin
   end;
 end;
 
+procedure TTcp.UpdateConnectProgress(Value: Integer);
+var
+  Str: string;
+begin
+  case Value of
+    -1, 100: Str := TransStr('103');
+    else
+      Str := IntToStr(Value) + ' %';  
+  end;
+  if (Value = 100) and (ConnectState = 1) then
+    Exit
+  else
+    btnChangeCircuit.Caption := Str;
+end;
+
+procedure TTcp.UpdateConnectControls(State: Byte);
+var
+  Value: Integer;
+begin
+  btnChangeCircuit.Enabled := State = 0;
+  case State of
+    1: Value := 0;
+    2: Value := 100;
+    else
+      Value := -1;       
+  end;
+  UpdateConnectProgress(Value);
+  btnSwitchTor.Caption := TransStr('10' + IntToStr(State)); 
+  btnSwitchTor.ImageIndex := State;
+  miChangeCircuit.Enabled := False;
+  miSwitchTor.Caption := btnSwitchTor.Caption;
+  miSwitchTor.ImageIndex := State;
+  tiTray.IconIndex := State;
+end;
+
 procedure TTcp.StopTor;
 begin
   TerminateProcess(TorMainProcess.hProcess, 0);
@@ -4552,7 +4576,6 @@ begin
   InfoStage := 0;
   GetIpStage := 0;
   AutoScanStage := 0;
-
   LockCircuits := False;
   LockCircuitInfo := False;
   LockStreams := False;
@@ -4560,10 +4583,6 @@ begin
   tmUpdateIp.Enabled := False;
   tmConsensus.Enabled := False;
   tmCircuits.Enabled := False;
-  btnChangeCircuit.Caption := TransStr('103');
-  btnChangeCircuit.Enabled := True;
-  btnSwitchTor.ImageIndex := 0;
-  btnSwitchTor.Caption := TransStr('100');
   imExitFlag.Visible := False;
   lbExitCountry.Left := Round(174 * Scale);
   lbExitCountry.Caption := TransStr('110');
@@ -4571,10 +4590,7 @@ begin
   lbExitCountry.Hint := '';
   lbExitIp.Caption := TransStr('109');
   lbExitIp.Cursor := crDefault;
-  tiTray.IconIndex := 0;
-  miChangeCircuit.Enabled := False;
-  miSwitchTor.ImageIndex := 0;
-  miSwitchTor.Caption := btnSwitchTor.Caption;
+  UpdateConnectControls(ConnectState);
   UpdateTrayHint;
   if not Restarting then
   begin
@@ -12660,7 +12676,6 @@ begin
     CursorShow := False;
     btnChangeCircuit.Enabled := True;
     btnChangeCircuit.Cursor := crDefault;
-    btnChangeCircuit.Refresh;
     FreeAndNil(CursorStop);
   end
   else
@@ -12672,9 +12687,9 @@ begin
   end;
 end;
 
-procedure TTcp.btnChangeCircuitClick(Sender: TObject);
+procedure TTcp.ChangeCircuit(DirectClick: Boolean = True);
 begin
-  if CheckSplitButton(btnChangeCircuit) then
+  if CheckSplitButton(btnChangeCircuit, DirectClick) then
     Exit;
   if (UsedProxyType <> ptNone) and (ConnectState = 2) and (Circuit <> '') then
   begin
@@ -12693,6 +12708,11 @@ begin
       CursorStop.Interval := 25;
     end;
   end;
+end;
+
+procedure TTcp.btnChangeCircuitClick(Sender: TObject);
+begin
+  ChangeCircuit;
 end;
 
 procedure TTcp.btnShowNodesClick(Sender: TObject);
@@ -12722,7 +12742,7 @@ end;
 
 procedure TTcp.miChangeCircuitClick(Sender: TObject);
 begin
-  btnChangeCircuit.Click;
+  ChangeCircuit(False)
 end;
 
 procedure TTcp.SelectCheckIpProxy(Sender: TObject);
