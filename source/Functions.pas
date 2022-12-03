@@ -176,7 +176,7 @@ var
   procedure GridKeyDown(aSg: TStringGrid; Shift: TShiftState; var Key: Word);
   procedure GridCheckAutoPopup(aSg: TStringGrid; ARow: Integer; AllowEmptyRows: Boolean = False);
   procedure GoToInvalidOption(PageID: TTabSheet; Msg: string = ''; edComponent: TCustomEdit = nil);
-  procedure DeleteDuplicatesFromList(List: TStringList);
+  procedure DeleteDuplicatesFromList(List: TStringList; ListType: TListType = ltNoCheck);
   procedure SortNodesList(ls: TStringList; DescSort: Boolean = False);
   procedure ControlsDisable(Control: TWinControl);
   procedure ControlsEnable(Control: TWinControl);
@@ -1661,19 +1661,37 @@ begin
   end;
 end;
 
-procedure DeleteDuplicatesFromList(List: TStringList);
+procedure DeleteDuplicatesFromList(List: TStringList; ListType: TListType = ltNoCheck);
 var
   ls: TDictionary<string, Byte>;
+  HashStr: string;
   i: Integer;
+
+  procedure UpdateList(Str: string);
+  begin
+    if ls.ContainsKey(Str) then
+      List.Delete(i)
+    else
+      ls.AddOrSetValue(Str, 0);
+  end;
+
 begin
   ls := TDictionary<string, Byte>.Create;
   try
-    for i := List.Count - 1 downto 0 do
+    if ListType = ltBridge then
     begin
-      if ls.ContainsKey(List[i]) then
-        List.Delete(i)
-      else
-        ls.AddOrSetValue(List[i], 0);
+      for i := List.Count - 1 downto 0 do
+      begin
+        if TryGetDataFromStr(List[i], ltHash, HashStr) then
+          UpdateList(HashStr)
+        else
+          UpdateList(List[i]);
+      end;
+    end
+    else
+    begin
+      for i := List.Count - 1 downto 0 do
+        UpdateList(List[i]);
     end;
   finally
     ls.Free;
@@ -1807,7 +1825,7 @@ begin
           end;
         end;
       end;
-      DeleteDuplicatesFromList(ls);
+      DeleteDuplicatesFromList(ls, ListType);
       if Sorted then
       begin
         if ListType = ltNode then
@@ -1856,7 +1874,7 @@ begin
             ls[i] := Str;
         end;
       end;
-      DeleteDuplicatesFromList(ls);
+      DeleteDuplicatesFromList(ls, ListType);
       if Sorted then
       begin
         if ListType = ltNode then
