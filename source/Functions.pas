@@ -60,6 +60,7 @@ var
   function GetHost(Host: string): string;
   function GetAddressFromSocket(SocketStr: string): string;
   function GetPortFromSocket(SocketStr: string): Word;
+  function GetRouterBySocket(SocketStr: string): string;
   function FormatHost(HostStr: string): string;
   function ExtractDomain(Url: string; HasPort: Boolean = False): string;
   function GetAvailPhysMemory: Cardinal;
@@ -106,7 +107,7 @@ var
   function ValidHost(HostStr: string; AllowRootDomain: Boolean = False; AllowIp: Boolean = True; ReqBrackets: Boolean = False): Boolean;
   function ValidBridge(BridgeStr: string; BridgeType: TBridgeType): Boolean;
   function ValidTransport(TransportStr: string): Boolean;
-  function ValidSocket(SocketStr: string; AllowHostNames: Boolean = False): Boolean;
+  function ValidSocket(SocketStr: string; AllowHostNames: Boolean = False): Byte;
   function ValidPolicy(PolicyStr: string): Boolean;
   function GetMsgCaption(Caption: string; MsgType: TMsgType): string;
   function TryParseBridge(BridgeStr: string; out Bridge: TBridge): Boolean;
@@ -1483,7 +1484,7 @@ begin
           end;
         end;
         ptSocket:
-          if not ValidSocket(Result, Boolean(MinValue)) then
+          if ValidSocket(Result, Boolean(MinValue)) = 0 then
             Reset;
         ptHost:
           if not ValidHost(Result, False, True, Boolean(MinValue)) then
@@ -1781,7 +1782,7 @@ begin
     ltPolicy: Result := ValidPolicy(Str);
     ltBridge: Result := ValidBridge(Str, btList);
     ltNode: Result := ValidHash(Str) or (ValidAddress(Str, True, True) = 1) or FilterDic.ContainsKey(AnsiLowerCase(Str));
-    ltSocket: Result := ValidSocket(Str);
+    ltSocket: Result := ValidSocket(Str) <> 0;
     ltTransport: Result := ValidTransport(Str);
     else
       Result := True;
@@ -2646,6 +2647,42 @@ begin
     Result := HostStr;
 end;
 
+function GetRouterBySocket(SocketStr: string): string;
+var
+  Item: TPair<string, TRouterInfo>;
+  SocketID: Byte;
+  IpStr: string;
+  Port: Word;
+begin
+  Result := '';
+  SocketID := ValidSocket(SocketStr);
+  if SocketID <> 0 then
+  begin
+    Port := GetPortFromSocket(SocketStr);
+    IpStr := GetAddressFromSocket(SocketStr);
+    if SocketID = 2 then
+      IpStr := FormatHost(IpStr);
+
+    for Item in RoutersDic do
+    begin
+      case SocketID of
+        1:
+        if (Item.Value.IPv4 = IpStr) and (Item.Value.OrPort = Port) then
+        begin
+          Result := Item.Key;
+          Break;
+        end;
+        2:
+        if (Item.Value.IPv6 = IpStr) and (Item.Value.OrPort = Port) then
+        begin
+          Result := Item.Key;
+          Break;
+        end;
+      end;
+    end;
+  end;
+end;
+
 function GetPrefixSize(Prefix: string; Localize: Boolean = False): Int64;
 var
   Index: Integer;
@@ -2950,21 +2987,24 @@ begin
   Result := True;
 end;
 
-function ValidSocket(SocketStr: string; AllowHostNames: Boolean = False): Boolean;
+function ValidSocket(SocketStr: string; AllowHostNames: Boolean = False): Byte;
 var
   Search: Integer;
 begin
-  Result := False;
+  Result := 0;
   Search := RPos(':', SocketStr);
   if Search = 0 then
     Exit;
   if AllowHostNames then
-    Result := ValidHost(Copy(SocketStr, 1, Search - 1), False, True, True)
+  begin
+    if ValidHost(Copy(SocketStr, 1, Search - 1), False, True, True) then
+      Result := 3;
+  end
   else
-    Result := ValidAddress(Copy(SocketStr, 1, Search - 1), False, True) <> 0;
-  if Result then
+    Result := ValidAddress(Copy(SocketStr, 1, Search - 1), False, True);
+  if Result <> 0 then
     if not ValidInt(Copy(SocketStr, Search + 1), 1, 65535) then
-      Result := False
+      Result := 0;
 end;
 
 function ValidPolicy(PolicyStr: string): Boolean;
@@ -3038,7 +3078,7 @@ end;
 function TryParseBridge(BridgeStr: string; out Bridge: TBridge): Boolean;
 var
   ParseStr: ArrOfStr;
-  ParamsFlag: Boolean;
+  ParamsState: Byte;
   ParamsStr: string;
   i: Integer;
 begin
@@ -3050,31 +3090,38 @@ begin
   Result := ValidBridge(BridgeStr, btNone);
   if Result then
   begin
-    ParamsFlag := False;
+    ParamsState := 0;
     ParamsStr := '';
     ParseStr := Explode(' ', BridgeStr);
     for i := 0 to Length(ParseStr) - 1 do
     begin
-      if ParamsFlag then
-      begin
-        ParamsStr := ParamsStr + ' ' + ParseStr[i];
-        Continue;
+      case ParamsState of
+        1:
+        begin
+          ParamsState := 2;
+          if ValidHash(ParseStr[i]) then
+            Bridge.Hash := ParseStr[i]
+          else
+            ParamsStr := ParamsStr + ' ' + ParseStr[i];
+          Continue;
+        end;
+        2:
+        begin
+          ParamsStr := ParamsStr + ' ' + ParseStr[i];
+          Continue;
+        end;
       end;
       if ValidTransport(ParseStr[i]) then
       begin
         Bridge.Transport := ParseStr[i];
         Continue;
       end;
-      if ValidSocket(ParseStr[i]) then
+      if ValidSocket(ParseStr[i]) <> 0 then
       begin
         Bridge.Ip := GetAddressFromSocket(ParseStr[i]);
         Bridge.Port := GetPortFromSocket(ParseStr[i]);
+        ParamsState := 1;
         Continue;
-      end;
-      if ValidHash(ParseStr[i]) then
-      begin
-        Bridge.Hash := ParseStr[i];
-        ParamsFlag := True;
       end;
     end;
     Bridge.Params := Trim(ParamsStr);
@@ -3105,25 +3152,26 @@ begin
     Exit;
   ParseStr := Explode(' ', BridgeStr);
   ParamCount := Length(ParseStr);
-  case ParamCount of
-    1: if ValidSocket(ParseStr[0]) then Result := True;
-    2: if ValidSocket(ParseStr[0]) and ValidHash(ParseStr[1]) then Result := True;
-    else
+
+  if ParamCount > 1 then
+  begin
+    if TransportsDic.TryGetValue(ParseStr[0], T) then
     begin
-      if TransportsDic.TryGetValue(ParseStr[0], T) then
+      if (T.TransportID <> TRANSPORT_SERVER) and (ValidSocket(ParseStr[1]) <> 0) then
       begin
-        if (T.TransportID <> TRANSPORT_SERVER) and ValidSocket(ParseStr[1]) and ValidHash(ParseStr[2]) then
+        if BridgeType <> btNone then
         begin
-          if BridgeType <> btNone then
-          begin
-            Include(T.BridgeType, BridgeType);
-            TransportsDic.AddOrSetValue(ParseStr[0], T);
-          end;
-          Result := True;
+          Include(T.BridgeType, BridgeType);
+          TransportsDic.AddOrSetValue(ParseStr[0], T);
         end;
+        Result := True;
       end;
-    end;
-  end;
+    end
+    else
+      Result := (ValidSocket(ParseStr[0]) <> 0) and ValidHash(ParseStr[1]);
+  end
+  else
+    Result := ValidSocket(ParseStr[0]) <> 0;
 end;
 
 function CidrToRange(CidrStr: string): TIPv4Range;

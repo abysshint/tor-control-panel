@@ -45,6 +45,7 @@ type
   protected
     FCanvas: TCanvas;
     procedure WMPaint(var Message: TWMPaint); message WM_PAINT;
+    procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -299,9 +300,30 @@ begin
 end;
 
 procedure TMemo.WMPaste(var msg: TMessage);
+var
+  Str: string;
 begin
-  if Clipboard.HasFormat(cf_Text) then
-    SelText := AdjustLineBreaks(Clipboard.AsText);
+  try
+    if Clipboard.HasFormat(cf_Text) then
+    begin
+      Str := Clipboard.AsText;
+      Str := AdjustLineBreaks(Str);
+      SelText := Str;
+    end;
+  except
+    on E:Exception do
+      Exit
+  end;
+end;
+
+procedure TMemo.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited;
+  if Button = mbMiddle then
+  begin
+    if CanFocus then
+      SetFocus;
+  end;
 end;
 
 procedure TMemo.WMPaint(var Message: TWMPaint);

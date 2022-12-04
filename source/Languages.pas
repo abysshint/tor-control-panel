@@ -184,7 +184,7 @@ begin
     LoadStr('206', 'Обычный');
     LoadLns('208', '\n  Щёлкните здесь для добавления адресов\n\n  Примеры:\n\n       Ip: 8.8.8.8\n     Сайт: metrics.torproject.org\n    Домен:.torproject.org\n      Все:.');
     LoadLns('209', '\n  Щёлкните здесь для добавления узлов\n\n  Примеры:\n\n       Ip: 8.8.8.8\n     CIDR: 8.8.8.8/24\n   Страна: RU,DE,US,..\n      Хэш: ABCD1234CDEF567..');
-    LoadLns('210', '\n  Щёлкните здесь для добавления мостов\n\n  Примеры:\n\n         8.8.8.8:443\n         8.8.8.8:443 ABCD1234CDEF567..\n   obfs4 8.8.8.8:443 ABCD1234CDEF567.. cert=.. iat-mode=..\n\n Примечание: мосты переопределяют настройки входных узлов');
+    LoadLns('210', '\n  Щёлкните здесь для добавления мостов\n\n  Примеры:\n\n           8.8.8.8:443\n           8.8.8.8:443 ABCD1234CDEF567..\n     obfs4 8.8.8.8:443 ABCD1234CDEF567.. cert=.. iat-mode=..\n   conjure 8.8.8.8:443 url=.. %s');
     LoadStr('212', 'Загрузка');
     LoadStr('213', 'Отправка');
     LoadStr('214', 'Получено');
@@ -357,6 +357,7 @@ begin
     LoadStr('596', 'HTTP/C-трафик');
     LoadStr('608', 'Вы действительно хотите: "%s"?');
     LoadStr('609', 'Прокси');
+    LoadLns('614', '\n\n\n  Примечание:\n\n           Мосты переопределяют настройки входных узлов');
 
     TranslateArray(HsHeader, TransStr('230'));
     TranslateArray(HsPortsHeader, TransStr('231'));
@@ -472,7 +473,7 @@ begin
     Tcp.edProxyAddress.TextHint := Load('158', 'IP-адрес или имя узла');
     Tcp.edProxyUser.TextHint := TransStr('159');
     Tcp.edProxyPassword.TextHint := TransStr('159');
-    Tcp.meBridges.TextHint.Text := TransStr('210');
+    Tcp.meBridges.TextHint.Text := Format(TransStr('210'), [TransStr('614')]);
     Tcp.lbBridgesType.Caption := TransStr('151');
     Tcp.lbBridgesList.Caption := Load('419', 'Список мостов');
     Tcp.cbUsePreferredBridge.Caption := Load('420', 'Задать предпочитаемый мост вручную');
