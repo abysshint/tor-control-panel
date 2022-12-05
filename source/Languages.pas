@@ -939,6 +939,7 @@ begin
     Tcp.miAutoSelExitEnabled.Caption := TransStr('290');
     Tcp.miAutoSelNodesSA.Caption := TransStr('368');
     Tcp.miAutoSelNodesUA.Caption := TransStr('369');
+    Tcp.miAddRelaysToBridgesCache.Caption := Load('615', 'Добавлять узлы консенсуса в кэш мостов');
 
     Tcp.miTransportsInsert.Caption := TransStr('279');
     Tcp.miTransportsDelete.Caption := TransStr('280');

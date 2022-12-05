@@ -997,7 +997,7 @@ object Tcp: TTcp
     Top = 93
     Width = 721
     Height = 433
-    ActivePage = tsMain
+    ActivePage = tsNetwork
     DoubleBuffered = True
     Images = lsMain
     ParentDoubleBuffered = False
@@ -5663,6 +5663,11 @@ object Tcp: TTcp
         Caption = #1047#1072#1087#1088#1077#1090#1080#1090#1100' '#1074#1099#1073#1086#1088' '#1074' '#1082#1072#1095#1077#1089#1090#1074#1077' '#1084#1086#1089#1090#1072' '#1085#1077#1087#1086#1076#1093#1086#1076#1103#1097#1080#1093' '#1091#1079#1083#1086#1074
         Checked = True
         OnClick = miDisableSelectionUnSuitableAsBridgeClick
+      end
+      object miAddRelaysToBridgesCache: TMenuItem
+        AutoCheck = True
+        Caption = #1044#1086#1073#1072#1074#1083#1103#1090#1100' '#1091#1079#1083#1099' '#1082#1086#1085#1089#1077#1085#1089#1091#1089#1072' '#1074' '#1082#1101#1096' '#1084#1086#1089#1090#1086#1074
+        OnClick = miAddRelaysToBridgesCacheClick
       end
       object miDelimiter62: TMenuItem
         Caption = '-'

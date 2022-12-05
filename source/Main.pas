@@ -936,6 +936,7 @@ type
     miTotalsCounter: TMenuItem;
     miDelimiter68: TMenuItem;
     miDelimiter69: TMenuItem;
+    miAddRelaysToBridgesCache: TMenuItem;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1453,6 +1454,7 @@ type
     procedure miShowPortAlongWithIpClick(Sender: TObject);
     procedure mnTrafficPopup(Sender: TObject);
     procedure miEnableTotalsCounterClick(Sender: TObject);
+    procedure miAddRelaysToBridgesCacheClick(Sender: TObject);
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
     procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -2383,16 +2385,19 @@ begin
         begin
           if RoutersDic.TryGetValue(RouterID, Router) then
           begin
-            if (rfRelay in Router.Flags) and not (rfBridge in Router.Flags) then
+            if (rfRelay in Router.Flags) and (Tcp.miAddRelaysToBridgesCache.Checked) then
             begin
-              Include(Router.Flags, rfBridge);
-              Inc(Router.Params, ROUTER_BRIDGE);
+              if not (rfBridge in Router.Flags) then
+              begin
+                Include(Router.Flags, rfBridge);
+                Inc(Router.Params, ROUTER_BRIDGE);
+              end;
               if Router.Bandwidth < DescRouter.Bandwidth then
                 Router.Bandwidth := DescRouter.Bandwidth;
               UpdateBridges(Router);
               RoutersDic.AddOrSetValue(RouterID, Router);
-              UpdateFromDesc := False;
             end;
+            UpdateFromDesc := False;
           end;
           if UpdateFromDesc then
           begin
@@ -3639,19 +3644,16 @@ begin
             sgRouters.Cells[ROUTER_EXCLUDE_NODES, sgRouters.SelRow] := EXCLUDE_CHAR;
             for i := ROUTER_ENTRY_NODES to ROUTER_EXIT_NODES do
             begin
-              if sgRouters.Cells[i, sgRouters.SelRow] <> NONE_CHAR then
+              CreateNodesList(TNodeType(i));
+              if IsHashMode then
               begin
-                CreateNodesList(TNodeType(i));
-                if IsHashMode then
-                begin
-                  if CheckRouterFlags(i, RouterInfo) then
-                    sgRouters.Cells[i, sgRouters.SelRow] := ''
-                  else
-                    sgRouters.Cells[i, sgRouters.SelRow] := NONE_CHAR;
-                end
+                if CheckRouterFlags(i, RouterInfo) then
+                  sgRouters.Cells[i, sgRouters.SelRow] := ''
                 else
-                  sgRouters.Cells[i, sgRouters.SelRow] := FAVERR_CHAR;
-              end;
+                  sgRouters.Cells[i, sgRouters.SelRow] := NONE_CHAR;
+              end
+              else
+                sgRouters.Cells[i, sgRouters.SelRow] := FAVERR_CHAR;
             end;
             FNodeTypes := [];
           end
@@ -3680,7 +3682,7 @@ begin
           end
           else
           begin
-            if (SelData = FAVERR_CHAR) and not CheckRouterFlags(Integer(NodeTypeID), RouterInfo) then
+            if (SelData = FAVERR_CHAR) and ((not CheckRouterFlags(Integer(NodeTypeID), RouterInfo)) or (Key = LastPreferredBridgeHash)) then
               sgRouters.Cells[sgRouters.SelCol, sgRouters.SelRow] := NONE_CHAR
             else
               sgRouters.Cells[sgRouters.SelCol, sgRouters.SelRow] := '';
@@ -3723,7 +3725,12 @@ begin
       NodesList.Free;
     end;
     if TryParseBridge(edPreferredBridge.Text, PreferredBridge) then
+    begin
+      if PreferredBridge.Hash = '' then
+        PreferredBridge.Hash := GetRouterBySocket(FormatHost(PreferredBridge.Ip) + ':' + IntToStr(PreferredBridge.Port));
       CheckPrefferedBridgeExclude(PreferredBridge.Hash);
+    end;
+
     CheckNodesListState(Integer(NodeTypeID));
     CalculateTotalNodes(False);
     if not HashMode then
@@ -5986,6 +5993,7 @@ begin
     GetSettings('Routers', miConvertCountryNodes, ini);
     GetSettings('Routers', miIgnoreConvertExcludeNodes, ini);
     GetSettings('Routers', miAvoidAddingIncorrectNodes, ini);
+    GetSettings('Routers', miAddRelaysToBridgesCache, ini, False);
 
     GetSettings('Circuits', miHideCircuitsWithoutStreams, ini, False);
     GetSettings('Circuits', miAlwaysShowExitCircuit, ini);
@@ -9813,8 +9821,13 @@ var
             sgRouters.Cells[i, RoutersCount] := FAVERR_CHAR
           else
           begin
-            if not IsPrefferedBridge then
-              sgRouters.Cells[i, RoutersCount] := SELECT_CHAR;
+            if IsPrefferedBridge then
+            begin
+              if i <> ROUTER_ENTRY_NODES then
+                sgRouters.Cells[i, RoutersCount] := FAVERR_CHAR
+            end
+            else
+              sgRouters.Cells[i, RoutersCount] := SELECT_CHAR
           end;
         end;
       end;
@@ -10121,7 +10134,11 @@ begin
           sgRouters.Cells[ROUTER_EXCLUDE_NODES, RoutersCount] := EXCLUDE_CHAR;
 
         if IsPrefferedBridge then
+        begin
           sgRouters.Cells[ROUTER_ENTRY_NODES, RoutersCount] := BOTH_CHAR;
+          sgRouters.Cells[ROUTER_MIDDLE_NODES, RoutersCount] := NONE_CHAR;
+          sgRouters.Cells[ROUTER_EXIT_NODES, RoutersCount] := NONE_CHAR;
+        end;
 
         if FindHash then
           SelectNodes(Item.Key, IsExclude);
@@ -11214,7 +11231,7 @@ begin
     else
     begin
       LastPreferredBridgeHash := GetRouterBySocket(FormatHost(Bridge.Ip) + ':' + IntToStr(Bridge.Port));
-      Result := LastPreferredBridgeHash <> ''; 
+      Result := LastPreferredBridgeHash <> '';
     end;
   end;
 
@@ -11242,6 +11259,8 @@ begin
   lbTotalBridges.Enabled := State;
   lbTotalBridges.Caption := TransStr('203') + ': ' + IntToStr(meBridges.Lines.Count);
   lbPreferredBridge.Enabled := PreferredState;
+  if not PreferredState then
+    LastPreferredBridgeHash := '';
 end;
 
 procedure TTcp.cbUseBridgesClick(Sender: TObject);
@@ -13386,10 +13405,10 @@ var
   i: Integer;
   CountryID: Byte;
   Router: TRouterInfo;
-  RangesStr: string;
+  RangesStr, NodeStr: string;
   ParseStr: ArrOfStr;
   ItemID: TListType;
-  NodeStr: string;
+  FindRouter: Boolean;
 
   function IpToMask(IpStr: string; Mask: Byte): string;
   var
@@ -13413,6 +13432,7 @@ begin
     ls.Add(NodeID);
     if RoutersDic.TryGetValue(NodeID, Router) then
     begin
+      FindRouter := True;
       CountryID := GetCountryValue(Router.IPv4);
       ls.Add(Router.IPv4);
       ls.Add('-');
@@ -13437,7 +13457,9 @@ begin
       end;
       ls.Add('-');
       ls.Add(AnsiUpperCase(CountryCodes[CountryID]) + ' (' + TransStr(CountryCodes[CountryID]) + ')');
-    end;
+    end
+    else
+      FindRouter := False;
 
     for i := 0 to ls.Count - 1 do
     begin
@@ -13457,9 +13479,9 @@ begin
           SubMenu.Enabled := False;
       end;
 
-      if SubMenu.Enabled and (ItemID in [ltHash]) then
+      if SubMenu.Enabled and (ItemID in [ltHash]) and FindRouter then
       begin
-        if not CheckRouterFlags(NodeTypeID, Router) and (NodeTypeID <> EXCLUDE_ID)  then
+        if (not CheckRouterFlags(NodeTypeID, Router) or (NodeStr = LastPreferredBridgeHash)) and (NodeTypeID <> EXCLUDE_ID)  then
           SubMenu.Visible := False;
       end;
 
@@ -14065,6 +14087,13 @@ begin
   begin
     ShellOpen(GITHUB_URL);
   end;
+end;
+
+procedure TTcp.miAddRelaysToBridgesCacheClick(Sender: TObject);
+begin
+  if miAddRelaysToBridgesCache.Checked then
+    LoadConsensus;
+  SetConfigBoolean('Routers', 'AddRelaysToBridgesCache', miAddRelaysToBridgesCache.Checked);
 end;
 
 procedure TTcp.miDisableFiltersOnAuthorityOrBridgeClick(Sender: TObject);
@@ -14976,6 +15005,7 @@ end;
 procedure TTcp.miRtDisableBridgesClick(Sender: TObject);
 begin
   cbUseBridges.Checked := False;
+  cbUsePreferredBridge.Checked := False;
   BridgesCheckControls;  
   ShowRouters;
   EnableOptionButtons;
@@ -15127,13 +15157,11 @@ var
 begin
   if not CheckCacheOpConfirmation(TMenuItem(Sender).Caption) then
     Exit;
+  DeleteFile(DescriptorsFile);
+  DeleteFile(NewDescriptorsFile);
   ClearAll := TMenuItem(Sender).Tag = 1;
   if ClearAll then
-  begin
-    DeleteFile(DescriptorsFile);
-    DeleteFile(NewDescriptorsFile);
-    BridgesDic.Clear;
-  end
+    BridgesDic.Clear
   else
   begin
     ls := TStringList.Create;
@@ -15325,7 +15353,7 @@ end;
 
 procedure TTcp.miLoadCachedRoutersOnStartupClick(Sender: TObject);
 begin
-  if (ConnectState = 0) and miLoadCachedRoutersOnStartup.Checked and (RoutersDic.Count = 0) then
+  if miLoadCachedRoutersOnStartup.Checked and (ConnectState = 0) and (RoutersDic.Count = 0) then
     LoadConsensus;
   SetConfigBoolean('Routers', 'LoadCachedRoutersOnStartup', miLoadCachedRoutersOnStartup.Checked);
 end;
