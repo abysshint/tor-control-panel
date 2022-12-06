@@ -7844,19 +7844,30 @@ end;
 
 procedure TTcp.miClearUnusedNetworkCacheClick(Sender: TObject);
 var
-  IpList: TDictionary<string, Byte>;
+  IpList: TDictionary<string, string>;
   DeleteList: TStringList;
   Router: TPair<string, TRouterInfo>;
   Item: TPair<string, TGeoIpInfo>;
-  i: Integer;
+  ListItem: TPair<string, string>;
+  GeoIpInfo: TGeoIpInfo;
+  IpStr, Data: string;
+  RouterPorts, IpPorts: ArrOfStr;
+  i, j, Max, Index, Count, Find: Integer;
+
 begin
   if not CheckCacheOpConfirmation(TMenuItem(Sender).Caption) then
     Exit;
   DeleteList := TStringList.Create;
-  IpList := TDictionary<string, Byte>.Create;
+  IpList := TDictionary<string, string>.Create;
   try
     for Router in RoutersDic do
-      IpList.AddOrSetValue(Router.Value.IPv4, 0);
+    begin
+      IpStr := Router.Value.IPv4;
+      if IpList.ContainsKey(IpStr) then
+        IpList.AddOrSetValue(IpStr, IpList.Items[IpStr] + ',' + IntToStr(Router.Value.OrPort))
+      else
+        IpList.AddOrSetValue(IpStr, IntToStr(Router.Value.OrPort));
+    end;
     for Item in GeoIpDic do
     begin
       if not IpList.ContainsKey(Item.Key) then
@@ -7864,6 +7875,51 @@ begin
     end;
     for i := 0 to DeleteList.Count - 1 do
       GeoIpDic.Remove(DeleteList[i]);
+
+    for ListItem in IpList do
+    begin
+      if GeoIpDic.TryGetValue(ListItem.Key, GeoIpInfo) then
+      begin
+        if GeoIpInfo.ports <> '' then
+        begin
+          IpPorts := Explode('|', GeoIpInfo.ports);
+          RouterPorts := Explode(',', ListItem.Value);
+          Max := Length(RouterPorts);
+          Find := 0;
+          Index := -1;
+          for i := 0 to Length(IpPorts) - 1 do
+          begin
+            Count := 0;
+            for j := 0 to Length(RouterPorts) - 1 do
+            begin
+              if Pos(RouterPorts[j] + ':', IpPorts[i]) = 1 then
+              begin
+                RouterPorts[j] := '';
+                Index := i;
+                Inc(Count);
+                Inc(Find);
+              end;
+              if (j = Max - 1) and (Count = 0) then
+                IpPorts[i] := '';
+            end;
+            if Find = Max then
+              Break;
+          end;
+          Data := '';
+          if Index > -1 then
+          begin
+            for j := 0 to Index do
+            begin
+              if IpPorts[j] <> '' then
+                Data := Data + '|' + IpPorts[j];
+            end;
+            Delete(Data, 1, 1);
+          end;
+          GeoIpInfo.ports := Data;
+          GeoIpDic.AddOrSetValue(ListItem.Key, GeoIpInfo);
+        end;
+      end;
+    end;
   finally
     IpList.Free;
     DeleteList.Free;
@@ -9916,16 +9972,10 @@ begin
         Delete(Temp, 1, 1);
         Query := Temp;
       end;
-      7:
-      begin
-        if not (ValidInt(Query, -1, 65535) or (CharInSet(AnsiChar(Query[1]), [NONE_CHAR, INFINITY_CHAR]) and (Length(Query) = 1))) then
-          WrongQuery := True
-      end;
-      8:
-      begin
-        if not TransportsDic.ContainsKey(Query) then
-          WrongQuery := True
-      end;
+      7:if not (ValidInt(Query, -1, 65535) or (CharInSet(AnsiChar(Query[1]), [NONE_CHAR, INFINITY_CHAR]) and (Length(Query) = 1))) then
+          WrongQuery := True;
+      8:if not TransportsDic.ContainsKey(Query) then
+          WrongQuery := True;
       else
       begin
         try
@@ -15049,9 +15099,9 @@ begin
         Data := Data + ';' + ParseStr[i];
       Delete(Data, 1, 1);
     end;
-    SetSettings('Routers', 'CurrentFilter', Data, ini);
+    LastRoutersFilter := Data;
   finally
-    UpdateConfigFile(ini);
+    ini.Free;
   end;
 end;
 

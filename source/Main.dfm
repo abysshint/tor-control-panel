@@ -999,7 +999,7 @@ object Tcp: TTcp
     Top = 93
     Width = 721
     Height = 433
-    ActivePage = tsNetwork
+    ActivePage = tsMain
     DoubleBuffered = True
     Images = lsMain
     ParentDoubleBuffered = False
