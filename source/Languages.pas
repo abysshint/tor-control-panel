@@ -669,7 +669,7 @@ begin
 
     Tcp.lbSpeed3.Caption := Prefixes[2] + '/' + TransStr('180');
     Tcp.btnShowNodes.Caption := TransStr('547');
-    LoadList(Tcp.cbxRoutersQuery, '548', '"Хеш","Ник","IPv4","IPv6","OR-порт","DIR-порт","Версия","Пинг"');
+    LoadList(Tcp.cbxRoutersQuery, '548', '"Хеш","Ник","IPv4","IPv6","OR-порт","DIR-порт","Версия","Пинг","Транспорт"');
     Tcp.edRoutersQuery.TextHint := Load('549', 'Введите запрос');
     Tcp.lbFavoritesEntry.Caption := TransStr('288') + ': ' + IntToStr(Tcp.lbFavoritesEntry.Tag);
     Tcp.lbFavoritesMiddle.Caption := TransStr('289') + ': ' + IntToStr(Tcp.lbFavoritesMiddle.Tag);

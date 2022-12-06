@@ -551,6 +551,7 @@ object Tcp: TTcp
       AutoDropDown = True
       Style = csDropDownList
       DoubleBuffered = False
+      DropDownCount = 9
       ItemIndex = 0
       ParentDoubleBuffered = False
       TabOrder = 5
@@ -564,7 +565,8 @@ object Tcp: TTcp
         'OR-'#1087#1086#1088#1090
         'DIR-'#1087#1086#1088#1090
         #1042#1077#1088#1089#1080#1103
-        #1055#1080#1085#1075)
+        #1055#1080#1085#1075
+        #1058#1088#1072#1085#1089#1087#1086#1088#1090)
     end
     object edRoutersQuery: TEdit
       Left = 389

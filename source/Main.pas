@@ -1602,7 +1602,7 @@ begin
   else
   begin
     GetCaretPos(Caret);
-    CharFromPos := SendMessage(Tcp.meLog.Handle, EM_CHARFROMPOS, 0, Caret.Y * $FFFF + Caret.X) AND $FFFF;  
+    CharFromPos := SendMessage(Tcp.meLog.Handle, EM_CHARFROMPOS, 0, Caret.Y * $FFFF + Caret.X) AND $FFFF;
     SelStart := Tcp.meLog.SelStart;
     SelLength := Tcp.meLog.SelLength;
     Tcp.meLog.Lines.BeginUpdate;
@@ -1922,7 +1922,7 @@ begin
             spNewAndBridges:
             begin
               case sScanType of
-                stPing: NeedScan := (GeoIpInfo.ping = 0) or (rfBridge in Item.Value.Flags);
+                stPing: NeedScan := GeoIpInfo.ping = 0;
                 stAlive: NeedScan := (LastResult = 0) or (rfBridge in Item.Value.Flags);
               end;
             end;
@@ -4571,7 +4571,6 @@ procedure TTcp.UpdateConnectControls(State: Byte);
 var
   Value: Integer;
 begin
-  btnChangeCircuit.Enabled := State = 0;
   case State of
     1: Value := 0;
     2: Value := 100;
@@ -4581,7 +4580,6 @@ begin
   UpdateConnectProgress(Value);
   btnSwitchTor.Caption := TransStr('10' + IntToStr(State)); 
   btnSwitchTor.ImageIndex := State;
-  miChangeCircuit.Enabled := False;
   miSwitchTor.Caption := btnSwitchTor.Caption;
   miSwitchTor.ImageIndex := State;
   tiTray.IconIndex := State;
@@ -4609,6 +4607,8 @@ begin
   tmUpdateIp.Enabled := False;
   tmConsensus.Enabled := False;
   tmCircuits.Enabled := False;
+  btnChangeCircuit.Enabled := True;
+  miChangeCircuit.Enabled := False;
   imExitFlag.Visible := False;
   lbExitCountry.Left := Round(174 * Scale);
   lbExitCountry.Caption := TransStr('110');
@@ -9806,6 +9806,7 @@ var
   FindCidr, Query, Temp: string;
   ParseStr, RangeStr: ArrOfStr;
   GeoIpInfo: TGeoIpInfo;
+  BridgeInfo: TBridgeInfo;
 
   procedure SelectNodes(KeyStr: string; Exclude: Boolean);
   var
@@ -9920,6 +9921,11 @@ begin
         if not (ValidInt(Query, -1, 65535) or (CharInSet(AnsiChar(Query[1]), [NONE_CHAR, INFINITY_CHAR]) and (Length(Query) = 1))) then
           WrongQuery := True
       end;
+      8:
+      begin
+        if not TransportsDic.ContainsKey(Query) then
+          WrongQuery := True
+      end;
       else
       begin
         try
@@ -9990,6 +9996,13 @@ begin
                   cdQuery := (GeoIpInfo.ping <= StrToInt(Query)) and (GeoIpInfo.ping > 0);
               end;
             end
+            else
+              cdQuery := False;
+          end;
+          8:
+          begin
+            if BridgesDic.TryGetValue(Item.Key, BridgeInfo) then
+              cdQuery := BridgeInfo.Transport = Query
             else
               cdQuery := False;
           end;
@@ -15005,7 +15018,6 @@ end;
 procedure TTcp.miRtDisableBridgesClick(Sender: TObject);
 begin
   cbUseBridges.Checked := False;
-  cbUsePreferredBridge.Checked := False;
   BridgesCheckControls;  
   ShowRouters;
   EnableOptionButtons;
