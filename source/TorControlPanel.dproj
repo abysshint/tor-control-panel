@@ -104,20 +104,20 @@
     <PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
         <VerInfo_Locale>1033</VerInfo_Locale>
         <AppEnableRuntimeThemes>true</AppEnableRuntimeThemes>
-        <VerInfo_Keys>CompanyName=;FileDescription=GUI for Tor Expert Bundle;FileVersion=2.2.11.12;InternalName=;LegalCopyright=Copyright © 2020, abysshint;LegalTrademarks=;OriginalFilename=TorControlPanel.exe;ProductName=Tor Control Panel;ProductVersion=2.2.11.12;Comments=;ProgramID=com.embarcadero.$(MSBuildProjectName)</VerInfo_Keys>
+        <VerInfo_Keys>CompanyName=;FileDescription=GUI for Tor Expert Bundle;FileVersion=2.2.12.7;InternalName=;LegalCopyright=Copyright © 2020, abysshint;LegalTrademarks=;OriginalFilename=TorControlPanel.exe;ProductName=Tor Control Panel;ProductVersion=2.2.12.7;Comments=;ProgramID=com.embarcadero.$(MSBuildProjectName)</VerInfo_Keys>
         <VerInfo_MajorVer>2</VerInfo_MajorVer>
-        <VerInfo_Release>11</VerInfo_Release>
+        <VerInfo_Release>12</VerInfo_Release>
         <VerInfo_MinorVer>2</VerInfo_MinorVer>
-        <VerInfo_Build>12</VerInfo_Build>
+        <VerInfo_Build>7</VerInfo_Build>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Win64)'!=''">
         <VerInfo_Locale>1033</VerInfo_Locale>
         <AppEnableRuntimeThemes>true</AppEnableRuntimeThemes>
-        <VerInfo_Keys>CompanyName=;FileDescription=GUI for Tor Expert Bundle;FileVersion=2.2.11.12;InternalName=;LegalCopyright=Copyright © 2020, abysshint;LegalTrademarks=;OriginalFilename=TorControlPanel.exe;ProductName=Tor Control Panel;ProductVersion=2.2.11.12;Comments=;ProgramID=com.embarcadero.$(MSBuildProjectName)</VerInfo_Keys>
+        <VerInfo_Keys>CompanyName=;FileDescription=GUI for Tor Expert Bundle;FileVersion=2.2.12.7;InternalName=;LegalCopyright=Copyright © 2020, abysshint;LegalTrademarks=;OriginalFilename=TorControlPanel.exe;ProductName=Tor Control Panel;ProductVersion=2.2.12.7;Comments=;ProgramID=com.embarcadero.$(MSBuildProjectName)</VerInfo_Keys>
         <VerInfo_MajorVer>2</VerInfo_MajorVer>
-        <VerInfo_Release>11</VerInfo_Release>
+        <VerInfo_Release>12</VerInfo_Release>
         <VerInfo_MinorVer>2</VerInfo_MinorVer>
-        <VerInfo_Build>12</VerInfo_Build>
+        <VerInfo_Build>7</VerInfo_Build>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
