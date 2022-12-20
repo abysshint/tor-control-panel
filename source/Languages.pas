@@ -257,7 +257,7 @@ begin
     LoadStr('324', 'Неправильные настройки');
     LoadStr('326', 'Протокол скрытых сервисов второй версии устарел, его поддержка была прекращена в версии 0.4.6.1 и выше. Вы действительно хотите использовать эту версию протокола?');
     LoadStr('327', 'Цепочки');
-    LoadStr('328', 'Уменьшить окно');
+    LoadStr('328', 'Компактный режим');
     LoadStr('329', 'Назначение');
     LoadStr('330', 'Целевой адрес');
     LoadStr('331', 'Запрос каталога');
@@ -769,6 +769,8 @@ begin
     Tcp.miLogSeparateMonth.Caption := Load('513', 'По месяцам');
     Tcp.miLogSeparateDay.Caption := Load('514', 'По дням');
     Tcp.miOpenLogsFolder.Caption := Load('601', 'Перейти в каталог журналов');
+    Tcp.miDisplayedLinesCount.Caption := Load('616', 'Количество отображаемых строк');
+    Tcp.miDisplayedLinesNoLimit.Caption := Load('617', 'Без ограничений');
 
     Tcp.miStat.Caption := Load('309', 'Статистика');
     Tcp.miStatRelays.Caption := Load('310', 'Все');

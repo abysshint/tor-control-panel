@@ -937,6 +937,16 @@ type
     miDelimiter68: TMenuItem;
     miDelimiter69: TMenuItem;
     miAddRelaysToBridgesCache: TMenuItem;
+    miDisplayedLinesCount: TMenuItem;
+    miDelimiter70: TMenuItem;
+    miDisplayedLinesNoLimit: TMenuItem;
+    miDisplayedLines65k: TMenuItem;
+    miDisplayedLines32k: TMenuItem;
+    miDisplayedLines16k: TMenuItem;
+    miDisplayedLines8k: TMenuItem;
+    miDisplayedLines4k: TMenuItem;
+    miDisplayedLines2k: TMenuItem;
+    miDisplayedLines1k: TMenuItem;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1110,6 +1120,7 @@ type
     procedure RemoveFromNodesListWithConvert(Nodes: ArrOfNodes; NodeType: TNodeType);
     procedure SortPrepare(aSg: TStringGrid; ACol: Integer; ManualSort: Boolean = False);
     procedure GridSort(aSg: TStringGrid);
+    procedure SelectLogLinesLimit(Sender: TObject);
     procedure SelectLogSeparater(Sender: TObject);
     procedure SelectLogScrollbar(Sender: TObject);
     procedure StartScannerManual(Sender: TObject);
@@ -1490,7 +1501,7 @@ var
   jLimit: TJobObjectExtendedLimitInformation;
   TorVersionProcess, TorMainProcess: TProcessInfo;
   hJob: THandle;
-  DLSpeed, ULSpeed, MaxDLSpeed, MaxULSpeed, CurrentTrafficPeriod: Integer;
+  DLSpeed, ULSpeed, MaxDLSpeed, MaxULSpeed, CurrentTrafficPeriod, DisplayedLinesCount: Integer;
   SessionDL, SessionUL, TotalDL, TotalUL: Int64;
   ConnectState, StopCode, FormSize, LastPlace, InfoStage, GetIpStage, NodesListStage: Byte;
   EncodingNoBom: TUTF8EncodingNoBOM;
@@ -1594,33 +1605,73 @@ end;
 
 procedure TReadPipeThread.UpdateLog;
 var
-  SelStart, SelLength, CharFromPos: Integer;
+  SelStart, SelLength, DelLength, CharFromPos: Integer;
+  LinesCount, DeleteLines, MaxLines, i: Integer;
+  ls: TStringList;
   Caret: TPoint;
 begin
-  if Tcp.miAutoScroll.Checked and (Tcp.meLog.Tag = 0) then
-    Tcp.meLog.Lines.Add(Data)
+  if DisplayedLinesCount <> 0 then
+    MaxLines := DisplayedLinesCount
   else
-  begin
-    GetCaretPos(Caret);
-    CharFromPos := SendMessage(Tcp.meLog.Handle, EM_CHARFROMPOS, 0, Caret.Y * $FFFF + Caret.X) AND $FFFF;
-    SelStart := Tcp.meLog.SelStart;
-    SelLength := Tcp.meLog.SelLength;
-    Tcp.meLog.Lines.BeginUpdate;
-    Tcp.meLog.Lines.Add(Data);
-    Tcp.meLog.Lines.EndUpdate;
-
-    if SelStart <> CharFromPos then
+    MaxLines := $40000000;
+  LinesCount := Tcp.meLog.Lines.Count;
+  if LinesCount > MaxLines then
+    ls := TStringList.Create
+  else
+    ls := nil;
+  try
+    if Assigned(ls) then
     begin
-      Tcp.meLog.SelStart := SelStart;
-      if SelLength > 0 then
+      DelLength := 0;
+      SelStart := Tcp.meLog.SelStart;
+      SelLength := Tcp.meLog.SelLength;
+      DeleteLines := Round(LinesCount * 0.10);
+      ls.Text := Tcp.meLog.Text;
+      for i := DeleteLines - 1 downto 0 do
+      begin
+        Inc(DelLength, Length(ls[i]));
+        ls.Delete(i);
+      end;
+      Inc(DelLength, DeleteLines * 2);
+      Tcp.meLog.Text := ls.Text;
+      if (SelStart - DelLength) > 0 then
+      begin
+        Tcp.meLog.SelStart := SelStart - DelLength;
         Tcp.meLog.SelLength := SelLength;
-    end
+      end
+      else
+        Tcp.meLog.Tag := 0;
+    end;
+
+    if Tcp.miAutoScroll.Checked and (Tcp.meLog.Tag = 0) then
+      Tcp.meLog.Lines.Add(Data)
     else
     begin
-      Tcp.meLog.SelStart := SelStart + SelLength;
-      Tcp.meLog.SelLength := - SelLength;
+      GetCaretPos(Caret);
+      CharFromPos := SendMessage(Tcp.meLog.Handle, EM_CHARFROMPOS, 0, Caret.Y * $FFFF + Caret.X) AND $FFFF;
+      SelStart := Tcp.meLog.SelStart;
+      SelLength := Tcp.meLog.SelLength;
+      Tcp.meLog.Lines.BeginUpdate;
+      Tcp.meLog.Lines.Add(Data);
+      Tcp.meLog.Lines.EndUpdate;
+
+      if SelStart <> CharFromPos then
+      begin
+        Tcp.meLog.SelStart := SelStart;
+        if SelLength > 0 then
+          Tcp.meLog.SelLength := SelLength;
+      end
+      else
+      begin
+        Tcp.meLog.SelStart := SelStart + SelLength;
+        Tcp.meLog.SelLength := - SelLength;
+      end;
     end;
+
+  finally
+    ls.Free;
   end;
+
   if Tcp.miWriteLogFile.Checked then
     SaveToLog(Data, TorLogFile);
 
@@ -5908,7 +5959,7 @@ procedure TTcp.ResetOptions;
 var
   i, LogID: Integer;
   ini: TMemIniFile;
-  ScrollBars, SeparateType: Byte;
+  ScrollBars, SeparateType, DisplayedLinesType: Byte;
   ParseStr: ArrOfStr;
   Transports: TStringList;
   FilterEntry, FilterMiddle, FilterExit, Temp: string;
@@ -6116,9 +6167,15 @@ begin
     SeparateType := GetIntDef(GetSettings('Log', 'SeparateType', 1, ini), 1, 0, 2);
     miLogSeparate.items[SeparateType].Checked := True;
     TorLogFile := GetLogFileName(SeparateType);
+
     ScrollBars := GetIntDef(GetSettings('Log', 'ScrollBars', 0, ini), 0, 0, 3);
     miScrollBars.items[ScrollBars].Checked := True;
     SetLogScrollBar(ScrollBars);
+
+    DisplayedLinesType := GetIntDef(GetSettings('Log', 'DisplayedLinesType', 2, ini), 2, 0, 7);
+    miDisplayedLinesCount.Items[DisplayedLinesType].Checked := True;
+    DisplayedLinesCount := miDisplayedLinesCount.Items[DisplayedLinesType].Tag;
+
     LogID := GetArrayIndex(LogLevels, AnsiLowerCase(SeparateLeft(GetTorConfig('Log', 'notice stdout', [cfAutoAppend]), ' ')));
     if LogID <> -1 then
       miLogLevel.items[LogID].Checked := True
@@ -9090,18 +9147,18 @@ var
 begin
   if FormSize = 0 then
   begin
-    H :=  Round(91 * Scale);
+    H := Round(91 * Scale);
     W := Round(332 * Scale);
-    if (ClientHeight = H) and (ClientWidth = W) then
+    if (Tcp.ClientHeight = H) and (Tcp.ClientWidth = W) then
       Exit;
     Tcp.ClientHeight := H;
     Tcp.ClientWidth := W;
   end
   else
   begin
-    H :=  Round(531 * Scale);
+    H := Round(531 * Scale);
     W := Round(728 * Scale);
-    if (ClientHeight = H) and (ClientWidth = W) then
+    if (Tcp.ClientHeight = H) and (Tcp.ClientWidth = W) then
       Exit;
     Tcp.ClientHeight := H;
     Tcp.ClientWidth := W;
@@ -14941,6 +14998,13 @@ begin
   SeparateType := TMenuItem(Sender).Tag;
   TorLogFile := GetLogFileName(SeparateType);
   SetConfigInteger('Log', 'SeparateType', SeparateType);
+end;
+
+procedure TTcp.SelectLogLinesLimit(Sender: TObject);
+begin
+  TMenuItem(Sender).Checked := True;
+  DisplayedLinesCount := TMenuItem(Sender).Tag;
+  SetConfigInteger('Log', 'DisplayedLinesType', TMenuItem(Sender).MenuIndex);
 end;
 
 procedure TTcp.SelectLogScrollbar(Sender: TObject);

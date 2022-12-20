@@ -324,6 +324,8 @@ object Tcp: TTcp
       Top = 53
       Width = 43
       Height = 35
+      ParentShowHint = False
+      ShowHint = True
       OnClick = sbDecreaseFormClick
     end
     object btnChangeCircuit: TButton
@@ -4426,7 +4428,7 @@ object Tcp: TTcp
   end
   object btnCancelOptions: TButton
     Left = 648
-    Top = 503
+    Top = 502
     Width = 72
     Height = 19
     Caption = #1054#1090#1084#1077#1085#1072
@@ -4565,6 +4567,11 @@ object Tcp: TTcp
         Checked = True
         OnClick = miAutoScrollClick
       end
+      object miWordWrap: TMenuItem
+        AutoCheck = True
+        Caption = #1055#1077#1088#1077#1085#1086#1089' '#1089#1090#1088#1086#1082
+        OnClick = miWordWrapClick
+      end
       object miScrollBars: TMenuItem
         Caption = #1055#1086#1083#1086#1089#1072' '#1087#1088#1086#1082#1088#1091#1090#1082#1080
         object miSbVertical: TMenuItem
@@ -4592,10 +4599,59 @@ object Tcp: TTcp
           OnClick = SelectLogScrollbar
         end
       end
-      object miWordWrap: TMenuItem
-        AutoCheck = True
-        Caption = #1055#1077#1088#1077#1085#1086#1089' '#1089#1090#1088#1086#1082
-        OnClick = miWordWrapClick
+      object miDisplayedLinesCount: TMenuItem
+        Caption = #1050#1086#1083#1080#1095#1077#1089#1090#1074#1086' '#1086#1090#1086#1073#1088#1072#1078#1072#1077#1084#1099#1093' '#1089#1090#1088#1086#1082
+        object miDisplayedLinesNoLimit: TMenuItem
+          Caption = #1041#1077#1079' '#1086#1075#1088#1072#1085#1080#1095#1077#1085#1080#1081
+          RadioItem = True
+          OnClick = SelectLogLinesLimit
+        end
+        object miDisplayedLines65k: TMenuItem
+          Tag = 65536
+          Caption = '65536'
+          RadioItem = True
+          OnClick = SelectLogLinesLimit
+        end
+        object miDisplayedLines32k: TMenuItem
+          Tag = 32768
+          Caption = '32768'
+          Checked = True
+          RadioItem = True
+          OnClick = SelectLogLinesLimit
+        end
+        object miDisplayedLines16k: TMenuItem
+          Tag = 16384
+          Caption = '16384'
+          RadioItem = True
+          OnClick = SelectLogLinesLimit
+        end
+        object miDisplayedLines8k: TMenuItem
+          Tag = 8192
+          Caption = '8192'
+          RadioItem = True
+          OnClick = SelectLogLinesLimit
+        end
+        object miDisplayedLines4k: TMenuItem
+          Tag = 4096
+          Caption = '4096'
+          RadioItem = True
+          OnClick = SelectLogLinesLimit
+        end
+        object miDisplayedLines2k: TMenuItem
+          Tag = 2048
+          Caption = '2048'
+          RadioItem = True
+          OnClick = SelectLogLinesLimit
+        end
+        object miDisplayedLines1k: TMenuItem
+          Tag = 1024
+          Caption = '1024'
+          RadioItem = True
+          OnClick = SelectLogLinesLimit
+        end
+      end
+      object miDelimiter70: TMenuItem
+        Caption = '-'
       end
       object miSafeLogging: TMenuItem
         AutoCheck = True
