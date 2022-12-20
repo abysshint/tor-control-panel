@@ -3474,7 +3474,7 @@ object Tcp: TTcp
           Caption = #1095'.'
           Transparent = True
         end
-        object lbNonResponsedScanInterval: TLabel
+        object lbPartialScanInterval: TLabel
           Left = 53
           Top = 334
           Width = 172
@@ -3674,7 +3674,7 @@ object Tcp: TTcp
           Thousands = False
           OnChanging = SpinChanging
         end
-        object edNonResponsedScanInterval: TEdit
+        object edPartialScanInterval: TEdit
           Left = 228
           Top = 331
           Width = 42
@@ -3688,12 +3688,12 @@ object Tcp: TTcp
           Text = '12'
           OnChange = EditChange
         end
-        object udNonResponsedScanInterval: TUpDown
+        object udPartialScanInterval: TUpDown
           Left = 270
           Top = 331
           Width = 16
           Height = 21
-          Associate = edNonResponsedScanInterval
+          Associate = edPartialScanInterval
           Min = 1
           Max = 360
           Position = 12

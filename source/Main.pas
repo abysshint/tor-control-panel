@@ -770,15 +770,15 @@ type
     miClearBridgesCacheAll: TMenuItem;
     lbFullScanInterval: TLabel;
     lbHours1: TLabel;
-    lbNonResponsedScanInterval: TLabel;
+    lbPartialScanInterval: TLabel;
     lbHours2: TLabel;
     cbAutoScanNewNodes: TCheckBox;
     cbEnableDetectAliveNodes: TCheckBox;
     cbEnablePingMeasure: TCheckBox;
     edFullScanInterval: TEdit;
     udFullScanInterval: TUpDown;
-    edNonResponsedScanInterval: TEdit;
-    udNonResponsedScanInterval: TUpDown;
+    edPartialScanInterval: TEdit;
+    udPartialScanInterval: TUpDown;
     lbPartialScansCounts: TLabel;
     edPartialScansCounts: TEdit;
     udPartialScansCounts: TUpDown;
@@ -1521,7 +1521,7 @@ var
   HsToDelete: ArrOfStr;
   SystemLanguage: Word;
   LastAuthCookieDate, LastConsensusDate, LastNewDescriptorsDate, LastTorrcDate, GeoIpDate: TDateTime;
-  LastFullScanDate, LastNonResponsedScanDate, TotalStartDate, LastGeoIpUpdateDate, LastSaveStats: Int64;
+  LastFullScanDate, LastPartialScanDate, TotalStartDate, LastGeoIpUpdateDate, LastSaveStats: Int64;
   LastPartialScansCounts: Integer;
   LockCircuits, LockCircuitInfo, LockStreams, LockStreamsInfo, UpdateTraffic: Boolean;
   FindObject: TMemo;
@@ -5036,6 +5036,14 @@ begin
         DeleteSettings('AutoSelNodes', 'AutoSelFastAndStableOnly', ini);
         ConfigVersion := 3;
       end;
+      if ConfigVersion = 3 then
+      begin
+        SetSettings('Scanner', 'LastPartialScanDate', GetSettings('Scanner', 'LastNonResponsedScanDate', Int64(0), ini), ini);
+        SetSettings('Scanner', 'PartialScanInterval', GetSettings('Scanner', 'NonResponsedScanInterval', udPartialScanInterval.Position, ini), ini);
+        DeleteSettings('Scanner', 'LastNonResponsedScanDate', ini);
+        DeleteSettings('Scanner', 'NonResponsedScanInterval', ini);
+        ConfigVersion := 4;
+      end;
     end
     else
       ConfigVersion := CURRENT_CONFIG_VERSION;
@@ -6068,7 +6076,7 @@ begin
     GetSettings('Scanner', udScanMaxThread, ini);
     GetSettings('Scanner', udScanPortionSize, ini);
     GetSettings('Scanner', udFullScanInterval, ini);
-    GetSettings('Scanner', udNonResponsedScanInterval, ini);
+    GetSettings('Scanner', udPartialScanInterval, ini);
     GetSettings('Scanner', udPartialScansCounts, ini);
     GetSettings('Scanner', cbxAutoScanType, ini);
 
@@ -6094,7 +6102,7 @@ begin
     miTrafficPeriod.items[CurrentTrafficPeriod].Checked := True;
 
     LastFullScanDate := GetSettings('Scanner', 'LastFullScanDate', 0, ini);
-    LastNonResponsedScanDate := GetSettings('Scanner', 'LastNonResponsedScanDate', 0, ini);
+    LastPartialScanDate := GetSettings('Scanner', 'LastPartialScanDate', 0, ini);
     LastPartialScansCounts := GetSettings('Scanner', 'LastPartialScansCounts', 0, ini);
 
     LastGeoIpUpdateDate := GetSettings('Main', 'LastGeoIpUpdateDate', 0, ini);
@@ -7149,7 +7157,7 @@ begin
     SetSettings('Scanner', udScanMaxThread, ini);
     SetSettings('Scanner', udScanPortionSize, ini);
     SetSettings('Scanner', udFullScanInterval, ini);
-    SetSettings('Scanner', udNonResponsedScanInterval, ini);
+    SetSettings('Scanner', udPartialScanInterval, ini);
     SetSettings('Scanner', udPartialScansCounts, ini);
     SetSettings('Scanner', cbxAutoScanType, ini);
 
@@ -9546,6 +9554,7 @@ begin
         begin
           CurrentAutoScanPurpose := spAll;
           LastFullScanDate := CurrentDate;
+          LastPartialScanDate := CurrentDate;
           LastPartialScansCounts := MaxPartialScans;
         end
         else
@@ -9553,7 +9562,7 @@ begin
           CurrentAutoScanPurpose := spNew;
           if cbxAutoScanType.ItemIndex <> 4 then
           begin
-            if (LastPartialScansCounts > 0) and (CurrentDate >= (LastNonResponsedScanDate + (udNonResponsedScanInterval.Position * 3600))) then
+            if (LastPartialScansCounts > 0) and (CurrentDate >= (LastPartialScanDate + (udPartialScanInterval.Position * 3600))) then
             begin
               case cbxAutoScanType.ItemIndex of
                 0:
@@ -9567,7 +9576,7 @@ begin
                 2: CurrentAutoScanPurpose := spNewAndAlive;
                 3: CurrentAutoScanPurpose := spNewAndBridges;
               end;
-              LastNonResponsedScanDate := CurrentDate;
+              LastPartialScanDate := CurrentDate;
               Dec(LastPartialScansCounts);
             end;
           end;
@@ -9664,10 +9673,8 @@ begin
           begin
             ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
             try
-              case CurrentAutoScanPurpose of
-                spAll: SetSettings('Scanner', 'LastFullScanDate', LastFullScanDate, ini);
-                spFailed, spNewAndFailed: SetSettings('Scanner', 'LastNonResponsedScanDate', LastNonResponsedScanDate, ini);
-              end;
+              SetSettings('Scanner', 'LastFullScanDate', LastFullScanDate, ini);
+              SetSettings('Scanner', 'LastPartialScanDate', LastPartialScanDate, ini);
               SetSettings('Scanner', 'LastPartialScansCounts', LastPartialScansCounts, ini);
             finally
               UpdateConfigFile(ini);
@@ -10932,7 +10939,7 @@ begin
   TypeState := cbxAutoScanType.ItemIndex <> 4;
 
   edFullScanInterval.Enabled := AutoState;
-  edNonResponsedScanInterval.Enabled := AutoState and TypeState;
+  edPartialScanInterval.Enabled := AutoState and TypeState;
   edPartialScansCounts.Enabled := AutoState and TypeState;
   edScanPingTimeout.Enabled := PingState;
   edScanPortTimeout.Enabled := AliveState;
@@ -10943,7 +10950,7 @@ begin
   edScanPortionTimeout.Enabled := State;
   edScanPortionSize.Enabled := State;
   udFullScanInterval.Enabled := AutoState;
-  udNonResponsedScanInterval.Enabled := AutoState and TypeState;
+  udPartialScanInterval.Enabled := AutoState and TypeState;
   udPartialScansCounts.Enabled := AutoState and TypeState;
   udScanPingTimeout.Enabled := PingState;
   udScanPortTimeout.Enabled := AliveState;
@@ -10955,7 +10962,7 @@ begin
   udScanPortionSize.Enabled := State;
   lbFullScanInterval.Enabled := AutoState;
   lbHours1.Enabled := AutoState;
-  lbNonResponsedScanInterval.Enabled := AutoState and TypeState;
+  lbPartialScanInterval.Enabled := AutoState and TypeState;
   lbHours2.Enabled := AutoState and TypeState;
   lbPartialScansCounts.Enabled := AutoState and TypeState;
   lbScanPingTimeout.Enabled := PingState;
@@ -13038,12 +13045,12 @@ begin
   if not CheckCacheOpConfirmation(TMenuItem(Sender).Caption) then
     Exit;
   LastFullScanDate := 0;
-  LastNonResponsedScanDate := 0;
+  LastPartialScanDate := 0;
   LastPartialScansCounts := udPartialScansCounts.Position;
   ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
   try
     SetSettings('Scanner', 'LastFullScanDate', LastFullScanDate, ini);
-    SetSettings('Scanner', 'LastNonResponsedScanDate', LastNonResponsedScanDate, ini);
+    SetSettings('Scanner', 'LastPartialScanDate', LastPartialScanDate, ini);
     SetSettings('Scanner', 'LastPartialScansCounts', LastPartialScansCounts, ini);
   finally
     UpdateConfigFile(ini);

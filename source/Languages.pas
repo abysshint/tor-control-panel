@@ -575,7 +575,7 @@ begin
     Tcp.lbScanPortionSize.Caption := Load('454', 'Количество сканирований на порцию');
     Tcp.cbAutoScanNewNodes.Caption := Load('455', 'Автоматически определять пинг и живые узлы');
     Tcp.lbFullScanInterval.Caption := Load('456', 'Полное сканирование каждые');
-    Tcp.lbNonResponsedScanInterval.Caption := Load('457', 'Частичное сканирование каждые');
+    Tcp.lbPartialScanInterval.Caption := Load('457', 'Частичное сканирование каждые');
     Tcp.lbPartialScansCounts.Caption := Load('458', 'Количество частичных сканирований');
     Tcp.lbMiliseconds1.Caption := TransStr('459');
     Tcp.lbMiliseconds2.Caption := TransStr('459');
