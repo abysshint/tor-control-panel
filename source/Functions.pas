@@ -2183,23 +2183,29 @@ begin
     if not FileExists(BackupFile) then
       Exit
     else
-      FileName := BackupFile;
+    begin
+      RenameFile(BackupFile, FileName);
+      Flush(FileName);
+    end;
   end;
   Hdr := '';
   AStream := TFileStream.Create(FileName, fmOpenRead);
   try
     AStream.Seek(0,soFromBeginning);
     SetLength(Hdr, 2);
-    AStream.ReadBuffer(Hdr[1], 3);
-    if StrToHex(Hdr) = 'BBEFBF' then
-      Exit;
+    if AStream.Size > 2 then
+    begin
+      AStream.ReadBuffer(Hdr[1], 3);
+      if (StrToHex(Hdr) = 'BBEFBF') and (AStream.Size <> 3) then
+        Exit;
+    end;
   finally
     AStream.Free;
   end;
   Options := TStringList.Create;
   try
     Options.LoadFromFile(FileName);
-    if FileExists(BackupFile) and (FileName <> BackupFile) then
+    if FileExists(BackupFile) then
     begin
       if Length(Trim(Options.Text)) = 0 then
       begin
