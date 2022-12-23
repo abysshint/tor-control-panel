@@ -1598,10 +1598,19 @@ end;
 procedure TReadPipeThread.UpdateVersionInfo;
 var
   ParseStr: ArrOfStr;
+  ini: TMemIniFile;
 begin
   ParseStr := Explode(' ', Data);
   if Length(ParseStr) > 1 then
-    TorVersion := ParseStr[2]
+  begin
+    TorVersion := ParseStr[2];
+    ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
+    try
+      SetSettings('Main', 'TorFileID', GetFileID(TorExeFile, True, TorVersion), ini);
+    finally
+      UpdateConfigFile(ini);
+    end;
+  end
   else
     TorVersion := '0.0.0.0';
   Tcp.LoadOptions;
@@ -14661,12 +14670,12 @@ begin
   lbExcludeNodes.HelpKeyword := IntToStr(EXCLUDE_ID);
   lbFavoritesTotal.HelpKeyword := IntToStr(FAVORITES_ID);
 
+  CheckFileEncoding(UserConfigFile, UserBackupFile);
   GetTorVersion;
 end;
 
 procedure TTcp.LoadOptions;
 begin
-  CheckFileEncoding(UserConfigFile, UserBackupFile);
   UpdateConfigVersion;
   ResetOptions;
   if cbMinimizeOnStartup.Checked then
@@ -14679,9 +14688,58 @@ procedure TTCP.GetTorVersion;
 var
   ErrorMode: DWORD;
   Fail: Boolean;
+  i: Integer;
+  ls: TStringList;
+  ParseStr: ArrOfStr;
+  ini: TMemIniFile;
+  TempVersion, TorFileID: string;
+  TorFileExists: Boolean;
 begin
   Fail := True;
-  if FileExists(TorExeFile) then
+  TorVersion := '';
+  TempVersion := '';
+  TorFileExists := FileExists(TorExeFile);
+  if TorFileExists and FileExists(TorStateFile) and FileExists(UserConfigFile) then
+  begin
+    ls := TStringList.Create;
+    try
+      ls.LoadFromFile(TorStateFile);
+      for i := ls.Count - 1 downto 0 do
+      begin
+        if InsensPosEx('TorVersion ', ls[i]) = 1 then
+        begin
+          ParseStr := Explode(' ', ls[i]);
+          if Length(ParseStr) > 1 then
+          begin
+            TempVersion := ParseStr[2];
+            Fail := False;
+            Break;
+          end;
+        end;
+      end;
+    finally
+      ls.Free;
+    end;
+    if not Fail then
+    begin
+      ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
+      try
+        TorFileID := GetSettings('Main', 'TorFileID', '', ini);
+      finally
+        ini.Free;
+      end;
+      if TorFileID = GetFileID(TorExeFile, TorFileExists, TempVersion) then
+      begin
+        TorVersion := TempVersion;
+        LoadOptions;
+        Exit;
+      end
+      else
+        Fail := True;
+    end;
+  end;
+
+  if TorFileExists then
   begin
     if not Assigned(GetProcAddress(GetModuleHandle('IPHLPAPI.DLL'), 'if_nametoindex')) then
     begin
@@ -14696,6 +14754,7 @@ begin
     end;
     SetErrorMode(0);
   end;
+
   if Fail then
   begin
     TorVersion := '0.0.0.0';

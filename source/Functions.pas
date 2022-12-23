@@ -137,6 +137,7 @@ var
   function TryUpdateMask(var Mask: Byte; Param: Byte; Condition: Boolean): Boolean;
   function TryGetDataFromStr(Str: string; DataType: TListType; out DatatStr: string): Boolean;
   function SampleDown(Data: ArrOfPoint; Threshold: Integer): ArrOfPoint;
+  function GetFileID(FileName: string; SkipFileExists: Boolean = False; ConstData: string = ''): string;
   procedure DeleteDir(const DirName: string);
   procedure LineToMemo(Line: string; Memo: TMemo; ListType: TListType; Sorted: Boolean = False; Separator: string = ',');
   procedure IntToMenu(Menu: TMenuItem; Mask: Integer; DisableUnchecked: Boolean = False);
@@ -3507,6 +3508,19 @@ begin
       end;
       Result := True;
     end;
+  end;
+end;
+
+function GetFileID(FileName: string; SkipFileExists: Boolean = False; ConstData: string = ''): string;
+var
+  F: TSearchRec;
+begin
+  Result := '-1';
+  if SkipFileExists or FileExists(FileName) then
+  begin
+    if FindFirst(FileName, faAnyFile, F) = 0 then
+      Result := IntToHex(Crc32(AnsiString(IntToStr(F.Size)) + ':' + AnsiString(IntToStr(DateTimeToUnix(F.TimeStamp))) + ':' + AnsiString(ConstData)));
+    FindClose(F);
   end;
 end;
 
