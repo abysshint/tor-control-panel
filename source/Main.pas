@@ -947,6 +947,10 @@ type
     lbLanguage: TLabel;
     cbxThemes: TComboBox;
     cbxLanguage: TComboBox;
+    cbxCircuitPadding: TComboBox;
+    cbxConnectionPadding: TComboBox;
+    lbConnectionPadding: TLabel;
+    lbCircuitPadding: TLabel;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1054,6 +1058,7 @@ type
     procedure CheckRequiredFiles;
     procedure SetIconsColor;
     procedure SaveHiddenServices(ini: TMemIniFile);
+    procedure SavePaddingOptions(ini: TMemIniFile);
     procedure UpdateConfigVersion;
     procedure LoadUserBridges(ini: TMemIniFile);
     procedure LoadBuiltinBridges(UpdateBridges, UpdateList: Boolean; ListName: string = '');
@@ -6333,8 +6338,11 @@ begin
     LineToMemo(GetSettings('Server', 'CustomExitPolicy', DEFAULT_CUSTOM_EXIT_POLICY, ini), meExitPolicy, ltPolicy);
     LineToMemo(GetSettings('Server', 'MyFamily', '', ini), meMyFamily, ltHash, True);
     SaveServerOptions(ini);
-
     SaveTransportsData(ini, True);
+
+    GetSettings('Main', cbxConnectionPadding, ini);
+    GetSettings('Main', cbxCircuitPadding, ini);
+    SavePaddingOptions(ini);
 
     GetSettings('Lists', cbUseTrackHostExits, ini);
     GetSettings('Lists', udTrackHostExitsExpire, ini);
@@ -7318,6 +7326,8 @@ begin
     UpdateSystemInfo;
     SaveServerOptions(ini);
     SaveTransportsData(ini, False);
+    SavePaddingOptions(ini);
+
     GetLocalInterfaces(cbxHsAddress);
     SaveHiddenServices(ini);
     SaveTrackHostExits(ini);
@@ -9464,6 +9474,32 @@ begin
   SetSettings('Server', cbPublishServerDescriptor, ini);
   SetSettings('Server', cbUseMyFamily, ini);
   SetSettings('Server', 'MyFamily', MyFamily, ini);
+end;
+
+procedure TTcp.SavePaddingOptions(ini: TMemIniFile);
+begin
+  DeleteTorConfig('ConnectionPadding');
+  DeleteTorConfig('ReducedConnectionPadding');
+  DeleteTorConfig('CircuitPadding');
+  DeleteTorConfig('ReducedCircuitPadding');
+
+  if cbxServerMode.ItemIndex = 0 then
+  begin
+    case cbxConnectionPadding.ItemIndex of
+      0: SetTorConfig('ConnectionPadding', 'auto');
+      1: SetTorConfig('ConnectionPadding', '1');
+      2: SetTorConfig('ReducedConnectionPadding', '1');
+      3: SetTorConfig('ConnectionPadding', '0');
+    end;
+    case cbxCircuitPadding.ItemIndex of
+      0: SetTorConfig('CircuitPadding', '1');
+      1: SetTorConfig('ReducedCircuitPadding', '1');
+      2: SetTorConfig('CircuitPadding', '0');
+    end;
+  end;
+
+  SetSettings('Main', cbxConnectionPadding, ini);
+  SetSettings('Main', cbxCircuitPadding, ini);
 end;
 
 procedure TTcp.BindToExitNodeClick(Sender: TObject);
@@ -14511,6 +14547,10 @@ begin
   DefaultsDic.AddOrSetValue('AssumeReachable', '0');
   DefaultsDic.AddOrSetValue('RendPostPeriod', '3600');
   DefaultsDic.AddOrSetValue('StrictNodes', '0');
+  DefaultsDic.AddOrSetValue('ConnectionPadding', 'auto');
+  DefaultsDic.AddOrSetValue('ReducedConnectionPadding', '0');
+  DefaultsDic.AddOrSetValue('CircuitPadding', '1');
+  DefaultsDic.AddOrSetValue('ReducedCircuitPadding', '0');
 
   udHsMaxStreams.ResetValue := udHsMaxStreams.Position;
   udHsNumIntroductionPoints.ResetValue := udHsNumIntroductionPoints.Position;

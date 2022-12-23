@@ -426,11 +426,13 @@ begin
     Tcp.cbUseOpenDNS.Caption := Load('407', 'Определять внешний адрес сервера через OpenDNS');
     Tcp.cbUseOpenDNSOnlyWhenUnknown.Caption := Load('408', 'Только если TOR не может определить его сам');
     Tcp.cbUseNetworkCache.Caption := Load('409', 'Кэшировать IP-cc-запросы и результаты сетевого сканера');
-    Tcp.lbTheme.Caption := Load('413', 'Тема');
-    Tcp.lbLanguage.Caption := Load('132', 'Язык');
     Tcp.lbSeconds1.Caption := TransStr('135');
     Tcp.lbSeconds2.Caption := TransStr('135');
     Tcp.lbSeconds3.Caption := TransStr('135');
+    Tcp.lbConnectionPadding.Caption := Load('618', 'Заполнение соединений маскирующим трафиком');
+    LoadList(Tcp.cbxConnectionPadding, '619', '"Автовыбор","Включено","Ограничено","Выключено"');
+    Tcp.lbCircuitPadding.Caption := Load('620', 'Заполнение цепочек маскирующим трафиком');
+    LoadList(Tcp.cbxCircuitPadding, '621', '"Включено","Ограничено","Выключено"');
 
     Tcp.gbControlAuth.Caption := Load('412', 'Управление');
     Tcp.lbControlPort.Caption := Load('127', 'Порт');
@@ -453,6 +455,8 @@ begin
     Tcp.cbHideIPv6Addreses.Caption := Load('417', 'Скрывать IPv6-адреса в списках интерфейсов');
     Tcp.cbClearPreviousSearchQuery.Caption := Load('418', 'Очищать предыдущий поисковый запрос в списках');
     Tcp.cbMinimizeToTray.Caption := Load('610', 'Сворачивать в трей вместо панели задач');
+    Tcp.lbTheme.Caption := Load('413', 'Тема');
+    Tcp.lbLanguage.Caption := Load('132', 'Язык');
 
     Tcp.gbProfile.Caption := Load('134', 'Профиль');
     Tcp.btnCreateProfile.Caption := Load('117', 'Создать..');

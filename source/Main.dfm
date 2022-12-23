@@ -1149,7 +1149,7 @@ object Tcp: TTcp
         TabOrder = 2
         object lbTheme: TLabel
           Left = 28
-          Top = 317
+          Top = 319
           Width = 24
           Height = 13
           Alignment = taRightJustify
@@ -1157,8 +1157,8 @@ object Tcp: TTcp
           Transparent = True
         end
         object lbLanguage: TLabel
-          Left = 212
-          Top = 317
+          Left = 214
+          Top = 319
           Width = 26
           Height = 13
           Alignment = taRightJustify
@@ -1298,7 +1298,7 @@ object Tcp: TTcp
         end
         object cbxThemes: TComboBox
           Left = 55
-          Top = 314
+          Top = 316
           Width = 130
           Height = 21
           AutoDropDown = True
@@ -1314,8 +1314,8 @@ object Tcp: TTcp
             #1055#1086' '#1091#1084#1086#1083#1095#1072#1085#1080#1102)
         end
         object cbxLanguage: TComboBox
-          Left = 241
-          Top = 314
+          Left = 243
+          Top = 316
           Width = 100
           Height = 21
           AutoDropDown = True
@@ -1386,7 +1386,7 @@ object Tcp: TTcp
         end
         object lbNewCircuitPeriod: TLabel
           Left = 35
-          Top = 40
+          Top = 42
           Width = 245
           Height = 13
           Alignment = taRightJustify
@@ -1400,6 +1400,24 @@ object Tcp: TTcp
           Height = 13
           Alignment = taRightJustify
           Caption = #1050#1086#1083#1080#1095#1077#1089#1090#1074#1086' '#1086#1078#1080#1076#1072#1102#1097#1080#1093' '#1094#1077#1087#1086#1095#1077#1082' '#1082#1083#1080#1077#1085#1090#1072
+          Transparent = True
+        end
+        object lbConnectionPadding: TLabel
+          Left = 11
+          Top = 296
+          Width = 250
+          Height = 13
+          Alignment = taRightJustify
+          Caption = #1047#1072#1087#1086#1083#1085#1077#1085#1080#1077' '#1089#1086#1077#1076#1080#1085#1077#1085#1080#1081' '#1084#1072#1089#1082#1080#1088#1091#1102#1097#1080#1084' '#1090#1088#1072#1092#1080#1082#1086#1084
+          Transparent = True
+        end
+        object lbCircuitPadding: TLabel
+          Left = 29
+          Top = 320
+          Width = 232
+          Height = 13
+          Alignment = taRightJustify
+          Caption = #1047#1072#1087#1086#1083#1085#1077#1085#1080#1077' '#1094#1077#1087#1086#1095#1077#1082' '#1084#1072#1089#1082#1080#1088#1091#1102#1097#1080#1084' '#1090#1088#1072#1092#1080#1082#1086#1084
           Transparent = True
         end
         object cbAvoidDiskWrites: TCheckBox
@@ -1584,6 +1602,43 @@ object Tcp: TTcp
           TabOrder = 7
           Thousands = False
           OnChanging = SpinChanging
+        end
+        object cbxCircuitPadding: TComboBox
+          Left = 264
+          Top = 316
+          Width = 100
+          Height = 21
+          AutoDropDown = True
+          Style = csDropDownList
+          DoubleBuffered = False
+          ItemIndex = 0
+          ParentDoubleBuffered = False
+          TabOrder = 16
+          Text = #1042#1082#1083#1102#1095#1077#1085#1086
+          OnChange = OptionsChange
+          Items.Strings = (
+            #1042#1082#1083#1102#1095#1077#1085#1086
+            #1054#1075#1088#1072#1085#1080#1095#1077#1085#1086
+            #1042#1099#1082#1083#1102#1095#1077#1085#1086)
+        end
+        object cbxConnectionPadding: TComboBox
+          Left = 264
+          Top = 292
+          Width = 100
+          Height = 21
+          AutoDropDown = True
+          Style = csDropDownList
+          DoubleBuffered = False
+          ItemIndex = 0
+          ParentDoubleBuffered = False
+          TabOrder = 15
+          Text = #1040#1074#1090#1086#1074#1099#1073#1086#1088
+          OnChange = OptionsChange
+          Items.Strings = (
+            #1040#1074#1090#1086#1074#1099#1073#1086#1088
+            #1042#1082#1083#1102#1095#1077#1085#1086
+            #1054#1075#1088#1072#1085#1080#1095#1077#1085#1086
+            #1042#1099#1082#1083#1102#1095#1077#1085#1086)
         end
       end
     end
