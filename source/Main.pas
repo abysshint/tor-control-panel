@@ -599,12 +599,8 @@ type
     lbExitIp: TLabel;
     lbExitCountry: TLabel;
     cbUseNetworkCache: TCheckBox;
-    lbTheme: TLabel;
-    cbxThemes: TComboBox;
     btnSwitchTor: TButton;
     lsMain: TImageList;
-    lbLanguage: TLabel;
-    cbxLanguage: TComboBox;
     cbUseMyFamily: TCheckBox;
     cbxRoutersQuery: TComboBox;
     edRoutersQuery: TEdit;
@@ -947,6 +943,10 @@ type
     miDisplayedLines4k: TMenuItem;
     miDisplayedLines2k: TMenuItem;
     miDisplayedLines1k: TMenuItem;
+    lbTheme: TLabel;
+    lbLanguage: TLabel;
+    cbxThemes: TComboBox;
+    cbxLanguage: TComboBox;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -2839,7 +2839,7 @@ begin
                   ExitNodeID := Temp;
                   Tcp.lbExitIp.Caption := Ip;
                   Tcp.lbExitCountry.Caption := TransStr(CountryCodes[CountryCode]);
-                  Tcp.lbExitCountry.Left := Round(198 * Scale);
+                  Tcp.lbExitCountry.Left := Round(204 * Scale);
                   Tcp.imExitFlag.Picture := nil;
                   Tcp.lsFlags.GetBitmap(CountryCode, Tcp.imExitFlag.Picture.Bitmap);
                   Tcp.imExitFlag.Visible := True;
@@ -3371,7 +3371,7 @@ begin
           DrawText(sgHs.Canvas.Handle, PChar(HsHeader[ACol]), Length(HsHeader[ACol]), Rect, DT_CENTER);
     end;
   end;
-  GridScrollCheck(sgHs, HS_NAME, 163);
+  GridScrollCheck(sgHs, HS_NAME, 183);
 end;
 
 procedure TTcp.sgHsEnter(Sender: TObject);
@@ -3389,7 +3389,7 @@ procedure TTcp.sgHsPortsDrawCell(Sender: TObject; ACol, ARow: Integer;
 begin
   if ARow = 0 then
     DrawText(sgHsPorts.Canvas.Handle, PChar(HsPortsHeader[ACol]), Length(HsPortsHeader[ACol]), Rect, DT_CENTER);
-  GridScrollCheck(sgHsPorts, HSP_INTERFACE, 139);
+  GridScrollCheck(sgHsPorts, HSP_INTERFACE, 151);
 end;
 
 procedure TTcp.sgHsPortsEnter(Sender: TObject);
@@ -4012,7 +4012,7 @@ procedure TTcp.sgTransportsDrawCell(Sender: TObject; ACol, ARow: Integer;
 begin
   if (ARow = 0) and (ACol < PT_PARAMS) then
     DrawText(sgTransports.Canvas.Handle, PChar(TransportsHeader[ACol]), Length(TransportsHeader[ACol]), Rect, DT_CENTER);
-  GridScrollCheck(sgTransports, PT_TRANSPORTS, 179);
+  GridScrollCheck(sgTransports, PT_TRANSPORTS, 194);
 end;
 
 procedure TTcp.sgTransportsKeyDown(Sender: TObject; var Key: Word;
@@ -4661,7 +4661,7 @@ begin
   btnChangeCircuit.Enabled := True;
   miChangeCircuit.Enabled := False;
   imExitFlag.Visible := False;
-  lbExitCountry.Left := Round(174 * Scale);
+  lbExitCountry.Left := Round(178 * Scale);
   lbExitCountry.Caption := TransStr('110');
   lbExitCountry.Cursor := crDefault;
   lbExitCountry.Hint := '';
@@ -8929,7 +8929,7 @@ var
   ZeroX, ZeroY, CurrX, CurrY, LastX, LastY: Integer;
   AText: string;
   ARect: TRect;
-  AHeight, AWidth: Integer;
+  AHeight, AWidth, Filler, Modifier: Integer;
   APen: TGPPen;
   Plot : TGPGraphics;
   Data, ScaledData: ArrOfPoint;
@@ -8955,11 +8955,23 @@ var
     APen.SetColor(ColorRefToARGB(AColor));
     LastX := ZeroX + AWidth;
     LastY := AHeight - Round((ScaledData[DataLength].Y - MinValue) / StepY);
-    for i := DataLength - 1 downto 1 do
+
+    Filler := AWidth - (Threshold * Round(StepX));
+    if Filler > 0 then
+      Modifier := Threshold div Filler
+    else
+      Modifier := -1;
+
+    for i := DataLength downto 0 do
     begin
       CurrX := Round(LastX - StepX);
+      if Modifier > 0 then
+      begin
+        if (i mod Modifier = 0) and (i <> 0) then
+          Dec(CurrX);
+      end;
       CurrY := AHeight - Round((ScaledData[i].Y - MinValue) / StepY);
-      if ScaledData[i].Y <> -1 then
+      if (ScaledData[i].Y <> -1) and (CurrX >= ZeroX) then
         Plot.DrawLine(APen, LastX, LastY, CurrX, CurrY);
       LastX := CurrX;
       LastY := CurrY;
@@ -8998,11 +9010,11 @@ begin
     end;
   end;
 
-  ZeroX := 55;
+  ZeroX := Round(55 * Scale);
   ZeroY := 0;
 
-  AWidth := pbTraffic.Width - ZeroX - 8;
-  AHeight := pbTraffic.Height - ZeroY - 8;
+  AWidth := pbTraffic.Width - ZeroX - Round(8 * Scale);
+  AHeight := pbTraffic.Height - ZeroY - Round(8 * Scale);
 
   StepY := Round(AHeight / GRID_YN);
   StepX := Round(AWidth / GRID_XN);
@@ -9031,7 +9043,7 @@ begin
       if i <> 1 then
       begin
         ARect := ClipRect;
-        ARect.Right := ZeroX - 3;
+        ARect.Right := ZeroX - Round(3 * Scale);
         ARect.Top := CurrY;
         AText := BytesFormat(StepSpeed * (i - 1));
         TextRect(ARect, AText, [tfRight, tfSingleLine]);
@@ -9041,8 +9053,7 @@ begin
   end;
 
   case CurrentTrafficPeriod of
-    0: Threshold := IntervalSize;
-    1: Threshold := Floor(AWidth / 2);
+    0, 1: Threshold := IntervalSize;
     else
       Threshold := AWidth;
   end;
@@ -9115,7 +9126,7 @@ begin
     Btn.Caption := '';
     Btn.ShowHint := True;
     Btn.Margin := -1;
-    Btn.Width := Round(41 * Scale);
+    Btn.Width := Round(40 * Scale);
     Btn.Left := Round(LeftSmall * Scale);
   end
   else
@@ -9124,7 +9135,7 @@ begin
     Btn.ShowHint := False;
     Btn.Hint := '';
     Btn.Margin := 8;
-    Btn.Width := Round(111 * Scale);
+    Btn.Width := Round(115 * Scale);
     Btn.Left := Round(LeftBig * Scale);
   end;
 end;
@@ -9133,19 +9144,19 @@ procedure TTcp.ChangeButtonsCaption;
 begin
   if FormSize = 0 then
   begin
-    btnChangeCircuit.Width := Round(111 * Scale);
-    btnSwitchTor.Width := Round(111 * Scale);
+    btnChangeCircuit.Width := Round(115 * Scale);
+    btnSwitchTor.Width := Round(115 * Scale);
   end
   else
   begin
-    btnChangeCircuit.Width := Round(111 * Scale);
-    btnSwitchTor.Width := Round(111 * Scale);
+    btnChangeCircuit.Width := Round(115 * Scale);
+    btnSwitchTor.Width := Round(115 * Scale);
   end;
-  SetButtonsProp(sbShowOptions, 116, 116);
-  SetButtonsProp(sbShowLog, 159, 229);
-  SetButtonsProp(sbShowStatus, 202, 342);
-  SetButtonsProp(sbShowCircuits, 245, 455);
-  SetButtonsProp(sbShowRouters, 288, 568);
+  SetButtonsProp(sbShowOptions, 120, 120);
+  SetButtonsProp(sbShowLog, 162, 237);
+  SetButtonsProp(sbShowStatus, 204, 354);
+  SetButtonsProp(sbShowCircuits, 246, 471);
+  SetButtonsProp(sbShowRouters, 288, 588);
   CheckLabelEndEllipsis(lbExitCountry, 150, epEndEllipsis, True, False);
 end;
 
@@ -9156,7 +9167,7 @@ begin
   if FormSize = 0 then
   begin
     H := Round(91 * Scale);
-    W := Round(332 * Scale);
+    W := Round(331 * Scale);
     if (Tcp.ClientHeight = H) and (Tcp.ClientWidth = W) then
       Exit;
     Tcp.ClientHeight := H;
@@ -9164,8 +9175,8 @@ begin
   end
   else
   begin
-    H := Round(531 * Scale);
-    W := Round(728 * Scale);
+    H := Round(556 * Scale);
+    W := Round(760 * Scale);
     if (Tcp.ClientHeight = H) and (Tcp.ClientWidth = W) then
       Exit;
     Tcp.ClientHeight := H;
@@ -9888,13 +9899,13 @@ begin
   GridSort(sgFilter);
   SetGridLastCell(sgFilter, True, miFilterScrollTop.Checked);
   if cbEnablePingMeasure.Checked and cbEnableDetectAliveNodes.Checked then
-    GridScrollCheck(sgFilter, FILTER_NAME, 280)
+    GridScrollCheck(sgFilter, FILTER_NAME, 312)
   else
   begin
     if cbEnablePingMeasure.Checked or cbEnableDetectAliveNodes.Checked then
-      GridScrollCheck(sgFilter, FILTER_NAME, 336)
+      GridScrollCheck(sgFilter, FILTER_NAME, 368)
     else
-      GridScrollCheck(sgFilter, FILTER_NAME, 392);
+      GridScrollCheck(sgFilter, FILTER_NAME, 424);
   end;
   EndUpdateTable(sgFilter);
   lbFilterCount.Caption := Format(TransStr('321'), [FilterCount, FilterDic.Count]);
@@ -10293,9 +10304,9 @@ begin
   GridSort(sgRouters);
   SetGridLastCell(sgRouters, True, miRoutersScrollTop.Checked);
   if cbEnablePingMeasure.Checked then
-    GridScrollCheck(sgRouters, ROUTER_COUNTRY, 105)
+    GridScrollCheck(sgRouters, ROUTER_COUNTRY, 121)
   else
-    GridScrollCheck(sgRouters, ROUTER_COUNTRY, 125);
+    GridScrollCheck(sgRouters, ROUTER_COUNTRY, 141);
   EndUpdateTable(sgRouters);
   lbRoutersCount.Caption := Format(TransStr('321'), [RoutersCount, RoutersDic.Count]);
 
@@ -10486,7 +10497,7 @@ begin
     FindInCircuits(Circuit, ExitNodeID)
   else
     SetGridLastCell(sgCircuits, False);
-  GridScrollCheck(sgCircuits, CIRC_PURPOSE, 170);
+  GridScrollCheck(sgCircuits, CIRC_PURPOSE, 180);
   EndUpdateTable(sgCircuits);
   lbCircuitsCount.Caption := Format(TransStr('349'), [CircuitsCount, CircuitsDic.Count]);
   lbStreamsCount.Caption := TransStr('350') + ': ' + IntToStr(TotalConnections);
@@ -10699,9 +10710,9 @@ begin
   GridSort(sgStreams);
   SetGridLastCell(sgStreams, False, False, False, -1, -1, 1);
   if miShowStreamsTraffic.Checked then
-    GridScrollCheck(sgStreams, STREAMS_TARGET, 301)
+    GridScrollCheck(sgStreams, STREAMS_TARGET, 323)
   else
-    GridScrollCheck(sgStreams, STREAMS_TARGET, 424);
+    GridScrollCheck(sgStreams, STREAMS_TARGET, 446);
   EndUpdateTable(sgStreams);
   ShowStreamsInfo(CircID, sgStreams.Cells[STREAMS_TARGET, sgStreams.SelRow]);
   LockStreams := False;
@@ -10985,7 +10996,7 @@ begin
   begin
     sgFilter.ColWidths[FILTER_ALIVE] := Round(55 * Scale);
     sgFilter.ColWidths[FILTER_PING] := Round(55 * Scale);
-    GridScrollCheck(sgFilter, FILTER_NAME, 280);
+    GridScrollCheck(sgFilter, FILTER_NAME, 312);
   end
   else
   begin
@@ -10993,7 +11004,7 @@ begin
     begin
       sgFilter.ColWidths[FILTER_ALIVE] := -1;
       sgFilter.ColWidths[FILTER_PING] := Round(55 * Scale);
-      GridScrollCheck(sgFilter, FILTER_NAME, 336);
+      GridScrollCheck(sgFilter, FILTER_NAME, 368);
     end
     else
     begin
@@ -11001,38 +11012,38 @@ begin
       begin
         sgFilter.ColWidths[FILTER_ALIVE] := Round(55 * Scale);
         sgFilter.ColWidths[FILTER_PING] := -1;
-        GridScrollCheck(sgFilter, FILTER_NAME, 336);
+        GridScrollCheck(sgFilter, FILTER_NAME, 368);
       end
       else
       begin
         sgFilter.ColWidths[FILTER_ALIVE] := -1;
         sgFilter.ColWidths[FILTER_PING] := -1;
-        GridScrollCheck(sgFilter, FILTER_NAME, 392);
+        GridScrollCheck(sgFilter, FILTER_NAME, 424);
       end;
     end;
   end;
 
   if PingState then
   begin
-    sgCircuitInfo.ColWidths[CIRC_INFO_NAME] := Round(109 * Scale);
+    sgCircuitInfo.ColWidths[CIRC_INFO_NAME] := Round(120 * Scale);
     sgCircuitInfo.ColWidths[CIRC_INFO_IP] := Round(120 * Scale);
-    sgCircuitInfo.ColWidths[CIRC_INFO_COUNTRY] := Round(108 * Scale);
+    sgCircuitInfo.ColWidths[CIRC_INFO_COUNTRY] := Round(119 * Scale);
     sgCircuitInfo.ColWidths[CIRC_INFO_PING] := Round(48 * Scale);
-    sgRouters.ColWidths[ROUTER_NAME] := Round(90 * Scale);
+    sgRouters.ColWidths[ROUTER_NAME] := Round(106 * Scale);
     sgRouters.ColWidths[ROUTER_IP] := Round(88 * Scale);
     sgRouters.ColWidths[ROUTER_PING] := Round(44 * Scale);
-    GridScrollCheck(sgRouters, ROUTER_COUNTRY, 105);
+    GridScrollCheck(sgRouters, ROUTER_COUNTRY, 121);
   end
   else
   begin
-    sgCircuitInfo.ColWidths[CIRC_INFO_NAME] := Round(124 * Scale);
+    sgCircuitInfo.ColWidths[CIRC_INFO_NAME] := Round(135 * Scale);
     sgCircuitInfo.ColWidths[CIRC_INFO_IP] := Round(135 * Scale);
-    sgCircuitInfo.ColWidths[CIRC_INFO_COUNTRY] := Round(128 * Scale);
+    sgCircuitInfo.ColWidths[CIRC_INFO_COUNTRY] := Round(139 * Scale);
     sgCircuitInfo.ColWidths[CIRC_INFO_PING] := -1;
-    sgRouters.ColWidths[ROUTER_NAME] := Round(105 * Scale);
+    sgRouters.ColWidths[ROUTER_NAME] := Round(121 * Scale);
     sgRouters.ColWidths[ROUTER_IP] := Round(98 * Scale);
     sgRouters.ColWidths[ROUTER_PING] := Round(-1 * Scale);
-    GridScrollCheck(sgRouters, ROUTER_COUNTRY, 125);
+    GridScrollCheck(sgRouters, ROUTER_COUNTRY, 141);
   end;
 end;
 
@@ -12422,17 +12433,17 @@ begin
   lbULCirc.Visible := miShowCircuitsTraffic.Checked;
   sgStreamsInfo.Visible := miShowStreamsInfo.Checked;
   if miShowStreamsInfo.Checked then
-    sgStreams.Height := Round(158 * Scale)
+    sgStreams.Height := Round(176 * Scale)
   else
-    sgStreams.Height := Round(275 * Scale);
+    sgStreams.Height := Round(296 * Scale);
 
   if miShowStreamsTraffic.Checked then
   begin
     sgStreams.ColWidths[STREAMS_BYTES_READ] := Round(60 * Scale);
     sgStreams.ColWidths[STREAMS_BYTES_WRITTEN] := Round(60 * Scale);
-    GridScrollCheck(sgStreams, STREAMS_TARGET, 301);
-    sgStreamsInfo.ColWidths[STREAMS_INFO_SOURCE_ADDR] := Round(118 * Scale);
-    sgStreamsInfo.ColWidths[STREAMS_INFO_DEST_ADDR] := Round(118 * Scale);
+    GridScrollCheck(sgStreams, STREAMS_TARGET, 323);
+    sgStreamsInfo.ColWidths[STREAMS_INFO_SOURCE_ADDR] := Round(129 * Scale);
+    sgStreamsInfo.ColWidths[STREAMS_INFO_DEST_ADDR] := Round(129 * Scale);
     sgStreamsInfo.ColWidths[STREAMS_INFO_BYTES_READ] := Round(60 * Scale);
     sgStreamsInfo.ColWidths[STREAMS_INFO_BYTES_WRITTEN] := Round(60 * Scale);
     GridScrollCheck(sgStreamsInfo, STREAMS_INFO_PURPOSE, 119);
@@ -12441,9 +12452,9 @@ begin
   begin
     sgStreams.ColWidths[STREAMS_BYTES_READ] := -1;
     sgStreams.ColWidths[STREAMS_BYTES_WRITTEN] := -1;
-    GridScrollCheck(sgStreams, STREAMS_TARGET, 424);
-    sgStreamsInfo.ColWidths[STREAMS_INFO_SOURCE_ADDR] := Round(158 * Scale);
-    sgStreamsInfo.ColWidths[STREAMS_INFO_DEST_ADDR] := Round(158 * Scale);
+    GridScrollCheck(sgStreams, STREAMS_TARGET, 446);
+    sgStreamsInfo.ColWidths[STREAMS_INFO_SOURCE_ADDR] := Round(169 * Scale);
+    sgStreamsInfo.ColWidths[STREAMS_INFO_DEST_ADDR] := Round(169 * Scale);
     sgStreamsInfo.ColWidths[STREAMS_INFO_BYTES_READ] := -1;
     sgStreamsInfo.ColWidths[STREAMS_INFO_BYTES_WRITTEN] := -1;
     GridScrollCheck(sgStreamsInfo, STREAMS_INFO_PURPOSE, 163);
