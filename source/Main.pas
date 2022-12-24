@@ -1501,7 +1501,7 @@ var
   DefaultsFile, UserConfigFile, UserBackupFile, TorConfigFile, TorStateFile, TorLogFile,
   TorExeFile, GeoIpFile, GeoIpv6File, NetworkCacheFile, BridgesCacheFile,
   UserProfile, LangFile, ConsensusFile, DescriptorsFile, NewDescriptorsFile: string;
-  ControlPassword, SelectedNode, SearchStr, UPnPMsg: string;
+  ControlPassword, SelectedNode, SearchStr, UPnPMsg, GeoFileID: string;
   Circuit, LastRoutersFilter, LastPreferredBridgeHash, ExitNodeID, ServerIPv4, ServerIPv6, TorVersion: string;
   jLimit: TJobObjectExtendedLimitInformation;
   TorVersionProcess, TorMainProcess: TProcessInfo;
@@ -1525,8 +1525,8 @@ var
   Scale: Real;
   HsToDelete: ArrOfStr;
   SystemLanguage: Word;
-  LastAuthCookieDate, LastConsensusDate, LastNewDescriptorsDate, LastTorrcDate, GeoIpDate: TDateTime;
-  LastFullScanDate, LastPartialScanDate, TotalStartDate, LastGeoIpUpdateDate, LastSaveStats: Int64;
+  LastAuthCookieDate, LastConsensusDate, LastNewDescriptorsDate, LastTorrcDate: TDateTime;
+  LastFullScanDate, LastPartialScanDate, TotalStartDate, LastSaveStats: Int64;
   LastPartialScansCounts: Integer;
   LockCircuits, LockCircuitInfo, LockStreams, LockStreamsInfo, UpdateTraffic: Boolean;
   FindObject: TMemo;
@@ -2648,8 +2648,8 @@ begin
         begin
           if GeoIpUpdating then
           begin
-            LastGeoIpUpdateDate := DateTimeToUnix(GeoIpDate);
-            SetConfigInteger('Main', 'LastGeoIpUpdateDate', LastGeoIpUpdateDate);
+            GeoFileID := GetFileID(GeoIpFile);
+            SetConfigString('Main', 'GeoFileID', GeoFileID);
             GeoIpUpdating := False;
           end;
           InfoStage := 3;
@@ -4527,8 +4527,7 @@ begin
 
     if GeoIpExists then
     begin
-      FileAge(GeoIpFile, GeoIpDate);
-      if LastGeoIpUpdateDate <> DateTimeToUnix(GeoIpDate) then
+      if GeoFileID <> GetFileID(GeoIpFile, True) then
         GeoIpUpdating := True;
     end;
 
@@ -5056,6 +5055,7 @@ begin
         SetSettings('Scanner', 'PartialScanInterval', GetSettings('Scanner', 'NonResponsedScanInterval', udPartialScanInterval.Position, ini), ini);
         DeleteSettings('Scanner', 'LastNonResponsedScanDate', ini);
         DeleteSettings('Scanner', 'NonResponsedScanInterval', ini);
+        DeleteSettings('Main', 'LastGeoIpUpdateDate', ini);
         ConfigVersion := 4;
       end;
     end
@@ -5665,11 +5665,10 @@ const
   Delimiter = '|';
 var
   ini: TMemIniFile;
-  ls: TStringList;
-  i: Integer;
+  ls, list: TStringList;
+  i, Index: Integer;
   Key, Value, Str: string;
   Bridges: TDictionary<string, string>;
-  Bridge: TBridge;
 begin
   if UpdateBridges then
     meBridges.Clear;
@@ -5678,10 +5677,9 @@ begin
     ini := TMemIniFile.Create(DefaultsFile, TEncoding.UTF8);
     try
       ls := TStringList.Create;
+      list := TStringList.Create;
       Bridges := TDictionary<string, string>.Create;
       try
-        if UpdateList then
-          cbxBridgesList.Clear;
         ini.ReadSectionValues('Bridges', ls);
         if ls.Count > 0 then
         begin
@@ -5691,7 +5689,7 @@ begin
             Value := SeparateRight(ls[i], '=');
             if Pos(Delimiter, Value) = 0 then
             begin
-              if TryParseBridge(Value, Bridge) then
+              if ValidBridge(Value, btNone) then
               begin
                 if Bridges.TryGetValue(Key, Str) then
                   Str := Str + Delimiter + Value
@@ -5699,19 +5697,24 @@ begin
                 begin
                   Str := Value;
                   if UpdateList then
-                    cbxBridgesList.Items.Append(Key);
+                    list.Append(Key);
                 end;
                 Bridges.AddOrSetValue(Key, Str)
               end;
             end;
           end;
+
+          if UpdateList then
+            cbxBridgesList.Items.SetStrings(list);
+
           if Bridges.Count > 0 then
           begin
             if UpdateList then
             begin
-              cbxBridgesList.ItemIndex := cbxBridgesList.Items.IndexOf(ListName);
-              if cbxBridgesList.ItemIndex = -1 then
-                cbxBridgesList.ItemIndex := 0;
+              Index := list.IndexOf(ListName);
+              if Index < 0 then
+                Index := 0;
+              cbxBridgesList.ItemIndex := Index
             end;
             if UpdateBridges then
             begin
@@ -5719,9 +5722,12 @@ begin
                 LineToMemo(Str, meBridges, ltBridge, False, Delimiter);
             end;
           end;
-        end;
+        end
+        else
+          cbxBridgesList.Clear;
       finally
         ls.Free;
+        list.Free;
         Bridges.Free;
       end;
     finally
@@ -6119,12 +6125,11 @@ begin
     LastPartialScanDate := GetSettings('Scanner', 'LastPartialScanDate', 0, ini);
     LastPartialScansCounts := GetSettings('Scanner', 'LastPartialScansCounts', 0, ini);
 
-    LastGeoIpUpdateDate := GetSettings('Main', 'LastGeoIpUpdateDate', 0, ini);
-    if (LastGeoIpUpdateDate = 0) and not FileExists(NetworkCacheFile) then
+    GeoFileID := GetSettings('Main', 'GeoFileID', '', ini);
+    if (GeoFileID = '') and GeoIpExists and not FileExists(NetworkCacheFile) then
     begin
-      FileAge(GeoIpFile, GeoIpDate);
-      LastGeoIpUpdateDate := DateTimeToUnix(GeoIpDate);
-      SetSettings('Main', 'LastGeoIpUpdateDate', LastGeoIpUpdateDate, ini);
+      GeoFileID := GetFileID(GeoIpFile, True);
+      SetSettings('Main', 'GeoFileID', GeoFileID, ini);
     end;
 
     tmCircuits.Interval := GetIntDef(GetSettings('Circuits', 'UpdateInterval', 1000, ini), 1000, 0, 4000);
@@ -10094,7 +10099,7 @@ begin
       end;
       7:if not (ValidInt(Query, -1, 65535) or (CharInSet(AnsiChar(Query[1]), [NONE_CHAR, INFINITY_CHAR]) and (Length(Query) = 1))) then
           WrongQuery := True;
-      8:if not TransportsDic.ContainsKey(Query) then
+      8:if not TransportsDic.ContainsKey(Query) and (Query <> '-') then
           WrongQuery := True;
       else
       begin
@@ -10172,7 +10177,12 @@ begin
           8:
           begin
             if BridgesDic.TryGetValue(Item.Key, BridgeInfo) then
-              cdQuery := BridgeInfo.Transport = Query
+            begin
+              if Query <> '-' then
+                cdQuery := BridgeInfo.Transport = Query
+              else
+                cdQuery := BridgeInfo.Transport = '';
+            end
             else
               cdQuery := False;
           end;
