@@ -165,7 +165,6 @@ var
   procedure BeginUpdateTable(aSg: TStringGrid);
   procedure EndUpdateTable(aSg: TStringGrid);
   procedure sgSort(aSg: TStringGrid; aCol: Integer; aCompare: TStringListSortCompare);
-  procedure SetDesktopPosition(Left, Top: Integer; CheckBorders: Boolean = True; SaveToVar: Boolean = False);
   procedure GetLocalInterfaces(ComboBox: TComboBox; RecentHost: string = '');
   procedure ComboBoxAutoWidth(const AComboBox: TCombobox);
   procedure GridDrawIcon(aSg: TStringGrid; Rect: TRect; ls: TImageList; Index: Integer; W: Integer = 16; H: Integer = 16);
@@ -2405,64 +2404,6 @@ begin
       Result := tbLeft
     else if T.Left >= ScrW div 2 then
       Result := tbRight;
-  end;
-end;
-
-procedure SetDesktopPosition(Left, Top: Integer; CheckBorders: Boolean = True; SaveToVar: Boolean = False);
-var
-  TP: TTaskBarPos;
-begin
-  if (Left = -1) and (Top = -1) then
-  begin
-    Left := Round((Screen.Width - Tcp.Width) / 2);
-    Top := Round((Screen.Height - Tcp.Height) / 2);
-  end
-  else
-  begin
-    if CheckBorders or FirstLoad then
-    begin
-      TP := GetTaskBarPos;
-      if Left < Screen.WorkAreaLeft then
-        Left := Screen.WorkAreaLeft + 5
-      else
-        if Left > Screen.WorkAreaWidth - Tcp.Width then
-        begin
-          if TP = tbLeft then
-            Left := Screen.Width - Tcp.Width - 5
-          else
-            Left := Screen.WorkAreaWidth - Tcp.Width - 5;
-        end;
-
-      if Top < Screen.WorkAreaTop then
-        Top := Screen.WorkAreaTop + 5
-      else
-        if Top > Screen.WorkAreaHeight - Tcp.Height then
-        begin
-          if TP = tbTop then
-            Top := Screen.Height - Tcp.Height - 5
-          else
-            Top := Screen.WorkAreaHeight - Tcp.Height - 5;
-        end;
-    end;
-  end;
-  if not (FirstLoad and (FormSize = 1)) then
-  begin
-    Tcp.Left := Left;
-    Tcp.Top := Top;
-  end;
-
-  if SaveToVar then
-  begin
-    if FormSize = 0 then
-    begin
-      DecFormPos.X := Left;
-      DecFormPos.Y := Top;
-    end
-    else
-    begin
-      IncFormPos.X := Left;
-      IncFormPos.Y := Top;
-    end;
   end;
 end;
 

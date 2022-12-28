@@ -186,10 +186,12 @@ object Tcp: TTcp
       Width = 115
       Height = 48
       Caption = #1057#1084#1077#1085#1080#1090#1100' '#1094#1077#1087#1086#1095#1082#1091
+      DoubleBuffered = False
       DropDownMenu = mnChangeCircuit
       ImageIndex = 3
       ImageMargins.Left = 5
       Images = lsButtons
+      ParentDoubleBuffered = False
       Style = bsSplitButton
       TabOrder = 1
       WordWrap = True
@@ -4483,7 +4485,7 @@ object Tcp: TTcp
   end
   object btnCancelOptions: TButton
     Left = 680
-    Top = 528
+    Top = 529
     Width = 72
     Height = 19
     Caption = #1054#1090#1084#1077#1085#1072

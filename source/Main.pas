@@ -968,7 +968,6 @@ type
     function RouterInNodesList(RouterID: string; RouterInfo: TRouterInfo; NodeType: TNodeType; SkipCodes: Boolean = False): Boolean;
     function GetTrackHostDomains(Host: string; OnlyExists: Boolean): string;
     function GetControlEvents: string;
-    function GetCheckBorders: Boolean;
     function GetTorHs: Integer;
     function LoadHiddenServices(ini: TMemIniFile): Integer;
     function PreferredBridgeFound: Boolean;
@@ -1001,6 +1000,7 @@ type
     procedure LoadRoutersFilterData(Data: string; AutoUpdate: Boolean = True; ResetCustomFilter: Boolean = False);
     procedure ChangeHsTable(Param: Integer);
     procedure ChangeTransportTable(Param: Integer);
+    procedure SetDesktopPosition(ALeft, ATop: Integer; AutoUpdate: Boolean = True);
     procedure LoadOptions;
     procedure GetTorVersion;
     procedure CheckAuthMetodContols;
@@ -1084,7 +1084,6 @@ type
     procedure SendCommand(const cmd: string);
     procedure CheckSelectRowOptions(aSg: TStringGrid; Checked: Boolean; Save: Boolean = False);
     procedure SetButtonsProp(Btn: TSpeedButton; LeftSmall, LeftBig: Integer);
-    procedure SetVisible(vOptions, vLog, vStatus, vCircuits, vRouters, vButtons: Boolean);
     procedure ShowBalloon(Msg: string; Title: string = ''; Notice: Boolean = False; MsgType: TMsgType = mtInfo);
     procedure ShowCircuits;
     procedure ShowStreams(CircID: string);
@@ -1471,6 +1470,7 @@ type
     procedure mnTrafficPopup(Sender: TObject);
     procedure miEnableTotalsCounterClick(Sender: TObject);
     procedure miAddRelaysToBridgesCacheClick(Sender: TObject);
+    procedure ShowTimerEvent(Sender: TObject);
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
     procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -1511,10 +1511,10 @@ var
   ConnectState, StopCode, FormSize, LastPlace, InfoStage, GetIpStage, NodesListStage: Byte;
   EncodingNoBom: TUTF8EncodingNoBOM;
   SearchTimer: Cardinal;
-  DecFormPos, IncFormPos: TPoint;
+  DecFormPos, IncFormPos, IncFormSize: TPoint;
   RoutersCustomFilter, LastRoutersCustomFilter, RoutersFilters, LastFilters: Integer;
   GeoIpExists, FirstLoad, Restarting, Closing, WindowsShutdown, CursorShow, GeoIpUpdating, ServerIsObfs4: Boolean;
-  CursorStop, StartTimer, RestartTimeout: TTimer;
+  CursorStop, StartTimer, RestartTimeout, ShowTimer: TTimer;
   Controller: TControlThread;
   Consensus: TConsensusThread;
   Descriptors: TDescriptorsThread;
@@ -1555,21 +1555,9 @@ begin
   inherited;
 end;
 
-function TTcp.GetCheckBorders: Boolean;
-begin
-  if FormSize = 0 then
-    Result := not cbNoDesktopBorders.Checked
-      or not (cbNoDesktopBorders.Checked and not cbNoDesktopBordersOnlyEnlarged.Checked)
-  else
-    Result := not cbNoDesktopBorders.Checked;
-end;
-
 procedure TTcp.WMExitSizeMove(var msg: TMessage);
 begin
-  if FormSize = 0 then
-    SetDesktopPosition(Tcp.Left, Tcp.Top, GetCheckBorders, True)
-  else
-    SetDesktopPosition(Tcp.Left, Tcp.Top, GetCheckBorders, True);
+  SetDesktopPosition(Tcp.Left, Tcp.Top)
 end;
 
 procedure TTcp.WMDpiChanged(var msg: TWMDpi);
@@ -6019,7 +6007,6 @@ begin
       TorConfig.Append('');
     end;
     CheckRequiredFiles;
-
     GetSettings('Main', cbConnectOnStartup, ini);
     GetSettings('Main', cbRestartOnControlFail, ini);
     GetSettings('Main', cbMinimizeToTray, ini);
@@ -6036,6 +6023,24 @@ begin
     GetSettings('Main', cbUseOpenDNSOnlyWhenUnknown, ini);
     GetSettings('Main', cbRememberEnlargedPosition, ini);
     GetSettings('Main', cbClearPreviousSearchQuery, ini);
+
+    if FirstLoad then
+    begin
+      LastPlace := GetIntDef(GetSettings('Main', 'LastPlace', LP_OPTIONS, ini), LP_OPTIONS, LP_OPTIONS, LP_ROUTERS);
+      pcOptions.TabIndex := GetIntDef(GetSettings('Main', 'OptionsPage', 0, ini), 0, 0, pcOptions.PageCount - 1);
+      ParseStr := Explode(',', GetSettings('Main', 'FormPosition', '-1,-1,-1,-1', ini));
+      for i := 0 to Length(ParseStr) - 1 do
+      begin
+        case i of
+          0: DecFormPos.X := StrToIntDef(ParseStr[i], -1);
+          1: DecFormPos.Y := StrToIntDef(ParseStr[i], -1);
+          2: IncFormPos.X := StrToIntDef(ParseStr[i], -1);
+          3: IncFormPos.Y := StrToIntDef(ParseStr[i], -1);
+        end;
+      end;
+      SetDesktopPosition(IncFormPos.X, IncFormPos.Y, False);
+      DecreaseFormSize;
+    end;
 
     GetSettings('Log', miWriteLogFile, ini);
     GetSettings('Log', miAutoScroll, ini);
@@ -6387,8 +6392,8 @@ begin
     ParseStr := Explode(';', GetSettings('Routers', 'DefaultFilter', DEFAULT_ROUTERS_FILTER_DATA, ini));
     if Length(ParseStr) > 4 then
       udRoutersWeight.ResetValue := StrToIntDef(ParseStr[4], 10);
-
     CheckShowRouters;
+
     if FirstLoad then
     begin
       if GetSettings('Main', 'Terminated', False, ini) = True then
@@ -6405,22 +6410,8 @@ begin
         SetSettings('Status', 'TotalStartDate', TotalStartDate, ini);
       end;
       CheckStatusControls;
-
-      LastPlace := GetIntDef(GetSettings('Main', 'LastPlace', LP_OPTIONS, ini), LP_OPTIONS, LP_OPTIONS, LP_ROUTERS);
-      pcOptions.TabIndex := GetIntDef(GetSettings('Main', 'OptionsPage', 0, ini), 0, 0, pcOptions.PageCount - 1);
-      ParseStr := Explode(',', GetSettings('Main', 'FormPosition', '-1,-1,-1,-1', ini));
-      for i := 0 to Length(ParseStr) - 1 do
-        case i of
-          0: DecFormPos.X := StrToIntDef(ParseStr[i], -1);
-          1: DecFormPos.Y := StrToIntDef(ParseStr[i], -1);
-          2: IncFormPos.X := StrToIntDef(ParseStr[i], -1);
-          3: IncFormPos.Y := StrToIntDef(ParseStr[i], -1);
-        end;
-
-      SetDesktopPosition(IncFormPos.X, IncFormPos.Y, GetCheckBorders, True);
-      DecreaseFormSize;
-      SetDesktopPosition(DecFormPos.X, DecFormPos.Y, GetCheckBorders, True);
       SetSettings('Main', 'Terminated', True, ini);
+
       LoadNetworkCache;
       LoadBridgesCache;
       if miLoadCachedRoutersOnStartup.Checked then
@@ -6436,7 +6427,7 @@ begin
     end
     else
     begin
-      SetDesktopPosition(Tcp.Left, Tcp.Top, GetCheckBorders, True);
+      SetDesktopPosition(Tcp.Left, Tcp.Top);
       if ConsensusUpdated then
         LoadConsensus
       else
@@ -7195,7 +7186,7 @@ begin
     SetSettings('AutoSelNodes', cbAutoSelNodesWithPingOnly, ini);
     SetSettings('AutoSelNodes', cbAutoSelMiddleNodesWithoutDir, ini);
 
-    SetDesktopPosition(Tcp.Left, Tcp.Top, GetCheckBorders, True);
+    SetDesktopPosition(Tcp.Left, Tcp.Top);
     SetSettings('Main', 'FormPosition', GetFormPositionStr, ini);
 
     edControlPassword.Hint := GetSettings('Main', 'HashedControlPassword', '', ini);
@@ -9131,17 +9122,6 @@ begin
   end;
 end;
 
-procedure TTcp.SetVisible(vOptions, vLog, vStatus, vCircuits, vRouters, vButtons: Boolean);
-begin
-  paRouters.Visible := vRouters;
-  paCircuits.Visible := vCircuits;
-  paStatus.Visible := vStatus;  
-  paLog.Visible := vLog;
-  pcOptions.Visible := vOptions;  
-  btnApplyOptions.Visible := vButtons;
-  btnCancelOptions.Visible := vButtons;
-end;
-
 procedure TTcp.SetButtonsProp(Btn: TSpeedButton; LeftSmall, LeftBig: Integer);
 begin
   if FormSize = 0 then
@@ -9192,19 +9172,82 @@ begin
   begin
     H := Round(91 * Scale);
     W := Round(331 * Scale);
-    if (Tcp.ClientHeight = H) and (Tcp.ClientWidth = W) then
-      Exit;
-    Tcp.ClientHeight := H;
-    Tcp.ClientWidth := W;
   end
   else
   begin
     H := Round(556 * Scale);
     W := Round(760 * Scale);
-    if (Tcp.ClientHeight = H) and (Tcp.ClientWidth = W) then
-      Exit;
-    Tcp.ClientHeight := H;
-    Tcp.ClientWidth := W;
+  end;
+  if ClientHeight <> H then
+    ClientHeight := H;
+  if ClientWidth <> W then
+    ClientWidth := W;
+end;
+
+procedure TTcp.SetDesktopPosition(ALeft, ATop: Integer; AutoUpdate: Boolean = True);
+var
+  TP: TTaskBarPos;
+  CheckBorders: Boolean;
+begin
+  if FormSize = 0 then
+    CheckBorders := not cbNoDesktopBorders.Checked
+      or not (cbNoDesktopBorders.Checked and not cbNoDesktopBordersOnlyEnlarged.Checked)
+  else
+    CheckBorders := not cbNoDesktopBorders.Checked;
+
+  if (ALeft = -1) and (ATop = -1) then
+  begin
+    ALeft := Round((Screen.Width - Width) / 2);
+    ATop := Round((Screen.Height - Height) / 2);
+  end
+  else
+  begin
+    if CheckBorders or FirstLoad then
+    begin
+      TP := GetTaskBarPos;
+      if ALeft < Screen.WorkAreaLeft then
+        ALeft := Screen.WorkAreaLeft + 5
+      else
+      begin
+        if ALeft > Screen.WorkAreaWidth - Width then
+        begin
+          if TP = tbLeft then
+            ALeft := Screen.Width - Width - 5
+          else
+            ALeft := Screen.WorkAreaWidth - Width - 5;
+        end;
+      end;
+
+      if ATop < Screen.WorkAreaTop then
+        ATop := Screen.WorkAreaTop + 5
+      else
+      begin
+        if ATop > Screen.WorkAreaHeight - Height then
+        begin
+          if TP = tbTop then
+            ATop := Screen.Height - Height - 5
+          else
+            ATop := Screen.WorkAreaHeight - Height - 5;
+        end;
+      end;
+    end;
+  end;
+  if FormSize = 0 then
+  begin
+    DecFormPos.X := ALeft;
+    DecFormPos.Y := ATop;
+  end
+  else
+  begin
+    IncFormPos.X := ALeft;
+    IncFormPos.Y := ATop;
+  end;
+  if AutoUpdate then
+  begin
+    if Left <> ALeft then
+      Left := ALeft;
+    if Top <> ATop then
+      Top := ATop;
   end;
 end;
 
@@ -9214,6 +9257,7 @@ begin
   if FormSize = 1 then
   begin
     FormSize := 0;
+    paButtons.Visible := False;
     sbShowOptions.AllowAllUp := True;
     sbShowOptions.Down := False;
     sbShowLog.Down := False;
@@ -9221,16 +9265,28 @@ begin
     sbShowCircuits.Down := False;
     sbShowRouters.Down := False;
     sbShowOptions.AllowAllUp := False;
-    UpdateFormSize;
     ChangeButtonsCaption;
-    Tcp.Left := DecFormPos.X;
-    Tcp.Top := DecFormPos.Y;
-    if not FirstLoad then
-      SetDesktopPosition(Tcp.Left, Tcp.Top, GetCheckBorders, True);
+    AlphaBlendValue := 0;
+    AlphaBlend := True;
+    UpdateFormSize;
+    SetDesktopPosition(DecFormPos.X, DecFormPos.Y);
+    AlphaBlend := False;
+    AlphaBlendValue := 255;
+    paButtons.Visible := True;
   end;
 end;
 
 procedure TTcp.IncreaseFormSize;
+  procedure SetVisible(vOptions, vLog, vStatus, vCircuits, vRouters, vButtons: Boolean);
+  begin
+    paRouters.Visible := vRouters;
+    paCircuits.Visible := vCircuits;
+    paStatus.Visible := vStatus;
+    paLog.Visible := vLog;
+    pcOptions.Visible := vOptions;
+    btnApplyOptions.Visible := vButtons;
+    btnCancelOptions.Visible := vButtons;
+  end;
 begin
   SetDownState;
   if FormSize = 0 then
@@ -9238,8 +9294,10 @@ begin
     FormSize := 1;
     paButtons.Visible := False;
     SetVisible(False, False, False, False, False, False);
-    UpdateFormSize;
     ChangeButtonsCaption;
+    AlphaBlendValue := 0;
+    AlphaBlend := True;
+    UpdateFormSize;
     if cbRememberEnlargedPosition.Checked then
     begin
       Tcp.Left := IncFormPos.X;
@@ -9250,6 +9308,9 @@ begin
       Tcp.Left := Round((Screen.Width - Width) / 2);
       Tcp.Top := Round((Screen.Height - Height) / 2);
     end;
+    AlphaBlend := False;
+    AlphaBlendValue := 255;
+    paButtons.Visible := True;
   end;
   case LastPlace of
     LP_OPTIONS: SetVisible(True, False, False, False, False, True);
@@ -9258,7 +9319,6 @@ begin
     LP_CIRCUITS: SetVisible(False, False, False, True, False, False);
     LP_ROUTERS: SetVisible(False, False, False, False, True, True);
   end;
-  paButtons.Visible := True;
 end;
 
 procedure TTcp.MainButtonssMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
@@ -12435,8 +12495,8 @@ end;
 
 procedure TTcp.RestoreForm;
 begin
-  Tcp.WindowState := wsNormal;
-  Tcp.Visible := True;
+  WindowState := wsNormal;
+  Visible := True;
   Application.Restore;
   Application.BringToFront;
 end;
@@ -14384,8 +14444,8 @@ begin
   if (cbMinimizeOnClose.Checked) and not Closing and not WindowsShutdown then
   begin
     CanClose := WindowsShutdown;
-    Tcp.WindowState := wsMinimized;
-    Tcp.Visible := False;
+    WindowState := wsMinimized;
+    Visible := False;
   end;
 end;
 
@@ -14471,8 +14531,8 @@ procedure TTcp.FormMinimize(Sender: TObject);
 begin
   if cbMinimizeToTray.Checked then
   begin
-    Tcp.WindowState := wsMinimized;
-    Tcp.Visible := False;
+    WindowState := wsMinimized;
+    Visible := False;
   end;
 end;
 
@@ -14484,7 +14544,6 @@ begin
   WindowsShutdown := False;
   FirstLoad := True;
   FormSize := 1;
-
   LoadIconsFromResource(lsFlags, 'ICON_FLAGS');
   if not StyleServices.Enabled then
   begin
@@ -14679,19 +14738,30 @@ begin
   lbFavoritesExit.HelpKeyword := IntToStr(EXIT_ID);
   lbExcludeNodes.HelpKeyword := IntToStr(EXCLUDE_ID);
   lbFavoritesTotal.HelpKeyword := IntToStr(FAVORITES_ID);
-
   CheckFileEncoding(UserConfigFile, UserBackupFile);
   GetTorVersion;
+end;
+
+procedure TTcp.ShowTimerEvent(Sender: TObject);
+begin
+  if not FirstLoad then
+  begin
+    if not cbMinimizeOnStartup.Checked then
+      RestoreForm;
+    FreeAndNil(ShowTimer);
+  end;
 end;
 
 procedure TTcp.LoadOptions;
 begin
   UpdateConfigVersion;
   ResetOptions;
-  if cbMinimizeOnStartup.Checked then
-    Application.ShowMainForm := False
-  else
-    RestoreForm;
+  if not Assigned(ShowTimer) then
+  begin
+    ShowTimer := TTimer.Create(Tcp);
+    ShowTimer.OnTimer := ShowTimerEvent;
+    ShowTimer.Interval := 25;
+  end;
 end;
 
 procedure TTCP.GetTorVersion;
@@ -14988,8 +15058,8 @@ begin
   if Tcp.Visible then
   begin
     FindDialog.CloseDialog;
-    Tcp.WindowState := wsMinimized;
-    Tcp.Visible := False;
+    WindowState := wsMinimized;
+    Visible := False;
   end
   else
     RestoreForm;
