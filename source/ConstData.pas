@@ -55,6 +55,11 @@ const
   L2_NUM_GUARDS = 4;
   L3_NUM_GUARDS = 8;
 
+  VG_AUTO = 0;
+  VG_L2 = 1;
+  VG_L3 = 2;
+  VG_L2_L3 = 3;
+
   STOP_NORMAL = 0;
   STOP_CONFIG_ERROR = 1;
   STOP_AUTH_ERROR = 2;

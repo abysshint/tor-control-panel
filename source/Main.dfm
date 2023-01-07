@@ -50,7 +50,6 @@ object Tcp: TTcp
       TabOrder = 0
       WordWrap = False
       OnExit = MemoExit
-      OnKeyPress = MemoKeyPress
       OnMouseDown = meLogMouseDown
       OnMouseUp = meLogMouseUp
     end
@@ -1875,7 +1874,6 @@ object Tcp: TTcp
         WordWrap = False
         OnChange = meBridgesChange
         OnExit = MemoExit
-        OnKeyPress = MemoKeyPress
       end
       object cbxSOCKSHost: TComboBox
         Left = 548
@@ -2542,7 +2540,6 @@ object Tcp: TTcp
         WordWrap = False
         OnChange = OptionsChange
         OnExit = MemoExit
-        OnKeyPress = MemoKeyPress
       end
       object cbUseNumCPUs: TCheckBox
         Left = 244
@@ -2819,7 +2816,6 @@ object Tcp: TTcp
         WordWrap = False
         OnChange = meMyFamilyChange
         OnExit = MemoExit
-        OnKeyPress = MemoKeyPress
       end
       object cbDirCache: TCheckBox
         Left = 244
@@ -3391,7 +3387,6 @@ object Tcp: TTcp
         WordWrap = False
         OnChange = meTrackHostExitsChange
         OnExit = MemoExit
-        OnKeyPress = MemoKeyPress
       end
       object cbUseTrackHostExits: TCheckBox
         Left = 10
@@ -3423,7 +3418,6 @@ object Tcp: TTcp
         WordWrap = False
         OnChange = meNodesListChange
         OnExit = meNodesListExit
-        OnKeyPress = MemoKeyPress
       end
       object edTrackHostExitsExpire: TEdit
         Left = 139
@@ -3672,7 +3666,7 @@ object Tcp: TTcp
           Transparent = True
         end
         object cbAutoScanNewNodes: TCheckBox
-          Left = 29
+          Left = 14
           Top = 262
           Width = 290
           Height = 17
@@ -4134,7 +4128,6 @@ object Tcp: TTcp
           WantReturns = False
           OnChange = edTransportsChange
           OnExit = MemoExit
-          OnKeyPress = MemoKeyPress
         end
         object cbxTransportType: TComboBox
           Left = 273

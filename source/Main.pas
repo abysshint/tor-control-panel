@@ -87,6 +87,7 @@ type
     Data: string;
     DataSize, dwRead: DWORD;
     Buffer: PAnsiChar;
+    FirstStart: Boolean;
     procedure UpdateLog;
     procedure UpdateVersionInfo;
   protected
@@ -1001,8 +1002,8 @@ type
     procedure ChangeHsTable(Param: Integer);
     procedure ChangeTransportTable(Param: Integer);
     procedure SetDesktopPosition(ALeft, ATop: Integer; AutoUpdate: Boolean = True);
-    procedure LoadOptions;
-    procedure GetTorVersion;
+    procedure LoadOptions(FirstStart: Boolean);
+    function GetTorVersion(FirstStart: Boolean): Boolean;
     procedure CheckAuthMetodContols;
     procedure CheckAutoSelControls;
     procedure CheckFilterMode;
@@ -1017,7 +1018,7 @@ type
     procedure ClearRouters(NodeTypes: TNodeTypes = []; Silent: Boolean = True);
     procedure ControlPortConnect;
     procedure LogListenerStart(hStdOut: THandle);
-    procedure CheckVersionStart(hStdOut: THandle);
+    procedure CheckVersionStart(hStdOut: THandle; FirstStart: Boolean);
     procedure DecreaseFormSize(AutoRestore: Boolean = True);
     procedure ChangeButtonsCaption;
     procedure UpdateFormSize;
@@ -1059,6 +1060,7 @@ type
     procedure SetIconsColor;
     procedure SaveHiddenServices(ini: TMemIniFile);
     procedure SavePaddingOptions(ini: TMemIniFile);
+    procedure CheckPaddingControls;
     procedure UpdateConfigVersion;
     procedure LoadUserBridges(ini: TMemIniFile);
     procedure LoadBuiltinBridges(UpdateBridges, UpdateList: Boolean; ListName: string = '');
@@ -1196,7 +1198,6 @@ type
     procedure edHsChange(Sender: TObject);
     procedure edTransportsChange(Sender: TObject);
     procedure edReachableAddressesKeyPress(Sender: TObject; var Key: Char);
-    procedure MemoKeyPress(Sender: TObject; var Key: Char);
     procedure imGeneratePasswordClick(Sender: TObject);
     procedure imUPnPTestClick(Sender: TObject);
     procedure lbUserDirClick(Sender: TObject);
@@ -1501,7 +1502,7 @@ var
   DefaultsFile, UserConfigFile, UserBackupFile, TorConfigFile, TorStateFile, TorLogFile,
   TorExeFile, GeoIpFile, GeoIpv6File, NetworkCacheFile, BridgesCacheFile,
   UserProfile, LangFile, ConsensusFile, DescriptorsFile, NewDescriptorsFile: string;
-  ControlPassword, SelectedNode, SearchStr, UPnPMsg, GeoFileID: string;
+  ControlPassword, SelectedNode, SearchStr, UPnPMsg, GeoFileID, TorFileID: string;
   Circuit, LastRoutersFilter, LastPreferredBridgeHash, ExitNodeID, ServerIPv4, ServerIPv6, TorVersion: string;
   jLimit: TJobObjectExtendedLimitInformation;
   TorVersionProcess, TorMainProcess: TProcessInfo;
@@ -1521,7 +1522,7 @@ var
   Logger, VersionChecker: TReadPipeThread;
   OptionsLocked, OptionsChanged, ShowNodesChanged, Connected, AlreadyStarted, SearchFirst, StopScan: Boolean;
   ConsensusUpdated, DescriptorsUpdated, FilterUpdated, RoutersUpdated, ExcludeUpdated, OpenDNSUpdated, LanguageUpdated, BridgesUpdated: Boolean;
-  SelectExitCircuit, TotalsNeedSave: Boolean;
+  SelectExitCircuit, TotalsNeedSave, SupportVanguardsLite: Boolean;
   Scale: Real;
   HsToDelete: ArrOfStr;
   SystemLanguage: Word;
@@ -1594,14 +1595,15 @@ begin
     TorVersion := ParseStr[2];
     ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
     try
-      SetSettings('Main', 'TorFileID', GetFileID(TorExeFile, True, TorVersion), ini);
+      TorFileID := GetFileID(TorExeFile, True, TorVersion);
+      SetSettings('Main', 'TorFileID', TorFileID, ini);
     finally
       UpdateConfigFile(ini);
     end;
   end
   else
     TorVersion := '0.0.0.0';
-  Tcp.LoadOptions;
+  Tcp.LoadOptions(FirstStart);
   Terminate;
 end;
 
@@ -4342,11 +4344,12 @@ begin
   end;
 end;
 
-procedure TTcp.CheckVersionStart(hStdOut: THandle);
+procedure TTcp.CheckVersionStart(hStdOut: THandle; FirstStart: Boolean);
 begin
   if not Assigned(VersionChecker) then
   begin
     VersionChecker := TReadPipeThread.Create(True);
+    VersionChecker.FirstStart := FirstStart;
     VersionChecker.hStdOut := hStdOut;
     VersionChecker.VersionCheck := True;
     VersionChecker.FreeOnTerminate := True;
@@ -4468,7 +4471,7 @@ begin
       if ShowMsg(TransStr('354'), '', mtWarning, True) then
       begin
         if NodesListStage = 1 then
-          SaveNodesList(cbxNodesListType.ItemIndex);        
+          SaveNodesList(cbxNodesListType.ItemIndex);
         ApplyOptions(True);
       end
       else
@@ -4480,10 +4483,21 @@ end;
 procedure TTcp.StartTor(AutoResolveErrors: Boolean = False);
 var
   PortStr, Msg: string;
+  FindVersion: Boolean;
 begin
   CheckOptionsChanged;
   if FileExists(TorExeFile) then
   begin
+    FindVersion := True;
+    if TorFileID <> GetFileID(TorExeFile, True, TorVersion) then
+    begin
+      if not AutoResolveErrors then
+      begin
+        FindVersion := GetTorVersion(False);
+        if FindVersion then
+          Exit;
+      end;
+    end;
     PortStr := '';
     OptionsLocked := True;
     ForceDirectories(LogsDir);
@@ -4518,7 +4532,6 @@ begin
       if GeoFileID <> GetFileID(GeoIpFile, True) then
         GeoIpUpdating := True;
     end;
-
     TorMainProcess := ExecuteProcess(TorExeFile + ' -f "' + TorConfigFile + '"', [pfHideWindow, pfReadStdOut], hJob);
     if TorMainProcess.hProcess <> 0 then
     begin
@@ -4591,8 +4604,10 @@ begin
       end;
     end
     else
-      if not AutoResolveErrors then
+    begin
+      if not AutoResolveErrors and FindVersion then
         ShowMsg(TransStr('238'), '', mtWarning);
+    end;
   end
   else
   begin
@@ -5358,7 +5373,18 @@ begin
       PortsData := sgHs.Cells[HS_PORTS_DATA, i];
 
       if not ValidInt(MaxStreams, 1, 65535) then MaxStreams := '0';
-      if State = SELECT_CHAR then State := '1' else State := '0';
+      if State = SELECT_CHAR then
+      begin
+        if CheckFileVersion(TorVersion, '0.4.6.1') and (Version = '2') then
+        begin
+          State := '0';
+          UpdateControls := True;
+        end
+        else
+          State := '1'
+      end
+      else
+        State := '0';
 
       if State = '1' then
       begin
@@ -6362,6 +6388,7 @@ begin
     GetSettings('Main', cbxConnectionPadding, ini);
     GetSettings('Main', cbxCircuitPadding, ini);
     SavePaddingOptions(ini);
+    CheckPaddingControls;
 
     GetSettings('Lists', cbUseTrackHostExits, ini);
     GetSettings('Lists', udTrackHostExitsExpire, ini);
@@ -6943,16 +6970,15 @@ end;
 
 function TTcp.CheckVanguards(Silent: Boolean = False): Boolean;
 var
-  SupportVanguardsLite: Boolean;
   Router: TPair<string, TRouterInfo>;
   NodesCount: Integer;
 
   function GetMinGuards: Integer;
   begin
     case cbxVanguardLayerType.ItemIndex of
-      1: Result := L1_NUM_GUARDS + L2_NUM_GUARDS;
-      2: Result := L1_NUM_GUARDS + L3_NUM_GUARDS;
-      3: Result := L1_NUM_GUARDS + L2_NUM_GUARDS + L3_NUM_GUARDS;
+      VG_L2: Result := L1_NUM_GUARDS + L2_NUM_GUARDS;
+      VG_L3: Result := L1_NUM_GUARDS + L3_NUM_GUARDS;
+      VG_L2_L3: Result := L1_NUM_GUARDS + L2_NUM_GUARDS + L3_NUM_GUARDS;
       else
         Result := L1_NUM_GUARDS;
     end;
@@ -6961,14 +6987,13 @@ var
   procedure ResetVanguards;
   begin
     if SupportVanguardsLite then
-      cbxVanguardLayerType.ItemIndex := 0
+      cbxVanguardLayerType.ItemIndex := VG_AUTO
     else
       cbUseHiddenServiceVanguards.Checked := False;
   end;
 
 begin
   Result := True;
-  SupportVanguardsLite := CheckFileVersion(TorVersion, '0.4.7.1');
   if cbUseHiddenServiceVanguards.Checked then
   begin
     NodesCount := 0;
@@ -6987,7 +7012,7 @@ begin
       end;
     end;
 
-    if ((NodesCount < GetMinGuards) and (RoutersDic.Count > 0)) and (cbxVanguardLayerType.ItemIndex <> 0) then
+    if ((NodesCount < GetMinGuards) and (RoutersDic.Count > 0)) and (cbxVanguardLayerType.ItemIndex <> VG_AUTO) then
     begin
       if Silent then
         ResetVanguards
@@ -7005,7 +7030,7 @@ begin
     end
     else
     begin
-      if cbxVanguardLayerType.ItemIndex = 0 then
+      if cbxVanguardLayerType.ItemIndex = VG_AUTO then
         ResetVanguards;
     end;
   end;
@@ -7032,9 +7057,9 @@ begin
     Delete(Vanguards, 1, 1);
 
     case cbxVanguardLayerType.ItemIndex of
-      1: SetTorConfig('HSLayer2Nodes', Vanguards);
-      2: SetTorConfig('HSLayer3Nodes', Vanguards);
-      3:
+      VG_L2: SetTorConfig('HSLayer2Nodes', Vanguards);
+      VG_L3: SetTorConfig('HSLayer3Nodes', Vanguards);
+      VG_L2_L3:
       begin
         SetTorConfig('HSLayer2Nodes', Vanguards);
         SetTorConfig('HSLayer3Nodes', Vanguards);
@@ -7043,7 +7068,7 @@ begin
   end
   else
   begin
-    if CheckFileVersion(TorVersion, '0.4.7.1') then
+    if SupportVanguardsLite then
       SetTorConfig('VanguardsLiteEnabled', '0');
   end;
 
@@ -7317,7 +7342,10 @@ begin
     SetSettings('Lists', 'UseFavoritesExit', lbFavoritesExit.HelpContext, ini);
     SetSettings('Lists', 'UseExcludeNodes', lbExcludeNodes.HelpContext, ini);
     SetSettings('Lists', cbxNodesListType, ini);
-    SetSettings('Lists', cbUseHiddenServiceVanguards, ini);
+
+    if SupportVanguardsLite or
+      (not SupportVanguardsLite and (cbxVanguardLayerType.ItemIndex <> VG_AUTO)) then
+        SetSettings('Lists', cbUseHiddenServiceVanguards, ini);
     SetSettings('Lists', cbxVanguardLayerType, ini);
 
     SetSettings('Filter', cbxFilterMode, ini);
@@ -9550,6 +9578,15 @@ begin
   SetSettings('Server', 'MyFamily', MyFamily, ini);
 end;
 
+procedure TTcp.CheckPaddingControls;
+var
+  State: Boolean;
+begin
+  State := CheckFileVersion(TorVersion, '0.4.1.1');
+  cbxCircuitPadding.Enabled := State;
+  lbCircuitPadding.Enabled := State;
+end;
+
 procedure TTcp.SavePaddingOptions(ini: TMemIniFile);
 begin
   DeleteTorConfig('ConnectionPadding');
@@ -9565,10 +9602,13 @@ begin
       2: SetTorConfig('ReducedConnectionPadding', '1');
       3: SetTorConfig('ConnectionPadding', '0');
     end;
-    case cbxCircuitPadding.ItemIndex of
-      0: SetTorConfig('CircuitPadding', '1');
-      1: SetTorConfig('ReducedCircuitPadding', '1');
-      2: SetTorConfig('CircuitPadding', '0');
+    if CheckFileVersion(TorVersion, '0.4.1.1') then
+    begin
+      case cbxCircuitPadding.ItemIndex of
+        0: SetTorConfig('CircuitPadding', '1');
+        1: SetTorConfig('ReducedCircuitPadding', '1');
+        2: SetTorConfig('CircuitPadding', '0');
+      end;
     end;
   end;
 
@@ -11224,17 +11264,8 @@ begin
   if Button = mbLeft then
   begin
     if meLog.SelLength = 0 then
-    begin
       meLog.Tag := 0;
-      CheckLogAutoScroll;
-    end;
   end;
-end;
-
-procedure TTcp.MemoKeyPress(Sender: TObject; var Key: Char);
-begin
-  if CtrlKeyPressed('A') then
-    TMemo(Sender).SelectAll;
 end;
 
 procedure TTcp.SaveSortData;
@@ -14739,32 +14770,50 @@ begin
   lbExcludeNodes.HelpKeyword := IntToStr(EXCLUDE_ID);
   lbFavoritesTotal.HelpKeyword := IntToStr(FAVORITES_ID);
   CheckFileEncoding(UserConfigFile, UserBackupFile);
-  GetTorVersion;
+  GetTorVersion(True);
 end;
 
 procedure TTcp.ShowTimerEvent(Sender: TObject);
 begin
   if not FirstLoad then
   begin
-    if not cbMinimizeOnStartup.Checked then
-      RestoreForm;
-    FreeAndNil(ShowTimer);
+    if TTimer(Sender).Tag = 1 then
+    begin
+      if not Assigned(VersionChecker) then
+      begin
+        FreeAndNil(ShowTimer);
+        if TorVersion <> '0.0.0.0' then
+          StartTor
+        else
+          ShowMsg(TransStr('238'), '', mtWarning);
+      end;
+    end
+    else
+    begin
+      if not cbMinimizeOnStartup.Checked then
+        RestoreForm;
+      FreeAndNil(ShowTimer);
+    end;
   end;
 end;
 
-procedure TTcp.LoadOptions;
+procedure TTcp.LoadOptions(FirstStart: Boolean);
 begin
-  UpdateConfigVersion;
+  if FirstStart then
+    UpdateConfigVersion;
+  SupportVanguardsLite := CheckFileVersion(TorVersion, '0.4.7.1');
   ResetOptions;
   if not Assigned(ShowTimer) then
   begin
     ShowTimer := TTimer.Create(Tcp);
+    if not FirstStart then
+      ShowTimer.Tag := 1;
     ShowTimer.OnTimer := ShowTimerEvent;
     ShowTimer.Interval := 25;
   end;
 end;
 
-procedure TTCP.GetTorVersion;
+function TTCP.GetTorVersion(FirstStart: Boolean): Boolean;
 var
   ErrorMode: DWORD;
   Fail: Boolean;
@@ -14772,9 +14821,10 @@ var
   ls: TStringList;
   ParseStr: ArrOfStr;
   ini: TMemIniFile;
-  TempVersion, TorFileID: string;
+  TempVersion: string;
   TorFileExists: Boolean;
 begin
+  Result := True;
   Fail := True;
   TorVersion := '';
   TempVersion := '';
@@ -14811,7 +14861,7 @@ begin
       if TorFileID = GetFileID(TorExeFile, TorFileExists, TempVersion) then
       begin
         TorVersion := TempVersion;
-        LoadOptions;
+        LoadOptions(FirstStart);
         Exit;
       end
       else
@@ -14829,7 +14879,7 @@ begin
     TorVersionProcess := ExecuteProcess(TorExeFile + ' --version', [pfHideWindow, pfReadStdOut], hJob);
     if TorVersionProcess.hProcess <> 0 then
     begin
-      CheckVersionStart(TorVersionProcess.hStdOutput);
+      CheckVersionStart(TorVersionProcess.hStdOutput, FirstStart);
       Fail := False;
     end;
     SetErrorMode(0);
@@ -14837,8 +14887,9 @@ begin
 
   if Fail then
   begin
+    Result := False;
     TorVersion := '0.0.0.0';
-    LoadOptions;
+    LoadOptions(FirstStart);
   end;
 end;
 

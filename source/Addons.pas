@@ -50,7 +50,6 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
-    property OnExit;
     property TextHint: TStrings read FTextHint write FTextHint;
     property TextHintFont: TFont read FTextHintFont write FTextHintFont;
     procedure SetTextHintFont(const Value: TFont); inline;
