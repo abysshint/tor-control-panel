@@ -952,6 +952,19 @@ type
     cbxConnectionPadding: TComboBox;
     lbConnectionPadding: TLabel;
     lbCircuitPadding: TLabel;
+    miLogAutoDelType: TMenuItem;
+    miLogDelNever: TMenuItem;
+    miLogDelEvery: TMenuItem;
+    miLogDel1d: TMenuItem;
+    miLogDel3d: TMenuItem;
+    miLogDel1w: TMenuItem;
+    miLogDel1m: TMenuItem;
+    miLogDel3m: TMenuItem;
+    miLogDel6m: TMenuItem;
+    miLogDel1y: TMenuItem;
+    miLogDelOlderThan: TMenuItem;
+    miLogDel2w: TMenuItem;
+    miDelimiter71: TMenuItem;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1126,6 +1139,7 @@ type
     procedure RemoveFromNodesListWithConvert(Nodes: ArrOfNodes; NodeType: TNodeType);
     procedure SortPrepare(aSg: TStringGrid; ACol: Integer; ManualSort: Boolean = False);
     procedure GridSort(aSg: TStringGrid);
+    procedure SelectLogAutoDelInterval(Sender: TObject);
     procedure SelectLogLinesLimit(Sender: TObject);
     procedure SelectLogSeparater(Sender: TObject);
     procedure SelectLogScrollbar(Sender: TObject);
@@ -1507,7 +1521,7 @@ var
   jLimit: TJobObjectExtendedLimitInformation;
   TorVersionProcess, TorMainProcess: TProcessInfo;
   hJob: THandle;
-  DLSpeed, ULSpeed, MaxDLSpeed, MaxULSpeed, CurrentTrafficPeriod, DisplayedLinesCount: Integer;
+  DLSpeed, ULSpeed, MaxDLSpeed, MaxULSpeed, CurrentTrafficPeriod, DisplayedLinesCount, LogAutoDelHours: Integer;
   SessionDL, SessionUL, TotalDL, TotalUL: Int64;
   ConnectState, StopCode, FormSize, LastPlace, InfoStage, GetIpStage, NodesListStage: Byte;
   EncodingNoBom: TUTF8EncodingNoBOM;
@@ -4523,6 +4537,7 @@ begin
         ResetOptions;
         Exit;
       end;
+
     end;
     OptionsLocked := False;
     FileAge(UserDir + 'control_auth_cookie', LastAuthCookieDate);
@@ -4532,6 +4547,8 @@ begin
       if GeoFileID <> GetFileID(GeoIpFile, True) then
         GeoIpUpdating := True;
     end;
+    if LogAutoDelHours >= 0 then
+      DeleteFiles(LogsDir + '*.log', LogAutoDelHours * 3600);
     TorMainProcess := ExecuteProcess(TorExeFile + ' -f "' + TorConfigFile + '"', [pfHideWindow, pfReadStdOut], hJob);
     if TorMainProcess.hProcess <> 0 then
     begin
@@ -6001,7 +6018,7 @@ procedure TTcp.ResetOptions;
 var
   i, LogID: Integer;
   ini: TMemIniFile;
-  ScrollBars, SeparateType, DisplayedLinesType: Byte;
+  ScrollBars, SeparateType, DisplayedLinesType, LogAutoDelType: Byte;
   ParseStr: ArrOfStr;
   Transports: TStringList;
   FilterEntry, FilterMiddle, FilterExit, Temp: string;
@@ -6233,6 +6250,12 @@ begin
     DisplayedLinesType := GetIntDef(GetSettings('Log', 'DisplayedLinesType', 2, ini), 2, 0, 7);
     miDisplayedLinesCount.Items[DisplayedLinesType].Checked := True;
     DisplayedLinesCount := miDisplayedLinesCount.Items[DisplayedLinesType].Tag;
+
+    LogAutoDelType := GetIntDef(GetSettings('Log', 'LogAutoDelType', 0, ini), 0, 0, 10);
+    if LogAutoDelType in [2, 3] then
+      LogAutoDelType := 0;
+    miLogAutoDelType.Items[LogAutoDelType].Checked := True;
+    LogAutoDelHours := miLogAutoDelType.Items[LogAutoDelType].Tag;
 
     LogID := GetArrayIndex(LogLevels, AnsiLowerCase(SeparateLeft(GetTorConfig('Log', 'notice stdout', [cfAutoAppend]), ' ')));
     if LogID <> -1 then
@@ -15253,6 +15276,13 @@ begin
   TMenuItem(Sender).Checked := True;
   DisplayedLinesCount := TMenuItem(Sender).Tag;
   SetConfigInteger('Log', 'DisplayedLinesType', TMenuItem(Sender).MenuIndex);
+end;
+
+procedure TTcp.SelectLogAutoDelInterval(Sender: TObject);
+begin
+  TMenuItem(Sender).Checked := True;
+  LogAutoDelHours := TMenuItem(Sender).Tag;
+  SetConfigInteger('Log', 'LogAutoDelType', TMenuItem(Sender).MenuIndex);
 end;
 
 procedure TTcp.SelectLogScrollbar(Sender: TObject);

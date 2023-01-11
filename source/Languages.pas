@@ -10,6 +10,7 @@ uses
   function GetLangList: Integer;
   function Load(Key, Default: string): string;
   function TransStr(const StrID: string): string;
+  function TranslateTime(Number, TimeType: Integer; ShowNumber: Boolean = True; IsAbbr: Boolean = False): string;
   procedure LoadLns(Key, Default: string);
   procedure LoadStr(Key, Default: string);
   procedure Translate(Section: string);
@@ -118,6 +119,53 @@ begin
   Result := LangIniFile.ReadString(CurrentTranslate, Key, Default)
 end;
 
+function TranslateTime(Number, TimeType: Integer; ShowNumber: Boolean = True; IsAbbr: Boolean = False): string;
+var
+  ParseStr: ArrOfStr;
+  MaxIndex, Index, Tens: Integer;
+  TimeData: string;
+begin
+  case TimeType of
+    TIME_MILLISECOND: TimeData := TransStr('459');
+    TIME_SECOND: TimeData := TransStr('135');
+    TIME_MINUTE: TimeData := TransStr('197');
+    TIME_HOUR: TimeData := TransStr('477');
+    TIME_DAY: TimeData := TransStr('626');
+    TIME_WEEK: TimeData := TransStr('627');
+    TIME_MONTH: TimeData := TransStr('628');
+    TIME_YEAR: TimeData := TransStr('629');
+  end;
+  ParseStr := Explode('|', TimeData);
+  MaxIndex := Length(ParseStr) - 1;
+  if IsAbbr then
+    Index := 0
+  else
+  begin
+    Tens := Number mod 100;
+    case Tens of
+      0: Index := 3;
+      1: Index := 1;
+      2..4: Index := 2;
+      5..19: Index := 3;
+      else
+      begin
+        case Tens mod 10 of
+          1: Index := 1;
+          2..4: Index := 2;
+          else
+            Index := 3;
+        end;
+      end;
+    end;
+  end;
+  if Index > MaxIndex then
+    Index := MaxIndex;
+  if ShowNumber then
+    Result := IntToStr(Number) + ' ' + ParseStr[Index]
+  else
+    Result := ParseStr[Index];
+end;
+
 procedure LoadList(ls: TCombobox; Key, Default: string);
 var
   Index: Integer;
@@ -167,7 +215,7 @@ begin
     LoadStr('114', 'Страна');
     LoadStr('122', 'Скрытый сервис');
     LoadStr('130', 'Пароль');
-    LoadStr('135', 'сек.');
+    LoadStr('135', 'сек.|секунда|секунды|секунд');
     LoadStr('146', 'Преобразование в хэши включено');
     LoadStr('151', 'Тип');
     LoadStr('153', 'Порт');
@@ -178,7 +226,7 @@ begin
     LoadStr('175', 'Максимум');
     LoadStr('180', 'c');
     LoadStr('181', 'Проверка переадресации портов');
-    LoadStr('197', 'мин.');
+    LoadStr('197', 'мин.|минута|минуты|минут');
     LoadStr('203', 'Всего');
     LoadStr('204', 'Внимание! Отключение кэша каталога ускорит работу сервера, но ваш сервер никогда не станет сторожевым узлом. Хотите продолжить?');
     LoadStr('206', 'Обычный');
@@ -337,9 +385,9 @@ begin
     LoadStr('406', 'Удалить все');
     LoadStr('423', 'Найти...');
     LoadStr('444', 'Сетевой сканер');
-    LoadStr('459', 'мсек.');
+    LoadStr('459', 'мсeк.|миллисекунда|миллисекунды|миллисекунд');
     LoadStr('470', 'шт.');
-    LoadStr('477', 'ч.');
+    LoadStr('477', 'ч.|час|часа|часов');
     LoadStr('495', 'Остановить сканирование');
     LoadStr('515', 'Выделять все ячейки в строке');
     LoadStr('521', 'Выбранные страны');
@@ -358,6 +406,10 @@ begin
     LoadStr('608', 'Вы действительно хотите: "%s"?');
     LoadStr('609', 'Прокси');
     LoadLns('614', '\n\n\n  Примечание:\n\n           Мосты переопределяют настройки входных узлов');
+    LoadStr('626', 'д.|день|дня|дней');
+    LoadStr('627', 'нед.|неделя|недели|недель');
+    LoadStr('628', 'мес.|месяц|месяца|месяцев');
+    LoadStr('629', 'г.|год|года|лет');
 
     TranslateArray(HsHeader, TransStr('230'));
     TranslateArray(HsPortsHeader, TransStr('231'));
@@ -426,9 +478,9 @@ begin
     Tcp.cbUseOpenDNS.Caption := Load('407', 'Определять внешний адрес сервера через OpenDNS');
     Tcp.cbUseOpenDNSOnlyWhenUnknown.Caption := Load('408', 'Только если TOR не может определить его сам');
     Tcp.cbUseNetworkCache.Caption := Load('409', 'Кэшировать IP-cc-запросы и результаты сетевого сканера');
-    Tcp.lbSeconds1.Caption := TransStr('135');
-    Tcp.lbSeconds2.Caption := TransStr('135');
-    Tcp.lbSeconds3.Caption := TransStr('135');
+    Tcp.lbSeconds1.Caption := TranslateTime(0, TIME_SECOND, False, True);
+    Tcp.lbSeconds2.Caption := TranslateTime(0, TIME_SECOND, False, True);
+    Tcp.lbSeconds3.Caption := TranslateTime(0, TIME_SECOND, False, True);
     Tcp.lbConnectionPadding.Caption := Load('618', 'Заполнение соединений маскирующим трафиком');
     LoadList(Tcp.cbxConnectionPadding, '619', '"Автовыбор","Включено","Ограничено","Выключено"');
     Tcp.lbCircuitPadding.Caption := Load('620', 'Заполнение цепочек маскирующим трафиком');
@@ -544,7 +596,7 @@ begin
     Tcp.lbHsVersion.Caption := Load('194', 'Версия протокола');
     Tcp.lbHsNumIntroductionPoints.Caption := Load('195', 'Точек входа');
     Tcp.lbRendPostPeriod.Caption := Load('196', 'Интервал публикации');
-    Tcp.lbMinutes.Caption := TransStr('197');
+    Tcp.lbMinutes.Caption := TranslateTime(0, TIME_MINUTE, False, True);
     Tcp.lbHsSocket.Caption := Load('198', 'Сервис');
     Tcp.lbHsState.Caption := Load('199', 'Состояние');
     Tcp.lbHsVirtualPort.Caption := Load('200', 'Виртуальный порт');
@@ -553,7 +605,7 @@ begin
 
     Tcp.cbUseTrackHostExits.Caption := Load('201', 'Сохранять выходной узел для указанных адресов');
     Tcp.lbTrackHostExitsExpire.Caption := Load('202', 'Менять по истечении');
-    Tcp.lbSeconds4.Caption := TransStr('135');
+    Tcp.lbSeconds4.Caption := TranslateTime(0, TIME_SECOND, False, True);
     Tcp.lbTotalHosts.Caption := TransStr('203') + ': ' + IntToStr(Tcp.meTrackHostExits.Lines.Count);
     Tcp.lbTotalNodesList.Caption := TransStr('203') + ': ' + IntToStr(Tcp.meNodesList.Lines.Count);
     Tcp.meTrackHostExits.TextHint.Text := TransStr('208');
@@ -581,12 +633,12 @@ begin
     Tcp.lbFullScanInterval.Caption := Load('456', 'Полное сканирование каждые');
     Tcp.lbPartialScanInterval.Caption := Load('457', 'Частичное сканирование каждые');
     Tcp.lbPartialScansCounts.Caption := Load('458', 'Количество частичных сканирований');
-    Tcp.lbMiliseconds1.Caption := TransStr('459');
-    Tcp.lbMiliseconds2.Caption := TransStr('459');
-    Tcp.lbMiliseconds3.Caption := TransStr('459');
-    Tcp.lbMiliseconds4.Caption := TransStr('459');
-    Tcp.lbHours1.Caption := TransStr('477');
-    Tcp.lbHours2.Caption := TransStr('477');
+    Tcp.lbMiliseconds1.Caption := TranslateTime(0, TIME_MILLISECOND, False, True);
+    Tcp.lbMiliseconds2.Caption := TranslateTime(0, TIME_MILLISECOND, False, True);
+    Tcp.lbMiliseconds3.Caption := TranslateTime(0, TIME_MILLISECOND, False, True);
+    Tcp.lbMiliseconds4.Caption := TranslateTime(0, TIME_MILLISECOND, False, True);
+    Tcp.lbHours1.Caption := TranslateTime(0, TIME_HOUR, False, True);
+    Tcp.lbHours2.Caption := TranslateTime(0, TIME_HOUR, False, True);
     Tcp.lbAutoScanType.Caption := Load('603', 'Узлы для сканирования');
     LoadList(Tcp.cbxAutoScanType, '604', '"Автовыбор","Новые и без ответа","Новые и живые","Новые и мосты","Только новые"');
 
@@ -609,7 +661,7 @@ begin
     Tcp.lbCount2.Caption := TransStr('470');
     Tcp.lbCount3.Caption := TransStr('470');
     Tcp.lbSpeed5.Caption := Prefixes[2] + '/' + TransStr('180');
-    Tcp.lbMiliseconds5.Caption := TransStr('459');
+    Tcp.lbMiliseconds5.Caption := TranslateTime(0, TIME_MILLISECOND, False, True);
     Tcp.lbAutoSelPriority.Caption := Load('471', 'Приоритет');
     LoadList(Tcp.cbxAutoSelPriority, '472', '"Сбалансированный","Вес в консенсусе","Пинг до узла","Случайный"');
     Tcp.cbAutoSelStableOnly.Caption := Load('473', 'Только стабильные');
@@ -775,6 +827,18 @@ begin
     Tcp.miOpenLogsFolder.Caption := Load('601', 'Перейти в каталог журналов');
     Tcp.miDisplayedLinesCount.Caption := Load('616', 'Количество отображаемых строк');
     Tcp.miDisplayedLinesNoLimit.Caption := Load('617', 'Без ограничений');
+    Tcp.miLogAutoDelType.Caption := Load('622', 'Автоматическое удаление журналов');
+    Tcp.miLogDelNever.Caption := Load('623', 'Никогда');
+    Tcp.miLogDelEvery.Caption := Load('624', 'При каждом запуске');
+    Tcp.miLogDelOlderThan.Caption := Load('625', 'Которые старше, чем...');
+    Tcp.miLogDel1d.Caption := TranslateTime(1, TIME_DAY);
+    Tcp.miLogDel3d.Caption := TranslateTime(3, TIME_DAY);
+    Tcp.miLogDel1w.Caption := TranslateTime(1, TIME_WEEK);
+    Tcp.miLogDel2w.Caption := TranslateTime(2, TIME_WEEK);
+    Tcp.miLogDel1m.Caption := TranslateTime(1, TIME_MONTH);
+    Tcp.miLogDel3m.Caption := TranslateTime(3, TIME_MONTH);
+    Tcp.miLogDel6m.Caption := TranslateTime(6, TIME_MONTH);
+    Tcp.miLogDel1y.Caption := TranslateTime(1, TIME_YEAR);
 
     Tcp.miStat.Caption := Load('309', 'Статистика');
     Tcp.miStatRelays.Caption := Load('310', 'Все');
@@ -954,15 +1018,15 @@ begin
     Tcp.miTransportsClear.Caption := TransStr('278');
 
     Tcp.miTrafficPeriod.Caption := Load('589', 'Период');
-    Tcp.miPeriod1m.Caption := '1 ' + TransStr('197');
-    Tcp.miPeriod5m.Caption := '5 ' + TransStr('197');
-    Tcp.miPeriod15m.Caption := '15 ' + TransStr('197');
-    Tcp.miPeriod30m.Caption := '30 ' + TransStr('197');
-    Tcp.miPeriod1h.Caption := '1 ' + TransStr('477');
-    Tcp.miPeriod3h.Caption := '3 ' + TransStr('477');
-    Tcp.miPeriod6h.Caption := '6 ' + TransStr('477');
-    Tcp.miPeriod12h.Caption := '12 ' + TransStr('477');
-    Tcp.miPeriod24h.Caption := '24 ' + TransStr('477');
+    Tcp.miPeriod1m.Caption := TranslateTime(1, TIME_MINUTE);
+    Tcp.miPeriod5m.Caption := TranslateTime(5, TIME_MINUTE);
+    Tcp.miPeriod15m.Caption := TranslateTime(15, TIME_MINUTE);
+    Tcp.miPeriod30m.Caption := TranslateTime(30, TIME_MINUTE);
+    Tcp.miPeriod1h.Caption := TranslateTime(1, TIME_HOUR);
+    Tcp.miPeriod3h.Caption := TranslateTime(3, TIME_HOUR);
+    Tcp.miPeriod6h.Caption := TranslateTime(6, TIME_HOUR);
+    Tcp.miPeriod12h.Caption := TranslateTime(12, TIME_HOUR);
+    Tcp.miPeriod24h.Caption := TranslateTime(24, TIME_HOUR);
     Tcp.miSelectGraph.Caption := Load('590', 'Показывать графики');
     Tcp.miSelectGraphDL.Caption := TransStr('212');
     Tcp.miSelectGraphUL.Caption := TransStr('213');

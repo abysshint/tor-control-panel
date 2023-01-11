@@ -138,6 +138,7 @@ var
   function TryGetDataFromStr(Str: string; DataType: TListType; out DatatStr: string): Boolean;
   function SampleDown(Data: ArrOfPoint; Threshold: Integer): ArrOfPoint;
   function GetFileID(FileName: string; SkipFileExists: Boolean = False; ConstData: string = ''): string;
+  procedure DeleteFiles(const FileMask: string; TimeOffset: Integer = 0);
   procedure DeleteDir(const DirName: string);
   procedure LineToMemo(Line: string; Memo: TMemo; ListType: TListType; Sorted: Boolean = False; Separator: string = ',');
   procedure IntToMenu(Menu: TMenuItem; Mask: Integer; DisableUnchecked: Boolean = False);
@@ -1213,6 +1214,26 @@ begin
     end;
   end;
   RemoveDir(DirName);
+end;
+
+procedure DeleteFiles(const FileMask: string; TimeOffset: Integer = 0);
+var
+  SearchRec: TSearchRec;
+  CurrentDate: Int64;
+begin
+  CurrentDate := DateTimeToUnix(Now);
+  try
+    if FindFirst(ExpandFileName(FileMask), faAnyFile, SearchRec) = 0 then
+    repeat
+      if (SearchRec.Name[1] <> '.') and (SearchRec.Attr and faDirectory <> faDirectory) then
+      begin
+        if (TimeOffset = 0) or (CurrentDate >= DateTimeToUnix(SearchRec.TimeStamp) + TimeOffset) then
+          DeleteFile(ExtractFilePath(FileMask) + SearchRec.Name);
+      end;
+    until FindNext(SearchRec) <> 0;
+  finally
+    FindClose(SearchRec);
+  end;
 end;
 
 function GetIntDef(const Value, Default, Min, Max: Integer): Integer;

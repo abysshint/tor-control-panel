@@ -3598,7 +3598,7 @@ object Tcp: TTcp
         end
         object lbMiliseconds2: TLabel
           Left = 306
-          Top = 69
+          Top = 70
           Width = 27
           Height = 13
           Caption = #1084#1089#1077#1082'.'
@@ -3615,7 +3615,7 @@ object Tcp: TTcp
         end
         object lbMiliseconds1: TLabel
           Left = 305
-          Top = 117
+          Top = 118
           Width = 27
           Height = 13
           Caption = #1084#1089#1077#1082'.'
@@ -3632,7 +3632,7 @@ object Tcp: TTcp
         end
         object lbMiliseconds3: TLabel
           Left = 306
-          Top = 165
+          Top = 166
           Width = 27
           Height = 13
           Caption = #1084#1089#1077#1082'.'
@@ -3649,7 +3649,7 @@ object Tcp: TTcp
         end
         object lbMiliseconds4: TLabel
           Left = 306
-          Top = 213
+          Top = 214
           Width = 27
           Height = 13
           Caption = #1084#1089#1077#1082'.'
@@ -4600,6 +4600,76 @@ object Tcp: TTcp
           Caption = #1055#1086' '#1076#1085#1103#1084
           RadioItem = True
           OnClick = SelectLogSeparater
+        end
+      end
+      object miLogAutoDelType: TMenuItem
+        Caption = #1040#1074#1090#1086#1084#1072#1090#1080#1095#1077#1089#1082#1086#1077' '#1091#1076#1072#1083#1077#1085#1080#1077' '#1078#1091#1088#1085#1072#1083#1086#1074
+        object miLogDelNever: TMenuItem
+          Tag = -1
+          Caption = #1053#1080#1082#1086#1075#1076#1072
+          Checked = True
+          RadioItem = True
+          OnClick = SelectLogAutoDelInterval
+        end
+        object miLogDelEvery: TMenuItem
+          Caption = #1055#1088#1080' '#1082#1072#1078#1076#1086#1084' '#1079#1072#1087#1091#1089#1082#1077
+          RadioItem = True
+          OnClick = SelectLogAutoDelInterval
+        end
+        object miDelimiter71: TMenuItem
+          Caption = '-'
+        end
+        object miLogDelOlderThan: TMenuItem
+          Caption = #1050#1086#1090#1086#1088#1099#1077' '#1089#1090#1072#1088#1096#1077', '#1095#1077#1084'...'
+          ImageIndex = 58
+        end
+        object miLogDel1d: TMenuItem
+          Tag = 24
+          Caption = '1 '#1076#1077#1085#1100
+          RadioItem = True
+          OnClick = SelectLogAutoDelInterval
+        end
+        object miLogDel3d: TMenuItem
+          Tag = 72
+          Caption = '3 '#1076#1085#1103
+          RadioItem = True
+          OnClick = SelectLogAutoDelInterval
+        end
+        object miLogDel1w: TMenuItem
+          Tag = 168
+          Caption = '1 '#1085#1077#1076#1077#1083#1103
+          RadioItem = True
+          OnClick = SelectLogAutoDelInterval
+        end
+        object miLogDel2w: TMenuItem
+          Tag = 336
+          Caption = '2 '#1085#1077#1076#1077#1083#1080
+          RadioItem = True
+          OnClick = SelectLogAutoDelInterval
+        end
+        object miLogDel1m: TMenuItem
+          Tag = 730
+          Caption = '1 '#1084#1077#1089#1103#1094
+          RadioItem = True
+          OnClick = SelectLogAutoDelInterval
+        end
+        object miLogDel3m: TMenuItem
+          Tag = 2190
+          Caption = '3 '#1084#1077#1089#1103#1094#1072
+          RadioItem = True
+          OnClick = SelectLogAutoDelInterval
+        end
+        object miLogDel6m: TMenuItem
+          Tag = 4380
+          Caption = '6 '#1084#1077#1089#1103#1094#1077#1074
+          RadioItem = True
+          OnClick = SelectLogAutoDelInterval
+        end
+        object miLogDel1y: TMenuItem
+          Tag = 8760
+          Caption = '1 '#1075#1086#1076
+          RadioItem = True
+          OnClick = SelectLogAutoDelInterval
         end
       end
       object miDelimiter59: TMenuItem
