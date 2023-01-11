@@ -823,6 +823,7 @@ begin
     Tcp.miLogSeparate.Caption := Load('511', 'Разделение файла журнала');
     Tcp.miLogSeparateNone.Caption := Load('512', 'Не разделять');
     Tcp.miLogSeparateMonth.Caption := Load('513', 'По месяцам');
+    Tcp.miLogSeparateWeek.Caption := Load('630', 'По неделям');
     Tcp.miLogSeparateDay.Caption := Load('514', 'По дням');
     Tcp.miOpenLogsFolder.Caption := Load('601', 'Перейти в каталог журналов');
     Tcp.miDisplayedLinesCount.Caption := Load('616', 'Количество отображаемых строк');

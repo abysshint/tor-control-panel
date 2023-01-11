@@ -4595,8 +4595,14 @@ object Tcp: TTcp
           RadioItem = True
           OnClick = SelectLogSeparater
         end
-        object miLogSeparateDay: TMenuItem
+        object miLogSeparateWeek: TMenuItem
           Tag = 2
+          Caption = #1055#1086' '#1085#1077#1076#1077#1083#1103#1084
+          RadioItem = True
+          OnClick = SelectLogSeparater
+        end
+        object miLogSeparateDay: TMenuItem
+          Tag = 3
           Caption = #1055#1086' '#1076#1085#1103#1084
           RadioItem = True
           OnClick = SelectLogSeparater

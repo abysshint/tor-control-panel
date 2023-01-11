@@ -965,6 +965,7 @@ type
     miLogDelOlderThan: TMenuItem;
     miLogDel2w: TMenuItem;
     miDelimiter71: TMenuItem;
+    miLogSeparateWeek: TMenuItem;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -5071,6 +5072,8 @@ begin
       end;
       if ConfigVersion = 3 then
       begin
+        if GetSettings('Log', 'SeparateType', 1, ini) = 2 then
+          SetSettings('Log', 'SeparateType', 3, ini);
         SetSettings('Scanner', 'LastPartialScanDate', GetSettings('Scanner', 'LastNonResponsedScanDate', Int64(0), ini), ini);
         SetSettings('Scanner', 'PartialScanInterval', GetSettings('Scanner', 'NonResponsedScanInterval', udPartialScanInterval.Position, ini), ini);
         DeleteSettings('Scanner', 'LastNonResponsedScanDate', ini);
@@ -6239,7 +6242,7 @@ begin
     SaveReachableAddresses(ini);
 
     meLog.WordWrap := miWordWrap.Checked;
-    SeparateType := GetIntDef(GetSettings('Log', 'SeparateType', 1, ini), 1, 0, 2);
+    SeparateType := GetIntDef(GetSettings('Log', 'SeparateType', 1, ini), 1, 0, 3);
     miLogSeparate.items[SeparateType].Checked := True;
     TorLogFile := GetLogFileName(SeparateType);
 

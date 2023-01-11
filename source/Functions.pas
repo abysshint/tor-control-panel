@@ -1166,10 +1166,13 @@ end;
 function GetLogFileName(SeparateType: Integer): string;
 var
   FileName: string;
+  CurrentDate: TDateTime;
 begin
+  CurrentDate := Now;
   case SeparateType of
-    1: FileName := FormatDateTime('yyyy-mm', Now);
-    2: FileName := FormatDateTime('yyyy-mm-dd', Now);
+    1: FileName := FormatDateTime('yyyy-mm', CurrentDate);
+    2: FileName := FormatDateTime('yyyy-mm-', CurrentDate) + IntToStr(WeekOfTheMonth(CurrentDate)) + 'W';
+    3: FileName := FormatDateTime('yyyy-mm-dd', CurrentDate);
     else
       FileName := 'console';
   end;
