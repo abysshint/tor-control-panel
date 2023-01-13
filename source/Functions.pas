@@ -77,6 +77,7 @@ var
   function GetPasswordHash(const password: string): string;
   function CheckFileVersion(FileVersion, StaticVersion: string): Boolean;
   function Explode(sPart, sInput: string): ArrOfStr;
+  function GetDirFromArray(Data: array of string; FileName: string = ''; ShowFileName: Boolean = False): string;
   function GetLogFileName(SeparateType: Integer): string;
   function GetRoutersParamsCount(Mask: Integer): Integer;
   function GetTorConfig(const Param, Default: string; Flags: TConfigFlags = []; ParamType: TParamType = ptString; MinValue: Integer = 0; MaxValue: Integer = 0; Prefix: string = ''): string;
@@ -1161,6 +1162,37 @@ begin
   end;
   SetLength(Result, Length(Result) + 1);
   Result[Length(Result) - 1] := sInput;
+end;
+
+function GetDirFromArray(Data: array of string; FileName: string = ''; ShowFileName: Boolean = False): string;
+var
+  i, DataLength: Integer;
+  Dir: string;
+  Found: Boolean;
+begin
+  Result := '';
+  DataLength := Length(Data);
+  for i := 0 to DataLength - 1 do
+  begin
+    Dir := Data[i];
+    Dir := StringReplace(Dir, '%UserDir%', UserDir, [rfReplaceAll, rfIgnoreCase]);
+    Dir := StringReplace(Dir, '%ProgramDir%', ProgramDir, [rfReplaceAll, rfIgnoreCase]);
+    Dir := StringReplace(Dir, '\\', '\', [rfReplaceAll]);
+    if FileName <> '' then
+      Found := FileExists(Dir + FileName)
+    else
+      Found := DirectoryExists(Dir);
+    if Found then
+    begin
+      Result := Dir;
+      Break;
+    end;
+  end;
+  if (Result = '') and (DataLength > 0) then
+    Result := Data[DataLength - 1];
+
+  if ShowFileName then
+    Result := Result + FileName;
 end;
 
 function GetLogFileName(SeparateType: Integer): string;

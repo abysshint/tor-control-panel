@@ -43,10 +43,12 @@ begin
     end;
   end;
   ProgramDir := ExtractShortPathName(GetCurrentDir + '\');
+
   if IsDirectoryWritable(ProgramDir) then
     UserDir := ProgramDir + 'Data\' + UserProfile + '\'
   else
     UserDir := GetEnvironmentVariable('appdata') + '\Tcp\' + UserProfile + '\';
+
   ForceDirectories(UserDir);
 
   FH := FileCreate(UserDir + 'lock.tcp');

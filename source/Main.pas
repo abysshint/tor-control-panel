@@ -1070,17 +1070,16 @@ type
     procedure ProxyParamCheck;
     procedure RelayBandwidthEnable(State: Boolean);
     procedure ReloadTorConfig;
-    procedure CheckRequiredFiles;
+    function CheckRequiredFiles(AutoSave: Boolean = False): Boolean;
     procedure SetIconsColor;
     procedure SaveHiddenServices(ini: TMemIniFile);
     procedure SavePaddingOptions(ini: TMemIniFile);
     procedure CheckPaddingControls;
     procedure UpdateConfigVersion;
     procedure LoadUserBridges(ini: TMemIniFile);
-    procedure LoadBuiltinBridges(UpdateBridges, UpdateList: Boolean; ListName: string = '');
-    procedure ResetTransports;
+    procedure LoadBuiltinBridges(ini: TMemIniFile; UpdateBridges, UpdateList: Boolean; ListName: string = '');
+    procedure ResetTransports(ini: TMemIniFile);
     procedure LoadTransportsData(Data: TStringList);
-    procedure LoadUserOverrides;
     procedure LoadProxyPorts(PortControl: TUpdown; HostControl: TCombobox; EnabledControl: TCheckBox; ini: TMemIniFile);
     procedure SaveReachableAddresses(ini: TMemIniFile);
     procedure SaveProxyData(ini: TMemIniFile);
@@ -1339,7 +1338,6 @@ type
     procedure cbUseHiddenServiceVanguardsClick(Sender: TObject);
     procedure miLoadCachedRoutersOnStartupClick(Sender: TObject);
     procedure miUpdateIpToCountryCacheClick(Sender: TObject);
-    procedure cbUseNetworkCacheClick(Sender: TObject);
     procedure cbUseReachableAddressesClick(Sender: TObject);
     procedure miSelectExitCircuitWhetItChangesClick(Sender: TObject);
     procedure sgStreamsFixedCellClick(Sender: TObject; ACol, ARow: Integer);
@@ -1696,7 +1694,7 @@ begin
 
   if ConnectState = 1 then
   begin
-    if Pos('Failed to parse/validate config', Data) <> 0 then
+    if Pos('Reading config failed', Data) <> 0 then
       StopCode := STOP_CONFIG_ERROR;
   end;
 end;
@@ -2858,7 +2856,7 @@ begin
                   ExitNodeID := Temp;
                   Tcp.lbExitIp.Caption := Ip;
                   Tcp.lbExitCountry.Caption := TransStr(CountryCodes[CountryCode]);
-                  Tcp.lbExitCountry.Left := Round(204 * Scale);
+                  Tcp.lbExitCountry.Left := Round(206 * Scale);
                   Tcp.imExitFlag.Picture := nil;
                   Tcp.lsFlags.GetBitmap(CountryCode, Tcp.imExitFlag.Picture.Bitmap);
                   Tcp.imExitFlag.Visible := True;
@@ -4473,13 +4471,14 @@ end;
 procedure TTcp.CheckOptionsChanged;
 var
   TorrcDate: TDateTime;
-  TorrcChanged: Boolean;
+  TorrcChanged, PathChanged: Boolean;
 begin
   FileAge(TorConfigFile, TorrcDate);
   TorrcChanged := TorrcDate <> LastTorrcDate;
-  if OptionsChanged or TorrcChanged then
+  PathChanged := not CheckRequiredFiles;
+  if OptionsChanged or TorrcChanged or PathChanged then
   begin
-    if Restarting or TorrcChanged then
+    if Restarting or TorrcChanged or PathChanged then
       ResetOptions
     else
     begin
@@ -4500,7 +4499,6 @@ var
   PortStr, Msg: string;
   FindVersion: Boolean;
 begin
-  CheckOptionsChanged;
   if FileExists(TorExeFile) then
   begin
     FindVersion := True;
@@ -4513,6 +4511,7 @@ begin
           Exit;
       end;
     end;
+    CheckOptionsChanged;
     PortStr := '';
     OptionsLocked := True;
     ForceDirectories(LogsDir);
@@ -4538,7 +4537,6 @@ begin
         ResetOptions;
         Exit;
       end;
-
     end;
     OptionsLocked := False;
     FileAge(UserDir + 'control_auth_cookie', LastAuthCookieDate);
@@ -4695,7 +4693,7 @@ begin
   btnChangeCircuit.Enabled := True;
   miChangeCircuit.Enabled := False;
   imExitFlag.Visible := False;
-  lbExitCountry.Left := Round(178 * Scale);
+  lbExitCountry.Left := Round(180 * Scale);
   lbExitCountry.Caption := TransStr('110');
   lbExitCountry.Cursor := crDefault;
   lbExitCountry.Hint := '';
@@ -4784,21 +4782,32 @@ begin
     ShowMsg(TransStr('242'), TransStr('181'), mtWarning);
 end;
 
-procedure TTcp.CheckRequiredFiles;
+function TTcp.CheckRequiredFiles(AutoSave: Boolean = False): Boolean;
+  procedure CheckPathChanges(var PathVar: string; PathStr: string);
+  begin
+    if (PathVar <> '') and (PathVar <> PathStr) then
+      Result := False;
+    PathVar := PathStr;
+  end;
 begin
-  SetTorConfig('DataDirectory', ExcludeTrailingPathDelimiter(UserDir));
-  SetTorConfig('ClientOnionAuthDir', ExcludeTrailingPathDelimiter(OnionAuthDir));
-
+  Result := True;
+  CheckPathChanges(GeoIpFile, GetDirFromArray(GeoIpDirs, 'geoip', True));
+  CheckPathChanges(GeoIpv6File, GetDirFromArray(GeoIpDirs, 'geoip6', True));
+  CheckPathChanges(TransportsDir, GetDirFromArray(TransportDirs));
   GeoIpExists := FileExists(GeoIpFile);
-  if GeoIpExists then
-    SetTorConfig('GeoIPFile', GeoIpFile)
-  else
-    DeleteTorConfig('GeoIPFile');
-
-  if FileExists(GeoIpv6File) then
-    SetTorConfig('GeoIPv6File', GeoIpv6File)
-  else
-    DeleteTorConfig('GeoIPv6File');
+  if AutoSave then
+  begin
+    SetTorConfig('DataDirectory', ExcludeTrailingPathDelimiter(UserDir));
+    SetTorConfig('ClientOnionAuthDir', ExcludeTrailingPathDelimiter(OnionAuthDir));
+    if GeoIpExists then
+      SetTorConfig('GeoIPFile', GeoIpFile)
+    else
+      DeleteTorConfig('GeoIPFile');
+    if FileExists(GeoIpv6File) then
+      SetTorConfig('GeoIPv6File', GeoIpv6File)
+    else
+      DeleteTorConfig('GeoIPv6File');
+  end;
 end;
 
 procedure TTcp.SetIconsColor;
@@ -5455,45 +5464,19 @@ begin
   end;
 end;
 
-procedure TTcp.ResetTransports;
+procedure TTcp.ResetTransports(ini: TMemIniFile);
 var
   ls: TStringList;
-  ini: TMemIniFile;
 begin
   if FileExists(DefaultsFile) then
   begin
-    ini := TMemIniFile.Create(DefaultsFile, TEncoding.UTF8);
+    ls := TStringList.Create;
     try
-      ls := TStringList.Create;
-      try
-        ini.ReadSectionValues('Transports', ls);
-        if ls.Count > 0 then
-          LoadTransportsData(ls);
-      finally
-        ls.Free;
-      end;
+      ini.ReadSectionValues('Transports', ls);
+      if ls.Count > 0 then
+        LoadTransportsData(ls);
     finally
-      ini.Free;
-    end;
-  end;
-end;
-
-procedure TTcp.LoadUserOverrides;
-var
-  ini: TMemIniFile;
-begin
-  if FileExists(DefaultsFile) then
-  begin
-    ini := TMemIniFile.Create(DefaultsFile, TEncoding.UTF8);
-    try
-      DefaultsDic.AddOrSetValue('BridgesBot', GetSettings('UserOverrides', 'BridgesBot', BRIDGES_BOT, ini));
-      DefaultsDic.AddOrSetValue('BridgesEmail', GetSettings('UserOverrides', 'BridgesEmail', BRIDGES_EMAIL, ini));
-      DefaultsDic.AddOrSetValue('BridgesSite', GetSettings('UserOverrides', 'BridgesSite', BRIDGES_SITE, ini));
-      DefaultsDic.AddOrSetValue('CheckUrl', GetSettings('UserOverrides', 'CheckUrl', CHECK_URL, ini));
-      DefaultsDic.AddOrSetValue('DownloadUrl', GetSettings('UserOverrides', 'DownloadUrl', DOWNLOAD_URL, ini));
-      DefaultsDic.AddOrSetValue('MetricsUrl', GetSettings('UserOverrides', 'MetricsUrl', METRICS_URL, ini));
-    finally
-      ini.Free;
+      ls.Free;
     end;
   end;
 end;
@@ -5694,11 +5677,10 @@ begin
   end;
 end;
 
-procedure TTcp.LoadBuiltinBridges(UpdateBridges, UpdateList: Boolean; ListName: string = '');
+procedure TTcp.LoadBuiltinBridges(ini: TMemIniFile; UpdateBridges, UpdateList: Boolean; ListName: string = '');
 const
   Delimiter = '|';
 var
-  ini: TMemIniFile;
   ls, list: TStringList;
   i, Index: Integer;
   Key, Value, Str: string;
@@ -5708,64 +5690,59 @@ begin
     meBridges.Clear;
   if FileExists(DefaultsFile) then
   begin
-    ini := TMemIniFile.Create(DefaultsFile, TEncoding.UTF8);
+    ls := TStringList.Create;
+    list := TStringList.Create;
+    Bridges := TDictionary<string, string>.Create;
     try
-      ls := TStringList.Create;
-      list := TStringList.Create;
-      Bridges := TDictionary<string, string>.Create;
-      try
-        ini.ReadSectionValues('Bridges', ls);
-        if ls.Count > 0 then
+      ini.ReadSectionValues('Bridges', ls);
+      if ls.Count > 0 then
+      begin
+        for i := 0 to ls.Count - 1 do
         begin
-          for i := 0 to ls.Count - 1 do
+          Key := SeparateLeft(SeparateLeft(ls[i], '='), '.');
+          Value := SeparateRight(ls[i], '=');
+          if Pos(Delimiter, Value) = 0 then
           begin
-            Key := SeparateLeft(SeparateLeft(ls[i], '='), '.');
-            Value := SeparateRight(ls[i], '=');
-            if Pos(Delimiter, Value) = 0 then
+            if ValidBridge(Value, btNone) then
             begin
-              if ValidBridge(Value, btNone) then
+              if Bridges.TryGetValue(Key, Str) then
+                Str := Str + Delimiter + Value
+              else
               begin
-                if Bridges.TryGetValue(Key, Str) then
-                  Str := Str + Delimiter + Value
-                else
-                begin
-                  Str := Value;
-                  if UpdateList then
-                    list.Append(Key);
-                end;
-                Bridges.AddOrSetValue(Key, Str)
+                Str := Value;
+                if UpdateList then
+                  list.Append(Key);
               end;
+              Bridges.AddOrSetValue(Key, Str)
             end;
           end;
+        end;
 
+        if UpdateList then
+          cbxBridgesList.Items.SetStrings(list);
+
+        if Bridges.Count > 0 then
+        begin
           if UpdateList then
-            cbxBridgesList.Items.SetStrings(list);
-
-          if Bridges.Count > 0 then
           begin
-            if UpdateList then
-            begin
-              Index := list.IndexOf(ListName);
-              if Index < 0 then
-                Index := 0;
-              cbxBridgesList.ItemIndex := Index
-            end;
-            if UpdateBridges then
-            begin
-              if Bridges.TryGetValue(cbxBridgesList.Text, Str) then
-                LineToMemo(Str, meBridges, ltBridge, False, Delimiter);
-            end;
+            Index := list.IndexOf(ListName);
+            if Index < 0 then
+              Index := 0;
+            cbxBridgesList.ItemIndex := Index
           end;
-        end
-        else
-          cbxBridgesList.Clear;
-      finally
-        ls.Free;
-        list.Free;
-        Bridges.Free;
-      end;
+          if UpdateBridges then
+          begin
+            if Bridges.TryGetValue(cbxBridgesList.Text, Str) then
+              LineToMemo(Str, meBridges, ltBridge, False, Delimiter);
+          end;
+        end;
+      end
+      else
+        cbxBridgesList.Clear;
     finally
-      ini.Free;
+      ls.Free;
+      list.Free;
+      Bridges.Free;
     end;
   end;
 end;
@@ -6020,7 +5997,7 @@ end;
 procedure TTcp.ResetOptions;
 var
   i, LogID: Integer;
-  ini: TMemIniFile;
+  ini, inidef: TMemIniFile;
   ScrollBars, SeparateType, DisplayedLinesType, LogAutoDelType: Byte;
   ParseStr: ArrOfStr;
   Transports: TStringList;
@@ -6029,8 +6006,9 @@ var
 begin
   OptionsLocked := False;
   LoadTorConfig;
-  LoadUserOverrides;
+
   ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
+  inidef := TMemIniFile.Create(DefaultsFile, TEncoding.UTF8);
   try
     cbxLanguage.ItemIndex := cbxLanguage.Items.IndexOfObject(TObject(Integer(GetSettings('Main', 'Language', GetLangList, ini))));
     cbxLanguage.ResetValue := cbxLanguage.Items.IndexOf('Русский');
@@ -6052,7 +6030,15 @@ begin
       TorConfig.Append('# ' + TransStr('271'));
       TorConfig.Append('');
     end;
-    CheckRequiredFiles;
+    CheckRequiredFiles(True);
+
+    DefaultsDic.AddOrSetValue('BridgesBot', GetSettings('UserOverrides', 'BridgesBot', BRIDGES_BOT, inidef));
+    DefaultsDic.AddOrSetValue('BridgesEmail', GetSettings('UserOverrides', 'BridgesEmail', BRIDGES_EMAIL, inidef));
+    DefaultsDic.AddOrSetValue('BridgesSite', GetSettings('UserOverrides', 'BridgesSite', BRIDGES_SITE, inidef));
+    DefaultsDic.AddOrSetValue('CheckUrl', GetSettings('UserOverrides', 'CheckUrl', CHECK_URL, inidef));
+    DefaultsDic.AddOrSetValue('DownloadUrl', GetSettings('UserOverrides', 'DownloadUrl', DOWNLOAD_URL, inidef));
+    DefaultsDic.AddOrSetValue('MetricsUrl', GetSettings('UserOverrides', 'MetricsUrl', METRICS_URL, inidef));
+
     GetSettings('Main', cbConnectOnStartup, ini);
     GetSettings('Main', cbRestartOnControlFail, ini);
     GetSettings('Main', cbMinimizeToTray, ini);
@@ -6323,13 +6309,13 @@ begin
       end;
     end
     else
-      ResetTransports;
+      ResetTransports(inidef);
 
     GetSettings('Network', cbUseBridges, ini);
     GetSettings('Network', cbUsePreferredBridge, ini);
     GetSettings('Network', cbxBridgesType, ini);
     GetSettings('Network', edPreferredBridge, ini);
-    LoadBuiltinBridges(cbxBridgesType.ItemIndex = BRIDGES_TYPE_BUILTIN, True, GetSettings('Network', 'BridgesList', '', ini));
+    LoadBuiltinBridges(inidef, cbxBridgesType.ItemIndex = BRIDGES_TYPE_BUILTIN, True, GetSettings('Network', 'BridgesList', '', ini));
     if cbxBridgesType.ItemIndex = BRIDGES_TYPE_USER then
       LoadUserBridges(ini);
     SaveBridgesData(ini);
@@ -6498,6 +6484,7 @@ begin
     EnableOptionButtons(False);
   finally
     UpdateConfigFile(ini);
+    inidef.Free;
   end;
 end;
 
@@ -6574,7 +6561,10 @@ begin
         GeoIpCache.Append(Item.Key + ',' + CountryCodes[Item.Value.cc] + PingData + PortsData);
       end;
       if GeoIpCache.Count > 0 then
+      begin
         GeoIpCache.SaveToFile(NetworkCacheFile);
+        Flush(NetworkCacheFile);
+      end;
     finally
       GeoIpCache.Free;
     end;
@@ -6692,7 +6682,10 @@ begin
       );
     end;
     if BridgesDic.Count > 0 then
-      BridgesCache.SaveToFile(BridgesCacheFile)
+    begin
+      BridgesCache.SaveToFile(BridgesCacheFile);
+      Flush(BridgesCacheFile);
+    end
     else
       DeleteFile(BridgesCacheFile);
   finally
@@ -7168,7 +7161,7 @@ begin
   if not CheckTransports then
     Exit;
   LoadTorConfig;
-  CheckRequiredFiles;
+  CheckRequiredFiles(True);
   ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
   try
     if cbxLanguage.ItemIndex <> cbxLanguage.Tag then
@@ -7186,6 +7179,9 @@ begin
         (Tcp.cbEnablePingMeasure.Checked or Tcp.cbEnableDetectAliveNodes.Checked) then
           AutoScanStage := 1;
     end;
+
+    if cbUseNetworkCache.Checked and not GetSettings('Main', 'UseNetworkCache', True, ini) then
+      SaveNetworkCache;
 
     SetSettings('Main', 'Language', Integer(cbxLanguage.Items.Objects[cbxLanguage.ItemIndex]), ini);
     SetSettings('Main', 'Theme', StyleName, ini);
@@ -9193,7 +9189,7 @@ begin
     Btn.ShowHint := False;
     Btn.Hint := '';
     Btn.Margin := 8;
-    Btn.Width := Round(115 * Scale);
+    Btn.Width := Round(117 * Scale);
     Btn.Left := Round(LeftBig * Scale);
   end;
 end;
@@ -9202,19 +9198,19 @@ procedure TTcp.ChangeButtonsCaption;
 begin
   if FormSize = 0 then
   begin
-    btnChangeCircuit.Width := Round(115 * Scale);
-    btnSwitchTor.Width := Round(115 * Scale);
+    btnChangeCircuit.Width := Round(117 * Scale);
+    btnSwitchTor.Width := Round(117 * Scale);
   end
   else
   begin
-    btnChangeCircuit.Width := Round(115 * Scale);
-    btnSwitchTor.Width := Round(115 * Scale);
+    btnChangeCircuit.Width := Round(117 * Scale);
+    btnSwitchTor.Width := Round(117 * Scale);
   end;
-  SetButtonsProp(sbShowOptions, 120, 120);
-  SetButtonsProp(sbShowLog, 162, 237);
-  SetButtonsProp(sbShowStatus, 204, 354);
-  SetButtonsProp(sbShowCircuits, 246, 471);
-  SetButtonsProp(sbShowRouters, 288, 588);
+  SetButtonsProp(sbShowOptions, 122, 122);
+  SetButtonsProp(sbShowLog, 164, 241);
+  SetButtonsProp(sbShowStatus, 206, 360);
+  SetButtonsProp(sbShowCircuits, 248, 479);
+  SetButtonsProp(sbShowRouters, 290, 598);
   CheckLabelEndEllipsis(lbExitCountry, 150, epEndEllipsis, True, False);
 end;
 
@@ -9225,7 +9221,7 @@ begin
   if FormSize = 0 then
   begin
     H := Round(91 * Scale);
-    W := Round(331 * Scale);
+    W := Round(333 * Scale);
   end
   else
   begin
@@ -11612,14 +11608,6 @@ begin
   EnableOptionButtons;
 end;
 
-procedure TTcp.cbUseNetworkCacheClick(Sender: TObject);
-begin
-  if not cbUseNetworkCache.Focused then
-    Exit;
-  SaveNetworkCache;
-  EnableOptionButtons;
-end;
-
 procedure TTcp.cbUseHiddenServiceVanguardsClick(Sender: TObject);
 var
   State: Boolean;
@@ -11821,7 +11809,14 @@ var
 begin
   case cbxBridgesType.ItemIndex of
     BRIDGES_TYPE_BUILTIN:
-      LoadBuiltinBridges(True, UpdateList, cbxBridgesList.Text);
+    begin
+      ini := TMemIniFile.Create(DefaultsFile, TEncoding.UTF8);
+      try
+        LoadBuiltinBridges(ini, True, UpdateList, cbxBridgesList.Text);
+      finally
+        ini.Free;
+      end;
+    end;
     BRIDGES_TYPE_USER:
     begin
       if UpdateUserBridges and FileExists(UserConfigFile) then
@@ -12948,8 +12943,15 @@ begin
 end;
 
 procedure TTcp.miTransportsResetClick(Sender: TObject);
+var
+  ini: TMemIniFile;
 begin
-  ResetTransports;
+  ini := TMemIniFile.Create(DefaultsFile, TEncoding.UTF8);
+  try
+    ResetTransports(ini);
+  finally
+    ini.Free;
+  end;
   EnableOptionButtons;
 end;
 
@@ -14629,7 +14631,6 @@ begin
   Application.OnMinimize := FormMinimize;
 
   ThemesDir := ProgramDir + 'Skins\';
-  TransportsDir := ProgramDir + 'Tor\PluggableTransports\';
   HsDir := UserDir + 'services\';
   OnionAuthDir := UserDir + 'onion-auth\';
   LogsDir := UserDir + 'logs\';
@@ -14643,8 +14644,6 @@ begin
   TorConfigFile := UserDir + 'torrc';
   TorStateFile := UserDir + 'state';
   TorExeFile := ProgramDir + 'Tor\tor.exe';
-  GeoIpFile := ProgramDir + 'Data\Tor\geoip';
-  GeoIpv6File := ProgramDir + 'Data\Tor\geoip6';
   NetworkCacheFile := UserDir + 'network-cache';
   BridgesCacheFile := UserDir + 'bridges-cache';
 

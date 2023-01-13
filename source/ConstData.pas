@@ -385,6 +385,17 @@ var
     '203.0.113.0/24'
   );
 
+  GeoIpDirs: array [0..2] of string = (
+    '%UserDir%',
+    '%ProgramDir%\Data\',
+    '%ProgramDir%\Data\Tor\'
+  );
+
+  TransportDirs: array [0..1] of string = (
+    '%ProgramDir%\Tor\pluggable_transports\',
+    '%ProgramDir%\Tor\PluggableTransports\'
+  );
+
   CircuitPurposes: array[0..11] of TStaticPair = (
     (Key: 'GENERAL'; Value: GENERAL),
     (Key: 'HS_CLIENT_HSDIR'; Value: HS_CLIENT_HSDIR),

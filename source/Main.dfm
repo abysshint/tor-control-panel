@@ -54,164 +54,6 @@ object Tcp: TTcp
       OnMouseUp = meLogMouseUp
     end
   end
-  object paButtons: TPanel
-    Left = 0
-    Top = 0
-    Width = 760
-    Height = 91
-    BevelOuter = bvNone
-    DoubleBuffered = True
-    ParentBackground = False
-    ParentDoubleBuffered = False
-    TabOrder = 0
-    OnDblClick = paButtonsDblClick
-    object sbShowLog: TSpeedButton
-      Left = 237
-      Top = 53
-      Width = 115
-      Height = 35
-      GroupIndex = 1
-      Caption = #1046#1091#1088#1085#1072#1083
-      Spacing = 8
-      OnClick = sbShowLogClick
-    end
-    object sbShowOptions: TSpeedButton
-      Left = 120
-      Top = 53
-      Width = 115
-      Height = 35
-      GroupIndex = 1
-      Caption = #1053#1072#1089#1090#1088#1086#1081#1082#1080
-      Spacing = 6
-      OnClick = sbShowOptionsClick
-      OnMouseDown = sbShowOptionsMouseDown
-    end
-    object sbShowStatus: TSpeedButton
-      Left = 354
-      Top = 53
-      Width = 115
-      Height = 35
-      GroupIndex = 1
-      Caption = #1057#1090#1072#1090#1091#1089
-      Spacing = 8
-      OnClick = sbShowStatusClick
-    end
-    object imExitFlag: TImage
-      Left = 179
-      Top = 32
-      Width = 20
-      Height = 13
-      ParentShowHint = False
-      ShowHint = True
-      Stretch = True
-      Visible = False
-    end
-    object lbExitCountryCaption: TLabel
-      Left = 135
-      Top = 31
-      Width = 41
-      Height = 13
-      Alignment = taRightJustify
-      Caption = #1057#1090#1088#1072#1085#1072':'
-      Transparent = True
-    end
-    object lbExitIpCaption: TLabel
-      Left = 129
-      Top = 12
-      Width = 47
-      Height = 13
-      Alignment = taRightJustify
-      Caption = 'IP '#1072#1076#1088#1077#1089':'
-      Transparent = True
-    end
-    object lbExitIp: TLabel
-      Left = 178
-      Top = 12
-      Width = 58
-      Height = 13
-      Caption = #1053#1077' '#1087#1086#1083#1091#1095#1077#1085
-      PopupMenu = mnDetails
-      Transparent = True
-      OnMouseDown = lbExitIpMouseDown
-      OnMouseMove = lbExitMouseMove
-    end
-    object lbExitCountry: TLabel
-      Left = 178
-      Top = 31
-      Width = 77
-      Height = 13
-      Caption = #1053#1077' '#1086#1087#1088#1077#1076#1077#1083#1077#1085#1072
-      ParentShowHint = False
-      PopupMenu = mnDetails
-      ShowHint = True
-      Transparent = True
-      OnDblClick = lbExitCountryDblClick
-      OnMouseMove = lbExitMouseMove
-    end
-    object sbShowCircuits: TSpeedButton
-      Left = 471
-      Top = 53
-      Width = 115
-      Height = 35
-      GroupIndex = 1
-      Caption = #1062#1077#1087#1086#1095#1082#1080
-      Spacing = 8
-      OnClick = sbShowCircuitsClick
-      OnMouseDown = sbShowCircuitsMouseDown
-    end
-    object sbShowRouters: TSpeedButton
-      Left = 588
-      Top = 53
-      Width = 115
-      Height = 35
-      GroupIndex = 1
-      Caption = #1056#1086#1091#1090#1077#1088#1099
-      Spacing = 8
-      OnClick = sbShowRoutersClick
-      OnMouseDown = sbShowRoutersMouseDown
-    end
-    object sbDecreaseForm: TSpeedButton
-      Left = 705
-      Top = 53
-      Width = 52
-      Height = 35
-      ParentShowHint = False
-      ShowHint = True
-      OnClick = sbDecreaseFormClick
-    end
-    object btnChangeCircuit: TButton
-      Left = 3
-      Top = 3
-      Width = 115
-      Height = 48
-      Caption = #1057#1084#1077#1085#1080#1090#1100' '#1094#1077#1087#1086#1095#1082#1091
-      DoubleBuffered = False
-      DropDownMenu = mnChangeCircuit
-      ImageIndex = 3
-      ImageMargins.Left = 5
-      Images = lsButtons
-      ParentDoubleBuffered = False
-      Style = bsSplitButton
-      TabOrder = 1
-      WordWrap = True
-      OnClick = btnChangeCircuitClick
-    end
-    object btnSwitchTor: TButton
-      Left = 3
-      Top = 53
-      Width = 115
-      Height = 35
-      Caption = #1057#1090#1072#1088#1090
-      DoubleBuffered = False
-      ImageIndex = 0
-      ImageMargins.Left = 8
-      ImageMargins.Right = -8
-      Images = lsButtons
-      ParentDoubleBuffered = False
-      TabOrder = 0
-      OnClick = btnSwitchTorClick
-    end
-  end
   object paStatus: TPanel
     Left = 3
     Top = 92
@@ -774,6 +616,164 @@ object Tcp: TTcp
       OnSelectCell = sgStreamsInfoSelectCell
     end
   end
+  object paButtons: TPanel
+    Left = 0
+    Top = 0
+    Width = 760
+    Height = 91
+    BevelOuter = bvNone
+    DoubleBuffered = True
+    ParentBackground = False
+    ParentDoubleBuffered = False
+    TabOrder = 0
+    OnDblClick = paButtonsDblClick
+    object sbShowLog: TSpeedButton
+      Left = 241
+      Top = 53
+      Width = 117
+      Height = 35
+      GroupIndex = 1
+      Caption = #1046#1091#1088#1085#1072#1083
+      Spacing = 8
+      OnClick = sbShowLogClick
+    end
+    object sbShowOptions: TSpeedButton
+      Left = 122
+      Top = 53
+      Width = 117
+      Height = 35
+      GroupIndex = 1
+      Caption = #1053#1072#1089#1090#1088#1086#1081#1082#1080
+      Spacing = 6
+      OnClick = sbShowOptionsClick
+      OnMouseDown = sbShowOptionsMouseDown
+    end
+    object sbShowStatus: TSpeedButton
+      Left = 360
+      Top = 53
+      Width = 117
+      Height = 35
+      GroupIndex = 1
+      Caption = #1057#1090#1072#1090#1091#1089
+      Spacing = 8
+      OnClick = sbShowStatusClick
+    end
+    object imExitFlag: TImage
+      Left = 181
+      Top = 32
+      Width = 20
+      Height = 13
+      ParentShowHint = False
+      ShowHint = True
+      Stretch = True
+      Visible = False
+    end
+    object lbExitCountryCaption: TLabel
+      Left = 137
+      Top = 31
+      Width = 41
+      Height = 13
+      Alignment = taRightJustify
+      Caption = #1057#1090#1088#1072#1085#1072':'
+      Transparent = True
+    end
+    object lbExitIpCaption: TLabel
+      Left = 131
+      Top = 12
+      Width = 47
+      Height = 13
+      Alignment = taRightJustify
+      Caption = 'IP '#1072#1076#1088#1077#1089':'
+      Transparent = True
+    end
+    object lbExitIp: TLabel
+      Left = 180
+      Top = 12
+      Width = 58
+      Height = 13
+      Caption = #1053#1077' '#1087#1086#1083#1091#1095#1077#1085
+      PopupMenu = mnDetails
+      Transparent = True
+      OnMouseDown = lbExitIpMouseDown
+      OnMouseMove = lbExitMouseMove
+    end
+    object lbExitCountry: TLabel
+      Left = 180
+      Top = 31
+      Width = 77
+      Height = 13
+      Caption = #1053#1077' '#1086#1087#1088#1077#1076#1077#1083#1077#1085#1072
+      ParentShowHint = False
+      PopupMenu = mnDetails
+      ShowHint = True
+      Transparent = True
+      OnDblClick = lbExitCountryDblClick
+      OnMouseMove = lbExitMouseMove
+    end
+    object sbShowCircuits: TSpeedButton
+      Left = 479
+      Top = 53
+      Width = 117
+      Height = 35
+      GroupIndex = 1
+      Caption = #1062#1077#1087#1086#1095#1082#1080
+      Spacing = 8
+      OnClick = sbShowCircuitsClick
+      OnMouseDown = sbShowCircuitsMouseDown
+    end
+    object sbShowRouters: TSpeedButton
+      Left = 598
+      Top = 53
+      Width = 117
+      Height = 35
+      GroupIndex = 1
+      Caption = #1056#1086#1091#1090#1077#1088#1099
+      Spacing = 8
+      OnClick = sbShowRoutersClick
+      OnMouseDown = sbShowRoutersMouseDown
+    end
+    object sbDecreaseForm: TSpeedButton
+      Left = 717
+      Top = 53
+      Width = 40
+      Height = 35
+      ParentShowHint = False
+      ShowHint = True
+      OnClick = sbDecreaseFormClick
+    end
+    object btnChangeCircuit: TButton
+      Left = 3
+      Top = 3
+      Width = 117
+      Height = 48
+      Caption = #1057#1084#1077#1085#1080#1090#1100' '#1094#1077#1087#1086#1095#1082#1091
+      DoubleBuffered = False
+      DropDownMenu = mnChangeCircuit
+      ImageIndex = 3
+      ImageMargins.Left = 5
+      Images = lsButtons
+      ParentDoubleBuffered = False
+      Style = bsSplitButton
+      TabOrder = 1
+      WordWrap = True
+      OnClick = btnChangeCircuitClick
+    end
+    object btnSwitchTor: TButton
+      Left = 3
+      Top = 53
+      Width = 117
+      Height = 35
+      Caption = #1057#1090#1072#1088#1090
+      DoubleBuffered = False
+      ImageIndex = 0
+      ImageMargins.Left = 8
+      ImageMargins.Right = -8
+      Images = lsButtons
+      ParentDoubleBuffered = False
+      TabOrder = 0
+      OnClick = btnSwitchTorClick
+    end
+  end
   object paRouters: TPanel
     Left = 3
     Top = 92
@@ -798,7 +798,7 @@ object Tcp: TTcp
       Transparent = True
     end
     object lbSpeed3: TLabel
-      Left = 283
+      Left = 289
       Top = 10
       Width = 23
       Height = 13
@@ -904,7 +904,7 @@ object Tcp: TTcp
     object btnShowNodes: TButton
       Left = 6
       Top = 7
-      Width = 75
+      Width = 78
       Height = 21
       Caption = #1058#1080#1087' '#1091#1079#1083#1072
       DropDownMenu = mnShowNodes
@@ -914,9 +914,9 @@ object Tcp: TTcp
     end
     object cbxRoutersCountry: TComboBox
       Tag = -1
-      Left = 84
+      Left = 87
       Top = 7
-      Width = 145
+      Width = 148
       Height = 21
       AutoDropDown = True
       Style = csDropDownList
@@ -929,7 +929,7 @@ object Tcp: TTcp
       OnEnter = cbxRoutersCountryEnter
     end
     object edRoutersWeight: TEdit
-      Left = 233
+      Left = 239
       Top = 7
       Width = 35
       Height = 21
@@ -943,7 +943,7 @@ object Tcp: TTcp
       OnMouseDown = edRoutersWeightMouseDown
     end
     object udRoutersWeight: TUpDown
-      Left = 268
+      Left = 274
       Top = 7
       Width = 13
       Height = 21
@@ -961,7 +961,7 @@ object Tcp: TTcp
     end
     object cbxRoutersQuery: TComboBox
       Tag = -1
-      Left = 310
+      Left = 316
       Top = 7
       Width = 75
       Height = 21
@@ -986,7 +986,7 @@ object Tcp: TTcp
         #1058#1088#1072#1085#1089#1087#1086#1088#1090)
     end
     object edRoutersQuery: TEdit
-      Left = 389
+      Left = 395
       Top = 7
       Width = 210
       Height = 21
@@ -1565,7 +1565,7 @@ object Tcp: TTcp
           Checked = True
           State = cbChecked
           TabOrder = 14
-          OnClick = cbUseNetworkCacheClick
+          OnClick = OptionsChange
         end
         object cbStrictNodes: TCheckBox
           Left = 10
@@ -2083,7 +2083,7 @@ object Tcp: TTcp
       Caption = #1060#1080#1083#1100#1090#1088
       ImageIndex = 2
       object lbFilterMode: TLabel
-        Left = 36
+        Left = 48
         Top = 6
         Width = 32
         Height = 13
@@ -2101,7 +2101,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbFilterEntry: TLabel
-        Left = 260
+        Left = 270
         Top = 6
         Width = 58
         Height = 13
@@ -2111,7 +2111,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbFilterMiddle: TLabel
-        Left = 344
+        Left = 354
         Top = 6
         Width = 57
         Height = 13
@@ -2121,7 +2121,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbFilterExit: TLabel
-        Left = 424
+        Left = 434
         Top = 6
         Width = 66
         Height = 13
@@ -2131,7 +2131,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbFilterExclude: TLabel
-        Left = 508
+        Left = 518
         Top = 6
         Width = 84
         Height = 13
@@ -2141,7 +2141,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object cbxFilterMode: TComboBox
-        Left = 71
+        Left = 83
         Top = 3
         Width = 150
         Height = 21
@@ -3504,7 +3504,7 @@ object Tcp: TTcp
       object gbNetworkScanner: TGroupBox
         Left = 10
         Top = 3
-        Width = 338
+        Width = 339
         Height = 413
         Caption = #1057#1077#1090#1077#1074#1086#1081' '#1089#1082#1072#1085#1077#1088
         TabOrder = 0
@@ -4478,7 +4478,7 @@ object Tcp: TTcp
   end
   object btnCancelOptions: TButton
     Left = 680
-    Top = 529
+    Top = 528
     Width = 72
     Height = 19
     Caption = #1054#1090#1084#1077#1085#1072
