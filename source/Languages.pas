@@ -410,6 +410,7 @@ begin
     LoadStr('627', 'нед.|неделя|недели|недель');
     LoadStr('628', 'мес.|месяц|месяца|месяцев');
     LoadStr('629', 'г.|год|года|лет');
+    LoadStr('631', 'Прогресс');
 
     TranslateArray(HsHeader, TransStr('230'));
     TranslateArray(HsPortsHeader, TransStr('231'));
@@ -457,6 +458,7 @@ begin
     Tcp.lbExitCountryCaption.Caption := TransStr('114') + ':';
     Tcp.btnApplyOptions.Caption := Load('115', 'Применить');
     Tcp.btnCancelOptions.Caption := Load('116', 'Отмена');
+    Tcp.UpdateScannerControls;
 
     Tcp.tsMain.Caption := Load('118', 'Общие');
     Tcp.tsNetwork.Caption := Load('119', 'Сеть');
@@ -704,7 +706,6 @@ begin
     Tcp.lbStatusHttpAddrCaption.Caption := TransStr('593') + ':';
     Tcp.lbStatusHttpAddr.Hint := TransStr('228');
     Tcp.lbStatusScannerCaption.Caption := TransStr('444') + ':';
-    Tcp.lbStatusScanner.Hint := TransStr('495');
 
     Tcp.gbServerInfo.Caption := Load('216', 'Сервер');
     Tcp.lbServerExternalIpCaption.Caption := Load('217', 'Внешний адрес') + ':';

@@ -70,7 +70,25 @@ type
     procedure Paint(Canvas: TCanvas); override;
   end;
 
-  TStringGrid = class(Vcl.Grids.TStringGrid)
+  TProgressBar = class (Vcl.Comctrls.TProgressBar)
+  private
+    FProgressText: string;
+    procedure SetProgressText(TextStr: string);
+  protected
+    procedure WMPaint(var Msg: TWMPaint); message WM_PAINT;
+  published
+    property ProgressText: string read FProgressText write SetProgressText;
+  strict private
+    class constructor Create;
+    class destructor Destroy;
+  end;
+
+  TCustomProgressBarStyleHook = class(TProgressBarStyleHook)
+  protected
+    procedure Paint(Canvas: TCanvas); override;
+  end;
+
+  TStringGrid = class (Vcl.Grids.TStringGrid)
   private
     FCellsAlignment: TStringList;
     FColsDefaultAlignment: TStringList;
@@ -114,6 +132,16 @@ end;
 class destructor TButton.Destroy;
 begin
   TCustomStyleEngine.UnRegisterStyleHook(TButton, TSplitButtonStyleHook);
+end;
+
+class constructor TProgressBar.Create;
+begin
+  TCustomStyleEngine.RegisterStyleHook(TProgressBar, TCustomProgressBarStyleHook);
+end;
+
+class destructor TProgressBar.Destroy;
+begin
+  TCustomStyleEngine.UnRegisterStyleHook(TProgressBar, TCustomProgressBarStyleHook);
 end;
 
 function TStringGrid.DoMouseWheelDown(Shift: TShiftState; MousePos: TPoint): Boolean;
@@ -240,6 +268,56 @@ procedure TButton.WMPaint(var Message: TWMPaint);
 begin
   inherited;
   DrawSplitButton(Self);
+end;
+
+procedure DrawCustomProgressBar(Control: TWinControl; Handle: HDC = 0);
+var
+  ControlCanvas: TControlCanvas;
+  LastBkMode: Integer;
+  TextStr: string;
+  R: TRect;
+begin
+  if Control is TProgressBar then
+  begin
+    TextStr := TProgressBar(Control).ProgressText;
+    if TextStr <> '' then
+    begin
+      ControlCanvas := TControlCanvas.Create;
+      try
+        if Handle <> 0 then
+          ControlCanvas.Handle := Handle
+        else
+          ControlCanvas.Control := Control;
+        R := Control.ClientRect;
+        R.Left := R.Left + 8;
+        LastBkMode := SetBkMode(ControlCanvas.Handle, TRANSPARENT);
+        ControlCanvas.Font.Color := StyleServices.GetStyleFontColor(sfWindowTextNormal);
+        ControlCanvas.TextRect(R, TextStr, [tfSingleLine, tfCenter, tfVerticalCenter]);
+        SetBkMode(ControlCanvas.Handle, LastBkMode);
+        ReleaseDC(Control.Handle, ControlCanvas.Handle);
+      finally
+        ControlCanvas.Free;
+      end;
+    end;
+  end;
+end;
+
+procedure TProgressBar.SetProgressText(TextStr: string);
+begin
+  FProgressText := TextStr;
+  Invalidate;
+end;
+
+procedure TProgressBar.WMPaint(var Msg: TWMPaint);
+begin
+  Inherited;
+  DrawCustomProgressBar(Self);
+end;
+
+procedure TCustomProgressBarStyleHook.Paint(Canvas: TCanvas);
+begin
+  Inherited;
+  DrawCustomProgressBar(Control, Canvas.Handle);
 end;
 
 procedure TButton.CMTextChanged(var Msg: TMessage);

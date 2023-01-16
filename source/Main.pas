@@ -740,7 +740,6 @@ type
     miPreferWebTelegram: TMenuItem;
     miDelimiter55: TMenuItem;
     miClearBridgesNotAlive: TMenuItem;
-    lbScanBridgesStatus: TLabel;
     miClearBridges: TMenuItem;
     miClearBridgesAll: TMenuItem;
     miDelimiter56: TMenuItem;
@@ -966,6 +965,9 @@ type
     miLogDel2w: TMenuItem;
     miDelimiter71: TMenuItem;
     miLogSeparateWeek: TMenuItem;
+    pbScanProgress: TProgressBar;
+    lbScanType: TLabel;
+    lbScanProgress: TLabel;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1055,6 +1057,8 @@ type
     procedure ResetFocus;
     procedure ScanStart(ScanType: TScanType; ScanPurpose: TScanPurpose);
     procedure ScanNetwork(ScanType: TScanType; ScanPurpose: TScanPurpose);
+    procedure UpdateScannerControls;
+    function GetScanTypeStr: string;
     procedure LoadConsensus;
     procedure LoadDescriptors;
     procedure CheckCountryIndexInList;
@@ -1478,13 +1482,13 @@ type
     procedure cbxAutoScanTypeDropDown(Sender: TObject);
     procedure cbxAutoScanTypeChange(Sender: TObject);
     procedure miExcludeBridgesWhenCountingClick(Sender: TObject);
-    procedure lbStatusScannerClick(Sender: TObject);
-    procedure lbStatusScannerMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure miShowPortAlongWithIpClick(Sender: TObject);
     procedure mnTrafficPopup(Sender: TObject);
     procedure miEnableTotalsCounterClick(Sender: TObject);
     procedure miAddRelaysToBridgesCacheClick(Sender: TObject);
     procedure ShowTimerEvent(Sender: TObject);
+    procedure pbScanProgressMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
     procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -8935,26 +8939,6 @@ begin
     TLabel(Sender).Cursor := crDefault;
 end;
 
-procedure TTcp.lbStatusScannerClick(Sender: TObject);
-begin
-  if tmScanner.Enabled then
-  begin
-    if not ShowMsg(Format(TransStr('608'),[TransStr('495')]), '', mtQuestion, True) then
-      Exit;
-    if tmScanner.Enabled then
-      StopScan := True;
-  end;
-end;
-
-procedure TTcp.lbStatusScannerMouseMove(Sender: TObject; Shift: TShiftState; X,
-  Y: Integer);
-begin
-  if tmScanner.Enabled then
-    TLabel(Sender).Cursor := crHandPoint
-  else
-    TLabel(Sender).Cursor := crDefault;
-end;
-
 procedure TTcp.lbUserDirClick(Sender: TObject);
 begin
   ShellOpen(GetFullFileName(UserDir));
@@ -8982,6 +8966,21 @@ end;
 procedure TTcp.paRoutersClick(Sender: TObject);
 begin
   ResetFocus;
+end;
+
+procedure TTcp.pbScanProgressMouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+begin
+  if Button = mbLeft then
+  begin
+    if tmScanner.Enabled then
+    begin
+      if not ShowMsg(Format(TransStr('608'),[TransStr('495')]), '', mtQuestion, True) then
+        Exit;
+      if tmScanner.Enabled then
+        StopScan := True;
+    end;
+  end;
 end;
 
 procedure TTcp.pbTrafficPaint(Sender: TObject);
@@ -9703,6 +9702,37 @@ begin
   Scanner.Start;
 end;
 
+function TTcp.GetScanTypeStr: string;
+begin
+  case CurrentScanType of
+    stPing: Result := TransStr('382');
+    stAlive:
+    begin
+      if CurrentScanPurpose = spUserBridges then
+        Result := TransStr('396')
+      else
+        Result := TransStr('383');
+    end;
+    else
+      Result := '';
+  end;
+  if Result <> '' then
+    Result := Result + '..';
+end;
+
+procedure TTcp.UpdateScannerControls;
+var
+  State: Boolean;
+begin
+  State := ScanStage > 0;
+  lbScanProgress.Caption := TransStr('631');
+  lbScanType.Caption := GetScanTypeStr;
+  lbScanType.Left := lbScanProgress.Left;
+  lbScanType.Visible := State;
+  lbScanProgress.Visible := State;
+  pbScanProgress.Visible := State;
+end;
+
 procedure TTcp.ScanNetwork(ScanType: TScanType; ScanPurpose: TScanPurpose);
 var
   CurrentDate: Int64;
@@ -9773,14 +9803,14 @@ begin
         1: ScanStart(ScanType, CurrentScanPurpose);
         2: ScanStart(stPing, CurrentScanPurpose);
       end;
+
+      pbScanProgress.Position := 0;
+      pbScanProgress.ProgressText := '0 %';
+      UpdateScannerControls;
+
       if CurrentScanPurpose = spUserBridges then
-      begin
-        lbScanBridgesStatus.Visible := True;
-        lbScanBridgesStatus.Caption := TransStr('396') + ' (0%)';
         SetOptionsEnable(False);
-      end
-      else
-        lbStatusScanner.ShowHint := True;
+
       tmScanner.Enabled := True;
     end;
   end;
@@ -9791,7 +9821,7 @@ var
   ls: TStringList;
   i, j: Integer;
   PortsData: ArrOfStr;
-  IpStr, PortStr, StatusStr, SocketStr: string;
+  IpStr, PortStr, SocketStr: string;
   GeoIpInfo: TGeoIpInfo;
   ini: TMemIniFile;
 begin
@@ -9845,11 +9875,7 @@ begin
       end;
 
       case CurrentScanPurpose of
-        spUserBridges:
-        begin
-          lbScanBridgesStatus.Visible := False;
-          SetOptionsEnable(True);
-        end;
+        spUserBridges: SetOptionsEnable(True);
         spAuto:
         begin
           if not StopScan then
@@ -9870,14 +9896,13 @@ begin
       LoadConsensus;
       if ConnectState = 0 then
         SaveNetworkCache;
-      CheckStatusControls;
       ScanStage := 0;
+      UpdateScannerControls;
       CurrentScanPurpose := spNone;
       CurrentAutoScanPurpose := spNone;
       CurrentScanType := stNone;
       StopScan := False;
-      lbStatusScanner.ShowHint := False;
-      tmScanner.Enabled := False
+      tmScanner.Enabled := False;
     end;
   end
   else
@@ -9885,23 +9910,14 @@ begin
     if TotalScans > 0 then
     begin
       if StopScan then
-        StatusStr := TransStr('404')
+        lbScanType.Caption := TransStr('404')
       else
       begin
-        case CurrentScanType of
-          stPing: StatusStr := TransStr('382') + ' (' + IntToStr(Round((CurrentScans - ScanThreads) / TotalScans * 100)) + ' %)';
-          stAlive:
-          begin
-            if CurrentScanPurpose = spUserBridges then
-              StatusStr := TransStr('396') + ' (' + IntToStr(Round((CurrentScans - ScanThreads) / TotalScans * 100)) + ' %)'
-            else
-              StatusStr := TransStr('383') + ' (' + IntToStr(Round((CurrentScans - ScanThreads) / TotalScans * 100)) + ' %)';
-          end;
-        end;
+        lbScanType.Caption := GetScanTypeStr;
+        pbScanProgress.Max := TotalScans;
+        pbScanProgress.Position := CurrentScans - ScanThreads;
+        pbScanProgress.ProgressText := IntToStr(Round((CurrentScans - ScanThreads) / TotalScans * 100)) + ' %';
       end;
-      lbStatusScanner.Caption := StatusStr;
-      if CurrentScanPurpose = spUserBridges then
-        lbScanBridgesStatus.Caption := StatusStr;
     end;
   end;
 end;
