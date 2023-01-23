@@ -99,7 +99,7 @@ var
   function IsIPv4(IpStr: string): Boolean;
   function IsIPv6(IpStr: string): Boolean;
   function GetNodeType(NodeStr: string): TListType;
-  function ValidData(Str: string; ListType: TListType): Boolean;
+  function ValidData(Str: string; ListType: TListType; State: Boolean = False): Boolean;
   function ValidSize(SizeStr: string; Min, Max: Int64; Prefix: string): Boolean;
   function ValidInt(IntStr: string; Min, Max: Integer): Boolean; overload;
   function ValidInt(IntStr: string; Min, Max: Int64): Boolean; overload;
@@ -131,13 +131,15 @@ var
   function RemoveBrackets(Str: string; Square: Boolean = False): string;
   function SearchEdit(EditControl: TCustomEdit; const SearchString: String; Options: TFindOptions; FindFirst: Boolean = False): Boolean;
   function ShowMsg(Msg: string; Caption: string = ''; MsgType: TMsgType = mtInfo; Question: Boolean = False): Boolean;
-  function MemoToLine(Memo: TMemo; ListType: TListType; Sorted: Boolean = False; Separator: string = ','): string;
+  function MemoToLine(Memo: TMemo; ListType: TListType; Sorted: Boolean = False; Separator: string = ','; State: Boolean = False): string;
   function MenuToInt(Menu: TMenuItem): Integer;
   function GetTransportID(TypeStr: string): Byte;
   function GetTransportChar(TransportID: Byte): string;
   function TryUpdateMask(var Mask: Byte; Param: Byte; Condition: Boolean): Boolean;
   function TryGetDataFromStr(Str: string; DataType: TListType; out DatatStr: string): Boolean;
   function SampleDown(Data: ArrOfPoint; Threshold: Integer): ArrOfPoint;
+  function FileTimeToDateTime(const FileTime: TFileTime): TDateTime;
+  function GetPortsValue(const PortsData, PortStr: string): Integer;
   function GetFileID(FileName: string; SkipFileExists: Boolean = False; ConstData: string = ''): string;
   procedure DeleteFiles(const FileMask: string; TimeOffset: Integer = 0);
   procedure DeleteDir(const DirName: string);
@@ -218,12 +220,35 @@ var
 
 implementation
 
-uses Main, Languages;
+uses
+  Main, Languages;
+
 
 constructor TPing.Create(Timeout: Integer);
 begin
   inherited Create;
   FTimeout := Timeout;
+end;
+
+function GetPortsValue(const PortsData, PortStr: string): Integer;
+var
+  ParseStr: ArrOfStr;
+  Search, i: Integer;
+begin
+  if PortsData <> '' then
+  begin
+    ParseStr := Explode('|', PortsData);
+    for i := 0 to Length(ParseStr) - 1 do
+    begin
+      Search := Pos(PortStr + ':', ParseStr[i]);
+      if Search = 1 then
+      begin
+        Result := StrToIntDef(Copy(ParseStr[i], Length(PortStr) + 2), 0);
+        Exit;
+      end;
+    end;
+  end;
+  Result := 0;
 end;
 
 function BoolToStrDef(Value: Boolean): string;
@@ -1830,13 +1855,19 @@ begin
   end;
 end;
 
-function ValidData(Str: string; ListType: TListType): Boolean;
+function ValidData(Str: string; ListType: TListType; State: Boolean = False): Boolean;
 begin
   case ListType of
     ltHost: Result := ValidHost(Str, True, True);
     ltHash: Result := ValidHash(Str);
     ltPolicy: Result := ValidPolicy(Str);
-    ltBridge: Result := ValidBridge(Str, btList);
+    ltBridge:
+    begin
+      if State then
+        Result := ValidBridge(Str, btNone)
+      else
+        Result := ValidBridge(Str, btList);
+    end;
     ltNode: Result := ValidHash(Str) or (ValidAddress(Str, True, True) = 1) or FilterDic.ContainsKey(AnsiLowerCase(Str));
     ltSocket: Result := ValidSocket(Str) <> 0;
     ltTransport: Result := ValidTransport(Str);
@@ -1897,7 +1928,7 @@ begin
   end;
 end;
 
-function MemoToLine(Memo: TMemo; ListType: TListType; Sorted: Boolean = False; Separator: string = ','): string;
+function MemoToLine(Memo: TMemo; ListType: TListType; Sorted: Boolean = False; Separator: string = ','; State: Boolean = False): string;
 var
   ls: TStringList;
   i: Integer;
@@ -1925,7 +1956,7 @@ begin
             ltPolicy: Str := AnsiLowerCase(Str);
             ltNode: Str := AnsiUpperCase(Str);
           end;
-          if not ValidData(Str, ListType) then
+          if not ValidData(Str, ListType, State) then
             ls.Delete(i)
           else
             ls[i] := Str;
@@ -3514,6 +3545,20 @@ begin
   end;
 end;
 
+function FileTimeToDateTime(const FileTime: TFileTime): TDateTime;
+var
+  LocalFileTime: TFileTime;
+  Age : integer;
+begin
+  FileTimeToLocalFileTime(FileTime, LocalFileTime);
+  if FileTimeToDosDateTime(LocalFileTime, LongRec(Age).Hi, LongRec(Age).Lo) then
+  begin
+    Result := FileDateToDateTime(Age);
+    Exit;
+  end;
+  Result := -1;
+end;
+
 function GetFileID(FileName: string; SkipFileExists: Boolean = False; ConstData: string = ''): string;
 var
   F: TSearchRec;
@@ -3522,7 +3567,12 @@ begin
   if SkipFileExists or FileExists(FileName) then
   begin
     if FindFirst(FileName, faAnyFile, F) = 0 then
-      Result := IntToHex(Crc32(AnsiString(IntToStr(F.Size)) + ':' + AnsiString(IntToStr(DateTimeToUnix(F.TimeStamp))) + ':' + AnsiString(ConstData)));
+    {$WARN SYMBOL_PLATFORM OFF}
+      Result := IntToHex(Crc32(AnsiString(IntToStr(F.Size)) + ':' +
+        AnsiString(IntToStr(DateTimeToUnix(F.TimeStamp))) + ':' +
+        AnsiString(IntToStr(DateTimeToUnix(FileTimeToDateTime(F.FindData.ftCreationTime)))) + ':' +
+        AnsiString(ConstData)));
+    {$WARN SYMBOL_PLATFORM ON}
     FindClose(F);
   end;
 end;

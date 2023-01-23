@@ -606,7 +606,7 @@ object Tcp: TTcp
     object edRoutersQuery: TEdit
       Left = 395
       Top = 7
-      Width = 210
+      Width = 197
       Height = 21
       PopupMenu = EditMenu
       TabOrder = 6
@@ -1757,7 +1757,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbBridgesList: TLabel
-        Left = 178
+        Left = 186
         Top = 134
         Width = 74
         Height = 13
@@ -1805,7 +1805,7 @@ object Tcp: TTcp
         TabOrder = 1
         Text = '80,443'
         TextHint = #1047#1085#1072#1095#1077#1085#1080#1103', '#1088#1072#1079#1076#1077#1083#1105#1085#1085#1099#1077' '#1079#1072#1087#1103#1090#1099#1084#1080
-        OnChange = EditChange
+        OnChange = edReachableAddressesChange
         OnKeyPress = edReachableAddressesKeyPress
       end
       object cbUseProxy: TCheckBox
@@ -1979,7 +1979,7 @@ object Tcp: TTcp
       object cbxBridgesType: TComboBox
         Left = 49
         Top = 129
-        Width = 120
+        Width = 124
         Height = 21
         AutoDropDown = True
         Style = csDropDownList
@@ -1997,7 +1997,7 @@ object Tcp: TTcp
           #1055#1086#1083#1100#1079#1086#1074#1072#1090#1077#1083#1100#1089#1082#1080#1077)
       end
       object cbxBridgesList: TComboBox
-        Left = 255
+        Left = 263
         Top = 131
         Width = 120
         Height = 21
@@ -2098,6 +2098,18 @@ object Tcp: TTcp
         TabOrder = 9
         Thousands = False
         OnChanging = SpinChanging
+      end
+      object cbExcludeUnsuitableBridges: TCheckBox
+        Left = 394
+        Top = 133
+        Width = 220
+        Height = 17
+        Caption = #1048#1089#1082#1083#1102#1095#1072#1090#1100' '#1085#1077#1087#1086#1076#1093#1086#1076#1103#1097#1080#1077' '#1084#1086#1089#1090#1099
+        Checked = True
+        Enabled = False
+        State = cbChecked
+        TabOrder = 24
+        OnClick = cbExcludeUnsuitableBridgesClick
       end
     end
     object tsFilter: TTabSheet
@@ -4487,8 +4499,8 @@ object Tcp: TTcp
     end
   end
   object btnApplyOptions: TButton
-    Left = 604
-    Top = 528
+    Left = 602
+    Top = 529
     Width = 72
     Height = 19
     Caption = #1055#1088#1080#1084#1077#1085#1080#1090#1100
@@ -5395,10 +5407,18 @@ object Tcp: TTcp
       object miDelimiter56: TMenuItem
         Caption = '-'
       end
+      object miClearBridgesUnsuitable: TMenuItem
+        Caption = #1053#1077#1087#1086#1076#1093#1086#1076#1103#1097#1080#1077' '#1084#1086#1089#1090#1099
+        ImageIndex = 43
+        OnClick = miClearBridgesUnsuitableClick
+      end
       object miClearBridgesNotAlive: TMenuItem
         Caption = #1053#1077' '#1086#1090#1074#1077#1095#1072#1102#1097#1080#1077' '#1085#1072' '#1089#1086#1077#1076#1080#1085#1077#1085#1080#1103
         ImageIndex = 56
         OnClick = miClearBridgesNotAliveClick
+      end
+      object miDelimiter72: TMenuItem
+        Caption = '-'
       end
       object miClearBridgesNonCached: TMenuItem
         Caption = #1054#1090#1089#1091#1090#1089#1090#1074#1091#1102#1097#1080#1077' '#1074' '#1082#1101#1096#1077
@@ -5456,12 +5476,12 @@ object Tcp: TTcp
       end
       object miDetailsCopyBridgeIPv4: TMenuItem
         Caption = #1052#1086#1089#1090' IPv4'
-        ImageIndex = 28
+        ImageIndex = 59
         OnClick = CopyCaptionToClipboard
       end
       object miDetailsCopyBridgeIPv6: TMenuItem
         Caption = #1052#1086#1089#1090' IPv4'
-        ImageIndex = 28
+        ImageIndex = 60
         OnClick = CopyCaptionToClipboard
       end
     end
@@ -5511,12 +5531,12 @@ object Tcp: TTcp
       end
       object miServerCopyBridgeIPv4: TMenuItem
         Caption = #1052#1086#1089#1090' IPv4'
-        ImageIndex = 28
+        ImageIndex = 59
         OnClick = CopyCaptionToClipboard
       end
       object miServerCopyBridgeIPv6: TMenuItem
         Caption = #1052#1086#1089#1090' IPv6'
-        ImageIndex = 28
+        ImageIndex = 60
         OnClick = CopyCaptionToClipboard
       end
     end
@@ -5741,12 +5761,12 @@ object Tcp: TTcp
       end
       object miRtCopyBridgeIPv4: TMenuItem
         Caption = #1052#1086#1089#1090' IPv4'
-        ImageIndex = 28
+        ImageIndex = 59
         OnClick = CopyCaptionToClipboard
       end
       object miRtCopyBridgeIpv6: TMenuItem
         Caption = #1052#1086#1089#1090' IPv6'
-        ImageIndex = 28
+        ImageIndex = 60
         OnClick = CopyCaptionToClipboard
       end
     end

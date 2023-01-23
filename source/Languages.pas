@@ -411,6 +411,7 @@ begin
     LoadStr('628', 'мес.|месяц|месяца|месяцев');
     LoadStr('629', 'г.|год|года|лет');
     LoadStr('631', 'Прогресс');
+    LoadStr('632', 'Доступно: %s из %d');
 
     TranslateArray(HsHeader, TransStr('230'));
     TranslateArray(HsPortsHeader, TransStr('231'));
@@ -539,6 +540,7 @@ begin
     Tcp.edPreferredBridge.TextHint  := Load('422', 'Эта настройка переопределяет выбранный список  мостов');
     Tcp.btnFindPreferredBridge.Caption := TransStr('423');
     LoadList(Tcp.cbxBridgesType, '424', '"Встроенные","Пользовательские"');
+    Tcp.cbExcludeUnsuitableBridges.Caption := Load('633', 'Исключать неподходящие мосты');
 
     Tcp.lbFilterMode.Caption := Load('162', 'Режим');
     Tcp.lbFilterEntry.Caption := TransStr('288') + ': ' + IntToStr(Tcp.lbFilterEntry.Tag);
@@ -798,6 +800,7 @@ begin
     Tcp.miClearBridgesNonCached.Caption := Load('508', 'Отсутствующие в кэше');
     Tcp.miClearBridgesCached.Caption := Load('509', 'Найденные в кэше');
     Tcp.miClearBridgesAll.Caption := Load('510', 'Все мосты');
+    Tcp.miClearBridgesUnsuitable.Caption := Load('634', 'Неподходящие мосты');
 
     Tcp.miLogOptions.Caption := TransStr('107');
     Tcp.miWriteLogFile.Caption := Load('292', 'Записывать в файл');

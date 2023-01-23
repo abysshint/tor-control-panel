@@ -968,6 +968,9 @@ type
     pbScanProgress: TProgressBar;
     lbScanType: TLabel;
     lbScanProgress: TLabel;
+    cbExcludeUnsuitableBridges: TCheckBox;
+    miDelimiter72: TMenuItem;
+    miClearBridgesUnsuitable: TMenuItem;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -982,7 +985,7 @@ type
     function GetFormPositionStr: string;
     function FindTrackHost(Host: string): Boolean;
     function FindInRanges(IpStr: string): string;
-    function RouterInNodesList(RouterID: string; RouterInfo: TRouterInfo; NodeType: TNodeType; SkipCodes: Boolean = False): Boolean;
+    function RouterInNodesList(RouterID: string; IpStr: string; NodeType: TNodeType; SkipCodes: Boolean = False; CodeStr: string = ''): Boolean;
     function GetTrackHostDomains(Host: string; OnlyExists: Boolean): string;
     function GetControlEvents: string;
     function GetTorHs: Integer;
@@ -1075,6 +1078,7 @@ type
     procedure RelayBandwidthEnable(State: Boolean);
     procedure ReloadTorConfig;
     function CheckRequiredFiles(AutoSave: Boolean = False): Boolean;
+    function ReachablePortsExists: Boolean;
     procedure SetIconsColor;
     procedure SaveHiddenServices(ini: TMemIniFile);
     procedure SavePaddingOptions(ini: TMemIniFile);
@@ -1089,6 +1093,7 @@ type
     procedure SaveProxyData(ini: TMemIniFile);
     procedure SaveTransportsData(ini: TMemIniFile; ReloadServerTransport: Boolean);
     procedure SaveBridgesData(ini: TMemIniFile);
+    procedure ExcludeUnSuitableBridges(out BridgesData: string; Separator: string; BridgeType: TBridgeType; DeleteUnsuitable: Boolean = False);
     procedure SetButtonGlyph(ls: TImageList; Index: Integer; Button: TSpeedButton);
     procedure LoadStaticArray(Data: array of TStaticPair);
     procedure ResetOptions;
@@ -1138,7 +1143,8 @@ type
     procedure UpdateScaleFactor;
     procedure CheckTorAutoStart;
     procedure UpdateTrayHint;
-    procedure CheckPrefferedBridgeExclude(RouterID: string);
+    procedure CountTotalBridges(ConfigUpdating: Boolean = False);
+    procedure CheckPrefferedBridgeExclude(RouterID: string; IpStr: string = ''; CodeStr: string = '');
     function PrepareNodesToRemove(Data: string; NodeType: TNodeType; out Nodes: ArrOfNodes): Boolean;
     procedure RemoveFromNodesListWithConvert(Nodes: ArrOfNodes; NodeType: TNodeType);
     procedure SortPrepare(aSg: TStringGrid; ACol: Integer; ManualSort: Boolean = False);
@@ -1489,6 +1495,9 @@ type
     procedure ShowTimerEvent(Sender: TObject);
     procedure pbScanProgressMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
+    procedure cbExcludeUnsuitableBridgesClick(Sender: TObject);
+    procedure edReachableAddressesChange(Sender: TObject);
+    procedure miClearBridgesUnsuitableClick(Sender: TObject);
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
     procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -1552,6 +1561,7 @@ var
   CurrentScanType: TScanType;
   CurrentScanPurpose, CurrentAutoScanPurpose: TScanPurpose;
   ScanThreads, CurrentScans, TotalScans, AliveNodesCount, PingNodesCount: Integer;
+  SuitableBridgesCount, UnknownBridgesCountriesCount: Integer;
   Scanner: TScanThread;
   UsedProxyType: TProxyType;
   LastUserStreamProtocol: Integer;
@@ -1946,20 +1956,7 @@ begin
         if GeoIpDic.TryGetValue(Item.Value.IPv4, GeoIpInfo) then
         begin
           if sScanType = stAlive then
-          begin
-            if GeoIpInfo.ports <> '' then
-            begin
-              ParseStr := Explode('|', GeoIpInfo.ports);
-              for i := 0 to Length(ParseStr) - 1 do
-              begin
-                if Pos(IntToStr(Item.Value.OrPort) + ':', ParseStr[i]) = 1 then
-                begin
-                  LastResult := StrToIntDef(SeparateRight(ParseStr[i], ':'), 0);
-                  Break;
-                end;
-              end;
-            end;
-          end;
+            LastResult := GetPortsValue(GeoIpInfo.ports, IntToStr(Item.Value.OrPort));
 
           case sScanPurpose of
             spAll: NeedScan := True;
@@ -2517,7 +2514,7 @@ end;
 function TTcp.GetControlEvents: string;
 begin
   Result := 'BW CIRC STREAM STATUS_CLIENT';
-  if cbxServerMode.ItemIndex <> 0 then
+  if cbxServerMode.ItemIndex <> SERVER_MODE_NONE then
     Result := Result + ' STATUS_SERVER';
   if miShowCircuitsTraffic.Checked then
     Result := Result + ' CIRC_BW';
@@ -2579,9 +2576,11 @@ var
   UpdateCountry: Boolean;
   Item: TPair<string, TRouterInfo>;
   GeoIpItem: TPair<string, TGeoIpInfo>;
+  ls: TStringList;
   GeoIpInfo: TGeoIpInfo;
   FilterInfo: TFilterInfo;
   RouterInfo: TRouterInfo;
+  Bridge: TBridge;
 begin
   if InfoStage > 0 then
   begin
@@ -2593,28 +2592,58 @@ begin
 
       if GeoIpExists then
       begin
-        if GeoIpUpdating then
+        if UnknownBridgesCountriesCount > 0 then
         begin
-          for GeoIpItem in GeoIpDic do
-          begin
-            Inc(InfoCount);
-            Temp := Temp + ' ip-to-country/' + GeoIpItem.Key;
+          ls := TStringList.Create;
+          try
+            ls.Text := Tcp.meBridges.Text;
+            ls.Add(Tcp.edPreferredBridge.Text);
+            for i := 0 to ls.Count - 1 do
+            begin
+              if TryParseBridge(ls[i], Bridge) then;
+              begin
+                UpdateCountry := True;
+                if GeoIpDic.TryGetValue(Bridge.Ip, GeoIpInfo) then
+                begin
+                  if GeoIpInfo.cc <> DEFAULT_COUNTRY_ID then
+                    UpdateCountry := False;
+                end;
+                if UpdateCountry then
+                begin
+                  Inc(InfoCount);
+                  Temp := Temp + ' ip-to-country/' + Bridge.Ip;
+                end;
+              end;
+            end;
+          finally
+            ls.Free;
           end;
         end
         else
         begin
-          for Item in RoutersDic do
+          if GeoIpUpdating then
           begin
-            UpdateCountry := True;
-            if GeoIpDic.TryGetValue(Item.Value.IPv4, GeoIpInfo) then
-            begin
-              if GeoIpInfo.cc <> DEFAULT_COUNTRY_ID then
-                UpdateCountry := False;
-            end;
-            if UpdateCountry then
+            for GeoIpItem in GeoIpDic do
             begin
               Inc(InfoCount);
-              Temp := Temp + ' ip-to-country/' + Item.Value.IPv4;
+              Temp := Temp + ' ip-to-country/' + GeoIpItem.Key;
+            end;
+          end
+          else
+          begin
+            for Item in RoutersDic do
+            begin
+              UpdateCountry := True;
+              if GeoIpDic.TryGetValue(Item.Value.IPv4, GeoIpInfo) then
+              begin
+                if GeoIpInfo.cc <> DEFAULT_COUNTRY_ID then
+                  UpdateCountry := False;
+              end;
+              if UpdateCountry then
+              begin
+                Inc(InfoCount);
+                Temp := Temp + ' ip-to-country/' + Item.Value.IPv4;
+              end;
             end;
           end;
         end;
@@ -2669,26 +2698,39 @@ begin
     if InfoStage = 3 then
     begin
       InfoStage := 0;
-      Tcp.LoadFilterTotals;
-      Tcp.LoadRoutersCountries;
-      Tcp.ShowFilter;
-      Tcp.ShowRouters;
-      Tcp.tmConsensus.Enabled := True;
-      if (ConnectState = 2) and (Circuit = '') then
-        Tcp.SendDataThroughProxy;
-
-      if AutoScanStage = 0 then
+      if UnknownBridgesCountriesCount > 0 then
       begin
-        if Tcp.cbAutoScanNewNodes.Checked and
-          (Tcp.cbEnablePingMeasure.Checked or Tcp.cbEnableDetectAliveNodes.Checked) then
-            AutoScanStage := 1;
+        UnknownBridgesCountriesCount := 0;
+        OptionsLocked := True;
+        Tcp.ApplyOptions(True);
+        if not Tcp.cbUseBridges.Checked then
+          SendData('SETCONF UseBridges=0');
+        SendData('SETCONF DisableNetwork=0');
+        Exit;
       end
       else
       begin
-        if AutoScanStage = 3 then
-          AutoScanStage := 0;
+        Tcp.LoadFilterTotals;
+        Tcp.LoadRoutersCountries;
+        Tcp.ShowFilter;
+        Tcp.ShowRouters;
+        Tcp.tmConsensus.Enabled := True;
+        if (ConnectState = 2) and (Circuit = '') then
+          Tcp.SendDataThroughProxy;
+
+        if AutoScanStage = 0 then
+        begin
+          if Tcp.cbAutoScanNewNodes.Checked and
+            (Tcp.cbEnablePingMeasure.Checked or Tcp.cbEnableDetectAliveNodes.Checked) then
+              AutoScanStage := 1;
+        end
+        else
+        begin
+          if AutoScanStage = 3 then
+            AutoScanStage := 0;
+        end;
+        Tcp.SaveNetworkCache;
       end;
-      Tcp.SaveNetworkCache;
     end;
   end;
 
@@ -2727,11 +2769,15 @@ begin
 
   if ConnectState = 1 then
   begin
+
     if Pos('515 Authentication failed', Data) = 1 then
     begin
       StopCode := STOP_AUTH_ERROR;
       Exit;
     end;
+
+    if UnknownBridgesCountriesCount > 0 then
+      InfoStage := 1;
 
     SearchPos := Pos('BOOTSTRAP PROGRESS', Data);
     if SearchPos <> 0 then
@@ -2995,7 +3041,7 @@ begin
     end;
   end;
 
-  if Tcp.cbxServerMode.ItemIndex <> 0 then
+  if Tcp.cbxServerMode.ItemIndex <> SERVER_MODE_NONE then
   begin
     if Pos('650 STATUS_SERVER ', Data) = 1 then
     begin
@@ -3293,6 +3339,11 @@ begin
   CalculateFilterNodes(False);
   FilterUpdated := True;
   EnableOptionButtons;
+  if FNodeType = ntExclude then
+  begin
+    CountTotalBridges;
+    CheckPrefferedBridgeExclude('', '', Key);
+  end;
 end;
 
 procedure TTcp.sgFilterKeyDown(Sender: TObject; var Key: Word;
@@ -3812,6 +3863,8 @@ begin
     end;
     RoutersUpdated := True;
     EnableOptionButtons;
+    if NodeTypeID = ntExclude then
+      CountTotalBridges;
   end;
 end;
 
@@ -4225,7 +4278,7 @@ end;
 
 procedure TTcp.GetServerInfo(UpdateExternalIp: Boolean = True);
 begin
-  if cbxServerMode.ItemIndex > 0 then
+  if cbxServerMode.ItemIndex > SERVER_MODE_NONE then
   begin
     GetIpStage := 1;
     if cbUseOpenDNS.Checked and not cbUseOpenDNSOnlyWhenUnknown.Checked then
@@ -4270,7 +4323,7 @@ begin
 
   IsIPv4 := ValidAddress(ServerIPv4) = 1;
   IsIPv6 := (ValidAddress(ServerIPv6) = 2) and cbListenIPv6.Checked;
-  ServerIsBridge := cbxServerMode.ItemIndex = 3;
+  ServerIsBridge := cbxServerMode.ItemIndex = SERVER_MODE_BRIDGE;
 
   miServerCopyIPv4.Caption := ServerIPv4;
   miServerCopyIPv6.Caption := FormatHost(ServerIPv6);
@@ -4326,7 +4379,7 @@ var
 begin
   UPnPMsg := '';
   GetLocalInterfaces(cbxSOCKSHost);
-  if (cbxServerMode.ItemIndex > 0) and (cbUseUPnP.Checked) then
+  if (cbxServerMode.ItemIndex > SERVER_MODE_NONE) and (cbUseUPnP.Checked) then
   begin
     for i := 0 to cbxSOCKSHost.items.Count - 1 do
     begin
@@ -4339,7 +4392,7 @@ begin
         AddUPnPEntry(udDirPort.Position, 'DirPort', cbxSOCKSHost.Items[i], Test, UPnPMsg);
         udDirPort.Tag := udDirPort.Position;
       end;
-      if (cbxServerMode.ItemIndex = 3) and (cbxBridgeType.ItemIndex > 0) then
+      if (cbxServerMode.ItemIndex = SERVER_MODE_BRIDGE) and (cbxBridgeType.ItemIndex > 0) then
       begin
         AddUPnPEntry(udTransportPort.Position, 'PTPort', cbxSOCKSHost.Items[i], Test, UPnPMsg);
         udTransportPort.Tag := udTransportPort.Position;
@@ -4420,8 +4473,8 @@ begin
   CheckLabelEndEllipsis(lbStatusSocksAddr, 300, epPathEllipsis, False, True);
   CheckLabelEndEllipsis(lbStatusHttpAddr, 300, epPathEllipsis, False, True);
 
-  ServerEnabled := cbxServerMode.ItemIndex > 0;
-  ServerIsBridge := cbxServerMode.ItemIndex = 3;
+  ServerEnabled := cbxServerMode.ItemIndex > SERVER_MODE_NONE;
+  ServerIsBridge := cbxServerMode.ItemIndex = SERVER_MODE_BRIDGE;
 
   lbBridge.Visible := ServerIsBridge;
   lbBridgeCaption.Visible := ServerIsBridge;
@@ -4523,7 +4576,7 @@ begin
     CheckOpenPorts(udSOCKSPort, GetHost(cbxSOCKSHost.Text), PortStr);
     CheckOpenPorts(udHTTPTunnelPort, GetHost(cbxHTTPTunnelHost.Text), PortStr);
     CheckOpenPorts(udControlPort, LOOPBACK_ADDRESS, PortStr);
-    if cbxServerMode.ItemIndex > 0 then
+    if cbxServerMode.ItemIndex > SERVER_MODE_NONE then
     begin
       CheckOpenPorts(udORPort, LOOPBACK_ADDRESS, PortStr);
       if cbUseDirPort.Checked then
@@ -5630,7 +5683,7 @@ begin
         if TransportID <> TRANSPORT_CLIENT then
         begin
           cbxBridgeType.Items.Append(ParseStr[j]);
-          if (cbxServerMode.ItemIndex = 3) and (ServerTransport = ParseStr[j]) then
+          if (cbxServerMode.ItemIndex = SERVER_MODE_BRIDGE) and (ServerTransport = ParseStr[j]) then
           begin
             SetTorConfig('ServerTransportPlugin', Trim(ServerTransport + ' exec ' + TransportsDir + Handler + ' ' + Params));
             SetTorConfig('ServerTransportListenAddr', ServerTransport + ' 0.0.0.0:' + IntToStr(udTransportPort.Position));
@@ -5671,7 +5724,7 @@ begin
       for i := Bridges.Count - 1 downto 0 do
       begin
         Bridges[i] := Trim(SeparateRight(Bridges[i], '='));
-        if not ValidBridge(Bridges[i], btList) then
+        if not ValidBridge(Bridges[i], btNone) then
           Bridges.Delete(i);
       end;
       meBridges.Text := Bridges.Text;
@@ -5751,21 +5804,158 @@ begin
   end;
 end;
 
+function TTcp.ReachablePortsExists: Boolean;
+var
+  ParseStr: ArrOfStr;
+  i: Integer;
+begin
+  if cbUseReachableAddresses.Checked then
+  begin
+    PortsDic.Clear;
+    ParseStr := Explode(',', StringReplace(edReachableAddresses.Text, ' ', '', [rfReplaceAll]));
+    for i := 0 to Length(ParseStr) - 1 do
+    begin
+      if ValidInt(ParseStr[i], 1, 65535) then
+        PortsDic.AddOrSetValue(StrToInt(ParseStr[i]), 0);
+    end;
+  end;
+  Result := PortsDic.Count > 0;
+end;
+
+procedure TTcp.ExcludeUnSuitableBridges(out BridgesData: string; Separator: string; BridgeType: TBridgeType; DeleteUnsuitable: Boolean = False);
+var
+  CheckEntryPorts, cdPorts, cdAlive: Boolean;
+  BridgesCount: Integer;
+  Bridge: TBridge;
+  GeoIpInfo: TGeoIpInfo;
+  T: TTransportInfo;
+  ls: TStringList;
+  CountryStr, PreferStr: string;
+  i, CountryID, PortData: Integer;
+begin
+  BridgesCount := 0;
+  SuitableBridgesCount := 0;
+  BridgesData := '';
+
+  PreferStr := Trim(edPreferredBridge.Text);
+  if BridgeType = btPrefer then
+  begin
+    if Length(PreferStr) > 0 then
+      BridgesCount := 1;
+  end
+  else
+    BridgesCount := meBridges.Lines.Count;
+  if BridgesCount = 0 then
+    Exit;
+
+  CheckEntryPorts := ReachablePortsExists;
+  ls := TStringList.Create;
+  try
+    if BridgeType = btPrefer then
+      ls.Text := PreferStr
+    else
+      ls.Text := meBridges.Text;
+    for i := 0 to ls.Count - 1 do
+    begin
+      if TryParseBridge(ls[i], Bridge) then
+      begin
+        if CheckEntryPorts then
+          cdPorts := PortsDic.ContainsKey(Bridge.Port)
+        else
+          cdPorts := True;
+
+        if GeoIpDic.TryGetValue(Bridge.Ip, GeoIpInfo) then
+        begin
+          CountryID := GeoIpInfo.cc;
+          PortData := GetPortsValue(GeoIpInfo.ports, IntToStr(Bridge.Port));
+          if CountryID = DEFAULT_COUNTRY_ID then
+            Inc(UnknownBridgesCountriesCount);
+          cdAlive := PortData <> -1;
+        end
+        else
+        begin
+          CountryID := DEFAULT_COUNTRY_ID;
+          cdAlive := True;
+          Inc(UnknownBridgesCountriesCount);
+        end;
+        CountryStr := CountryCodes[CountryID];
+
+        if cdPorts and cdAlive and not RouterInNodesList(Bridge.Hash, Bridge.Ip, ntExclude, False, CountryStr) then
+        begin
+          if not DeleteUnsuitable then
+          begin
+            BridgesData := BridgesData + Separator + ls[i];
+            if TransportsDic.TryGetValue(Bridge.Transport, T) then
+            begin
+              if T.TransportID <> TRANSPORT_SERVER then
+              begin
+                Include(T.BridgeType, btList);
+                TransportsDic.AddOrSetValue(Bridge.Transport, T);
+              end;
+            end;
+          end;
+          Inc(SuitableBridgesCount);
+        end
+        else
+          ls[i] := '';
+      end
+      else
+        ls[i] := '';
+    end;
+    if not DeleteUnsuitable then
+      Delete(BridgesData, 1, Length(Separator));
+    if BridgeType = btPrefer then
+    begin
+      if SuitableBridgesCount = 0 then
+        BridgesData := edPreferredBridge.Text;
+    end
+    else
+    begin
+      if DeleteUnsuitable then
+      begin
+        for i := 0 to ls.Count - 1 do
+        begin
+          if ls[i] <> '' then
+            BridgesData := BridgesData + Separator + ls[i];
+        end;
+        Delete(BridgesData, 1, Length(Separator));
+      end;
+    end;
+  finally
+    ls.Free;
+    if CheckEntryPorts then
+      PortsDic.Clear;
+  end;
+end;
+
 procedure TTcp.SaveBridgesData(ini: TMemIniFile);
 var
   Bridges, PreferredBridge: string;
   i: Integer;
 begin
+  UnknownBridgesCountriesCount := 0;
   DeleteTorConfig('Bridge', [cfMultiLine]);
+  DeleteTorConfig('DisableNetwork');
   PreferredBridge := Trim(edPreferredBridge.Text);
   if not ValidBridge(PreferredBridge, btPrefer) then
   begin
     PreferredBridge := '';
     cbUsePreferredBridge.Checked := False;
+  end
+  else
+  begin
+    if cbUsePreferredBridge.Checked and cbExcludeUnsuitableBridges.Checked then
+    begin
+      ExcludeUnSuitableBridges(PreferredBridge, '|', btPrefer);
+      if SuitableBridgesCount = 0 then
+        cbUsePreferredBridge.Checked := False;
+    end;
   end;
   edPreferredBridge.Text := PreferredBridge;
 
-  Bridges := MemoToLine(meBridges, ltBridge, False, '|');
+  Bridges := MemoToLine(meBridges, ltBridge, False, '|', cbExcludeUnsuitableBridges.Checked);
+  if cbExcludeUnsuitableBridges.Checked then
+    ExcludeUnSuitableBridges(Bridges, '|', btList);
 
   if (Bridges = '') and ((cbUsePreferredBridge.Checked and (PreferredBridge = '')) or not cbUsePreferredBridge.Checked) then
     cbUseBridges.Checked := False;
@@ -5779,6 +5969,9 @@ begin
       SetTorConfig('Bridge', Bridges, [cfMultiLine], '|');
   end;
 
+  if (UnknownBridgesCountriesCount > 0) and (ConnectState = 0) then
+    SetTorConfig('DisableNetwork', '1');
+
   if cbxBridgesType.ItemIndex = BRIDGES_TYPE_USER then
   begin
     ini.EraseSection('Bridges');
@@ -5787,10 +5980,12 @@ begin
   end;
   SetSettings('Network', cbUseBridges, ini);
   SetSettings('Network', cbUsePreferredBridge, ini);
+  SetSettings('Network', cbExcludeUnsuitableBridges, ini);
   SetSettings('Network', cbxBridgesList, ini, False);
   SetSettings('Network', cbxBridgesType, ini);
   SetSettings('Network', edPreferredBridge, ini);
   BridgesCheckControls;
+  CountTotalBridges(True);
 end;
 
 procedure TTcp.SaveProxyData(ini: TMemIniFile);
@@ -6008,7 +6203,6 @@ var
   FilterEntry, FilterMiddle, FilterExit, Temp: string;
   FavoritesEntry, FavoritesMiddle, FavoritesExit, ExcludeNodes: string;
 begin
-  OptionsLocked := False;
   LoadTorConfig;
 
   ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
@@ -6062,6 +6256,7 @@ begin
 
     if FirstLoad then
     begin
+      LoadNetworkCache;
       LastPlace := GetIntDef(GetSettings('Main', 'LastPlace', LP_OPTIONS, ini), LP_OPTIONS, LP_OPTIONS, LP_ROUTERS);
       pcOptions.TabIndex := GetIntDef(GetSettings('Main', 'OptionsPage', 0, ini), 0, 0, pcOptions.PageCount - 1);
       ParseStr := Explode(',', GetSettings('Main', 'FormPosition', '-1,-1,-1,-1', ini));
@@ -6318,11 +6513,13 @@ begin
     GetSettings('Network', cbUseBridges, ini);
     GetSettings('Network', cbUsePreferredBridge, ini);
     GetSettings('Network', cbxBridgesType, ini);
+    GetSettings('Network', cbExcludeUnsuitableBridges, ini);
     GetSettings('Network', edPreferredBridge, ini);
     LoadBuiltinBridges(inidef, cbxBridgesType.ItemIndex = BRIDGES_TYPE_BUILTIN, True, GetSettings('Network', 'BridgesList', '', ini));
     if cbxBridgesType.ItemIndex = BRIDGES_TYPE_USER then
       LoadUserBridges(ini);
-    SaveBridgesData(ini);
+    if FirstLoad then
+      LoadBridgesCache;
 
     GetSettings('Filter', cbxFilterMode, ini, FILTER_TYPE_COUNTRIES);
     FilterEntry := GetSettings('Filter', 'EntryNodes', DEFAULT_ENTRY_NODES, ini);
@@ -6363,6 +6560,7 @@ begin
     CheckFilterMode;
     CheckFavoritesState;
     CheckVanguards(True);
+    SaveBridgesData(ini);
 
     SetNodes(FilterEntry, FilterMiddle, FilterExit, FavoritesEntry, FavoritesMiddle, FavoritesExit, ExcludeNodes);
     SetSettings('Filter', cbxFilterMode, ini);
@@ -6441,7 +6639,7 @@ begin
     begin
       if GetSettings('Main', 'Terminated', False, ini) = True then
       begin
-        if (cbUseUPnP.Checked) and (cbxServerMode.ItemIndex > 0) then
+        if (cbUseUPnP.Checked) and (cbxServerMode.ItemIndex > SERVER_MODE_NONE) then
           RemoveUPnPEntry(udORPort.Position, udDirPort.Position, udTransportPort.Position);
       end;
       TotalDL := GetSettings('Status', 'TotalDL', 0, ini);
@@ -6455,8 +6653,6 @@ begin
       CheckStatusControls;
       SetSettings('Main', 'Terminated', True, ini);
 
-      LoadNetworkCache;
-      LoadBridgesCache;
       if miLoadCachedRoutersOnStartup.Checked then
         LoadConsensus
       else
@@ -6485,6 +6681,7 @@ begin
       FilterUpdated := False;
     end;
     SaveTorConfig;
+    OptionsLocked := False;
     EnableOptionButtons(False);
   finally
     UpdateConfigFile(ini);
@@ -6635,7 +6832,7 @@ begin
             BridgeInfo.Params
           );
           if ValidBridge(BridgeStr, btNone) then
-            BridgesDic.AddOrSetValue(ParseStr[0], BridgeInfo);          
+            BridgesDic.AddOrSetValue(ParseStr[0], BridgeInfo);
         end;
       end;
     finally
@@ -6931,7 +7128,7 @@ end;
 
 function TTcp.CheckNetworkOptions: Boolean;
 begin
-  if (cbxServerMode.ItemIndex > 0) and (cbUseReachableAddresses.Checked or cbUseProxy.Checked or cbUseBridges.Checked) then
+  if (cbxServerMode.ItemIndex > SERVER_MODE_NONE) and (cbUseReachableAddresses.Checked or cbUseProxy.Checked or cbUseBridges.Checked) then
   begin
     Result := False;
     if ShowMsg(TransStr('261'), TransStr('324'), mtWarning, True) then
@@ -6948,7 +7145,7 @@ begin
     Result := True;
 end;
 
-function TTcp.RouterInNodesList(RouterID: string; RouterInfo: TRouterInfo; NodeType: TNodeType; SkipCodes: Boolean = False): Boolean;
+function TTcp.RouterInNodesList(RouterID: string; IpStr: string; NodeType: TNodeType; SkipCodes: Boolean = False; CodeStr: string = ''): Boolean;
 var
   ParseStr: ArrOfStr;
   KeyStr: string;
@@ -6963,15 +7160,21 @@ begin
         Continue;
       case i of
         0: KeyStr := RouterID;
-        1: KeyStr := CountryCodes[GetCountryValue(RouterInfo.IPv4)];
-        2: KeyStr := RouterInfo.IPv4;
+        1:
+        begin
+          if CodeStr = '' then
+            KeyStr := CountryCodes[GetCountryValue(IpStr)]
+          else
+            KeyStr := CodeStr;
+        end;
+        2: KeyStr := IpStr;
       end;
       if NodesDic.ContainsKey(KeyStr) then
         Result := NodeType in NodesDic.Items[KeyStr];
     end
     else
     begin
-      KeyStr := FindInRanges(RouterInfo.IPv4);
+      KeyStr := FindInRanges(IpStr);
       if KeyStr <> '' then
       begin
         ParseStr := Explode(',', KeyStr);
@@ -7026,9 +7229,9 @@ begin
       begin
         if (rfGuard in Router.Value.Flags) then
         begin
-          if RouterInNodesList(Router.Key, Router.Value, ntEntry, True) then
+          if RouterInNodesList(Router.Key, Router.Value.IPv4, ntEntry, True) then
           begin
-            if not RouterInNodesList(Router.Key, Router.Value, ntExclude) then
+            if not RouterInNodesList(Router.Key, Router.Value.IPv4, ntExclude) then
               Inc(NodesCount);
           end;
         end;
@@ -7149,10 +7352,9 @@ var
   FavoritesEntry, FavoritesMiddle, FavoritesExit: string;
   StyleName: string;
 begin
-  OptionsLocked := False;
   if (cbxAuthMetod.ItemIndex = 1) and (CheckEditString(edControlPassword.Text, '', True, lbControlPassword.Caption, edControlPassword) <> '') then
     Exit;
-  if (cbxServerMode.ItemIndex > 0) and (CheckEditString(edNickname.Text, '', True, lbNickname.Caption, edNickname) <> '') then
+  if (cbxServerMode.ItemIndex > SERVER_MODE_NONE) and (CheckEditString(edNickname.Text, '', True, lbNickname.Caption, edNickname) <> '') then
     Exit;
   if not CheckVanguards(AutoResolveErrors) then
     Exit;
@@ -7393,6 +7595,8 @@ begin
 
     CheckCachedFiles;
     CheckStatusControls;
+
+    OptionsLocked := False;
     EnableOptionButtons(False);
     if ConsensusUpdated then
       LoadConsensus
@@ -7434,8 +7638,8 @@ procedure TTcp.CheckCachedFiles;
 begin
   if ConnectState = 0 then
   begin
-    if ((cbxServerMode.ItemIndex = 0) and not cbUseBridges.checked) or
-       ((cbxServerMode.ItemIndex > 0) and not cbDirCache.Checked)  then
+    if ((cbxServerMode.ItemIndex = SERVER_MODE_NONE) and not cbUseBridges.checked) or
+       ((cbxServerMode.ItemIndex > SERVER_MODE_NONE) and not cbDirCache.Checked)  then
     begin
       RenameFile(UserDir + 'cached-consensus', UserDir + 'cached-consensus.tmp');
       RenameFile(UserDir + 'cached-descriptors', UserDir + 'cached-descriptors.tmp');
@@ -8238,7 +8442,10 @@ begin
         if ImmediateApplyOptions and not OptionsChanged then
           ApplyOptions(True)
         else
+        begin
           EnableOptionButtons;
+          CountTotalBridges;
+        end;
         ShowBalloon(Format(TransStr('364'), [ParseStr[0]]));
       end;
     end
@@ -8622,8 +8829,7 @@ end;
 
 procedure TTcp.mnRoutersPopup(Sender: TObject);
 var
-  State, ClearState, ActionState, TypeState, NotStarting: Boolean;
-
+  State, ClearState, ActionState, TypeState, NotStarting, FindPorts: Boolean;
   Router: TRouterInfo;
   RouterID: string;
 begin
@@ -8683,10 +8889,17 @@ begin
       miRtSelectAsBridgeIPv6.Hint := miRtCopyBridgeIPv6.Hint;
       miRtSelectAsBridgeIPv6.Visible := miRtCopyBridgeIPv6.Caption <> '';
 
-      miRtSelectAsBridge.Visible := (cbxServerMode.ItemIndex = 0) and
+      if ReachablePortsExists then
+      begin
+        FindPorts := PortsDic.ContainsKey(Router.OrPort);
+        PortsDic.Clear;
+      end
+      else
+        FindPorts := True;
+      miRtSelectAsBridge.Visible := (cbxServerMode.ItemIndex = SERVER_MODE_NONE) and
         (sgRouters.Cells[ROUTER_EXCLUDE_NODES, sgRouters.SelRow] <> EXCLUDE_CHAR) and
         ((rfBridge in Router.Flags) or (rfGuard in Router.Flags)) and
-        ((Router.Params and ROUTER_ALIVE <> 0) or not miDisableSelectionUnSuitableAsBridge.Checked);
+        (((Router.Params and ROUTER_ALIVE <> 0) and FindPorts) or not miDisableSelectionUnSuitableAsBridge.Checked);
       miRtDisableBridges.Visible := cbUseBridges.Checked;
     end;
     InsertNodesMenu(miRtAddToNodesList, RouterID, False);
@@ -8862,7 +9075,7 @@ var
   IsBridgeEdit, IsUserBridges, State: Boolean;
 begin
   IsBridgeEdit := Screen.ActiveControl = meBridges;
-  IsUserBridges := IsBridgeEdit and IsBridgeEdit and (cbxBridgesType.ItemIndex = BRIDGES_TYPE_USER) and (meBridges.Lines.Count > 0);
+  IsUserBridges := IsBridgeEdit and (cbxBridgesType.ItemIndex = BRIDGES_TYPE_USER) and (meBridges.Lines.Count > 0);
   State := IsUserBridges and not tmScanner.Enabled;
 
   miGetBridges.Visible := IsBridgeEdit;
@@ -8875,6 +9088,7 @@ begin
   miClearBridgesNotAlive.Enabled := State and cbEnableDetectAliveNodes.Checked;
   miClearBridgesCached.Enabled := State;
   miClearBridgesNonCached.Enabled := State;
+  miClearBridgesUnsuitable.Enabled := State;
 
   EditMenuEnableCheck(miCopy, emCopy);
   EditMenuEnableCheck(miCut, emCut);
@@ -8913,7 +9127,7 @@ begin
     TLabel(Sender).Cursor := crHandPoint
   else
     TLabel(Sender).Cursor := crDefault;
-  if (cbxServerMode.ItemIndex > 0) and (TLabel(Sender).Cursor = crHandPoint) then
+  if (cbxServerMode.ItemIndex > SERVER_MODE_NONE) and (TLabel(Sender).Cursor = crHandPoint) then
     mnServerInfo.AutoPopup := True
   else
     mnServerInfo.AutoPopup := False;
@@ -9492,7 +9706,7 @@ begin
     meExitPolicy.Text := StringReplace(DEFAULT_CUSTOM_EXIT_POLICY, ',', BR, [rfReplaceAll]);
     meExitPolicy.Enabled := False;
   end;
-  if cbxServerMode.ItemIndex > 0 then
+  if cbxServerMode.ItemIndex > SERVER_MODE_NONE then
   begin
     SetTorConfig('Nickname', edNickname.Text);
     edContactInfo.Text := Trim(edContactInfo.Text);
@@ -9529,7 +9743,7 @@ begin
       SetTorConfig('MaxMemInQueues', IntToStr(udMaxMemInQueues.Position) + ' mb');
     if cbUseNumCPUs.Checked then
       SetTorConfig('NumCPUs', IntToStr(udNumCPUs.Position));
-    if cbxServerMode.ItemIndex = 2 then
+    if cbxServerMode.ItemIndex = SERVER_MODE_EXIT then
     begin
       if cbListenIPv6.Checked and cbIPv6Exit.Checked then
         SetTorConfig('IPv6Exit', '1')
@@ -9540,18 +9754,18 @@ begin
         2: SetTorConfig('ExitPolicy', ExitPolicy);
       end;
     end;
-    if cbxServerMode.ItemIndex = 3 then
+    if cbxServerMode.ItemIndex = SERVER_MODE_BRIDGE then
     begin
       SetTorConfig('BridgeRelay', '1');
       SetTorConfig('BridgeDistribution', BridgeDistributions[cbxBridgeDistribution.ItemIndex]);
 
     end;
-    if cbxServerMode.ItemIndex in [1, 3] then
+    if cbxServerMode.ItemIndex in [SERVER_MODE_RELAY, SERVER_MODE_BRIDGE] then
       SetTorConfig('ExitPolicy', 'reject *:*');
 
     if MyFamily <> '' then
     begin
-      if cbUseMyFamily.Checked and (cbxServerMode.ItemIndex <> 3) then
+      if cbUseMyFamily.Checked and (cbxServerMode.ItemIndex <> SERVER_MODE_BRIDGE) then
         SetTorConfig('MyFamily', MyFamily)
     end
     else
@@ -9615,7 +9829,7 @@ begin
   DeleteTorConfig('CircuitPadding');
   DeleteTorConfig('ReducedCircuitPadding');
 
-  if cbxServerMode.ItemIndex = 0 then
+  if cbxServerMode.ItemIndex = SERVER_MODE_NONE then
   begin
     case cbxConnectionPadding.ItemIndex of
       0: SetTorConfig('ConnectionPadding', 'auto');
@@ -9819,8 +10033,7 @@ end;
 procedure TTcp.tmScannerTimer(Sender: TObject);
 var
   ls: TStringList;
-  i, j: Integer;
-  PortsData: ArrOfStr;
+  i: Integer;
   IpStr, PortStr, SocketStr: string;
   GeoIpInfo: TGeoIpInfo;
   ini: TMemIniFile;
@@ -9847,20 +10060,12 @@ begin
               begin
                 IpStr := GetAddressFromSocket(SocketStr);
                 PortStr := IntToStr(GetPortFromSocket(SocketStr));
+                if IpInRanges(IpStr, DocRanges) then
+                  Continue;
                 if GeoIpDic.TryGetValue(IpStr, GeoIpInfo) then
                 begin
-                  PortsData := Explode('|', GeoIpInfo.ports);
-                  for j := 0 to Length(PortsData) - 1 do
-                  begin
-                    if Pos(PortStr + ':', PortsData[j]) = 1 then
-                    begin
-                      if SeparateRight(PortsData[j], ':') <> '1' then
-                      begin
-                        ls.Delete(i);
-                        Break;
-                      end;
-                    end;
-                  end;
+                  if GetPortsValue(GeoIpInfo.ports, PortStr) = -1 then
+                    ls.Delete(i);
                   if (GeoIpInfo.cc = DEFAULT_COUNTRY_ID) and (GeoIpInfo.ping = 0) then
                     GeoIpDic.Remove(IpStr);
                 end;
@@ -10104,6 +10309,8 @@ var
   RangeItem: TPair<string, TIPv4Range>;
 begin
   Result := '';
+  if IpStr = '' then
+    Exit;
   if RangesDic.Count > 0 then
   begin
     for RangeItem in RangesDic do
@@ -11081,6 +11288,12 @@ begin
   ResetFocus;
 end;
 
+procedure TTcp.cbExcludeUnsuitableBridgesClick(Sender: TObject);
+begin
+  EnableOptionButtons;
+  CountTotalBridges;
+end;
+
 procedure TTcp.ServerAddressEnable(State: Boolean);
 begin
   edAddress.Enabled := State;
@@ -11109,7 +11322,7 @@ end;
 procedure TTcp.cbDirCacheMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
-  if (Button = mbLeft) and (cbxServerMode.ItemIndex in [1,2]) and cbDirCache.Checked then
+  if (Button = mbLeft) and (cbxServerMode.ItemIndex in [SERVER_MODE_RELAY, SERVER_MODE_EXIT]) and cbDirCache.Checked then
   begin
     if ShowMsg(TransStr('204'), '', mtWarning, True) then
     begin
@@ -11283,10 +11496,30 @@ begin
   ChangeHsTable(2);
 end;
 
+procedure TTcp.CountTotalBridges(ConfigUpdating: Boolean = False);
+var
+  NumStr: string;
+  BridgesCount: Integer;
+begin
+  BridgesCount := meBridges.Lines.Count;
+  if cbExcludeUnsuitableBridges.Checked then
+  begin
+    if OptionsChanged and not ConfigUpdating then
+      NumStr := INFINITY_CHAR
+    else
+      NumStr := IntToStr(SuitableBridgesCount);
+    lbTotalBridges.Caption := Format(TransStr('632'), [NumStr, BridgesCount]);
+  end
+  else
+    lbTotalBridges.Caption := TransStr('203') + ': ' + IntToStr(BridgesCount);
+end;
+
 procedure TTcp.meBridgesChange(Sender: TObject);
 begin
-  lbTotalBridges.Caption := TransStr('203') + ': ' + IntToStr(meBridges.Lines.Count);
+  if not meBridges.Focused and (CurrentScanPurpose <> spUserBridges) and (ConnectState <> 1) then
+    Exit;
   EnableOptionButtons;
+  CountTotalBridges;
 end;
 
 procedure TTcp.meLogMouseDown(Sender: TObject; Button: TMouseButton;
@@ -11314,7 +11547,7 @@ begin
     IntToStr(sgCircuits.SortType) + ',' + IntToStr(sgCircuits.SortCol) + ',' +
     IntToStr(sgStreams.SortType) + ',' + IntToStr(sgStreams.SortCol) + ',' +
     IntToStr(sgStreamsInfo.SortType) + ',' + IntToStr(sgStreamsInfo.SortCol)
-    );
+  );
 end;
 
 procedure TTcp.GridSort(aSg: TStringGrid);
@@ -11477,6 +11710,8 @@ begin
   edReachableAddresses.Enabled := State;
   lbReachableAddresses.Enabled := State;
   EnableOptionButtons;
+  if cbUseReachableAddresses.Focused then
+    CountTotalBridges;
 end;
 
 procedure TTcp.cbUseRelayBandwidthClick(Sender: TObject);
@@ -11568,10 +11803,10 @@ begin
   State := cbUseBridges.Checked;
   PreferredState := State and cbUsePreferredBridge.Checked;
   BuiltinState := State and (cbxBridgesType.ItemIndex = BRIDGES_TYPE_BUILTIN) and (cbxBridgesList.Items.Count > 0);
-
   edPreferredBridge.Enabled := PreferredState;
   cbxBridgesType.Enabled := State;
   cbxBridgesList.Enabled :=  BuiltinState;
+  cbExcludeUnsuitableBridges.Enabled := State;
   cbUsePreferredBridge.Enabled := State;
   meBridges.Enabled := BuiltinState or (State and (cbxBridgesType.ItemIndex = BRIDGES_TYPE_USER));
   meBridges.ReadOnly := cbxBridgesType.ItemIndex = BRIDGES_TYPE_BUILTIN;
@@ -11579,7 +11814,6 @@ begin
   lbBridgesType.Enabled := State;
   lbBridgesList.Enabled := BuiltinState;
   lbTotalBridges.Enabled := State;
-  lbTotalBridges.Caption := TransStr('203') + ': ' + IntToStr(meBridges.Lines.Count);
   lbPreferredBridge.Enabled := PreferredState;
   if not PreferredState then
     LastPreferredBridgeHash := '';
@@ -11610,7 +11844,7 @@ begin
   end
   else
   begin
-    if cbxServerMode.ItemIndex > 0 then
+    if cbxServerMode.ItemIndex > SERVER_MODE_NONE then
       cbDirCache.Enabled := True
     else
       cbDirCache.Enabled := False;
@@ -11753,7 +11987,7 @@ end;
 
 procedure TTcp.cbListenIPv6Click(Sender: TObject);
 begin
-  if cbListenIPv6.Checked and (cbxServerMode.ItemIndex = 2) then
+  if cbListenIPv6.Checked and (cbxServerMode.ItemIndex = SERVER_MODE_EXIT) then
     cbIPv6Exit.Enabled := True
   else
     cbIPv6Exit.Enabled := False;
@@ -12080,6 +12314,8 @@ begin
   ShowRouters;
   FilterUpdated := True;
   UpdateOptionsAfterRoutersUpdate;
+  if FavoritesID = EXCLUDE_ID then
+    CountTotalBridges;
 end;
 
 procedure TTcp.LoadNodesList(UseDic: Boolean = True; NodesStr: string = '');
@@ -12145,7 +12381,7 @@ var
 begin
   if cbxServerMode.HelpContext = 1 then
     Exit;
-  State := cbxServerMode.ItemIndex <> 0;
+  State := cbxServerMode.ItemIndex <> SERVER_MODE_NONE;
   edNickname.Enabled := State;
   edContactInfo.Enabled := State;
   edORPort.Enabled := State;
@@ -12170,7 +12406,7 @@ begin
       NumCPUsEnable(True);
     if cbUseAddress.Checked then
       ServerAddressEnable(True);
-    if cbxServerMode.ItemIndex <> 3 then
+    if cbxServerMode.ItemIndex <> SERVER_MODE_BRIDGE then
     begin
       MyFamilyEnable(cbUseMyFamily.Checked);
       UseDirPortEnable(cbUseDirPort.Checked);
@@ -12207,7 +12443,7 @@ begin
     lbTotalMyFamily.Enabled := False;
   end;
 
-  if cbxServerMode.ItemIndex = 2 then
+  if cbxServerMode.ItemIndex = SERVER_MODE_EXIT then
   begin
     if cbListenIPv6.Checked then
       cbIPv6Exit.Enabled := True;
@@ -12223,7 +12459,7 @@ begin
     lbExitPolicy.Enabled := False;
   end;
 
-  if cbxServerMode.ItemIndex = 3 then
+  if cbxServerMode.ItemIndex = SERVER_MODE_BRIDGE then
   begin
     cbUseDirPort.Checked := False;
     cbUseDirPort.Enabled := False;
@@ -12240,7 +12476,7 @@ begin
   begin
     cbxBridgeType.Enabled := False;
     cbxBridgeDistribution.Enabled := False;
-    if cbxServerMode.ItemIndex > 0 then
+    if cbxServerMode.ItemIndex > SERVER_MODE_NONE then
       cbUseDirPort.Enabled := True;
     TransportPortEnable(False);
     lbBridgeType.Enabled := False;
@@ -12482,6 +12718,17 @@ end;
 procedure TTcp.edPreferredBridgeExit(Sender: TObject);
 begin
   UpdateRoutersAfterBridgesUpdate;
+end;
+
+procedure TTcp.edReachableAddressesChange(Sender: TObject);
+begin
+  if TEdit(Sender).Focused then
+  begin
+    if CtrlKeyPressed('A') then
+      Exit;
+    EnableOptionButtons;
+    CountTotalBridges;
+  end;
 end;
 
 procedure TTcp.edReachableAddressesKeyPress(Sender: TObject;
@@ -13860,20 +14107,30 @@ begin
   Result := True;
 end;
 
-procedure TTcp.CheckPrefferedBridgeExclude(RouterID: string);
+procedure TTcp.CheckPrefferedBridgeExclude(RouterID: string; IpStr: string = ''; CodeStr: string = '');
 var
   RouterInfo: TRouterInfo;
+
+  procedure UpdateControls;
+  begin
+    cbUsePreferredBridge.Checked := False;
+    BridgesCheckControls;
+  end;
+
 begin
   if cbUsePreferredBridge.Checked then
   begin
     if RoutersDic.TryGetValue(RouterID, RouterInfo) then
     begin
-      if RouterInNodesList(RouterID, RouterInfo, ntExclude) then
+      if RouterInNodesList(RouterID, RouterInfo.IPv4, ntExclude) then
+        UpdateControls;
+    end
+    else
+    begin
+      if (IpStr <> '') or (CodeStr <> '') then
       begin
-        cbUseBridges.Checked := False;
-        cbUsePreferredBridge.Checked := False;
-        edPreferredBridge.Text := '';
-        BridgesCheckControls;
+        if RouterInNodesList(RouterID, IpStr, ntExclude, False, CodeStr) then
+          UpdateControls;
       end;
     end;
   end;
@@ -13899,7 +14156,7 @@ var
       begin
         if not CheckRouterFlags(NodeTypeID, RouterInfo) then
           Exit;
-        if RouterInNodesList(RouterID, RouterInfo, ntExclude) then
+        if RouterInNodesList(RouterID, RouterInfo.IPv4, ntExclude) then
           Exit;
       end;
     end;
@@ -13989,7 +14246,11 @@ begin
     if StrToBool(TMenuItem(Sender).Hint) then
       ApplyOptions
     else
+    begin
       EnableOptionButtons;
+      if NodeTypeID = EXCLUDE_ID then
+        CountTotalBridges;
+    end;
   end;
 end;
 
@@ -14040,7 +14301,10 @@ begin
     if Boolean(TMenuItem(Sender).Tag) then
       ApplyOptions
     else
+    begin
       EnableOptionButtons;
+      CountTotalBridges;
+    end;
   end;
 end;
 
@@ -14140,12 +14404,11 @@ end;
 procedure TTcp.RoutersAutoSelectClick(Sender: TObject);
 var
   Router: Tpair<string, TRouterInfo>;
-  ParseStr: ArrOfStr;
   cdWeight, cdPing, CheckEntryPorts: Boolean;
   GeoIpInfo: TGeoIpInfo;
   NodeItem: TPair<string, TNodeTypes>;
   Flags: TRouterFlags;
-  PriorityType, PingData, PingSum, PingCount, PingAvg, i: Integer;
+  PriorityType, PingData, PingSum, PingCount, PingAvg: Integer;
   FilterNodeTypes, AutoSelNodeTypes: TNodeTypes;
   FilterInfo: TFilterInfo;
   CountryID: Byte;
@@ -14237,6 +14500,7 @@ begin
   if (RoutersDic.Count = 0) or (InfoStage > 0) or Assigned(Consensus) or Assigned(Descriptors) or tmScanner.Enabled then
     Exit;
 
+  CheckEntryPorts := ReachablePortsExists;
   EntryNodes := TStringList.Create;
   MiddleNodes := TStringList.Create;
   ExitNodes := TStringList.Create;
@@ -14252,18 +14516,6 @@ begin
   PingAvg := 0;
 
   try
-    if cbUseReachableAddresses.Checked then
-    begin
-      PortsDic.Clear;
-      ParseStr := Explode(',', StringReplace(edReachableAddresses.Text, ' ', '', [rfReplaceAll]));
-      for i := 0 to Length(ParseStr) - 1 do
-      begin
-        if ValidInt(ParseStr[i], 1, 65535) then
-          PortsDic.AddOrSetValue(StrToInt(ParseStr[i]), 0);
-      end;
-    end;
-    CheckEntryPorts := PortsDic.Count > 0;
-
     AutoSelNodeTypes := [];
     if miAutoSelEntryEnabled.Checked then
       Include(AutoSelNodeTypes, ntEntry);
@@ -14301,7 +14553,7 @@ begin
 
       cdWeight := Router.Value.Bandwidth >= udAutoSelMinWeight.Position * 1024;
 
-      if cdWeight and cdPing and (rfRelay in Flags) and not RouterInNodesList(Router.Key, Router.Value, ntExclude) then
+      if cdWeight and cdPing and (rfRelay in Flags) and not RouterInNodesList(Router.Key, Router.Value.IPv4, ntExclude) then
       begin
         if cbAutoSelFilterCountriesOnly.Checked and (PingNodesCount > 0) then
         begin
@@ -14397,7 +14649,7 @@ begin
     MiddleNodes.Free;
     ExitNodes.Free;
     UniqueList.Free;
-    if PortsDic.Count > 0 then
+    if CheckEntryPorts then
       PortsDic.Clear;
   end;
 
@@ -14701,6 +14953,7 @@ begin
   DefaultsDic.AddOrSetValue('ReducedConnectionPadding', '0');
   DefaultsDic.AddOrSetValue('CircuitPadding', '1');
   DefaultsDic.AddOrSetValue('ReducedCircuitPadding', '0');
+  DefaultsDic.AddOrSetValue('DisableNetwork', '0');
 
   udHsMaxStreams.ResetValue := udHsMaxStreams.Position;
   udHsNumIntroductionPoints.ResetValue := udHsNumIntroductionPoints.Position;
@@ -15570,11 +15823,10 @@ var
   Item: TPair<string, TBridgeInfo>;
   GeoIpInfo: TGeoIpInfo;
   RouterInfo: TRouterInfo;
-  PortsData: ArrOfStr;
   PreferredBridge: TBridge;
   LastPreferredBridge: string;
   ClearAll, Deleted: Boolean;
-  Search, i: Integer;
+  i: Integer;
   ls: TStringList;
 begin
   if not CheckCacheOpConfirmation(TMenuItem(Sender).Caption) then
@@ -15609,21 +15861,8 @@ begin
         begin
           if GeoIpDic.TryGetValue(Item.Value.Router.IPv4, GeoIpInfo) then
           begin
-            Search := -1;
-            PortsData := Explode('|', GeoIpInfo.ports);
-            for i := 0 to Length(PortsData) - 1 do
-            begin
-              if Pos(IntToStr(Item.Value.Router.OrPort) + ':', PortsData[i]) = 1 then
-              begin
-                Search := i;
-                Break;
-              end;
-            end;
-            if Search <> -1 then
-            begin
-              if SeparateRight(PortsData[Search], ':') <> '1' then
-                ls.Append(Item.Key);
-            end;
+            if GetPortsValue(GeoIpInfo.ports, IntToStr(Item.Value.Router.OrPort)) = -1 then
+              ls.Append(Item.Key);
           end;
         end;
       end;
@@ -15673,6 +15912,37 @@ end;
 procedure TTcp.miClearBridgesNotAliveClick(Sender: TObject);
 begin
   ScanNetwork(stAlive, spUserBridges);
+end;
+
+procedure TTcp.miClearBridgesUnsuitableClick(Sender: TObject);
+var
+  BridgesData, lastPrefferedBridge: string;
+  LastBridgesCount: Integer;
+  UpdateControls: Boolean;
+begin
+  UpdateControls := False;
+  LastBridgesCount := meBridges.Lines.Count;
+  lastPrefferedBridge := Trim(edPreferredBridge.Text);
+
+  ExcludeUnSuitableBridges(BridgesData, BR, btPrefer);
+  if (SuitableBridgesCount = 0) and (lastPrefferedBridge <> '') then
+  begin
+    cbUsePreferredBridge.Checked := False;
+    edPreferredBridge.Text := '';
+    BridgesUpdated := True;
+  end;
+
+  ExcludeUnSuitableBridges(BridgesData, BR, btList, True);
+  if LastBridgesCount <> SuitableBridgesCount then
+    meBridges.Text := BridgesData;
+
+  if BridgesUpdated or UpdateControls then
+  begin
+    EnableOptionButtons;
+    BridgesCheckControls;
+    CountTotalBridges;
+    UpdateRoutersAfterBridgesUpdate;
+  end;
 end;
 
 procedure TTcp.miDestroyCircuitClick(Sender: TObject);
