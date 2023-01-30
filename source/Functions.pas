@@ -1746,7 +1746,7 @@ end;
 procedure DeleteDuplicatesFromList(List: TStringList; ListType: TListType = ltNoCheck);
 var
   ls: TDictionary<string, Byte>;
-  HashStr: string;
+  SocketStr: string;
   i: Integer;
 
   procedure UpdateList(Str: string);
@@ -1764,8 +1764,8 @@ begin
     begin
       for i := List.Count - 1 downto 0 do
       begin
-        if TryGetDataFromStr(List[i], ltHash, HashStr) then
-          UpdateList(HashStr)
+        if TryGetDataFromStr(List[i], ltSocket, SocketStr) then
+          UpdateList(SocketStr)
         else
           UpdateList(List[i]);
       end;

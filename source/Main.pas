@@ -971,6 +971,12 @@ type
     cbExcludeUnsuitableBridges: TCheckBox;
     miDelimiter72: TMenuItem;
     miClearBridgesUnsuitable: TMenuItem;
+    cbUseBridgesLimit: TCheckBox;
+    lbBridgesLimit: TLabel;
+    edBridgesLimit: TEdit;
+    udBridgesLimit: TUpDown;
+    lbBridgesPriority: TLabel;
+    cbxBridgesPriority: TComboBox;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1093,6 +1099,7 @@ type
     procedure SaveProxyData(ini: TMemIniFile);
     procedure SaveTransportsData(ini: TMemIniFile; ReloadServerTransport: Boolean);
     procedure SaveBridgesData(ini: TMemIniFile);
+    procedure LimitBridgesList(var BridgesData: string; Separator: string);
     procedure ExcludeUnSuitableBridges(out BridgesData: string; Separator: string; BridgeType: TBridgeType; DeleteUnsuitable: Boolean = False);
     procedure SetButtonGlyph(ls: TImageList; Index: Integer; Button: TSpeedButton);
     procedure LoadStaticArray(Data: array of TStaticPair);
@@ -1498,6 +1505,7 @@ type
     procedure cbExcludeUnsuitableBridgesClick(Sender: TObject);
     procedure edReachableAddressesChange(Sender: TObject);
     procedure miClearBridgesUnsuitableClick(Sender: TObject);
+    procedure cbUseBridgesLimitClick(Sender: TObject);
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
     procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -2714,7 +2722,6 @@ begin
         Tcp.LoadRoutersCountries;
         Tcp.ShowFilter;
         Tcp.ShowRouters;
-        Tcp.tmConsensus.Enabled := True;
         if (ConnectState = 2) and (Circuit = '') then
           Tcp.SendDataThroughProxy;
 
@@ -4634,6 +4641,7 @@ begin
         LockStreamsInfo := False;
         tmTraffic.Enabled := True;
         tmCircuits.Enabled := True;
+        tmConsensus.Enabled := True;
         UpdateConnectControls(ConnectState);
         if UsedProxyType <> ptNone then
         begin
@@ -5928,6 +5936,95 @@ begin
   end;
 end;
 
+procedure TTcp.LimitBridgesList(var BridgesData: string; Separator: string);
+var
+  ParseStr: ArrOfStr;
+  i, PriorityType, Ping, Bandwidth, Max, Count: Integer;
+  SortCompare: TStringListSortCompare;
+  GeoIpInfo: TGeoIpInfo;
+  Bridge: TBridge;
+  BridgeInfo: TBridgeInfo;
+  IpStr: string;
+  ls: TStringList;
+begin
+  if BridgesData = '' then
+    Exit;
+  PriorityType := cbxBridgesPriority.ItemIndex;
+  if (PingNodesCount = 0) and (PriorityType = PRIORITY_PING) then
+    PriorityType := PRIORITY_BANDWIDTH;
+
+  ParseStr := Explode(Separator, BridgesData);
+  ls := TStringList.Create;
+  try
+    for i := 0 to Length(ParseStr) - 1 do
+    begin
+      if TryParseBridge(ParseStr[i], Bridge) then
+      begin
+        case PriorityType of
+          PRIORITY_BANDWIDTH:
+          begin
+            if BridgesDic.TryGetValue(Bridge.Hash, BridgeInfo) then
+              Bandwidth := BridgeInfo.Router.Bandwidth
+            else
+              Bandwidth := 0;
+            ls.AddObject(ParseStr[i], TObject(Bandwidth));
+          end;
+          PRIORITY_PING:
+          begin
+            Ping := MAXWORD;
+            if PingNodesCount > 0 then
+            begin
+              if BridgesDic.TryGetValue(Bridge.Hash, BridgeInfo) then
+                IpStr := BridgeInfo.Router.IPv4
+              else
+                IpStr := Bridge.Ip;
+              
+              if GeoIpDic.TryGetValue(IpStr, GeoIpInfo) then
+              begin
+                case GeoIpInfo.ping of
+                  -1: Ping := MAXINT;
+                  0: Ping := MAXWORD;
+                  else
+                    Ping := GeoIpInfo.ping;
+                end;
+              end
+            end;
+            ls.AddObject(ParseStr[i], TObject(Ping));
+          end;
+          else
+            ls.AddObject(ParseStr[i], TObject(Random(MAXWORD)));
+        end;
+      end;
+    end;
+
+    case PriorityType of
+      PRIORITY_PING: SortCompare := CompIntObjectAsc
+      else
+        SortCompare := CompIntObjectDesc;
+    end;
+    if PriorityType <> PRIORITY_BY_ORDER then
+      ls.CustomSort(SortCompare);
+
+    Max := udBridgesLimit.Position;
+    Count := 0;
+    BridgesData := '';
+
+    for i := 0 to ls.Count - 1 do
+    begin
+      if Count < Max then
+      begin
+        BridgesData := BridgesData + Separator + ls[i];
+        Inc(Count);
+      end
+      else
+        Break;
+    end;
+    Delete(BridgesData, 1, Length(Separator));
+  finally
+    ls.Free;
+  end;
+end;
+
 procedure TTcp.SaveBridgesData(ini: TMemIniFile);
 var
   Bridges, PreferredBridge: string;
@@ -5957,6 +6054,9 @@ begin
   if cbExcludeUnsuitableBridges.Checked then
     ExcludeUnSuitableBridges(Bridges, '|', btList);
 
+  if cbUseBridgesLimit.Checked then
+    LimitBridgesList(Bridges, '|');
+
   if (Bridges = '') and ((cbUsePreferredBridge.Checked and (PreferredBridge = '')) or not cbUsePreferredBridge.Checked) then
     cbUseBridges.Checked := False;
 
@@ -5983,6 +6083,9 @@ begin
   SetSettings('Network', cbExcludeUnsuitableBridges, ini);
   SetSettings('Network', cbxBridgesList, ini, False);
   SetSettings('Network', cbxBridgesType, ini);
+  SetSettings('Network', cbUseBridgesLimit, ini);
+  SetSettings('Network', cbxBridgesPriority, ini);
+  SetSettings('Network', udBridgesLimit, ini);
   SetSettings('Network', edPreferredBridge, ini);
   BridgesCheckControls;
   CountTotalBridges(True);
@@ -6514,6 +6617,9 @@ begin
     GetSettings('Network', cbUsePreferredBridge, ini);
     GetSettings('Network', cbxBridgesType, ini);
     GetSettings('Network', cbExcludeUnsuitableBridges, ini);
+    GetSettings('Network', cbUseBridgesLimit, ini);
+    GetSettings('Network', udBridgesLimit, ini);
+    GetSettings('Network', cbxBridgesPriority, ini);
     GetSettings('Network', edPreferredBridge, ini);
     LoadBuiltinBridges(inidef, cbxBridgesType.ItemIndex = BRIDGES_TYPE_BUILTIN, True, GetSettings('Network', 'BridgesList', '', ini));
     if cbxBridgesType.ItemIndex = BRIDGES_TYPE_USER then
@@ -11796,24 +11902,31 @@ end;
 
 procedure TTcp.BridgesCheckControls;
 var
-  State, BuiltinState, PreferredState: Boolean;
+  State, BuiltinState, LimitState, PreferredState: Boolean;
 begin
   if cbUseBridges.HelpContext = 1 then
     Exit;
   State := cbUseBridges.Checked;
   PreferredState := State and cbUsePreferredBridge.Checked;
+  LimitState := State and cbUseBridgesLimit.Checked;
   BuiltinState := State and (cbxBridgesType.ItemIndex = BRIDGES_TYPE_BUILTIN) and (cbxBridgesList.Items.Count > 0);
+  edBridgesLimit.Enabled := LimitState;
   edPreferredBridge.Enabled := PreferredState;
   cbxBridgesType.Enabled := State;
-  cbxBridgesList.Enabled :=  BuiltinState;
+  cbxBridgesList.Enabled := BuiltinState;
+  cbxBridgesPriority.Enabled := LimitState;
   cbExcludeUnsuitableBridges.Enabled := State;
+  cbUseBridgesLimit.Enabled := State;
   cbUsePreferredBridge.Enabled := State;
+  udBridgesLimit.Enabled := LimitState;
   meBridges.Enabled := BuiltinState or (State and (cbxBridgesType.ItemIndex = BRIDGES_TYPE_USER));
   meBridges.ReadOnly := cbxBridgesType.ItemIndex = BRIDGES_TYPE_BUILTIN;
   btnFindPreferredBridge.Enabled := PreferredState and PreferredBridgeFound;
   lbBridgesType.Enabled := State;
   lbBridgesList.Enabled := BuiltinState;
   lbTotalBridges.Enabled := State;
+  lbBridgesLimit.Enabled := LimitState;
+  lbBridgesPriority.Enabled := LimitState;
   lbPreferredBridge.Enabled := PreferredState;
   if not PreferredState then
     LastPreferredBridgeHash := '';
@@ -11831,6 +11944,14 @@ end;
 procedure TTcp.cbUseBridgesExit(Sender: TObject);
 begin
   UpdateRoutersAfterBridgesUpdate;
+end;
+
+procedure TTcp.cbUseBridgesLimitClick(Sender: TObject);
+begin
+  if not cbUseBridgesLimit.Focused then
+    Exit;
+  BridgesCheckControls;
+  EnableOptionButtons;
 end;
 
 procedure TTcp.UseDirPortEnable(State: Boolean);

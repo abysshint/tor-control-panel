@@ -387,6 +387,7 @@ begin
     LoadStr('444', 'Сетевой сканер');
     LoadStr('459', 'мсeк.|миллисекунда|миллисекунды|миллисекунд');
     LoadStr('470', 'шт.');
+    LoadStr('471', 'Приоритет');
     LoadStr('477', 'ч.|час|часа|часов');
     LoadStr('495', 'Остановить сканирование');
     LoadStr('515', 'Выделять все ячейки в строке');
@@ -541,6 +542,10 @@ begin
     Tcp.btnFindPreferredBridge.Caption := TransStr('423');
     LoadList(Tcp.cbxBridgesType, '424', '"Встроенные","Пользовательские"');
     Tcp.cbExcludeUnsuitableBridges.Caption := Load('633', 'Исключать неподходящие мосты');
+    Tcp.cbUseBridgesLimit.Caption := Load('635', 'Ограничить количество используемых мостов');
+    Tcp.lbBridgesLimit.Caption := TransStr('175');
+    Tcp.lbBridgesPriority.Caption := TransStr('471');
+    LoadList(Tcp.cbxBridgesPriority, '636', '"Порядок в списке","Скорость канала","Пинг до моста","Случайный"');
 
     Tcp.lbFilterMode.Caption := Load('162', 'Режим');
     Tcp.lbFilterEntry.Caption := TransStr('288') + ': ' + IntToStr(Tcp.lbFilterEntry.Tag);
@@ -666,7 +671,7 @@ begin
     Tcp.lbCount3.Caption := TransStr('470');
     Tcp.lbSpeed5.Caption := Prefixes[2] + '/' + TransStr('180');
     Tcp.lbMiliseconds5.Caption := TranslateTime(0, TIME_MILLISECOND, False, True);
-    Tcp.lbAutoSelPriority.Caption := Load('471', 'Приоритет');
+    Tcp.lbAutoSelPriority.Caption := TransStr('471');
     LoadList(Tcp.cbxAutoSelPriority, '472', '"Сбалансированный","Вес в консенсусе","Пинг до узла","Случайный"');
     Tcp.cbAutoSelStableOnly.Caption := Load('473', 'Только стабильные');
     Tcp.cbAutoSelFilterCountriesOnly.Caption := Load('474', 'Только страны из фильтра');

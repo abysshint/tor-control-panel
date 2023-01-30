@@ -1032,7 +1032,7 @@ object Tcp: TTcp
     Top = 93
     Width = 754
     Height = 458
-    ActivePage = tsMain
+    ActivePage = tsNetwork
     DoubleBuffered = True
     Images = lsMain
     ParentDoubleBuffered = False
@@ -1688,7 +1688,7 @@ object Tcp: TTcp
       end
       object lbProxyAddress: TLabel
         Left = 117
-        Top = 81
+        Top = 78
         Width = 31
         Height = 13
         Alignment = taRightJustify
@@ -1698,7 +1698,7 @@ object Tcp: TTcp
       end
       object lbProxyUser: TLabel
         Left = 462
-        Top = 82
+        Top = 79
         Width = 30
         Height = 13
         Alignment = taRightJustify
@@ -1708,7 +1708,7 @@ object Tcp: TTcp
       end
       object lbProxyPort: TLabel
         Left = 366
-        Top = 82
+        Top = 79
         Width = 25
         Height = 13
         Alignment = taRightJustify
@@ -1717,8 +1717,8 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbProxyPassword: TLabel
-        Left = 603
-        Top = 82
+        Left = 604
+        Top = 79
         Width = 37
         Height = 13
         Alignment = taRightJustify
@@ -1728,7 +1728,7 @@ object Tcp: TTcp
       end
       object lbProxyType: TLabel
         Left = 28
-        Top = 82
+        Top = 79
         Width = 18
         Height = 13
         Alignment = taRightJustify
@@ -1738,7 +1738,7 @@ object Tcp: TTcp
       end
       object lbTotalBridges: TLabel
         Left = 699
-        Top = 133
+        Top = 126
         Width = 41
         Height = 13
         Alignment = taRightJustify
@@ -1748,7 +1748,7 @@ object Tcp: TTcp
       end
       object lbBridgesType: TLabel
         Left = 28
-        Top = 133
+        Top = 126
         Width = 18
         Height = 13
         Alignment = taRightJustify
@@ -1758,7 +1758,7 @@ object Tcp: TTcp
       end
       object lbBridgesList: TLabel
         Left = 186
-        Top = 134
+        Top = 126
         Width = 74
         Height = 13
         Alignment = taRightJustify
@@ -1782,6 +1782,26 @@ object Tcp: TTcp
         Height = 13
         Alignment = taRightJustify
         Caption = #1055#1072#1088#1072#1084#1077#1090#1088#1099' '#1074#1089#1090#1088#1086#1077#1085#1085#1099#1093' '#1087#1088#1086#1082#1089#1080
+        Transparent = True
+      end
+      object lbBridgesLimit: TLabel
+        Left = 28
+        Top = 353
+        Width = 49
+        Height = 13
+        Alignment = taRightJustify
+        Caption = #1052#1072#1082#1089#1080#1084#1091#1084
+        Enabled = False
+        Transparent = True
+      end
+      object lbBridgesPriority: TLabel
+        Left = 144
+        Top = 353
+        Width = 55
+        Height = 13
+        Alignment = taRightJustify
+        Caption = #1055#1088#1080#1086#1088#1080#1090#1077#1090
+        Enabled = False
         Transparent = True
       end
       object cbUseReachableAddresses: TCheckBox
@@ -1810,7 +1830,7 @@ object Tcp: TTcp
       end
       object cbUseProxy: TCheckBox
         Left = 10
-        Top = 58
+        Top = 53
         Width = 402
         Height = 17
         Caption = #1071' '#1080#1089#1087#1086#1083#1100#1079#1091#1102' '#1087#1088#1086#1082#1089#1080' '#1076#1083#1103' '#1087#1086#1076#1082#1083#1102#1095#1077#1085#1080#1103' '#1082' '#1048#1085#1090#1077#1088#1085#1077#1090#1091
@@ -1819,7 +1839,7 @@ object Tcp: TTcp
       end
       object edProxyAddress: TEdit
         Left = 153
-        Top = 79
+        Top = 76
         Width = 204
         Height = 21
         Enabled = False
@@ -1831,7 +1851,7 @@ object Tcp: TTcp
       end
       object edProxyUser: TEdit
         Left = 495
-        Top = 79
+        Top = 76
         Width = 97
         Height = 21
         Enabled = False
@@ -1842,8 +1862,8 @@ object Tcp: TTcp
         OnChange = EditChange
       end
       object edProxyPassword: TEdit
-        Left = 643
-        Top = 79
+        Left = 644
+        Top = 76
         Width = 97
         Height = 21
         Enabled = False
@@ -1856,7 +1876,7 @@ object Tcp: TTcp
       end
       object cbxProxyType: TComboBox
         Left = 49
-        Top = 79
+        Top = 76
         Width = 63
         Height = 21
         AutoDropDown = True
@@ -1875,7 +1895,7 @@ object Tcp: TTcp
       end
       object cbUseBridges: TCheckBox
         Left = 10
-        Top = 109
+        Top = 103
         Width = 313
         Height = 16
         Caption = #1048#1089#1087#1086#1083#1100#1079#1086#1074#1072#1090#1100' '#1084#1086#1089#1090#1099
@@ -1885,13 +1905,13 @@ object Tcp: TTcp
       end
       object meBridges: TMemo
         Left = 10
-        Top = 156
+        Top = 149
         Width = 730
-        Height = 213
+        Height = 176
         Enabled = False
         PopupMenu = EditMenu
         ScrollBars = ssVertical
-        TabOrder = 20
+        TabOrder = 21
         WordWrap = False
         OnChange = meBridgesChange
         OnExit = MemoExit
@@ -1915,7 +1935,7 @@ object Tcp: TTcp
       end
       object edProxyPort: TEdit
         Left = 394
-        Top = 79
+        Top = 76
         Width = 42
         Height = 21
         Enabled = False
@@ -1928,7 +1948,7 @@ object Tcp: TTcp
       end
       object udProxyPort: TUpDown
         Left = 436
-        Top = 79
+        Top = 76
         Width = 13
         Height = 21
         Associate = edProxyPort
@@ -1978,7 +1998,7 @@ object Tcp: TTcp
       end
       object cbxBridgesType: TComboBox
         Left = 49
-        Top = 129
+        Top = 123
         Width = 124
         Height = 21
         AutoDropDown = True
@@ -1998,7 +2018,7 @@ object Tcp: TTcp
       end
       object cbxBridgesList: TComboBox
         Left = 263
-        Top = 131
+        Top = 123
         Width = 120
         Height = 21
         AutoDropDown = True
@@ -2016,7 +2036,7 @@ object Tcp: TTcp
         Width = 313
         Height = 16
         Caption = #1047#1072#1076#1072#1090#1100' '#1087#1088#1077#1076#1087#1086#1095#1080#1090#1072#1077#1084#1099#1081' '#1084#1086#1089#1090' '#1074#1088#1091#1095#1085#1091#1102
-        TabOrder = 21
+        TabOrder = 26
         OnClick = cbUsePreferredBridgeClick
         OnExit = cbUsePreferredBridgeExit
       end
@@ -2028,7 +2048,7 @@ object Tcp: TTcp
         Enabled = False
         MaxLength = 255
         PopupMenu = EditMenu
-        TabOrder = 22
+        TabOrder = 27
         TextHint = #1069#1090#1072' '#1085#1072#1089#1090#1088#1086#1081#1082#1072' '#1087#1077#1088#1077#1086#1087#1088#1077#1076#1077#1083#1103#1077#1090' '#1074#1099#1073#1088#1072#1085#1085#1099#1081' '#1089#1087#1080#1089#1086#1082'  '#1084#1086#1089#1090#1086#1074
         OnChange = edPreferredBridgeChange
         OnExit = edPreferredBridgeExit
@@ -2042,7 +2062,7 @@ object Tcp: TTcp
         DoubleBuffered = True
         Enabled = False
         ParentDoubleBuffered = False
-        TabOrder = 23
+        TabOrder = 28
         OnClick = btnFindPreferredBridgeClick
       end
       object cbEnableHttp: TCheckBox
@@ -2101,15 +2121,75 @@ object Tcp: TTcp
       end
       object cbExcludeUnsuitableBridges: TCheckBox
         Left = 394
-        Top = 133
+        Top = 125
         Width = 220
         Height = 17
         Caption = #1048#1089#1082#1083#1102#1095#1072#1090#1100' '#1085#1077#1087#1086#1076#1093#1086#1076#1103#1097#1080#1077' '#1084#1086#1089#1090#1099
         Checked = True
         Enabled = False
         State = cbChecked
-        TabOrder = 24
+        TabOrder = 20
         OnClick = cbExcludeUnsuitableBridgesClick
+      end
+      object cbUseBridgesLimit: TCheckBox
+        Left = 10
+        Top = 331
+        Width = 300
+        Height = 14
+        Caption = #1054#1075#1088#1072#1085#1080#1095#1080#1090#1100' '#1082#1086#1083#1080#1095#1077#1089#1090#1074#1086' '#1080#1089#1087#1086#1083#1100#1079#1091#1077#1084#1099#1093' '#1084#1086#1089#1090#1086#1074
+        TabOrder = 22
+        OnClick = cbUseBridgesLimitClick
+        OnExit = cbUsePreferredBridgeExit
+      end
+      object edBridgesLimit: TEdit
+        Left = 80
+        Top = 350
+        Width = 42
+        Height = 21
+        HelpType = htKeyword
+        HelpContext = 2
+        Enabled = False
+        MaxLength = 5
+        NumbersOnly = True
+        PopupMenu = EditMenu
+        TabOrder = 23
+        Text = '12'
+        OnChange = EditChange
+      end
+      object udBridgesLimit: TUpDown
+        Tag = 2
+        Left = 122
+        Top = 350
+        Width = 13
+        Height = 21
+        Associate = edBridgesLimit
+        Enabled = False
+        Min = 1
+        Max = 65535
+        Position = 12
+        TabOrder = 24
+        Thousands = False
+        OnChanging = SpinChanging
+      end
+      object cbxBridgesPriority: TComboBox
+        Left = 201
+        Top = 350
+        Width = 120
+        Height = 21
+        AutoDropDown = True
+        Style = csDropDownList
+        DoubleBuffered = False
+        Enabled = False
+        ItemIndex = 0
+        ParentDoubleBuffered = False
+        TabOrder = 25
+        Text = #1055#1086#1088#1103#1076#1086#1082' '#1074' '#1089#1087#1080#1089#1082#1077
+        OnChange = OptionsChange
+        Items.Strings = (
+          #1055#1086#1088#1103#1076#1086#1082' '#1074' '#1089#1087#1080#1089#1082#1077
+          #1057#1082#1086#1088#1086#1089#1090#1100' '#1082#1072#1085#1072#1083#1072
+          #1055#1080#1085#1075' '#1076#1086' '#1084#1086#1089#1090#1072
+          #1057#1083#1091#1095#1072#1081#1085#1099#1081)
       end
     end
     object tsFilter: TTabSheet
@@ -4500,7 +4580,7 @@ object Tcp: TTcp
   end
   object btnApplyOptions: TButton
     Left = 602
-    Top = 529
+    Top = 528
     Width = 72
     Height = 19
     Caption = #1055#1088#1080#1084#1077#1085#1080#1090#1100
@@ -5407,15 +5487,15 @@ object Tcp: TTcp
       object miDelimiter56: TMenuItem
         Caption = '-'
       end
-      object miClearBridgesUnsuitable: TMenuItem
-        Caption = #1053#1077#1087#1086#1076#1093#1086#1076#1103#1097#1080#1077' '#1084#1086#1089#1090#1099
-        ImageIndex = 43
-        OnClick = miClearBridgesUnsuitableClick
-      end
       object miClearBridgesNotAlive: TMenuItem
         Caption = #1053#1077' '#1086#1090#1074#1077#1095#1072#1102#1097#1080#1077' '#1085#1072' '#1089#1086#1077#1076#1080#1085#1077#1085#1080#1103
         ImageIndex = 56
         OnClick = miClearBridgesNotAliveClick
+      end
+      object miClearBridgesUnsuitable: TMenuItem
+        Caption = #1053#1077#1087#1086#1076#1093#1086#1076#1103#1097#1080#1077' '#1084#1086#1089#1090#1099
+        ImageIndex = 43
+        OnClick = miClearBridgesUnsuitableClick
       end
       object miDelimiter72: TMenuItem
         Caption = '-'
