@@ -23,6 +23,13 @@ type
     Params: string;
   end;
 
+  TTarget = record
+    AddrType: TAddressType;
+    Hostname: string;
+    Port: string;
+    Hash: string;
+  end;
+
   TCharUpCaseTable = array [Char] of Char;
   TPing = class(TPINGSend)
   public
@@ -111,7 +118,9 @@ var
   function ValidSocket(SocketStr: string; AllowHostNames: Boolean = False): Byte;
   function ValidPolicy(PolicyStr: string): Boolean;
   function GetMsgCaption(Caption: string; MsgType: TMsgType): string;
+  function GetBridgeStrFromDic(HashStr: string): string;
   function TryParseBridge(BridgeStr: string; out Bridge: TBridge): Boolean;
+  function TryParseTarget(TargetStr: string; out Target: TTarget): Boolean;
   function IpToInt(IpStr: string): Cardinal;
   function IntToIp(Ip: Cardinal): string;
   function CidrToRange(CidrStr: string): TIPv4Range;
@@ -140,7 +149,9 @@ var
   function SampleDown(Data: ArrOfPoint; Threshold: Integer): ArrOfPoint;
   function FileTimeToDateTime(const FileTime: TFileTime): TDateTime;
   function GetPortsValue(const PortsData, PortStr: string): Integer;
+  function GetBridgeIp(Bridge: TBridge): string;
   function GetFileID(FileName: string; SkipFileExists: Boolean = False; ConstData: string = ''): string;
+  procedure SetPortsValue(IpStr, PortStr: string; Value: Integer);
   procedure DeleteFiles(const FileMask: string; TimeOffset: Integer = 0);
   procedure DeleteDir(const DirName: string);
   procedure LineToMemo(Line: string; Memo: TMemo; ListType: TListType; Sorted: Boolean = False; Separator: string = ',');
@@ -223,7 +234,6 @@ implementation
 uses
   Main, Languages;
 
-
 constructor TPing.Create(Timeout: Integer);
 begin
   inherited Create;
@@ -249,6 +259,64 @@ begin
     end;
   end;
   Result := 0;
+end;
+
+procedure SetPortsValue(IpStr, PortStr: string; Value: Integer);
+var
+  GeoIpInfo: TGeoIpInfo;
+  ParseStr: ArrOfStr;
+  PortsData: string;
+  PortsCount, Search, i: Integer;
+begin
+  if GeoIpDic.TryGetValue(IpStr, GeoIpInfo) then
+  begin
+    if GeoIpInfo.ports = '' then
+      GeoIpInfo.ports := PortStr + ':' + IntToStr(Value)
+    else
+    begin
+      ParseStr := Explode('|', GeoIpInfo.ports);
+      Search := -1;
+      PortsCount := Length(ParseStr);
+      for i := 0 to PortsCount - 1 do
+      begin
+        if Pos(PortStr + ':', ParseStr[i]) = 1 then
+        begin
+          Search := i;
+          Break;
+        end;
+      end;
+      if Search < 0 then
+        GeoIpInfo.ports := GeoIpInfo.ports + '|' + PortStr + ':' + IntToStr(Value)
+      else
+      begin
+        ParseStr[Search] := PortStr + ':' + IntToStr(Value);
+        PortsData := '';
+        for i := 0 to PortsCount - 1 do
+          PortsData := PortsData + '|' + ParseStr[i];
+        Delete(PortsData, 1, 1);
+        GeoIpInfo.ports := PortsData;
+      end;
+    end;
+    GeoIpDic.AddOrSetValue(IpStr, GeoIpInfo);
+  end
+  else
+  begin
+    GeoIpInfo.ping := 0;
+    GeoIpInfo.ports := PortStr + ':' + IntToStr(Value);
+    GeoIpInfo.cc := DEFAULT_COUNTRY_ID;
+    GeoIpDic.AddOrSetValue(IpStr, GeoIpInfo);
+  end;
+  GeoIpModified := True;
+end;
+
+function GetBridgeIp(Bridge: TBridge): string;
+var
+  BridgeInfo: TBridgeInfo;
+begin
+  if BridgesDic.TryGetValue(Bridge.Hash, BridgeInfo) then
+    Result := BridgeInfo.Router.IPv4
+  else
+    Result := Bridge.Ip;
 end;
 
 function BoolToStrDef(Value: Boolean): string;
@@ -1940,9 +2008,12 @@ begin
       ls.Text := Memo.Text
     else
     begin
-      ls.Text := StringReplace(Memo.Text, ',', BR, [rfReplaceAll]);
-      if ListType = ltNode then
-        ls.Text := RemoveBrackets(ls.Text);
+      case ListType of
+        ltNode: ls.Text := RemoveBrackets(ls.Text);
+        ltBridge: ls.Text := Memo.Text;
+        else
+          ls.Text := StringReplace(Memo.Text, ',', BR, [rfReplaceAll]);
+      end;
       for i := ls.Count - 1 downto 0 do
       begin
         Str := Trim(ls[i]);
@@ -3108,6 +3179,63 @@ begin
     else
       Result := FAVERR_CHAR;
   end;
+end;
+
+function TryParseTarget(TargetStr: string; out Target: TTarget): Boolean;
+var
+  PortIndex, ExitIndex, HashIndex, TargetLength: Integer;
+begin
+  PortIndex := RPos(':', TargetStr);
+  Result := PortIndex <> 0;
+  if Result then
+  begin
+    Target.Port := Copy(TargetStr, PortIndex + 1);
+    ExitIndex := RPos('.exit:', TargetStr);
+    if ExitIndex <> 0 then
+    begin
+      Target.AddrType := atExit;
+      HashIndex := Pos('.$', TargetStr);
+      Result := HashIndex <> 0;
+      if Result then
+      begin
+        Target.Hostname := Copy(TargetStr, 1, HashIndex - 1);
+        Target.Hash := Copy(TargetStr, HashIndex + 2, 40);
+      end;
+    end
+    else
+    begin
+      TargetLength := Length(TargetStr);
+      Target.Hostname := Copy(TargetStr, 1, TargetLength - (TargetLength - PortIndex + 1));
+      if RPos('.onion:', TargetStr) <> 0 then
+        Target.AddrType := atOnion
+      else
+        Target.AddrType := atNormal;
+    end;
+    if Result then
+      Exit;
+  end;
+  Target.AddrType := atNone;
+  Target.Hostname := '';
+  Target.Port := '0';
+  Target.Hash := '';
+end;
+
+function GetBridgeStrFromDic(HashStr: string): string;
+var
+  BridgeInfo: TBridgeInfo;
+begin
+  if BridgesDic.TryGetValue(HashStr, BridgeInfo) then
+  begin
+    Result := Trim(
+      BridgeInfo.Transport + ' ' +
+      BridgeInfo.Router.IPv4 + ':' +
+      IntToStr(BridgeInfo.Router.OrPort) + ' ' +
+      HashStr + ' ' +
+      BridgeInfo.Params
+    );
+    Exit;
+  end;
+  Result := '';
 end;
 
 function TryParseBridge(BridgeStr: string; out Bridge: TBridge): Boolean;

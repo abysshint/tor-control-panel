@@ -293,6 +293,7 @@ type
   );
   TNodeTypes = set of TNodeType;
 
+  TAddressType = (atNone, atNormal, atExit, atOnion);
   TEditMenuType = (emCopy, emCut, emPaste, emSelectAll, emClear, emDelete, emFind);
   TListType = (ltNoCheck, ltHost, ltHash, ltPolicy, ltBridge, ltNode, ltSocket, ltTransport, ltIp, ltCidr, ltCode);
   TGuardType = (gtNone, gtBridges, gtRestricted, gtDefault, gtAll);
