@@ -14,7 +14,7 @@ uses
 type
   TUserGrid = class(TCustomGrid);
 
-  TRouterFlag = (rfAuthority, rfBadExit, rfExit, rfFast, rfGuard, rfHSDir, rfStable, rfV2Dir, rfBridge, rfRelay);
+  TRouterFlag = (rfAuthority, rfBadExit, rfExit, rfFast, rfGuard, rfHSDir, rfStable, rfV2Dir, rfBridge, rfRelay, rfMiddleOnly);
   TRouterFlags = set of TRouterFlag;
   TRouterInfo = record
     Name: string;
@@ -25,7 +25,7 @@ type
     Flags: TRouterFlags;
     Version: string;
     Bandwidth: Integer;
-    Params: Byte;
+    Params: Word;
   end;
 
   TSpeedData = record
@@ -83,6 +83,11 @@ type
     Protocol: Integer;
     BytesRead: int64;
     BytesWritten: int64;
+  end;
+
+  TPing = class(TPINGSend)
+  public
+    constructor Create(Timeout: Integer);
   end;
 
   TReadPipeThread = class(TThread)
@@ -160,8 +165,9 @@ type
     ParseStr: ArrOfStr;
     SearchPos, InfoCount: Integer;
     CountryCode, IpID: Byte;
+    function AuthStageReady(AuthMethod: Integer): Boolean;
     procedure GetData;
-    procedure SendData(cmd: string);
+    procedure SendData(cmd: string);    
   protected
     procedure Execute; override;
   end;
@@ -1208,7 +1214,6 @@ type
     procedure lbExitMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure lbServerInfoMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure EditChange(Sender: TObject);
-    procedure MemoExit(Sender: TObject);
     procedure SpinChanging(Sender: TObject; var AllowChange: Boolean);
     procedure SetCircuitsUpdateInterval(Sender: TObject);
     procedure MainButtonssMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
@@ -1389,7 +1394,6 @@ type
     procedure sbDecreaseFormClick(Sender: TObject);
     procedure cbUseMyFamilyClick(Sender: TObject);
     procedure lbExitIpMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-    procedure cbxRoutersCountryDropDown(Sender: TObject);
     procedure edRoutersQueryKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure miAboutClick(Sender: TObject);
     procedure meNodesListExit(Sender: TObject);
@@ -1509,7 +1513,6 @@ type
     procedure SelectCheckIpProxy(Sender: TObject);
     procedure miOpenLogsFolderClick(Sender: TObject);
     procedure lbStatusFilterModeClick(Sender: TObject);
-    procedure cbxAutoScanTypeDropDown(Sender: TObject);
     procedure cbxAutoScanTypeChange(Sender: TObject);
     procedure miExcludeBridgesWhenCountingClick(Sender: TObject);
     procedure miShowPortAlongWithIpClick(Sender: TObject);
@@ -1636,6 +1639,25 @@ end;
 procedure TTcp.VersionCheckerThreadTerminate(Sender: TObject);
 begin
   VersionChecker := nil;
+end;
+
+constructor TPing.Create(Timeout: Integer);
+begin
+  inherited Create;
+  FTimeout := Timeout;
+end;
+
+function SendPing(const Host: string; Timeout: Integer): Integer;
+begin
+  with TPing.Create(Timeout) do
+  try
+    Result := -1;
+    if Ping(Host) then
+      if ReplyError = IE_NoError then
+        Result := PingTime;
+  finally
+    Free;
+  end;
 end;
 
 procedure TReadPipeThread.UpdateVersionInfo;
@@ -2129,10 +2151,10 @@ end;
 procedure TConsensusThread.Execute;
 var
   ls, lb: TStringList;
-  i, j: Integer;
+  i, j, FlagsCount: Integer;
   Find: Boolean;
   RouterID, Key: string;
-  ParseStr: ArrOfStr;
+  ParseStr, ParseFlag: ArrOfStr;
   Router: TRouterInfo;
   Bridge: TPair<string, TBridgeInfo>;
   BridgeInfo: TBridgeInfo;
@@ -2173,31 +2195,41 @@ begin
       end;
       if Pos('s ', ls[i]) = 1 then
       begin
-        if Pos('Authority', ls[i]) <> 0 then
+        ParseFlag := Explode(' ', ls[i]);
+        FlagsCount := Length(ParseFlag);
+        for j := 0 to FlagsCount - 1 do
         begin
-          Include(Router.Flags, rfAuthority);
-          Inc(Router.Params, ROUTER_AUTHORITY);
+          if Pos('Authority', ParseFlag[j]) = 1 then
+          begin
+            Include(Router.Flags, rfAuthority);
+            Inc(Router.Params, ROUTER_AUTHORITY);
+          end;
+          if Pos('BadExit', ParseFlag[j]) = 1 then
+          begin
+            Include(Router.Flags, rfBadExit);
+            Inc(Router.Params, ROUTER_BAD_EXIT);
+          end;
+          if Pos('Exit', ParseFlag[j]) = 1 then
+            Include(Router.Flags, rfExit);
+          if Pos('MiddleOnly', ParseFlag[j]) = 1 then
+          begin
+            Include(Router.Flags, rfMiddleOnly);
+            Inc(Router.Params, ROUTER_MIDDLE_ONLY);
+          end;
+          if Pos('Fast', ParseFlag[j]) = 1 then
+            Include(Router.Flags, rfFast);
+          if Pos('Guard', ParseFlag[j]) = 1 then
+            Include(Router.Flags, rfGuard);
+          if Pos('HSDir', ParseFlag[j]) = 1 then
+          begin
+            Include(Router.Flags, rfHSDir);
+            Inc(Router.Params, ROUTER_HS_DIR);
+          end;
+          if Pos('Stable', ParseFlag[j]) = 1 then
+            Include(Router.Flags, rfStable);
+          if Pos('V2Dir', ParseFlag[j]) = 1 then
+            Include(Router.Flags, rfV2Dir);
         end;
-        if Pos('BadExit', ls[i]) <> 0 then
-        begin
-          Include(Router.Flags, rfBadExit);
-          Inc(Router.Params, ROUTER_BAD_EXIT);
-        end;
-        if Pos('Exit', ls[i]) <> 0 then
-          Include(Router.Flags, rfExit);
-        if Pos('Fast', ls[i]) <> 0 then
-          Include(Router.Flags, rfFast);
-        if Pos('Guard', ls[i]) <> 0 then
-          Include(Router.Flags, rfGuard);
-        if Pos('HSDir', ls[i]) <> 0 then
-        begin
-          Include(Router.Flags, rfHSDir);
-          Inc(Router.Params, ROUTER_HS_DIR);
-        end;
-        if Pos('Stable', ls[i]) <> 0 then
-          Include(Router.Flags, rfStable);
-        if Pos('V2Dir', ls[i]) <> 0 then
-          Include(Router.Flags, rfV2Dir);
         Continue;
       end;
       if Pos('v ', ls[i]) = 1 then
@@ -2561,6 +2593,23 @@ begin
   finally
     Socket.CloseSocket;
     Socket.Free;
+  end;
+end;
+
+function TControlThread.AuthStageReady(AuthMethod: Integer): Boolean;
+var
+  Time: TDateTime;
+begin
+  Result := False;
+  if AuthMethod = CONTROL_AUTH_PASSWORD then
+    Result := True
+  else
+  begin
+    if FileAge(UserDir + 'control_auth_cookie', Time) then
+    begin
+      if LastAuthCookieDate <> Time then
+        Result := True;
+    end;
   end;
 end;
 
@@ -3115,7 +3164,7 @@ procedure TPageControl.TCMAdjustRect(var Msg: TMessage);
 begin
   inherited;
   if Msg.WParam = 0 then
-    InflateRect(PRect(Msg.LParam)^, 3, 1)
+    InflateRect(PRect(Msg.LParam)^, 3, 3)
   else
     InflateRect(PRect(Msg.LParam)^, -3, -3);
 end;
@@ -3605,7 +3654,7 @@ var
   RouterInfo: TRouterInfo;
   Indent, Mask, Interval: Integer;
 
-  procedure DrawFlagIcon(Flag: Byte; Index: Integer);
+  procedure DrawFlagIcon(Flag: Word; Index: Integer);
   begin
     if Mask and Flag <> 0 then
     begin
@@ -3657,6 +3706,7 @@ begin
           DrawFlagIcon(ROUTER_DIR_MIRROR, 38);
           DrawFlagIcon(ROUTER_NOT_RECOMMENDED, 44);
           DrawFlagIcon(ROUTER_BAD_EXIT, 43);
+          DrawFlagIcon(ROUTER_MIDDLE_ONLY, 61);
         end;
       end;
     end;
@@ -3914,7 +3964,7 @@ var
   Mask, MaxItems: Integer;
   Fail: Boolean;
   CellRect, CellPoint: TRect;
-  Data: array of Byte;
+  Data: array of Word;
   ArrayIndex: Integer;
 
   procedure CheckMask(Param: Integer);
@@ -3945,6 +3995,7 @@ begin
         CheckMask(ROUTER_DIR_MIRROR);
         CheckMask(ROUTER_NOT_RECOMMENDED);
         CheckMask(ROUTER_BAD_EXIT);
+        CheckMask(ROUTER_MIDDLE_ONLY);
 
         CellRect := sgRouters.CellRect(9, sgRouters.MovRow);
         CellPoint := sgRouters.ClientToScreen(CellRect);
@@ -3961,6 +4012,7 @@ begin
             ROUTER_DIR_MIRROR: sgRouters.Hint := Format(TransStr('389'), [RouterInfo.DirPort]);
             ROUTER_NOT_RECOMMENDED: sgRouters.Hint := TransStr('390');
             ROUTER_BAD_EXIT: sgRouters.Hint := TransStr('391');
+            ROUTER_MIDDLE_ONLY: sgRouters.Hint := TransStr('640');
             else
               sgRouters.Hint := TransStr('392');
           end;
@@ -8038,7 +8090,7 @@ var
             Exclude(NodeTypes, ntEntry);
             NodeIsChanged := True;
           end;
-          if (ntExit in NodeTypes) and not (rfExit in Flags) then
+          if (ntExit in NodeTypes) and (not (rfExit in Flags) or (rfBadExit in Flags)) then
           begin
             Exclude(NodeTypes, ntExit);
             NodeIsChanged := True;
@@ -10849,7 +10901,7 @@ begin
 
         if not (rfGuard in Item.Value.Flags) or IsNativeBridge then
           sgRouters.Cells[ROUTER_ENTRY_NODES, RoutersCount] := NONE_CHAR;
-        if not (rfExit in Item.Value.Flags) or IsNativeBridge then
+        if not (rfExit in Item.Value.Flags) or (rfBadExit in Item.Value.Flags) or IsNativeBridge then
           sgRouters.Cells[ROUTER_EXIT_NODES, RoutersCount] := NONE_CHAR;
         if IsNativeBridge then
           sgRouters.Cells[ROUTER_MIDDLE_NODES, RoutersCount] := NONE_CHAR;
@@ -11874,7 +11926,6 @@ end;
 
 procedure TTcp.meNodesListExit(Sender: TObject);
 begin
-  FindDialog.CloseDialog;
   if NodesListStage = 1 then
     SaveNodesList(cbxNodesListType.ItemIndex);
 end;
@@ -11964,11 +12015,6 @@ begin
     ShowRouters;
     SaveRoutersFilterdata;
   end;
-end;
-
-procedure TTcp.cbxRoutersCountryDropDown(Sender: TObject);
-begin
-  ComboBoxAutoWidth(cbxRoutersCountry);
 end;
 
 procedure TTcp.cbxRoutersCountryEnter(Sender: TObject);
@@ -12266,11 +12312,6 @@ procedure TTcp.cbxAutoScanTypeChange(Sender: TObject);
 begin
   CheckScannerControls;
   EnableOptionButtons;
-end;
-
-procedure TTcp.cbxAutoScanTypeDropDown(Sender: TObject);
-begin
-  ComboBoxAutoWidth(cbxAutoScanType);
 end;
 
 procedure TTcp.cbxAutoSelPriorityChange(Sender: TObject);
@@ -12870,11 +12911,6 @@ begin
       Exit;
     EnableOptionButtons;
   end;
-end;
-
-procedure TTcp.MemoExit(Sender: TObject);
-begin
-  FindDialog.CloseDialog;
 end;
 
 procedure TTcp.SetDownState;
@@ -14364,7 +14400,7 @@ begin
     Exit;
   if (NodeTypeID = ENTRY_ID) and not (rfGuard in RouterInfo.Flags) then
     Exit;
-  if (NodeTypeID = EXIT_ID) and not (rfExit in RouterInfo.Flags) then
+  if (NodeTypeID = EXIT_ID) and (not (rfExit in RouterInfo.Flags) or (rfBadExit in RouterInfo.Flags)) then
     Exit;
   Result := True;
 end;

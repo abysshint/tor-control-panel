@@ -8,7 +8,7 @@ uses
   System.Variants, System.Masks, System.DateUtils, System.Generics.Collections, System.Math,
   System.Win.ComObj, System.Win.Registry, Vcl.Graphics, Vcl.Forms, Vcl.Controls, Vcl.Grids,
   Vcl.Menus, Vcl.Imaging.pngimage, Vcl.ComCtrls, Vcl.StdCtrls, Vcl.Clipbrd, Vcl.Dialogs,
-  Vcl.Themes, synacode, blcksock, pingsend, synautil, ConstData, Addons;
+  Vcl.Themes, synacode, blcksock, synautil, ConstData, Addons;
 
 const
   JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = $00002000;
@@ -31,10 +31,6 @@ type
   end;
 
   TCharUpCaseTable = array [Char] of Char;
-  TPing = class(TPINGSend)
-  public
-    constructor Create(Timeout: Integer);
-  end;
   TUserGrid = class(TCustomGrid);
 
 var
@@ -75,7 +71,6 @@ var
   function AnsiStrToHex(const Value: AnsiString): string;
   function StrToHex(Value: string): string;
   function HexToStr(hex: string): string;
-  function AuthStageReady(AuthMethod: Integer): Boolean;
   function Crypt(str, Key: string): string;
   function Decrypt(str, Key: string): string;
   function FileGetString(Filename: string; Hex: Boolean = False): string;
@@ -101,13 +96,11 @@ var
   function GetBridgeCert: string;
   function InsensPosEx(const SubStr, S: string; Offset: Integer = 1): Integer;
   function GetPrefixSize(Prefix: string; Localize: Boolean = False): Int64;
-  function ConvertSize(SizeStr: string; Prefix: string = ''): Int64;
   function HasBrackets(Str: string): Boolean;
   function IsIPv4(IpStr: string): Boolean;
   function IsIPv6(IpStr: string): Boolean;
   function GetNodeType(NodeStr: string): TListType;
   function ValidData(Str: string; ListType: TListType; State: Boolean = False): Boolean;
-  function ValidSize(SizeStr: string; Min, Max: Int64; Prefix: string): Boolean;
   function ValidInt(IntStr: string; Min, Max: Integer): Boolean; overload;
   function ValidInt(IntStr: string; Min, Max: Int64): Boolean; overload;
   function ValidHash(HashStr: string): Boolean;
@@ -136,7 +129,6 @@ var
   function CompParamsAsc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
   function CompParamsDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
   function GetTaskBarPos: TTaskBarPos;
-  function SendPing(const Host: string; Timeout: Integer): Integer;
   function RemoveBrackets(Str: string; Square: Boolean = False): string;
   function SearchEdit(EditControl: TCustomEdit; const SearchString: String; Options: TFindOptions; FindFirst: Boolean = False): Boolean;
   function ShowMsg(Msg: string; Caption: string = ''; MsgType: TMsgType = mtInfo; Question: Boolean = False): Boolean;
@@ -144,7 +136,7 @@ var
   function MenuToInt(Menu: TMenuItem): Integer;
   function GetTransportID(TypeStr: string): Byte;
   function GetTransportChar(TransportID: Byte): string;
-  function TryUpdateMask(var Mask: Byte; Param: Byte; Condition: Boolean): Boolean;
+  function TryUpdateMask(var Mask: Word; Param: Word; Condition: Boolean): Boolean;
   function TryGetDataFromStr(Str: string; DataType: TListType; out DatatStr: string): Boolean;
   function SampleDown(Data: ArrOfPoint; Threshold: Integer): ArrOfPoint;
   function FileTimeToDateTime(const FileTime: TFileTime): TDateTime;
@@ -167,7 +159,6 @@ var
   procedure AddUPnPEntry(Port: Integer; Desc, LanIp: string; Test: Boolean; var Msg: string);
   procedure RemoveUPnPEntry(First: Integer; Second: Integer = 0; Third: Integer = 0);
   procedure SetGridLastCell(aSg: TStringGrid; Show: Boolean = True; ScrollTop: Boolean = False; ManualSort: Boolean = False; ARow: Integer = -1; ACol: Integer = -1; FindCol: Integer = 0);
-  procedure ClearCol(aSg: TStringGrid; ACol: Integer);
   procedure ClearRow(aSg: TStringGrid; ARow: Integer);
   procedure ClearGrid(aSg: TStringGrid; DeleteBlankRows: Boolean = True);
   procedure FindInGridColumn(aSg: TStringGrid; ACol: Integer; Key: Char);
@@ -181,7 +172,6 @@ var
   procedure EndUpdateTable(aSg: TStringGrid);
   procedure sgSort(aSg: TStringGrid; aCol: Integer; aCompare: TStringListSortCompare);
   procedure GetLocalInterfaces(ComboBox: TComboBox; RecentHost: string = '');
-  procedure ComboBoxAutoWidth(const AComboBox: TCombobox);
   procedure GridDrawIcon(aSg: TStringGrid; Rect: TRect; ls: TImageList; Index: Integer; W: Integer = 16; H: Integer = 16);
   procedure GridDrawSortArrows(aSg: TStringGrid; Rect: TRect);
   procedure GridSetKeyboardLayout(aSg: TStringGrid; ACol: Integer);
@@ -233,12 +223,6 @@ implementation
 
 uses
   Main, Languages;
-
-constructor TPing.Create(Timeout: Integer);
-begin
-  inherited Create;
-  FTimeout := Timeout;
-end;
 
 function GetPortsValue(const PortsData, PortStr: string): Integer;
 var
@@ -325,19 +309,6 @@ begin
     Result := '1'
   else
     Result := '0'
-end;
-
-function SendPing(const Host: string; Timeout: Integer): Integer;
-begin
-  with TPing.Create(Timeout) do
-  try
-    Result := -1;
-    if Ping(Host) then
-      if ReplyError = IE_NoError then
-        Result := PingTime;
-  finally
-    Free;
-  end;
 end;
 
 function GetAssocUpDown(AName: string): TUpdown;
@@ -637,14 +608,6 @@ var
 begin
   for i := aSg.FixedCols to aSg.ColCount - 1 do
     aSg.Cells[i, ARow] := '';
-end;
-
-procedure ClearCol(aSg: TStringGrid; ACol: Integer);
-var
-  i: Integer;
-begin
-  for i := aSg.FixedRows to aSg.RowCount - 1 do
-    aSg.Cells[ACol, i] := '';
 end;
 
 procedure ClearGrid(aSg: TStringGrid; DeleteBlankRows: Boolean = True);
@@ -1142,23 +1105,6 @@ begin
     Result := Str;
 end;
 
-function AuthStageReady(AuthMethod: Integer): Boolean;
-var
-  Time: TDateTime;
-begin
-  Result := False;
-  if AuthMethod = 1 then
-    Result := True
-  else
-  begin
-    if FileAge(UserDir + 'control_auth_cookie', Time) = True then
-    begin
-      if LastAuthCookieDate <> Time then
-        Result := True;
-    end;
-  end;
-end;
-
 function ExecuteProcess(CmdLine: string; Flags: TProcessFlags = []; JobHandle: THandle = 0): TProcessInfo;
 var
   hStdOutRead, hStdOutWrite: THandle;
@@ -1637,9 +1583,6 @@ begin
             Reset;
         ptHost:
           if not ValidHost(Result, False, True, Boolean(MinValue)) then
-            Reset;
-        ptSize:
-          if not ValidSize(Result, MinValue, MaxValue, Prefix) then
             Reset;
         ptBridge:
           if not ValidBridge(Result, btList) then
@@ -2599,7 +2542,6 @@ begin
   finally
     ls.Free;
   end;
-  ComboBoxAutoWidth(ThemesList);
 end;
 
 procedure LoadStyle(ThemesList: TCombobox);
@@ -2691,7 +2633,6 @@ begin
     ComboBox.ItemIndex := ComboBox.Items.IndexOf(RecentHost);
     if ComboBox.ItemIndex = -1 then
       ComboBox.ItemIndex := 0;
-    ComboBoxAutoWidth(ComboBox);
   finally
     ls.Free;
   end;
@@ -2811,48 +2752,6 @@ begin
     else
       Result := -1;
   end;
-end;
-
-function ConvertSize(SizeStr: string; Prefix: string = ''): Int64;
-var
-  Search: Integer;
-  ParseStr: ArrOfStr;
-  Value: Int64;
-  XPrefix, XPostfix: string;
-begin
-  Result := -1;
-  ParseStr := Explode(' ', AnsiLowerCase(SizeStr));
-  if TryStrToInt64(ParseStr[0], Value) then
-  begin
-    case Length(ParseStr) of
-      1:
-        Result := Value;
-      2:
-      begin
-        Search := Pos('b', ParseStr[1]);
-        if Search > 0 then
-        begin
-          XPrefix := Copy(ParseStr[1], 1, Search - 1);
-          XPostfix := Copy(ParseStr[1], Search);
-          case GetArrayIndex(DataSizes, XPostfix) of
-          0,1,2: Result := Value * GetPrefixSize(XPrefix);
-            3,4: Result := Trunc(Value/8) * GetPrefixSize(XPrefix);
-            else
-              Exit;
-          end;
-        end;
-      end;
-      else
-        Exit;
-    end;
-    if Prefix <> '' then
-      Result := Trunc(Result/GetPrefixSize(Prefix));
-  end;
-end;
-
-function ValidSize(SizeStr: string; Min, Max: int64; Prefix: string): Boolean;
-begin
-  Result := ValidInt(IntToStr(ConvertSize(SizeStr, Prefix)), Min, Max);
 end;
 
 function ValidInt(IntStr: string; Min, Max: Integer): Boolean; overload;
@@ -3394,27 +3293,6 @@ begin
   Result := Format('%d.%d.%d.%d', [Ip shr 24, (Ip shr 16) and 255, (Ip shr 8) and 255, Ip and 255]);
 end;
 
-procedure ComboBoxAutoWidth(const AComboBox: TCombobox);
-var
-  i: Integer;
-  FullWidth: Integer;
-  ItemWidth: Integer;
-  ScrollSize: Integer;
-begin
-  ScrollSize := 0;
-  FullWidth := 0;
-  if AComboBox.DropDownCount < AComboBox.Items.Count then
-    ScrollSize := GetSystemMetrics(SM_CXVSCROLL);
-  for i := 0 to AComboBox.Items.Count - 1 do
-  begin
-    ItemWidth := ScrollSize + AComboBox.Canvas.TextWidth(AComboBox.Items[i]) + 8;
-    if ItemWidth > FullWidth then
-		  FullWidth := ItemWidth;
-  end;
-  if FullWidth > AComboBox.Width then
-    SendMessage(AComboBox.Handle, CB_SETDROPPEDWIDTH, FullWidth, 0);
-end;
-
 procedure GridScrollCheck(aSg: TStringGrid; ACol, ColWidth: Integer);
 begin
   if (aSg.RowCount - aSg.FixedRows) > aSg.VisibleRowCount then
@@ -3619,7 +3497,7 @@ begin
   Result := CompareNaturalText(PWideChar(FileVersion), PWideChar(StaticVersion)) <> -1;
 end;
 
-function TryUpdateMask(var Mask: Byte; Param: Byte; Condition: Boolean): Boolean;
+function TryUpdateMask(var Mask: Word; Param: Word; Condition: Boolean): Boolean;
 begin
   if Condition then
   begin
@@ -3651,6 +3529,7 @@ begin
   CheckMask(ROUTER_DIR_MIRROR);
   CheckMask(ROUTER_NOT_RECOMMENDED);
   CheckMask(ROUTER_BAD_EXIT);
+  CheckMask(ROUTER_MIDDLE_ONLY);
 end;
 
 function CheckSplitButton(Button: TButton; DirectClick: Boolean): Boolean;

@@ -107,6 +107,9 @@ const
   TRANSPORT_SERVER = 1;
   TRANSPORT_BOTH = 2;
 
+  CONTROL_AUTH_COOKIE = 0;
+  CONTROL_AUTH_PASSWORD = 1;
+
   PROXY_TYPE_SOCKS4 = 0;
   PROXY_TYPE_SOCKS5 = 1;
   PROXY_TYPE_HTTPS = 2;
@@ -214,14 +217,15 @@ const
   PT_TYPE = 2;
   PT_PARAMS = 3;
 
-  ROUTER_BAD_EXIT = 1;
-  ROUTER_NOT_RECOMMENDED = 2;
-  ROUTER_DIR_MIRROR = 4;
-  ROUTER_HS_DIR = 8;
-  ROUTER_REACHABLE_IPV6 = 16;
-  ROUTER_ALIVE = 32;
-  ROUTER_AUTHORITY = 64;
-  ROUTER_BRIDGE = 128;
+  ROUTER_MIDDLE_ONLY = 1;
+  ROUTER_BAD_EXIT = 2;
+  ROUTER_NOT_RECOMMENDED = 4;
+  ROUTER_DIR_MIRROR = 8;
+  ROUTER_HS_DIR = 16;
+  ROUTER_REACHABLE_IPV6 = 32;
+  ROUTER_ALIVE = 64;
+  ROUTER_AUTHORITY = 128;
+  ROUTER_BRIDGE = 256;
 
   GENERAL = 0;
   HS_CLIENT_HSDIR = 1;
@@ -298,7 +302,7 @@ type
   TListType = (ltNoCheck, ltHost, ltHash, ltPolicy, ltBridge, ltNode, ltSocket, ltTransport, ltIp, ltCidr, ltCode);
   TGuardType = (gtNone, gtBridges, gtRestricted, gtDefault, gtAll);
   TMsgType = (mtInfo, mtWarning, mtError, mtQuestion);
-  TParamType = (ptString, ptInteger, ptBoolean, ptSocket, ptHost, ptSize, ptBridge);
+  TParamType = (ptString, ptInteger, ptBoolean, ptSocket, ptHost, ptBridge);
   TTaskBarPos = (tbTop, tbBottom, tbLeft, tbRight, tbNone);
   TScanType = (stNone, stPing, stAlive, stBoth);
   TScanPurpose = (spNone, spNew, spFailed, spUserBridges, spAll, spNewAndFailed, spNewAndAlive, spNewAndBridges, spBridges, spGuards, spAlive, spAuto);
@@ -372,9 +376,6 @@ var
   );
   MaskTypes: array [0..3] of string = (
     '*', '*4', '*6', 'private'
-  );
-  DataSizes: array [0..4] of string = (
-    'b', 'byte', 'bytes', 'bit', 'bits'
   );
   PrefixSizes: array [0..4] of string = (
     '', 'kilo', 'mega', 'giga', 'tera'

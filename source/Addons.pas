@@ -20,6 +20,7 @@ type
     ResetValue: Integer;
   protected
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState;X, Y: Integer); override;
+    procedure DropDown; override;
   end;
 
   TEdit = class (Vcl.StdCtrls.TEdit)
@@ -44,8 +45,10 @@ type
     procedure WMPaste(var msg: TMessage); message WM_PASTE;
   protected
     FCanvas: TCanvas;
+    procedure CMExit(var Message: TCMExit); message CM_EXIT;
     procedure WMPaint(var Message: TWMPaint); message WM_PAINT;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -154,6 +157,26 @@ function TStringGrid.DoMouseWheelUp(Shift: TShiftState; MousePos: TPoint): Boole
 begin
   Perform(WM_VSCROLL, SB_LINEUP, 0);
   Result := True;
+end;
+
+procedure TComboBox.DropDown;
+var
+  FullWidth, ItemWidth, ScrollSize, i: Integer;
+begin
+  inherited;
+  ScrollSize := 0;
+  FullWidth := 0;
+  if DropDownCount < Items.Count then
+    ScrollSize := GetSystemMetrics(SM_CXVSCROLL);
+  for i := 0 to Items.Count - 1 do
+  begin
+    ItemWidth := ScrollSize + Canvas.TextWidth(Items[i]) + 8;
+    if ItemWidth > FullWidth then
+		  FullWidth := ItemWidth;
+  end;
+  if FullWidth < Width then
+    FullWidth := Width;
+  SendMessage(Handle, CB_SETDROPPEDWIDTH, FullWidth, 0);
 end;
 
 procedure TComboBox.MouseDown(Button: TMouseButton; Shift: TShiftState;X, Y: Integer);
@@ -391,6 +414,12 @@ begin
     on E:Exception do
       Exit
   end;
+end;
+
+procedure TMemo.CMExit(var Message: TCMExit);
+begin
+  Tcp.FindDialog.CloseDialog;
+  Inherited;
 end;
 
 procedure TMemo.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
