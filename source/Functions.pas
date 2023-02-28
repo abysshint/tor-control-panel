@@ -117,7 +117,7 @@ var
   function IpToInt(IpStr: string): Cardinal;
   function IntToIp(Ip: Cardinal): string;
   function CidrToRange(CidrStr: string): TIPv4Range;
-  function IpInRanges(const IpStr: string; RangesData: array of string): Boolean;
+  function IpInRanges(const IpStr: string; RangesData: array of string): Integer;
   function CompIntObjectAsc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
   function CompIntObjectDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
   function CompIntDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
@@ -296,11 +296,20 @@ end;
 function GetBridgeIp(Bridge: TBridge): string;
 var
   BridgeInfo: TBridgeInfo;
+  Data: Integer;
 begin
+  Result := Bridge.Ip;
+  Data := IpInRanges(Bridge.Ip, DocRanges);
   if BridgesDic.TryGetValue(Bridge.Hash, BridgeInfo) then
-    Result := BridgeInfo.Router.IPv4
+  begin
+    if Data <> 0 then
+      Result := BridgeInfo.Router.IPv4;
+  end
   else
-    Result := Bridge.Ip;
+  begin
+    if Data = 1 then
+      Result := ''
+  end;
 end;
 
 function BoolToStrDef(Value: Boolean): string;
@@ -3254,23 +3263,28 @@ begin
   Result.IpEnd := Ip or (Mask xor $FFFFFFFF);
 end;
 
-function IpInRanges(const IpStr: string; RangesData: array of string): Boolean;
+function IpInRanges(const IpStr: string; RangesData: array of string): Integer;
 var
   i: Integer;
   Range: TIPv4Range;
   Ip: Cardinal;
 begin
+  if Pos(':', IpStr) <> 0 then
+  begin
+    Result := -1;
+    Exit;
+  end;
   Ip := IpToInt(IpStr);
   for i := 0 to Length(RangesData) - 1 do
   begin
     Range := CidrToRange(RangesData[i]);
     if InRange(Ip, Range.IpStart, Range.IpEnd) then
     begin
-      Result := True;
+      Result := 1;
       Exit;
     end;
   end;
-  Result := False;
+  Result := 0;
 end;
 
 function IpToInt(IpStr: string): Cardinal;

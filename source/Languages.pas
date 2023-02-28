@@ -547,11 +547,13 @@ begin
     Tcp.lbBridgesLimit.Caption := TransStr('175');
     Tcp.lbBridgesPriority.Caption := TransStr('471');
     LoadList(Tcp.cbxBridgesPriority, '636', '"Порядок в списке","Скорость канала","Пинг до моста","Случайный"');
-    Tcp.cbCacheNewBridges.Caption := Load('637', 'Кэшировать новые');
     Tcp.lbMaxDirFails.Caption := Load('638', 'Максимум ошибок каталога');
+    Tcp.cbCacheNewBridges.Caption := Load('637', 'Кэшировать новые');
     Tcp.lbBridgesCheckDelay.Caption := Load('639', 'Задержка между проверками');
     Tcp.lbCount4.Caption := TransStr('470');
     Tcp.lbSeconds5.Caption := TranslateTime(0, TIME_SECOND, False, True);
+    Tcp.lbBridgesQueueSize.Caption := Load('641', 'Размер очереди');
+    Tcp.lbCount5.Caption := TransStr('470');
 
     Tcp.lbFilterMode.Caption := Load('162', 'Режим');
     Tcp.lbFilterEntry.Caption := TransStr('288') + ': ' + IntToStr(Tcp.lbFilterEntry.Tag);
