@@ -305,14 +305,11 @@ type
   TParamType = (ptString, ptInteger, ptBoolean, ptSocket, ptHost, ptBridge);
   TTaskBarPos = (tbTop, tbBottom, tbLeft, tbRight, tbNone);
   TScanType = (stNone, stPing, stAlive, stBoth);
-  TScanPurpose = (spNone, spNew, spFailed, spUserBridges, spAll, spNewAndFailed, spNewAndAlive, spNewAndBridges, spBridges, spGuards, spAlive, spAuto);
+  TScanPurpose = (spNone, spNew, spFailed, spUserBridges, spAll, spNewAndFailed, spNewAndAlive, spNewAndBridges, spBridges, spGuards, spAlive, spNewBridges, spAuto);
   TProxyType = (ptNone, ptSocks, ptHttp, ptBoth);
 
   TConfigFlag = (cfAutoAppend, cfAutoSave, cfFindComments, cfExistCheck, cfMultiLine, cfBoolInvert);
   TConfigFlags = set of TConfigFlag;
-
-  TBridgeType = (btNone, btList, btPrefer);
-  TBridgeTypes = set of TBridgeType;
 
   TProcessFlag = (pfHideWindow, pfReadStdOut);
   TProcessFlags = set of TProcessFlag;

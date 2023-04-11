@@ -1203,7 +1203,7 @@ object Tcp: TTcp
           OnClick = cbStayOnTopClick
         end
         object cbShowBalloonOnlyWhenHide: TCheckBox
-          Left = 28
+          Left = 26
           Top = 154
           Width = 312
           Height = 17
@@ -1296,7 +1296,7 @@ object Tcp: TTcp
           OnClick = OptionsChange
         end
         object cbNoDesktopBordersOnlyEnlarged: TCheckBox
-          Left = 28
+          Left = 26
           Top = 223
           Width = 312
           Height = 17
@@ -1802,8 +1802,8 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbMaxDirFails: TLabel
-        Left = 521
-        Top = 333
+        Left = 522
+        Top = 355
         Width = 140
         Height = 13
         Alignment = taRightJustify
@@ -1812,8 +1812,8 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbBridgesCheckDelay: TLabel
-        Left = 511
-        Top = 357
+        Left = 512
+        Top = 332
         Width = 150
         Height = 13
         Alignment = taRightJustify
@@ -1822,8 +1822,8 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbSeconds5: TLabel
-        Left = 721
-        Top = 356
+        Left = 722
+        Top = 331
         Width = 21
         Height = 13
         Caption = #1089#1077#1082'.'
@@ -1831,8 +1831,8 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbCount4: TLabel
-        Left = 721
-        Top = 333
+        Left = 722
+        Top = 355
         Width = 18
         Height = 13
         Caption = #1096#1090'.'
@@ -1840,8 +1840,8 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbBridgesQueueSize: TLabel
-        Left = 352
-        Top = 375
+        Left = 581
+        Top = 378
         Width = 81
         Height = 13
         Alignment = taRightJustify
@@ -1850,8 +1850,8 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbCount5: TLabel
-        Left = 494
-        Top = 375
+        Left = 723
+        Top = 378
         Width = 18
         Height = 13
         Caption = #1096#1090'.'
@@ -1896,7 +1896,7 @@ object Tcp: TTcp
       end
       object cbUseProxy: TCheckBox
         Left = 10
-        Top = 55
+        Top = 56
         Width = 402
         Height = 17
         Caption = #1071' '#1080#1089#1087#1086#1083#1100#1079#1091#1102' '#1087#1088#1086#1082#1089#1080' '#1076#1083#1103' '#1087#1086#1076#1082#1083#1102#1095#1077#1085#1080#1103' '#1082' '#1048#1085#1090#1077#1088#1085#1077#1090#1091
@@ -1987,7 +1987,7 @@ object Tcp: TTcp
           '127.0.0.1')
       end
       object edProxyPort: TEdit
-        Left = 394
+        Left = 397
         Top = 78
         Width = 42
         Height = 21
@@ -2000,7 +2000,7 @@ object Tcp: TTcp
         OnChange = EditChange
       end
       object udProxyPort: TUpDown
-        Left = 436
+        Left = 439
         Top = 78
         Width = 13
         Height = 21
@@ -2085,38 +2085,38 @@ object Tcp: TTcp
       end
       object cbUsePreferredBridge: TCheckBox
         Left = 10
-        Top = 376
+        Top = 377
         Width = 313
         Height = 16
         Caption = #1047#1072#1076#1072#1090#1100' '#1087#1088#1077#1076#1087#1086#1095#1080#1090#1072#1077#1084#1099#1081' '#1084#1086#1089#1090' '#1074#1088#1091#1095#1085#1091#1102
         Enabled = False
-        TabOrder = 33
+        TabOrder = 34
         OnClick = cbUsePreferredBridgeClick
         OnExit = cbUsePreferredBridgeExit
       end
       object edPreferredBridge: TEdit
         Left = 55
-        Top = 397
-        Width = 618
+        Top = 398
+        Width = 607
         Height = 21
         Enabled = False
         MaxLength = 576
         PopupMenu = EditMenu
-        TabOrder = 34
+        TabOrder = 35
         TextHint = #1069#1090#1072' '#1085#1072#1089#1090#1088#1086#1081#1082#1072' '#1087#1077#1088#1077#1086#1087#1088#1077#1076#1077#1083#1103#1077#1090' '#1074#1099#1073#1088#1072#1085#1085#1099#1081' '#1089#1087#1080#1089#1086#1082'  '#1084#1086#1089#1090#1086#1074
         OnChange = edPreferredBridgeChange
         OnExit = edPreferredBridgeExit
       end
       object btnFindPreferredBridge: TButton
-        Left = 679
-        Top = 397
-        Width = 62
-        Height = 21
+        Left = 664
+        Top = 398
+        Width = 77
+        Height = 22
         Caption = #1053#1072#1081#1090#1080'..'
         DoubleBuffered = True
         Enabled = False
         ParentDoubleBuffered = False
-        TabOrder = 35
+        TabOrder = 36
         OnClick = btnFindPreferredBridgeClick
       end
       object cbEnableHttp: TCheckBox
@@ -2249,32 +2249,32 @@ object Tcp: TTcp
       end
       object cbCacheNewBridges: TCheckBox
         Left = 332
-        Top = 355
+        Top = 356
         Width = 155
         Height = 14
         Caption = #1050#1101#1096#1080#1088#1086#1074#1072#1090#1100' '#1085#1086#1074#1099#1077
         Checked = True
         Enabled = False
         State = cbChecked
-        TabOrder = 26
+        TabOrder = 27
         OnClick = cbCacheNewBridgesClick
       end
       object edMaxDirFails: TEdit
-        Left = 664
-        Top = 330
+        Left = 665
+        Top = 352
         Width = 42
         Height = 21
         Enabled = False
         MaxLength = 3
         NumbersOnly = True
         PopupMenu = EditMenu
-        TabOrder = 29
+        TabOrder = 30
         Text = '4'
         OnChange = EditChange
       end
       object udMaxDirFails: TUpDown
-        Left = 706
-        Top = 330
+        Left = 707
+        Top = 352
         Width = 13
         Height = 21
         Associate = edMaxDirFails
@@ -2282,26 +2282,26 @@ object Tcp: TTcp
         Min = 1
         Max = 256
         Position = 4
-        TabOrder = 30
+        TabOrder = 31
         Thousands = False
         OnChanging = SpinChanging
       end
       object edBridgesCheckDelay: TEdit
-        Left = 664
-        Top = 354
+        Left = 665
+        Top = 329
         Width = 42
         Height = 21
         Enabled = False
         MaxLength = 3
         NumbersOnly = True
         PopupMenu = EditMenu
-        TabOrder = 31
+        TabOrder = 28
         Text = '15'
         OnChange = EditChange
       end
       object udBridgesCheckDelay: TUpDown
-        Left = 706
-        Top = 354
+        Left = 707
+        Top = 329
         Width = 13
         Height = 21
         Associate = edBridgesCheckDelay
@@ -2310,13 +2310,13 @@ object Tcp: TTcp
         Max = 300
         Increment = 5
         Position = 15
-        TabOrder = 32
+        TabOrder = 29
         Thousands = False
         OnChanging = SpinChanging
       end
       object edBridgesQueueSize: TEdit
-        Left = 436
-        Top = 372
+        Left = 665
+        Top = 375
         Width = 42
         Height = 21
         HelpType = htKeyword
@@ -2325,14 +2325,14 @@ object Tcp: TTcp
         MaxLength = 3
         NumbersOnly = True
         PopupMenu = EditMenu
-        TabOrder = 27
+        TabOrder = 32
         Text = '256'
         OnChange = EditChange
       end
       object udBridgesQueueSize: TUpDown
         Tag = 2
-        Left = 478
-        Top = 372
+        Left = 707
+        Top = 375
         Width = 13
         Height = 21
         Associate = edBridgesQueueSize
@@ -2341,9 +2341,21 @@ object Tcp: TTcp
         Max = 512
         Increment = 8
         Position = 256
-        TabOrder = 28
+        TabOrder = 33
         Thousands = False
         OnChanging = SpinChanging
+      end
+      object cbScanNewBridges: TCheckBox
+        Left = 348
+        Top = 377
+        Width = 165
+        Height = 17
+        Caption = #1057#1085#1072#1095#1072#1083#1072' '#1089#1082#1072#1085#1080#1088#1086#1074#1072#1090#1100' '#1087#1086#1088#1090#1099
+        Checked = True
+        Enabled = False
+        State = cbChecked
+        TabOrder = 26
+        OnClick = OptionsChange
       end
     end
     object tsFilter: TTabSheet
@@ -2853,7 +2865,7 @@ object Tcp: TTcp
         OnClick = OptionsChange
       end
       object cbIPv6Exit: TCheckBox
-        Left = 259
+        Left = 260
         Top = 271
         Width = 320
         Height = 17

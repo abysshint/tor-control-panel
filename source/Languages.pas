@@ -554,6 +554,7 @@ begin
     Tcp.lbSeconds5.Caption := TranslateTime(0, TIME_SECOND, False, True);
     Tcp.lbBridgesQueueSize.Caption := Load('641', 'Размер очереди');
     Tcp.lbCount5.Caption := TransStr('470');
+    Tcp.cbScanNewBridges.Caption := Load('642', 'Сначала сканировать порты');
 
     Tcp.lbFilterMode.Caption := Load('162', 'Режим');
     Tcp.lbFilterEntry.Caption := TransStr('288') + ': ' + IntToStr(Tcp.lbFilterEntry.Tag);

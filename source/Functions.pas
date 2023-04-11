@@ -100,19 +100,19 @@ var
   function IsIPv4(IpStr: string): Boolean;
   function IsIPv6(IpStr: string): Boolean;
   function GetNodeType(NodeStr: string): TListType;
-  function ValidData(Str: string; ListType: TListType; State: Boolean = False): Boolean;
+  function ValidData(Str: string; ListType: TListType): Boolean;
   function ValidInt(IntStr: string; Min, Max: Integer): Boolean; overload;
   function ValidInt(IntStr: string; Min, Max: Int64): Boolean; overload;
   function ValidHash(HashStr: string): Boolean;
   function ValidAddress(AddrStr: string; AllowCidr: Boolean = False; ReqBrackets: Boolean = False): Byte;
   function ValidHost(HostStr: string; AllowRootDomain: Boolean = False; AllowIp: Boolean = True; ReqBrackets: Boolean = False): Boolean;
-  function ValidBridge(BridgeStr: string; BridgeType: TBridgeType): Boolean;
+  function ValidBridge(BridgeStr: string): Boolean;
   function ValidTransport(TransportStr: string): Boolean;
   function ValidSocket(SocketStr: string; AllowHostNames: Boolean = False): Byte;
   function ValidPolicy(PolicyStr: string): Boolean;
   function GetMsgCaption(Caption: string; MsgType: TMsgType): string;
   function GetBridgeStrFromDic(HashStr: string): string;
-  function TryParseBridge(BridgeStr: string; out Bridge: TBridge): Boolean;
+  function TryParseBridge(BridgeStr: string; out Bridge: TBridge; Validate: Boolean = True): Boolean;
   function TryParseTarget(TargetStr: string; out Target: TTarget): Boolean;
   function IpToInt(IpStr: string): Cardinal;
   function IntToIp(Ip: Cardinal): string;
@@ -133,6 +133,7 @@ var
   function SearchEdit(EditControl: TCustomEdit; const SearchString: String; Options: TFindOptions; FindFirst: Boolean = False): Boolean;
   function ShowMsg(Msg: string; Caption: string = ''; MsgType: TMsgType = mtInfo; Question: Boolean = False): Boolean;
   function MemoToLine(Memo: TMemo; ListType: TListType; Sorted: Boolean = False; Separator: string = ','; State: Boolean = False): string;
+  procedure MemoToList(Memo: TMemo; ListType: TListType; Sorted: Boolean; State: Boolean; out ls: TStringList);
   function MenuToInt(Menu: TMenuItem): Integer;
   function GetTransportID(TypeStr: string): Byte;
   function GetTransportChar(TransportID: Byte): string;
@@ -149,7 +150,8 @@ var
   procedure LineToMemo(Line: string; Memo: TMemo; ListType: TListType; Sorted: Boolean = False; Separator: string = ',');
   procedure IntToMenu(Menu: TMenuItem; Mask: Integer; DisableUnchecked: Boolean = False);
   procedure GetNodes(var Nodeslist: string; NodeType: TNodeType; Favorites: Boolean; ini: TMemIniFile = nil);
-  procedure SetTorConfig(const Param, Value: string; Flags: TConfigFlags = []; Separator: string = '|');
+  procedure SetTorConfig(const Param, Value: string; Flags: TConfigFlags = []); overload;
+  procedure SetTorConfig(const Param: string; Values: TStringList; Flags: TConfigFlags = []); overload;
   procedure DeleteTorConfig(const Param: string; Flags: TConfigFlags = []);
   procedure SetConfigBoolean(Section, Ident: string; Value: Boolean);
   procedure SetConfigInteger(Section, Ident: string; Value: Integer); overload;
@@ -1594,7 +1596,7 @@ begin
           if not ValidHost(Result, False, True, Boolean(MinValue)) then
             Reset;
         ptBridge:
-          if not ValidBridge(Result, btList) then
+          if not ValidBridge(Result) then
           begin
             TorConfig[i] := '';
             Continue;
@@ -1638,50 +1640,54 @@ begin
     SaveTorConfig;
 end;
 
-procedure SetTorConfig(const Param, Value: string; Flags: TConfigFlags = []; Separator: string = '|');
+procedure SetTorConfig(const Param: string; Values: TStringList; Flags: TConfigFlags = []);
+var
+  DataCount, i: Integer;
+begin
+  LoadTorConfig;
+  DataCount := Values.Count;
+  if DataCount > 0 then
+  begin
+    for i := 0 to DataCount - 1 do
+    begin
+      if Values[i] <> '' then
+        TorConfig.Append(Param + ' ' + Values[i]);
+    end;
+  end
+  else
+    DeleteTorConfig(Param, [cfMultiLine]);
+  if cfAutoSave in Flags then
+    SaveTorConfig;
+end;
+
+procedure SetTorConfig(const Param, Value: string; Flags: TConfigFlags = []);
 var
   i, p: Integer;
   Values: set of Byte;
-  ParseStr: ArrOfStr;
 begin
   LoadTorConfig;
-  if cfMultiLine in Flags then
+  p := 0;
+  if cfFindComments in Flags then
+    Values := [1,2,3]
+  else
+    Values := [1];
+  for i := TorConfig.Count - 1 downto 0 do
   begin
-    if Value <> '' then
-    begin
-      ParseStr := Explode(Separator, Value);
-      for i := 0 to Length(ParseStr) - 1 do
-        if ParseStr[i] <> '' then
-          TorConfig.Append(Param + ' ' + ParseStr[i]);
-    end
+    p := InsensPosEx(Param + ' ', TorConfig[i]);
+    if p in Values then
+      Break;
+  end;
+  if p in Values then
+  begin
+    if (Value <> '') and (GetDefaultsValue(Param) <> Value) then
+      TorConfig[i] := Param + ' ' + Value
     else
-      DeleteTorConfig(Param, [cfMultiLine]);
+      TorConfig.Delete(i);
   end
   else
   begin
-    p := 0;
-    if cfFindComments in Flags then
-      Values := [1,2,3]
-    else
-      Values := [1];
-    for i := TorConfig.Count - 1 downto 0 do
-    begin
-      p := InsensPosEx(Param + ' ', TorConfig[i]);
-      if p in Values then
-        Break;
-    end;
-    if p in Values then
-    begin
-      if (Value <> '') and (GetDefaultsValue(Param) <> Value) then
-        TorConfig[i] := Param + ' ' + Value
-      else
-        TorConfig.Delete(i);
-    end
-    else
-    begin
-      if (Value <> '') and (GetDefaultsValue(Param) <> Value) then
-        TorConfig.Append(Param + ' ' + Value);
-    end;
+    if (Value <> '') and (GetDefaultsValue(Param) <> Value) then
+      TorConfig.Append(Param + ' ' + Value);
   end;
   if cfAutoSave in Flags then
     SaveTorConfig;
@@ -1875,19 +1881,13 @@ begin
   end;
 end;
 
-function ValidData(Str: string; ListType: TListType; State: Boolean = False): Boolean;
+function ValidData(Str: string; ListType: TListType): Boolean;
 begin
   case ListType of
     ltHost: Result := ValidHost(Str, True, True);
     ltHash: Result := ValidHash(Str);
     ltPolicy: Result := ValidPolicy(Str);
-    ltBridge:
-    begin
-      if State then
-        Result := ValidBridge(Str, btNone)
-      else
-        Result := ValidBridge(Str, btList);
-    end;
+    ltBridge: Result := ValidBridge(Str);
     ltNode: Result := ValidHash(Str) or (ValidAddress(Str, True, True) = 1) or FilterDic.ContainsKey(AnsiLowerCase(Str));
     ltSocket: Result := ValidSocket(Str) <> 0;
     ltTransport: Result := ValidTransport(Str);
@@ -1952,55 +1952,70 @@ function MemoToLine(Memo: TMemo; ListType: TListType; Sorted: Boolean = False; S
 var
   ls: TStringList;
   i: Integer;
-  Str: string;
 begin
   ls := TStringList.Create;
   try
-    if ListType = ltNoCheck then
+    MemoToList(Memo, ListType, Sorted, State, ls);
+    Result := '';
+    if ls.Count > 0 then
+    begin
+      for i := 0 to ls.Count - 1 do
+        Result := Result + Separator + ls[i];
+      Delete(Result, 1, Length(Separator));
+    end;
+  finally
+    ls.Free;
+  end;
+end;
+
+procedure MemoToList(Memo: TMemo; ListType: TListType; Sorted: Boolean; State: Boolean; out ls: TStringList);
+var
+  i: Integer;
+  Str: string;
+begin
+  if ListType = ltNoCheck then
+    ls.Text := Memo.Text
+  else
+  begin
+    if ListType = ltBridge then
       ls.Text := Memo.Text
     else
     begin
-      case ListType of
-        ltNode: ls.Text := RemoveBrackets(ls.Text);
-        ltBridge: ls.Text := Memo.Text;
-        else
-          ls.Text := StringReplace(Memo.Text, ',', BR, [rfReplaceAll]);
-      end;
-      for i := ls.Count - 1 downto 0 do
+      ls.Text := StringReplace(Memo.Text, ',', BR, [rfReplaceAll]);
+      if ListType = ltNode then
+        ls.Text := RemoveBrackets(ls.Text);
+    end;
+    for i := ls.Count - 1 downto 0 do
+    begin
+      Str := Trim(ls[i]);
+      if Str = '' then
+        ls.Delete(i)
+      else
       begin
-        Str := Trim(ls[i]);
-        if Str = '' then
+        case ListType of
+          ltHost: Str := ExtractDomain(Str);
+          ltHash: Str := AnsiUpperCase(Str);
+          ltPolicy: Str := AnsiLowerCase(Str);
+          ltNode: Str := AnsiUpperCase(Str);
+          ltBridge:
+            if InsensPosEx('Bridge ', Str) = 1 then
+              Str := Copy(Str, 8);
+        end;
+        if not ValidData(Str, ListType) then
           ls.Delete(i)
         else
-        begin
-          case ListType of
-            ltHost: Str := ExtractDomain(Str);
-            ltHash: Str := AnsiUpperCase(Str);
-            ltPolicy: Str := AnsiLowerCase(Str);
-            ltNode: Str := AnsiUpperCase(Str);
-          end;
-          if not ValidData(Str, ListType, State) then
-            ls.Delete(i)
-          else
-            ls[i] := Str;
-        end;
+          ls[i] := Str;
       end;
-      DeleteDuplicatesFromList(ls, ListType);
-      if Sorted then
-      begin
-        if ListType = ltNode then
-          SortNodesList(ls)
-        else
-          ls.CustomSort(CompTextAsc);
-      end;
-      Memo.Text := ls.Text;
     end;
-    Result := '';
-    for i := 0 to ls.Count - 1 do
-      Result := Result + Separator + ls[i];
-    Delete(Result, 1, Length(Separator));
-  finally
-    ls.Free;
+    DeleteDuplicatesFromList(ls, ListType);
+    if Sorted then
+    begin
+      if ListType = ltNode then
+        SortNodesList(ls)
+      else
+        ls.CustomSort(CompTextAsc);
+    end;
+    Memo.Text := ls.Text;
   end;
 end;
 
@@ -3146,7 +3161,7 @@ begin
   Result := '';
 end;
 
-function TryParseBridge(BridgeStr: string; out Bridge: TBridge): Boolean;
+function TryParseBridge(BridgeStr: string; out Bridge: TBridge; Validate: Boolean = True): Boolean;
 var
   ParseStr: ArrOfStr;
   ParamsState: Byte;
@@ -3158,7 +3173,10 @@ begin
   Bridge.Hash := '';
   Bridge.Transport := '';
   Bridge.Params := '';
-  Result := ValidBridge(BridgeStr, btNone);
+  if Validate then
+    Result := ValidBridge(BridgeStr)
+  else
+    Result := BridgeStr <> '';
   if Result then
   begin
     ParamsState := 0;
@@ -3211,7 +3229,7 @@ begin
   Result := False;
 end;
 
-function ValidBridge(BridgeStr: string; BridgeType: TBridgeType): Boolean;
+function ValidBridge(BridgeStr: string): Boolean;
 var
   ParseStr: ArrOfStr;
   ParamCount: Integer;
@@ -3229,14 +3247,7 @@ begin
     if TransportsDic.TryGetValue(ParseStr[0], T) then
     begin
       if (T.TransportID <> TRANSPORT_SERVER) and (ValidSocket(ParseStr[1]) <> 0) then
-      begin
-        if BridgeType <> btNone then
-        begin
-          Include(T.BridgeType, BridgeType);
-          TransportsDic.AddOrSetValue(ParseStr[0], T);
-        end;
         Result := True;
-      end;
     end
     else
       Result := (ValidSocket(ParseStr[0]) <> 0) and ValidHash(ParseStr[1]);
