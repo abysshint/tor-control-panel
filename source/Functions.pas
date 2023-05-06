@@ -298,11 +298,18 @@ end;
 function GetBridgeIp(Bridge: TBridge): string;
 var
   BridgeInfo: TBridgeInfo;
+  BridgeID, Str: string;
   Data: Integer;
 begin
   Result := Bridge.Ip;
   Data := IpInRanges(Bridge.Ip, DocRanges);
-  if BridgesDic.TryGetValue(Bridge.Hash, BridgeInfo) then
+  BridgeID := Bridge.Hash;
+  if BridgeID = '' then
+  begin
+    if CompBridgesDic.TryGetValue(Bridge.Ip, Str) then
+      BridgeID := Str;
+  end;
+  if BridgesDic.TryGetValue(BridgeID, BridgeInfo) then
   begin
     if Data <> 0 then
       Result := BridgeInfo.Router.IPv4;
@@ -889,8 +896,14 @@ begin
 end;
 
 function HasBrackets(Str: string): Boolean;
+var
+  StrLen: Integer;
 begin
-  Result := (Str[1] = '[') and (Str[Length(Str)] = ']');
+  StrLen := Length(Str);
+  if StrLen > 1 then
+    Result := (Str[1] = '[') and (Str[StrLen] = ']')
+  else
+    Result := False;
 end;
 
 function RemoveBrackets(Str: string; Square: Boolean = False): string;

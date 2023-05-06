@@ -38,7 +38,7 @@ const
   BUFSIZE = 1024 * 1024;
 
   MAX_COUNTRIES = 251;
-  MAX_TOTALS = 6;
+  MAX_TOTALS = 7;
 
   CIRCUIT_FILTER_DEFAULT = 32767;
   CIRCUIT_FILTER_MAX = 32767;
@@ -85,6 +85,7 @@ const
   TOTAL_PING_SUM = 3;
   TOTAL_PING_COUNTS = 4;
   TOTAL_ALIVES = 5;
+  TOTAL_BRIDGES = 6;
 
   SORT_ASC = 1;
   SORT_DESC = 2;
@@ -150,12 +151,13 @@ const
   FILTER_TOTAL = 3;
   FILTER_GUARD = 4;
   FILTER_EXIT = 5;
-  FILTER_ALIVE = 6;
-  FILTER_PING = 7;
-  FILTER_ENTRY_NODES = 8;
-  FILTER_MIDDLE_NODES = 9;
-  FILTER_EXIT_NODES = 10;
-  FILTER_EXCLUDE_NODES = 11;
+  FILTER_BRIDGE = 6;
+  FILTER_ALIVE = 7;
+  FILTER_PING = 8;
+  FILTER_ENTRY_NODES = 9;
+  FILTER_MIDDLE_NODES = 10;
+  FILTER_EXIT_NODES = 11;
+  FILTER_EXCLUDE_NODES = 12;
 
   ROUTER_ID = 0;
   ROUTER_NAME = 1;
@@ -270,6 +272,7 @@ const
   HTTPCONNECT = 36;
   UNKNOWN = 37;
 
+  FILTER_BY_BRIDGE = 4;
   FILTER_BY_ALIVE = 5;
   FILTER_BY_TOTAL = 6;
   FILTER_BY_GUARD = 7;
@@ -282,6 +285,7 @@ const
   EXIT_ID = ROUTER_EXIT_NODES;
   EXCLUDE_ID = ROUTER_EXCLUDE_NODES;
   FAVORITES_ID = 14;
+  BRIDGES_ID = 15;
 
 type
   ArrOfStr = array of string;
@@ -386,10 +390,8 @@ var
     '169.254.0.0/16',
     '10.0.0.0/8'
   );
-  DocRanges: array [0..2] of string = (
-    '192.0.2.0/24',
-    '198.51.100.0/24',
-    '203.0.113.0/24'
+  DocRanges: array [0..0] of string = (
+    '192.0.2.0/24'
   );
 
   GeoIpDirs: array [0..2] of string = (

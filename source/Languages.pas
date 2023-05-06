@@ -18,7 +18,7 @@ uses
 
 var
   DetailsHeader: array [0..5] of string;
-  FilterHeader: array [0..7] of string;
+  FilterHeader: array [0..8] of string;
   HsHeader: array [0..3] of string;
   HsPortsHeader: array [0..2] of string;
   RoutersHeader: array [0..8] of string;
@@ -244,7 +244,7 @@ begin
     LoadStr('230', 'Название,Версия,Точек входа,Соединений');
     LoadStr('231', 'Интерфейс,Порт,Виртуальный');
     LoadStr('232', 'Ник,IP адрес,,Страна,Вес,Пинг');
-    LoadStr('233', 'ID,,Страна,Всего,Вход,Выход,Живые,∑ пинг');
+    LoadStr('233', 'ID,,Страна,Всего,Вход,Выход,Мосты,Живые,∑ пинг');
     LoadStr('234', 'Б,КБ,МБ,ГБ,ТБ,ПБ,ЭБ');
     LoadStr('235', 'Информация');
     LoadStr('236', 'Ошибка при разборе конфигурационного файла torrc, подробности смотрите в журнале');
@@ -401,6 +401,7 @@ begin
     LoadStr('528', 'Соединения');
     LoadStr('530', 'Назначение');
     LoadStr('547', 'Тип узла');
+    LoadStr('584', 'Все избранные');
     LoadStr('593', 'HTTP-прокси');
     LoadStr('594', 'SOCKS4-трафик');
     LoadStr('595', 'SOCKS5-трафик');
@@ -414,6 +415,8 @@ begin
     LoadStr('629', 'г.|год|года|лет');
     LoadStr('631', 'Прогресс');
     LoadStr('632', 'Доступно: %s из %d');
+    LoadStr('643', 'Всего выбрано');
+    LoadStr('645', 'Мост (Узел консенсуса)');
 
     TranslateArray(HsHeader, TransStr('230'));
     TranslateArray(HsPortsHeader, TransStr('231'));
@@ -557,10 +560,11 @@ begin
     Tcp.cbScanNewBridges.Caption := Load('642', 'Сначала сканировать порты');
 
     Tcp.lbFilterMode.Caption := Load('162', 'Режим');
-    Tcp.lbFilterEntry.Caption := TransStr('288') + ': ' + IntToStr(Tcp.lbFilterEntry.Tag);
-    Tcp.lbFilterMiddle.Caption := TransStr('289') + ': ' + IntToStr(Tcp.lbFilterMiddle.Tag);
-    Tcp.lbFilterExit.Caption := TransStr('290') + ': ' + IntToStr(Tcp.lbFilterExit.Tag);
-    Tcp.lbFilterExclude.Caption := TransStr('287') + ': ' + IntToStr(Tcp.lbFilterExclude.Tag);
+    Tcp.lbFilterTotalSelected.Caption := TransStr('643') + ':';
+    Tcp.imFilterEntry.Hint := TransStr('288');
+    Tcp.imFilterMiddle.Hint := TransStr('289');
+    Tcp.imFilterExit.Hint := TransStr('290');
+    Tcp.imFilterExclude.Hint := TransStr('287');
     LoadList(Tcp.cbxFilterMode, '165', '"Без фильтрации", "Выбранные страны", "Избранные узлы"');
 
     Tcp.lbServerMode.Caption := Load('166', 'Режим работы');
@@ -744,11 +748,13 @@ begin
     Tcp.btnShowNodes.Caption := TransStr('547');
     LoadList(Tcp.cbxRoutersQuery, '548', '"Хеш","Ник","IPv4","IPv6","OR-порт","DIR-порт","Версия","Пинг","Транспорт"');
     Tcp.edRoutersQuery.TextHint := Load('549', 'Введите запрос');
-    Tcp.lbFavoritesEntry.Caption := TransStr('288') + ': ' + IntToStr(Tcp.lbFavoritesEntry.Tag);
-    Tcp.lbFavoritesMiddle.Caption := TransStr('289') + ': ' + IntToStr(Tcp.lbFavoritesMiddle.Tag);
-    Tcp.lbFavoritesExit.Caption := TransStr('290') + ': ' + IntToStr(Tcp.lbFavoritesExit.Tag);
-    Tcp.lbFavoritesTotal.Caption := TransStr('203') + ': ' + IntToStr(Tcp.lbFavoritesTotal.Tag);
-    Tcp.lbExcludeNodes.Caption := TransStr('287') + ': ' + IntToStr(Tcp.lbExcludeNodes.Tag);
+    Tcp.lbFavoritesTotalSelected.Caption := TransStr('643') + ':';
+    Tcp.imFavoritesEntry.Hint := TransStr('288');
+    Tcp.imFavoritesMiddle.Hint := TransStr('289');
+    Tcp.imFavoritesExit.Hint := TransStr('290');
+    Tcp.imFavoritesTotal.Hint := TransStr('584');
+    Tcp.imExcludeNodes.Hint := TransStr('287');
+    Tcp.imFavoritesBridges.Hint := Load('644', 'Используемые мосты');
 
     Tcp.miHsOpenDir.Caption := Load('273', 'Каталог сервиса');
     Tcp.miHsCopy.Caption := TransStr('274');
@@ -860,7 +866,7 @@ begin
     Tcp.miLogDel1y.Caption := TranslateTime(1, TIME_YEAR);
 
     Tcp.miStat.Caption := Load('309', 'Статистика');
-    Tcp.miStatRelays.Caption := Load('310', 'Все');
+    Tcp.miStatRelays.Caption := Load('310', 'Все узлы');
     Tcp.miStatGuards.Caption := Load('311', 'Сторожевые');
     Tcp.miStatExit.Caption := Load('312', 'Выходные');
     Tcp.miStatAggregate.Caption := Load('313', 'Общая по странам');
@@ -1019,7 +1025,7 @@ begin
     Tcp.miClearRoutersMiddle.Caption := TransStr('289');
     Tcp.miClearRoutersExit.Caption := TransStr('290');
     Tcp.miClearRoutersExclude.Caption := TransStr('287');
-    Tcp.miClearRoutersFavorites.Caption := Load('584', 'Все избранные');
+    Tcp.miClearRoutersFavorites.Caption := TransStr('584');
     Tcp.miClearRoutersIncorrect.Caption := Load('585', 'Неправильные узлы');
     Tcp.miClearRoutersAbsent.Caption := Load('586', 'Отсутствующие в консенсусе');
     Tcp.miAutoSelNodesType.Caption := Load('592', 'Изменять список узлов при автоподборе');
@@ -1028,7 +1034,6 @@ begin
     Tcp.miAutoSelExitEnabled.Caption := TransStr('290');
     Tcp.miAutoSelNodesSA.Caption := TransStr('368');
     Tcp.miAutoSelNodesUA.Caption := TransStr('369');
-    Tcp.miAddRelaysToBridgesCache.Caption := Load('615', 'Добавлять узлы консенсуса в кэш мостов');
 
     Tcp.miTransportsInsert.Caption := TransStr('279');
     Tcp.miTransportsDelete.Caption := TransStr('280');
