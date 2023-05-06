@@ -580,19 +580,11 @@ type
     gbOptions: TGroupBox;
     lbMaxCircuitDirtiness: TLabel;
     lbSeconds1: TLabel;
-    lbCircuitBuildTimeout: TLabel;
-    lbSeconds2: TLabel;
-    lbSeconds3: TLabel;
-    lbNewCircuitPeriod: TLabel;
     cbAvoidDiskWrites: TCheckBox;
     cbLearnCircuitBuildTimeout: TCheckBox;
     cbEnforceDistinctSubnets: TCheckBox;
     edMaxCircuitDirtiness: TEdit;
     udMaxCircuitDirtiness: TUpDown;
-    edNewCircuitPeriod: TEdit;
-    udNewCircuitPeriod: TUpDown;
-    edCircuitBuildTimeout: TEdit;
-    udCircuitBuildTimeout: TUpDown;
     cbUseOpenDNS: TCheckBox;
     cbUseOpenDNSOnlyWhenUnknown: TCheckBox;
     miStreamsSortTrack: TMenuItem;
@@ -1019,6 +1011,18 @@ type
     miStatCountry: TMenuItem;
     imFavoritesBridges: TImage;
     lbFavoritesBridges: TLabel;
+    lbSocksTimeout: TLabel;
+    lbSeconds6: TLabel;
+    edSocksTimeout: TEdit;
+    udSocksTimeout: TUpDown;
+    lbCircuitBuildTimeout: TLabel;
+    lbSeconds2: TLabel;
+    edCircuitBuildTimeout: TEdit;
+    udCircuitBuildTimeout: TUpDown;
+    lbSeconds3: TLabel;
+    lbNewCircuitPeriod: TLabel;
+    edNewCircuitPeriod: TEdit;
+    udNewCircuitPeriod: TUpDown;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -6958,6 +6962,7 @@ begin
     GetSettings(cbStrictNodes, [cfBoolInvert]);
     GetSettings(cbEnforceDistinctSubnets);
     GetSettings(udMaxCircuitDirtiness);
+    GetSettings(udSocksTimeout);
     GetSettings(udCircuitBuildTimeout);
     GetSettings(udNewCircuitPeriod);
     GetSettings(udMaxClientCircuitsPending);
@@ -7988,6 +7993,7 @@ begin
 
     SetTorConfig('SafeLogging', IntToStr(Integer(miSafeLogging.Checked)));
     SetTorConfig('MaxCircuitDirtiness', IntToStr(udMaxCircuitDirtiness.Position));
+    SetTorConfig('SocksTimeout', IntToStr(udSocksTimeout.Position));
     SetTorConfig('CircuitBuildTimeout', IntToStr(udCircuitBuildTimeout.Position));
     SetTorConfig('MaxClientCircuitsPending', IntToStr(udMaxClientCircuitsPending.Position));
     SetTorConfig('LearnCircuitBuildTimeout', IntToStr(Integer(cbLearnCircuitBuildTimeout.Checked)));
@@ -15614,6 +15620,7 @@ begin
 
   DefaultsDic := TDictionary<string, string>.Create;
   DefaultsDic.AddOrSetValue('MaxCircuitDirtiness', '600');
+  DefaultsDic.AddOrSetValue('SocksTimeout', '120');
   DefaultsDic.AddOrSetValue('CircuitBuildTimeout', '60');
   DefaultsDic.AddOrSetValue('NewCircuitPeriod', '30');
   DefaultsDic.AddOrSetValue('MaxClientCircuitsPending', '32');

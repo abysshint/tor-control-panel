@@ -1431,49 +1431,11 @@ object Tcp: TTcp
           Width = 21
           Height = 13
           Caption = #1089#1077#1082'.'
-          ParentShowHint = False
-          ShowHint = True
-          Transparent = True
-        end
-        object lbCircuitBuildTimeout: TLabel
-          Left = 99
-          Top = 63
-          Width = 184
-          Height = 13
-          Alignment = taRightJustify
-          Caption = #1052#1072#1082#1089'. '#1074#1088#1077#1084#1103' '#1085#1072' '#1087#1086#1089#1090#1088#1086#1077#1085#1080#1077' '#1094#1077#1087#1086#1095#1082#1080
-          Enabled = False
-          Transparent = True
-        end
-        object lbSeconds2: TLabel
-          Left = 344
-          Top = 63
-          Width = 21
-          Height = 13
-          Caption = #1089#1077#1082'.'
-          Enabled = False
-          Transparent = True
-        end
-        object lbSeconds3: TLabel
-          Left = 344
-          Top = 40
-          Width = 21
-          Height = 13
-          Caption = #1089#1077#1082'.'
-          Transparent = True
-        end
-        object lbNewCircuitPeriod: TLabel
-          Left = 38
-          Top = 42
-          Width = 245
-          Height = 13
-          Alignment = taRightJustify
-          Caption = #1048#1085#1090#1077#1088#1074#1072#1083' '#1084#1077#1078#1076#1091' '#1087#1086#1087#1099#1090#1082#1072#1084#1080' '#1087#1086#1089#1090#1088#1086#1080#1090#1100' '#1094#1077#1087#1086#1095#1082#1091
           Transparent = True
         end
         object lbMaxClientCircuitsPending: TLabel
           Left = 67
-          Top = 86
+          Top = 109
           Width = 216
           Height = 13
           Alignment = taRightJustify
@@ -1498,35 +1460,88 @@ object Tcp: TTcp
           Caption = #1047#1072#1087#1086#1083#1085#1077#1085#1080#1077' '#1094#1077#1087#1086#1095#1077#1082' '#1084#1072#1089#1082#1080#1088#1091#1102#1097#1080#1084' '#1090#1088#1072#1092#1080#1082#1086#1084
           Transparent = True
         end
+        object lbSocksTimeout: TLabel
+          Left = 50
+          Top = 40
+          Width = 233
+          Height = 13
+          Alignment = taRightJustify
+          Caption = #1052#1072#1082#1089'. '#1074#1088#1077#1084#1103' '#1085#1072' '#1091#1089#1090#1072#1085#1086#1074#1083#1077#1085#1080#1077' OR-'#1089#1086#1077#1076#1080#1085#1077#1085#1080#1081
+          Transparent = True
+        end
+        object lbSeconds6: TLabel
+          Left = 344
+          Top = 40
+          Width = 21
+          Height = 13
+          Caption = #1089#1077#1082'.'
+          Transparent = True
+        end
+        object lbCircuitBuildTimeout: TLabel
+          Left = 99
+          Top = 86
+          Width = 184
+          Height = 13
+          Alignment = taRightJustify
+          Caption = #1052#1072#1082#1089'. '#1074#1088#1077#1084#1103' '#1085#1072' '#1087#1086#1089#1090#1088#1086#1077#1085#1080#1077' '#1094#1077#1087#1086#1095#1082#1080
+          Enabled = False
+          Transparent = True
+        end
+        object lbSeconds2: TLabel
+          Left = 344
+          Top = 86
+          Width = 21
+          Height = 13
+          Caption = #1089#1077#1082'.'
+          Enabled = False
+          Transparent = True
+        end
+        object lbSeconds3: TLabel
+          Left = 344
+          Top = 63
+          Width = 21
+          Height = 13
+          Caption = #1089#1077#1082'.'
+          Transparent = True
+        end
+        object lbNewCircuitPeriod: TLabel
+          Left = 38
+          Top = 63
+          Width = 245
+          Height = 13
+          Alignment = taRightJustify
+          Caption = #1048#1085#1090#1077#1088#1074#1072#1083' '#1084#1077#1078#1076#1091' '#1087#1086#1087#1099#1090#1082#1072#1084#1080' '#1087#1086#1089#1090#1088#1086#1080#1090#1100' '#1094#1077#1087#1086#1095#1082#1091
+          Transparent = True
+        end
         object cbAvoidDiskWrites: TCheckBox
           Left = 13
-          Top = 177
+          Top = 200
           Width = 350
           Height = 17
           Caption = #1042#1099#1087#1086#1083#1085#1103#1090#1100' '#1084#1077#1085#1100#1096#1077' '#1086#1087#1077#1088#1072#1094#1080#1081' '#1089' '#1076#1080#1089#1082#1086#1084
-          TabOrder = 11
+          TabOrder = 7
           OnClick = OptionsChange
         end
         object cbLearnCircuitBuildTimeout: TCheckBox
           Left = 13
-          Top = 108
+          Top = 131
           Width = 350
           Height = 17
           Caption = #1040#1074#1090#1086#1084#1072#1090#1080#1095#1077#1089#1082#1080' '#1074#1099#1073#1080#1088#1072#1090#1100' '#1074#1088#1077#1084#1103' '#1085#1072' '#1087#1086#1089#1090#1088#1086#1077#1085#1080#1077' '#1094#1077#1087#1086#1095#1082#1080
           Checked = True
           State = cbChecked
-          TabOrder = 8
+          TabOrder = 4
           OnClick = cbLearnCircuitBuildTimeoutClick
         end
         object cbEnforceDistinctSubnets: TCheckBox
           Left = 13
-          Top = 131
+          Top = 154
           Width = 350
           Height = 17
           Caption = #1053#1077' '#1089#1090#1088#1086#1080#1090#1100' '#1094#1077#1087#1086#1095#1082#1080' '#1080#1079' '#1091#1079#1083#1086#1074' '#1086#1076#1085#1086#1081' '#1087#1086#1076#1089#1077#1090#1080
           Checked = True
           State = cbChecked
-          TabOrder = 9
+          TabOrder = 5
           OnClick = OptionsChange
         end
         object edMaxCircuitDirtiness: TEdit
@@ -1551,125 +1566,71 @@ object Tcp: TTcp
           Associate = edMaxCircuitDirtiness
           Min = 10
           Max = 2592000
-          Increment = 60
+          Increment = 30
           Position = 600
           TabOrder = 1
           Thousands = False
           OnChanging = SpinChanging
         end
-        object edNewCircuitPeriod: TEdit
-          Left = 286
-          Top = 37
-          Width = 42
-          Height = 21
-          MaxLength = 7
-          NumbersOnly = True
-          PopupMenu = EditMenu
-          TabOrder = 2
-          Text = '30'
-          OnChange = EditChange
-        end
-        object udNewCircuitPeriod: TUpDown
-          Left = 328
-          Top = 37
-          Width = 13
-          Height = 21
-          Associate = edNewCircuitPeriod
-          Min = 1
-          Max = 2592000
-          Increment = 5
-          Position = 30
-          TabOrder = 3
-          Thousands = False
-          OnChanging = SpinChanging
-        end
-        object edCircuitBuildTimeout: TEdit
-          Left = 286
-          Top = 60
-          Width = 42
-          Height = 21
-          Enabled = False
-          MaxLength = 7
-          NumbersOnly = True
-          PopupMenu = EditMenu
-          TabOrder = 4
-          Text = '60'
-          OnChange = EditChange
-        end
-        object udCircuitBuildTimeout: TUpDown
-          Left = 328
-          Top = 60
-          Width = 13
-          Height = 21
-          Associate = edCircuitBuildTimeout
-          Enabled = False
-          Min = 10
-          Max = 2592000
-          Increment = 5
-          Position = 60
-          TabOrder = 5
-          Thousands = False
-          OnChanging = SpinChanging
-        end
         object cbUseOpenDNS: TCheckBox
           Left = 13
-          Top = 200
+          Top = 223
           Width = 350
           Height = 17
           Caption = #1054#1087#1088#1077#1076#1077#1083#1103#1090#1100' '#1074#1085#1077#1096#1085#1080#1081' '#1072#1076#1088#1077#1089' '#1089#1077#1088#1074#1077#1088#1072' '#1095#1077#1088#1077#1079' OpenDNS'
           Checked = True
           State = cbChecked
-          TabOrder = 12
+          TabOrder = 8
           OnClick = cbUseOpenDNSClick
         end
         object cbUseOpenDNSOnlyWhenUnknown: TCheckBox
           Left = 29
-          Top = 223
+          Top = 246
           Width = 334
           Height = 17
           Caption = #1058#1086#1083#1100#1082#1086' '#1077#1089#1083#1080' TOR '#1085#1077' '#1084#1086#1078#1077#1090' '#1086#1087#1088#1077#1076#1077#1083#1080#1090#1100' '#1077#1075#1086' '#1089#1072#1084
           Checked = True
           State = cbChecked
-          TabOrder = 13
+          TabOrder = 9
           OnClick = cbUseOpenDNSOnlyWhenUnknownClick
         end
         object cbUseNetworkCache: TCheckBox
           Left = 13
-          Top = 246
+          Top = 269
           Width = 350
           Height = 17
           Caption = #1050#1101#1096#1080#1088#1086#1074#1072#1090#1100' IP-cc-'#1079#1072#1087#1088#1086#1089#1099' '#1080' '#1088#1077#1079#1091#1083#1100#1090#1072#1090#1099' '#1089#1077#1090#1077#1074#1086#1075#1086' '#1089#1082#1072#1085#1077#1088#1072
           Checked = True
           State = cbChecked
-          TabOrder = 14
+          TabOrder = 10
           OnClick = OptionsChange
         end
         object cbStrictNodes: TCheckBox
           Left = 13
-          Top = 154
+          Top = 177
           Width = 350
           Height = 17
           Caption = #1056#1072#1079#1088#1077#1096#1080#1090#1100' '#1079#1072#1087#1088#1077#1097#1105#1085#1085#1099#1077' '#1091#1079#1083#1099' '#1076#1083#1103' '#1074#1085#1091#1090#1088#1077#1085#1085#1080#1093' '#1094#1077#1087#1086#1095#1077#1082
           Checked = True
           State = cbChecked
-          TabOrder = 10
+          TabOrder = 6
           OnClick = OptionsChange
         end
         object edMaxClientCircuitsPending: TEdit
           Left = 286
-          Top = 83
+          Top = 106
           Width = 42
           Height = 21
           MaxLength = 4
           NumbersOnly = True
           PopupMenu = EditMenu
-          TabOrder = 6
+          TabOrder = 2
           Text = '32'
           OnChange = EditChange
         end
         object udMaxClientCircuitsPending: TUpDown
           Left = 328
-          Top = 83
+          Top = 106
           Width = 13
           Height = 21
           Associate = edMaxClientCircuitsPending
@@ -1677,7 +1638,7 @@ object Tcp: TTcp
           Max = 1024
           Increment = 8
           Position = 32
-          TabOrder = 7
+          TabOrder = 3
           Thousands = False
           OnChanging = SpinChanging
         end
@@ -1691,7 +1652,7 @@ object Tcp: TTcp
           DoubleBuffered = False
           ItemIndex = 0
           ParentDoubleBuffered = False
-          TabOrder = 16
+          TabOrder = 12
           Text = #1042#1082#1083#1102#1095#1077#1085#1086
           OnChange = OptionsChange
           Items.Strings = (
@@ -1709,7 +1670,7 @@ object Tcp: TTcp
           DoubleBuffered = False
           ItemIndex = 0
           ParentDoubleBuffered = False
-          TabOrder = 15
+          TabOrder = 11
           Text = #1040#1074#1090#1086#1074#1099#1073#1086#1088
           OnChange = OptionsChange
           Items.Strings = (
@@ -1717,6 +1678,88 @@ object Tcp: TTcp
             #1042#1082#1083#1102#1095#1077#1085#1086
             #1054#1075#1088#1072#1085#1080#1095#1077#1085#1086
             #1042#1099#1082#1083#1102#1095#1077#1085#1086)
+        end
+        object edSocksTimeout: TEdit
+          Left = 286
+          Top = 37
+          Width = 42
+          Height = 21
+          MaxLength = 7
+          NumbersOnly = True
+          ParentShowHint = False
+          PopupMenu = EditMenu
+          ShowHint = True
+          TabOrder = 13
+          Text = '120'
+          OnChange = EditChange
+        end
+        object udSocksTimeout: TUpDown
+          Left = 328
+          Top = 37
+          Width = 13
+          Height = 21
+          Associate = edSocksTimeout
+          Min = 10
+          Max = 2592000
+          Increment = 10
+          Position = 120
+          TabOrder = 14
+          Thousands = False
+          OnChanging = SpinChanging
+        end
+        object edCircuitBuildTimeout: TEdit
+          Left = 286
+          Top = 83
+          Width = 42
+          Height = 21
+          Enabled = False
+          MaxLength = 7
+          NumbersOnly = True
+          PopupMenu = EditMenu
+          TabOrder = 15
+          Text = '60'
+          OnChange = EditChange
+        end
+        object udCircuitBuildTimeout: TUpDown
+          Left = 328
+          Top = 83
+          Width = 13
+          Height = 21
+          Associate = edCircuitBuildTimeout
+          Enabled = False
+          Min = 10
+          Max = 2592000
+          Increment = 5
+          Position = 60
+          TabOrder = 16
+          Thousands = False
+          OnChanging = SpinChanging
+        end
+        object edNewCircuitPeriod: TEdit
+          Left = 286
+          Top = 60
+          Width = 42
+          Height = 21
+          MaxLength = 7
+          NumbersOnly = True
+          PopupMenu = EditMenu
+          TabOrder = 17
+          Text = '30'
+          OnChange = EditChange
+        end
+        object udNewCircuitPeriod: TUpDown
+          Left = 328
+          Top = 60
+          Width = 13
+          Height = 21
+          Associate = edNewCircuitPeriod
+          Min = 1
+          Max = 2592000
+          Increment = 5
+          Position = 30
+          TabOrder = 18
+          Thousands = False
+          OnChanging = SpinChanging
         end
       end
     end

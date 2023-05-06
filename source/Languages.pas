@@ -493,6 +493,8 @@ begin
     LoadList(Tcp.cbxConnectionPadding, '619', '"Автовыбор","Включено","Ограничено","Выключено"');
     Tcp.lbCircuitPadding.Caption := Load('620', 'Заполнение цепочек маскирующим трафиком');
     LoadList(Tcp.cbxCircuitPadding, '621', '"Включено","Ограничено","Выключено"');
+    Tcp.lbSocksTimeout.Caption := Load('646', 'Макс. время на установление OR-соединений');
+    Tcp.lbSeconds6.Caption := TranslateTime(0, TIME_SECOND, False, True);;
 
     Tcp.gbControlAuth.Caption := Load('412', 'Управление');
     Tcp.lbControlPort.Caption := Load('127', 'Порт');
