@@ -5,11 +5,11 @@ interface
 uses
   Winapi.Windows, Winapi.Messages, Winapi.CommCtrl, Winapi.Winsock, Winapi.ShellApi,
   Winapi.ShlObj, Winapi.GDIPAPI, Winapi.GDIPOBJ, System.SysUtils, System.IniFiles,
-  System.Generics.Collections, System.ImageList, System.DateUtils, System.Math,
+  System.Generics.Collections, System.ImageList, System.DateUtils, System.Math, System.IOUtils,
   Vcl.Forms, System.Classes, System.Masks, Vcl.ImgList, Vcl.Controls, Vcl.ExtCtrls,
   Vcl.Menus, Vcl.StdCtrls, Vcl.Grids, Vcl.ComCtrls, Vcl.Clipbrd, Vcl.Dialogs, Vcl.Graphics,
-  Vcl.Themes, Vcl.Buttons, blcksock, dnssend, httpsend, pingsend, synacode, synautil,
-  ConstData, Functions, Addons, Languages;
+  Vcl.Themes, Vcl.Buttons, Vcl.ExtDlgs, blcksock, dnssend, httpsend, pingsend, synacode,
+  synautil, ConstData, Functions, Addons, Languages;
 
 type
   TUserGrid = class(TCustomGrid);
@@ -738,7 +738,7 @@ type
     lbBridgesType: TLabel;
     cbxBridgesType: TComboBox;
     cbxBridgesList: TComboBox;
-    lbBridgesList: TLabel;
+    lbBridgesSubType: TLabel;
     miDelimiter54: TMenuItem;
     miRequestIPv6Bridges: TMenuItem;
     miRequestObfuscatedBridges: TMenuItem;
@@ -1023,6 +1023,9 @@ type
     lbNewCircuitPeriod: TLabel;
     edNewCircuitPeriod: TEdit;
     udNewCircuitPeriod: TUpDown;
+    OpenDialog: TOpenDialog;
+    edBridgesFile: TEdit;
+    imBridgesFile: TImage;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1113,6 +1116,7 @@ type
     procedure ScanStart(ScanType: TScanType; ScanPurpose: TScanPurpose);
     procedure ScanNetwork(ScanType: TScanType; ScanPurpose: TScanPurpose);
     procedure UpdateScannerControls;
+    procedure CheckBridgeFileSave;
     function GetScanTypeStr: string;
     procedure LoadConsensus;
     procedure LoadDescriptors;
@@ -1137,6 +1141,7 @@ type
     procedure CheckPaddingControls;
     procedure UpdateConfigVersion;
     procedure LoadUserBridges(ini: TMemIniFile);
+    procedure LoadBridgesFromFile;
     procedure LoadBuiltinBridges(ini: TMemIniFile; UpdateBridges, UpdateList: Boolean; ListName: string = '');
     procedure ResetTransports(ini: TMemIniFile);
     procedure LoadTransportsData(Data: TStringList);
@@ -1477,7 +1482,6 @@ type
     procedure miTransportsClearClick(Sender: TObject);
     procedure btnChangeCircuitClick(Sender: TObject);
     procedure cbxTransportTypeChange(Sender: TObject);
-    procedure cbxBridgesTypeChange(Sender: TObject);
     procedure cbxBridgesListChange(Sender: TObject);
     procedure cbxBridgesTypeKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
@@ -1485,7 +1489,6 @@ type
       Shift: TShiftState);
     procedure cbxNodesListTypeKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
-    procedure cbxBridgesTypeCloseUp(Sender: TObject);
     procedure cbxBridgesListCloseUp(Sender: TObject);
     procedure miRequestIPv6BridgesClick(Sender: TObject);
     procedure miRequestObfuscatedBridgesClick(Sender: TObject);
@@ -1555,7 +1558,14 @@ type
       Shift: TShiftState);
     procedure meBridgesKeyPress(Sender: TObject; var Key: Char);
     procedure edBridgesLimitChange(Sender: TObject);
-    procedure udBridgesLimitChanging(Sender: TObject; var AllowChange: Boolean);
+    procedure imBridgesFileClick(Sender: TObject);
+    procedure cbxBridgesTypeChange(Sender: TObject);
+    procedure edBridgesFileKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
+    procedure edBridgesFileExit(Sender: TObject);
+    procedure edBridgesFileChange(Sender: TObject);
+    procedure miClearBridgesAllClick(Sender: TObject);
+    procedure udBridgesLimitClick(Sender: TObject; Button: TUDBtnType);
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
     procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -1590,9 +1600,9 @@ var
 
   ProgramDir, UserDir, HsDir, ThemesDir, TransportsDir, OnionAuthDir, LogsDir: string;
   DefaultsFile, UserConfigFile, UserBackupFile, TorConfigFile, TorStateFile, TorLogFile,
-  TorExeFile, GeoIpFile, GeoIpv6File, NetworkCacheFile, BridgesCacheFile,
+  TorExeFile, GeoIpFile, GeoIpv6File, NetworkCacheFile, BridgesCacheFile, BridgesFileName,
   UserProfile, LangFile, ConsensusFile, DescriptorsFile, NewDescriptorsFile: string;
-  ControlPassword, SelectedNode, SearchStr, UPnPMsg, GeoFileID, TorFileID: string;
+  ControlPassword, SelectedNode, SearchStr, UPnPMsg, GeoFileID, TorFileID, BridgeFileID: string;
   Circuit, LastRoutersFilter, LastPreferBridgeID, ExitNodeID, ServerIPv4, ServerIPv6, TorVersion: string;
   jLimit: TJobObjectExtendedLimitInformation;
   TorVersionProcess, TorMainProcess: TProcessInfo;
@@ -1611,7 +1621,8 @@ var
   Descriptors: TDescriptorsThread;
   Logger, VersionChecker: TReadPipeThread;
   OptionsLocked, OptionsChanged, ShowNodesChanged, Connected, AlreadyStarted, SearchFirst, StopScan: Boolean;
-  ConsensusUpdated, DescriptorsUpdated, FilterUpdated, RoutersUpdated, ExcludeUpdated, OpenDNSUpdated, LanguageUpdated, BridgesUpdated, BridgesRecalculate: Boolean;
+  ConsensusUpdated, DescriptorsUpdated, FilterUpdated, RoutersUpdated, ExcludeUpdated, OpenDNSUpdated, LanguageUpdated,
+  BridgesUpdated, BridgesRecalculate, BridgesFileUpdated, BridgesFileNeedSave: Boolean;
   SelectExitCircuit, TotalsNeedSave, SupportVanguardsLite: Boolean;
   Scale: Real;
   HsToDelete: ArrOfStr;
@@ -3436,6 +3447,8 @@ end;
 
 procedure TTcp.UpdateRoutersAfterBridgesUpdate;
 begin
+  if BridgesFileUpdated then
+    LoadBridgesFromFile;
   if BridgesRecalculate then
     SaveBridgesData;
   if BridgesUpdated then
@@ -4781,7 +4794,9 @@ begin
   FileAge(TorConfigFile, TorrcDate);
   TorrcChanged := TorrcDate <> LastTorrcDate;
   PathChanged := not CheckRequiredFiles;
-  BridgesChanged := (FailedBridgesCount > 0) or (AlreadyStarted and (NewBridgesCount > 0));
+  BridgesChanged := (FailedBridgesCount > 0) or (AlreadyStarted and (NewBridgesCount > 0)) or
+    ((cbxBridgesType.ItemIndex = BRIDGES_TYPE_FILE) and (BridgeFileID <> GetFileID(BridgesFileName)));
+
   if OptionsChanged or TorrcChanged or PathChanged or BridgesChanged then
   begin
     if Restarting or TorrcChanged or PathChanged or BridgesChanged then
@@ -5095,6 +5110,18 @@ begin
   end;
 end;
 
+procedure TTcp.imBridgesFileClick(Sender: TObject);
+begin
+  if OpenDialog.Execute then
+  begin
+    BridgesFileName := OpenDialog.FileName;
+    BridgesUpdated := True;      
+    LoadBridgesFromFile;
+    SaveBridgesData;  
+    EnableOptionButtons;
+  end;
+end;
+
 procedure TTcp.imGeneratePasswordClick(Sender: TObject);
 begin
   edControlPassword.Text := RandomString(15);
@@ -5182,6 +5209,7 @@ begin
   lsMain.GetIcon(10, imExcludeNodes.Picture.Icon);
   lsMenus.GetIcon(46, imFavoritesTotal.Picture.Icon);
   lsMenus.GetIcon(28, imFavoritesBridges.Picture.Icon);
+  lsMenus.GetIcon(15, imBridgesFile.Picture.Icon);
 
   SetButtonGlyph(lsButtons, 4, sbShowOptions);
   SetButtonGlyph(lsButtons, 5, sbShowLog);
@@ -5992,12 +6020,45 @@ begin
   ServerIsObfs4 := cbxBridgeType.Text = 'obfs4';
 end;
 
-procedure TTcp.LoadUserBridges(ini: TMemIniFile);
+procedure TTcp.LoadBridgesFromFile;
 var
   Bridges: TStringList;
   i: Integer;
+  NeedUpdate: Boolean;
 begin
-  meBridges.Clear;
+  NeedUpdate := True;
+  if FileExists(BridgesFileName) then
+  begin
+    Bridges := TStringList.Create;
+    try
+      Bridges.LoadFromFile(BridgesFileName);
+      if Bridges.Count > 0 then
+      begin
+        for i := Bridges.Count - 1 downto 0 do
+        begin
+          Bridges[i] := Trim(Bridges[i]);
+          if not ValidBridge(Bridges[i]) then
+            Bridges.Delete(i);
+        end;
+        meBridges.Text := Bridges.Text;
+        NeedUpdate := False;
+      end;
+    finally
+      Bridges.Free;
+    end;
+  end;
+  if NeedUpdate then
+    meBridges.Clear;
+  BridgesFileUpdated := False;
+end;
+
+procedure TTcp.LoadUserBridges(ini: TMemIniFile);
+var
+  Bridges: TStringList;
+  NeedUpdate: Boolean;
+  i: Integer;
+begin
+  NeedUpdate := True;
   Bridges := TStringList.Create;
   try
     ini.ReadSectionValues('Bridges', Bridges);
@@ -6010,10 +6071,13 @@ begin
           Bridges.Delete(i);
       end;
       meBridges.Text := Bridges.Text;
+      NeedUpdate := False;
     end;
   finally
     Bridges.Free;
   end;
+  if NeedUpdate then
+    meBridges.Clear; 
 end;
 
 procedure TTcp.LoadBuiltinBridges(ini: TMemIniFile; UpdateBridges, UpdateList: Boolean; ListName: string = '');
@@ -6340,6 +6404,8 @@ var
   T: TTransportInfo;
   IpStr: string;
 begin
+  if ls.Count = 0 then
+    Exit;
   for i := 0 to ls.Count - 1 do
   begin
     if TryParseBridge(ls[i], Bridge, False) then
@@ -6416,10 +6482,10 @@ begin
     if cbUseBridgesLimit.Checked or cbUsePreferredBridge.Checked then
       LimitBridgesList(ls, AutoSave);
 
-    if ls.Text = '' then
-      cbUseBridges.Checked := False
-    else
-      SetTransportsList(ls);
+    if (ls.Text = '') and AutoSave then
+      cbUseBridges.Checked := False;
+
+    SetTransportsList(ls);
 
     if AutoSave then
     begin
@@ -6442,6 +6508,7 @@ begin
         for i := 0 to meBridges.Lines.Count - 1 do
           SetSettings('Bridges', IntToStr(i), meBridges.Lines[i], ini);
       end;
+
       SetSettings('Network', cbUseBridges, ini);
       SetSettings('Network', cbUsePreferredBridge, ini);
       SetSettings('Network', cbxBridgesList, ini, False);
@@ -6456,8 +6523,21 @@ begin
       SetSettings('Network', udBridgesCheckDelay, ini);
       SetSettings('Network', udBridgesQueueSize, ini);
       SetSettings('Network', edPreferredBridge, ini);
-    end;
+      SetSettings('Network', 'BridgesFileName', BridgesFileName, ini);
 
+      if cbxBridgesType.ItemIndex = BRIDGES_TYPE_FILE then
+      begin
+        if BridgesFileNeedSave then
+        begin
+          try
+            meBridges.Lines.SaveToFile(BridgesFileName);
+          except
+          end;
+          BridgesFileNeedSave := False;
+        end;
+        BridgeFileID := GetFileID(BridgesFileName);
+      end;
+    end;
     BridgesCheckControls;
     CountTotalBridges;
     BridgesRecalculate := False;
@@ -7000,9 +7080,13 @@ begin
     GetSettings('Network', udBridgesQueueSize, ini);
     GetSettings('Network', cbxBridgesPriority, ini);
     GetSettings('Network', edPreferredBridge, ini);
+
+    BridgesFileName := GetSettings('Network', 'BridgesFileName', '', ini);
     LoadBuiltinBridges(inidef, cbxBridgesType.ItemIndex = BRIDGES_TYPE_BUILTIN, True, GetSettings('Network', 'BridgesList', '', ini));
-    if cbxBridgesType.ItemIndex = BRIDGES_TYPE_USER then
-      LoadUserBridges(ini);
+    case cbxBridgesType.ItemIndex of
+      BRIDGES_TYPE_USER: LoadUserBridges(ini);
+      BRIDGES_TYPE_FILE: LoadBridgesFromFile;
+    end;
     if FirstLoad then
       LoadBridgesCache;
 
@@ -7045,6 +7129,8 @@ begin
     CheckFilterMode;
     CheckFavoritesState;
     CheckVanguards(True);
+
+    BridgesFileNeedSave := False;
     SaveBridgesData(ini);
 
     SetNodes(FilterEntry, FilterMiddle, FilterExit, FavoritesEntry, FavoritesMiddle, FavoritesExit, ExcludeNodes);
@@ -7162,6 +7248,7 @@ begin
         if ConnectState = 0 then
           ShowCircuits;
       end;
+      BridgesUpdated := False;
       RoutersUpdated := False;
       FilterUpdated := False;
     end;
@@ -8117,10 +8204,11 @@ begin
       end
       else
       begin
-        if RoutersUpdated then
+        if RoutersUpdated or BridgesUpdated then
           ShowRouters;
       end;
     end;
+    BridgesUpdated := False;
 
     if cbxLanguage.ItemIndex <> cbxLanguage.Tag then
       cbxLanguage.Tag := cbxLanguage.ItemIndex;
@@ -9618,7 +9706,7 @@ var
 begin
   BridgesCount := meBridges.Lines.Count;
   IsBridgeEdit := Screen.ActiveControl = meBridges;
-  IsUserBridges := IsBridgeEdit and (cbxBridgesType.ItemIndex = BRIDGES_TYPE_USER) and (BridgesCount > 0);
+  IsUserBridges := IsBridgeEdit and (cbxBridgesType.ItemIndex <> BRIDGES_TYPE_BUILTIN) and (BridgesCount > 0);
   State := IsUserBridges and not tmScanner.Enabled;
 
   miGetBridges.Visible := IsBridgeEdit;
@@ -10617,7 +10705,10 @@ begin
               end;
             end;
             if DeleteCount > 0 then
+            begin
               meBridges.Text := ls.Text;
+              SaveBridgesData;
+            end;
           finally
             ls.Free;
           end;
@@ -12150,6 +12241,8 @@ begin
     Exit;
   BridgesUpdated := True;
   BridgesRecalculate := True;
+  if cbxBridgesType.ItemIndex = BRIDGES_TYPE_FILE then
+    BridgesFileNeedSave := True;
   if not CtrlKeyPressed(AnsiChar(VK_RETURN)) then
     CountTotalBridges(False);
   EnableOptionButtons;
@@ -12436,24 +12529,32 @@ end;
 
 procedure TTcp.BridgesCheckControls;
 var
-  State, BuiltinState, LimitState, PreferredState, UnsuitableState, QueueState, NewState: Boolean;
+  State, BuiltinState, LimitState, PreferredState, UnsuitableState, QueueState, NewState,
+  FileState, BridgeIsFile, BridgeIsBuiltin: Boolean;
 begin
   if cbUseBridges.HelpContext = 1 then
     Exit;
+  BridgeIsFile := cbxBridgesType.ItemIndex = BRIDGES_TYPE_FILE;
+  BridgeIsBuiltin := cbxBridgesType.ItemIndex = BRIDGES_TYPE_BUILTIN; 
   State := cbUseBridges.Checked;
   PreferredState := State and cbUsePreferredBridge.Checked;
   UnsuitableState := State and cbExcludeUnsuitableBridges.Checked;
   NewState := cbUsePreferredBridge.Checked or cbUseBridgesLimit.Checked;
   LimitState := State and cbUseBridgesLimit.Checked and not cbUsePreferredBridge.Checked;
   QueueState := UnsuitableState and NewState and cbCacheNewBridges.Checked;
-  BuiltinState := State and (cbxBridgesType.ItemIndex = BRIDGES_TYPE_BUILTIN) and (cbxBridgesList.Items.Count > 0);
+  BuiltinState := State and BridgeIsBuiltin and (cbxBridgesList.Items.Count > 0);
+  FileState := State and BridgeIsFile;
 
   edBridgesLimit.Enabled := LimitState;
   edBridgesQueueSize.Enabled := QueueState;
   edMaxDirFails.Enabled := UnsuitableState;
   edBridgesCheckDelay.Enabled := UnsuitableState;
+  edBridgesFile.Text := BridgesFileName;
+  edBridgesFile.Visible := BridgeIsFile;
+  edBridgesFile.Enabled := FileState;
   edPreferredBridge.Enabled := PreferredState;
   cbxBridgesType.Enabled := State;
+  cbxBridgesList.Visible := not BridgeIsFile;
   cbxBridgesList.Enabled := BuiltinState;
   cbxBridgesPriority.Enabled := LimitState;
   cbExcludeUnsuitableBridges.Enabled := State;
@@ -12465,11 +12566,15 @@ begin
   udBridgesQueueSize.Enabled := QueueState;
   udMaxDirFails.Enabled := UnsuitableState;
   udBridgesCheckDelay.Enabled := UnsuitableState;
-  meBridges.Enabled := BuiltinState or (State and (cbxBridgesType.ItemIndex = BRIDGES_TYPE_USER));
+  meBridges.Enabled := BuiltinState or (State and not BridgeIsBuiltin);
   meBridges.ReadOnly := cbxBridgesType.ItemIndex = BRIDGES_TYPE_BUILTIN;
   btnFindPreferredBridge.Enabled := PreferredState and PreferredBridgeFound;
   lbBridgesType.Enabled := State;
-  lbBridgesList.Enabled := BuiltinState;
+  lbBridgesSubType.Enabled := BuiltinState or FileState;
+  if BridgeIsFile then
+    lbBridgesSubType.Caption := TransStr('647')
+  else
+    lbBridgesSubType.Caption := TransStr('419');
   lbTotalBridges.Enabled := State;
   lbBridgesLimit.Enabled := LimitState;
   lbBridgesPriority.Enabled := LimitState;
@@ -12480,6 +12585,9 @@ begin
   lbCount4.Enabled := UnsuitableState;
   lbSeconds5.Enabled := UnsuitableState;
   lbPreferredBridge.Enabled := PreferredState;
+  imBridgesFile.Visible := BridgeIsFile;
+  imBridgesFile.Enabled := FileState;
+  imBridgesFile.ShowHint := BridgeIsFile and cbUseBridges.Checked;
   if not PreferredState then
     LastPreferBridgeID := '';
 end;
@@ -12705,7 +12813,7 @@ end;
 procedure TTcp.cbxBridgesListKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
-  if (Key = VK_RETURN) and meBridges.CanFocus then
+  if (Key = VK_RETURN) and (meBridges.Lines.Count > 0) and meBridges.CanFocus then
     meBridges.SetFocus;
 end;
 
@@ -12748,6 +12856,11 @@ begin
         end;
       end;
     end;
+    BRIDGES_TYPE_FILE:
+    begin
+      if UpdateUserBridges then
+        LoadBridgesFromFile;
+    end;
   end;
   BridgesUpdated := True;
   SaveBridgesData;
@@ -12756,19 +12869,14 @@ end;
 
 procedure TTcp.cbxBridgesTypeChange(Sender: TObject);
 begin
+  BridgesFileNeedSave := False;
   UpdateBridgesControls;
-end;
-
-procedure TTcp.cbxBridgesTypeCloseUp(Sender: TObject);
-begin
-  if meBridges.CanFocus then
-    meBridges.SetFocus;
 end;
 
 procedure TTcp.cbxBridgesTypeKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
-  if (Key = VK_RETURN) and meBridges.CanFocus then
+  if (Key = VK_RETURN) and (meBridges.Lines.Count > 0) and meBridges.CanFocus then
     meBridges.SetFocus;
 end;
 
@@ -13227,6 +13335,55 @@ begin
   EnableOptionButtons;
 end;
 
+procedure TTcp.edBridgesFileChange(Sender: TObject);
+var
+  Str: string;
+begin
+  if TEdit(Sender).Focused then
+  begin
+    if CtrlKeyPressed('A') then
+      Exit;
+    Str := Trim(edBridgesFile.Text);
+    if BridgesFileName <> Str then
+    begin
+      BridgesFileName := Str;
+      BridgesUpdated := True;
+      BridgesFileUpdated := True;
+      BridgesRecalculate := True;
+      EnableOptionButtons;
+    end;
+  end;
+end;
+
+procedure TTcp.CheckBridgeFileSave;
+begin
+  if BridgesFileUpdated then
+  begin
+    if FileExists(BridgesFileName) or (BridgesFileName = '') or not
+      TPath.HasValidPathChars(BridgesFileName, False) then
+        LoadBridgesFromFile
+    else
+    begin
+      BridgesFileUpdated := False;
+      BridgesFileNeedSave := True;
+    end;
+    SaveBridgesData;
+  end;
+end;
+
+procedure TTcp.edBridgesFileExit(Sender: TObject);
+begin
+  if LastPlace <> LP_ROUTERS then
+    CheckBridgeFileSave;
+end;
+
+procedure TTcp.edBridgesFileKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if Key = VK_RETURN then
+    CheckBridgeFileSave;
+end;
+
 procedure TTcp.edBridgesLimitChange(Sender: TObject);
 begin
   if TEdit(Sender).Focused then
@@ -13271,8 +13428,7 @@ begin
   end;
 end;
 
-procedure TTcp.udBridgesLimitChanging(Sender: TObject;
-  var AllowChange: Boolean);
+procedure TTcp.udBridgesLimitClick(Sender: TObject; Button: TUDBtnType);
 begin
   BridgesUpdated := True;
   BridgesRecalculate := True;
@@ -16040,6 +16196,17 @@ begin
     UpdateConfigFile(ini);
   end;
   SaveNetworkCache(False);
+  if cbxBridgesType.ItemIndex = BRIDGES_TYPE_FILE then
+  begin
+    if (meBridges.Lines.Count > 0) and not FileExists(BridgesFileName) and not OptionsChanged then
+    begin
+      try
+        meBridges.Lines.SaveToFile(BridgesFileName);
+      except
+      end;
+    end;
+  end;
+
   tiTray.Free;
   StreamsDic.Free;
   CircuitsDic.Free;
@@ -16182,7 +16349,7 @@ begin
                 end
                 else
                 begin
-                  if FailedBridgesInterval > 120 + udBridgesCheckDelay.Position + (udMaxDirFails.Position + 1) * 15 then
+                  if FailedBridgesInterval > udSocksTimeout.Position + udBridgesCheckDelay.Position + (udMaxDirFails.Position + 1) * 15 then
                   begin
                     NewBridgesStage := 0;
                     UpdateOptions;
@@ -16682,9 +16849,20 @@ begin
       end;
     end;
     meBridges.Text := ls.Text;
+    SaveBridgesData;
+    if meBridges.Text = '' then
+      ResetFocus;
   finally
     ls.Free;
   end;
+end;
+
+procedure TTcp.miClearBridgesAllClick(Sender: TObject);
+begin
+  meBridges.Text := '';
+  SaveBridgesData;
+  EnableOptionButtons;
+  ResetFocus;
 end;
 
 procedure TTcp.miClearBridgesNotAliveClick(Sender: TObject);
@@ -16718,11 +16896,9 @@ begin
       meBridges.Text := ls.Text;
 
     if BridgesUpdated then
-    begin
-      UpdateRoutersAfterBridgesUpdate;
-      BridgesCheckControls;
-      EnableOptionButtons;
-    end;
+      SaveBridgesData;
+    if meBridges.Text = '' then
+      ResetFocus;
   finally
     ls.Free;
   end;

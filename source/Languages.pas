@@ -384,6 +384,7 @@ begin
     LoadStr('404', 'Остановка сканирования..');
     LoadLns('405', 'Вы действительно хотите: "%s"\n\nВыбранное действие нельзя будет отменить!');
     LoadStr('406', 'Удалить все');
+    LoadStr('419', 'Список');
     LoadStr('423', 'Найти...');
     LoadStr('444', 'Сетевой сканер');
     LoadStr('459', 'мсeк.|миллисекунда|миллисекунды|миллисекунд');
@@ -417,6 +418,7 @@ begin
     LoadStr('632', 'Доступно: %s из %d');
     LoadStr('643', 'Всего выбрано');
     LoadStr('645', 'Мост (Узел консенсуса)');
+    LoadStr('647', 'Имя файла');
 
     TranslateArray(HsHeader, TransStr('230'));
     TranslateArray(HsPortsHeader, TransStr('231'));
@@ -541,12 +543,11 @@ begin
     Tcp.edProxyPassword.TextHint := TransStr('159');
     Tcp.meBridges.TextHint.Text := Format(TransStr('210'), [TransStr('614')]);
     Tcp.lbBridgesType.Caption := TransStr('151');
-    Tcp.lbBridgesList.Caption := Load('419', 'Список мостов');
     Tcp.cbUsePreferredBridge.Caption := Load('420', 'Задать предпочитаемый мост вручную');
     Tcp.lbPreferredBridge.Caption := Load('421', 'Мост');
     Tcp.edPreferredBridge.TextHint  := Load('422', 'Эта настройка переопределяет выбранный список  мостов');
     Tcp.btnFindPreferredBridge.Caption := TransStr('423');
-    LoadList(Tcp.cbxBridgesType, '424', '"Встроенные","Пользовательские"');
+    LoadList(Tcp.cbxBridgesType, '424', '"Встроенные","Пользовательские","Из файла"');
     Tcp.cbExcludeUnsuitableBridges.Caption := Load('633', 'Исключать неподходящие');
     Tcp.cbUseBridgesLimit.Caption := Load('635', 'Ограничить количество используемых мостов');
     Tcp.lbBridgesLimit.Caption := TransStr('175');
@@ -560,6 +561,7 @@ begin
     Tcp.lbBridgesQueueSize.Caption := Load('641', 'Размер очереди');
     Tcp.lbCount5.Caption := TransStr('470');
     Tcp.cbScanNewBridges.Caption := Load('642', 'Сначала сканировать порты');
+    Tcp.imBridgesFile.Hint := Load('648', 'Открыть файл');
 
     Tcp.lbFilterMode.Caption := Load('162', 'Режим');
     Tcp.lbFilterTotalSelected.Caption := TransStr('643') + ':';
@@ -1059,6 +1061,8 @@ begin
     Tcp.miResetTotalsCounter.Caption := Load('487', 'Сбросить счётчик трафика');
     Tcp.miTotalsCounter.Caption := Load('612', 'Счётчик трафика');
     Tcp.miEnableTotalsCounter.Caption := Load('613', 'Включить подсчёт');
+
+    Tcp.OpenDialog.Filter := Load('615', 'Текстовые файлы|*.txt|Все файлы|*.*');
 
     if ValidInt(TransStr('Locale'), 0, 65535) then
       CurrentLanguage := StrToInt(TransStr('Locale'))
