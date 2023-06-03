@@ -33,7 +33,7 @@ const
 
   LOOPBACK_ADDRESS = '127.0.0.1';
 
-  CURRENT_CONFIG_VERSION = 4;
+  CURRENT_CONFIG_VERSION = 5;
   MAX_SPEED_DATA_LENGTH = 24 * 60 * 60;
   BUFSIZE = 1024 * 1024;
 
@@ -48,8 +48,8 @@ const
   SHOW_NODES_FILTER_MAX = 16352;
   TPL_MENU_DEFAULT = 7;
   TPL_MENU_MAX = 7;
-  AUTOSEL_NODES_DEFAULT = 7;
-  AUTOSEL_NODES_MAX = 7;
+  AUTOSEL_NODES_DEFAULT = 15;
+  AUTOSEL_NODES_MAX = 15;
 
   L1_NUM_GUARDS = 2;
   L2_NUM_GUARDS = 4;
@@ -104,6 +104,9 @@ const
   BRIDGES_TYPE_BUILTIN = 0;
   BRIDGES_TYPE_USER = 1;
   BRIDGES_TYPE_FILE = 2;
+
+  FALLBACK_TYPE_BUILTIN = 0;
+  FALLBACK_TYPE_USER = 1;
 
   TRANSPORT_CLIENT = 0;
   TRANSPORT_SERVER = 1;
@@ -287,6 +290,7 @@ const
   EXCLUDE_ID = ROUTER_EXCLUDE_NODES;
   FAVORITES_ID = 14;
   BRIDGES_ID = 15;
+  FALLBACK_DIR_ID = 16;
 
 type
   ArrOfStr = array of string;
@@ -298,19 +302,20 @@ type
     ntMiddle = MIDDLE_ID,
     ntExit = EXIT_ID,
     ntExclude = EXCLUDE_ID,
-    ntFavorites = FAVORITES_ID
+    ntFavorites = FAVORITES_ID,
+    ntFallbackDir = FALLBACK_DIR_ID
   );
   TNodeTypes = set of TNodeType;
 
   TAddressType = (atNone, atNormal, atExit, atOnion);
   TEditMenuType = (emCopy, emCut, emPaste, emSelectAll, emClear, emDelete, emFind);
-  TListType = (ltNoCheck, ltHost, ltHash, ltPolicy, ltBridge, ltNode, ltSocket, ltTransport, ltIp, ltCidr, ltCode);
+  TListType = (ltNoCheck, ltHost, ltHash, ltPolicy, ltBridge, ltNode, ltSocket, ltTransport, ltIp, ltCidr, ltCode, ltFallbackDir);
   TGuardType = (gtNone, gtBridges, gtRestricted, gtDefault, gtAll);
   TMsgType = (mtInfo, mtWarning, mtError, mtQuestion);
   TParamType = (ptString, ptInteger, ptBoolean, ptSocket, ptHost, ptBridge);
   TTaskBarPos = (tbTop, tbBottom, tbLeft, tbRight, tbNone);
   TScanType = (stNone, stPing, stAlive, stBoth);
-  TScanPurpose = (spNone, spNew, spFailed, spUserBridges, spAll, spNewAndFailed, spNewAndAlive, spNewAndBridges, spBridges, spGuards, spAlive, spNewBridges, spAuto);
+  TScanPurpose = (spNone, spNew, spFailed, spUserBridges, spUserFallbackDirs, spAll, spNewAndFailed, spNewAndAlive, spNewAndBridges, spBridges, spGuards, spAlive, spNewBridges, spAuto);
   TProxyType = (ptNone, ptSocks, ptHttp, ptBoth);
 
   TConfigFlag = (cfAutoAppend, cfAutoSave, cfFindComments, cfExistCheck, cfMultiLine, cfBoolInvert);

@@ -14,13 +14,13 @@ uses
 type
   TUserGrid = class(TCustomGrid);
 
-  TRouterFlag = (rfAuthority, rfBadExit, rfExit, rfFast, rfGuard, rfHSDir, rfStable, rfV2Dir, rfBridge, rfRelay, rfMiddleOnly);
+  TRouterFlag = (rfAuthority, rfBadExit, rfExit, rfFast, rfGuard, rfHSDir, rfStable, rfV2Dir, rfBridge, rfRelay, rfMiddleOnly, rfNoBridgeRelay);
   TRouterFlags = set of TRouterFlag;
   TRouterInfo = record
     Name: string;
     IPv4: string;
     IPv6: string;
-    OrPort: Word;
+    Port: Word;
     DirPort: Word;
     Flags: TRouterFlags;
     Version: string;
@@ -166,6 +166,7 @@ type
     ParseStr: ArrOfStr;
     SearchPos, InfoCount: Integer;
     CountryCode, IpID: Byte;
+    UpdateCountry: Boolean;
     function AuthStageReady(AuthMethod: Integer): Boolean;
     procedure GetData;
     procedure SendData(cmd: string);
@@ -434,16 +435,9 @@ type
     edHsVirtualPort: TEdit;
     udHsVirtualPort: TUpDown;
     tsLists: TTabSheet;
-    lbSeconds4: TLabel;
-    lbTotalHosts: TLabel;
-    lbTrackHostExitsExpire: TLabel;
     lbTotalNodesList: TLabel;
-    meTrackHostExits: TMemo;
-    cbUseTrackHostExits: TCheckBox;
     cbEnableNodesList: TCheckBox;
     meNodesList: TMemo;
-    edTrackHostExitsExpire: TEdit;
-    udTrackHostExitsExpire: TUpDown;
     lbTotalMyFamily: TLabel;
     tmConsensus: TTimer;
     miFilterOptions: TMenuItem;
@@ -745,11 +739,11 @@ type
     miGetBridgesTelegram: TMenuItem;
     miPreferWebTelegram: TMenuItem;
     miDelimiter55: TMenuItem;
-    miClearBridgesNotAlive: TMenuItem;
-    miClearBridges: TMenuItem;
-    miClearBridgesAll: TMenuItem;
+    miClearMenuNotAlive: TMenuItem;
+    miClearMenu: TMenuItem;
+    miClearMenuAll: TMenuItem;
     miDelimiter56: TMenuItem;
-    miClearBridgesNonCached: TMenuItem;
+    miClearMenuNonCached: TMenuItem;
     miResetGuardsDefault: TMenuItem;
     miResetGuardsAll: TMenuItem;
     miDelimiter57: TMenuItem;
@@ -837,7 +831,7 @@ type
     miManualPingMeasure: TMenuItem;
     gbAutoSelectRouters: TGroupBox;
     miDelimiter61: TMenuItem;
-    miClearBridgesCached: TMenuItem;
+    miClearMenuCached: TMenuItem;
     miClearBridgeCacheUnnecessary: TMenuItem;
     miDelimiter62: TMenuItem;
     miDisableFiltersOn: TMenuItem;
@@ -975,7 +969,7 @@ type
     lbScanProgress: TLabel;
     cbExcludeUnsuitableBridges: TCheckBox;
     miDelimiter72: TMenuItem;
-    miClearBridgesUnsuitable: TMenuItem;
+    miClearMenuUnsuitable: TMenuItem;
     cbUseBridgesLimit: TCheckBox;
     lbBridgesLimit: TLabel;
     edBridgesLimit: TEdit;
@@ -1026,6 +1020,30 @@ type
     OpenDialog: TOpenDialog;
     edBridgesFile: TEdit;
     imBridgesFile: TImage;
+    cbUseFallbackDirs: TCheckBox;
+    lbTotalFallbackDirs: TLabel;
+    meFallbackDirs: TMemo;
+    lbFallbackDirsType: TLabel;
+    cbxFallbackDirsType: TComboBox;
+    miDelimiter74: TMenuItem;
+    miRtCopyFallbackDir: TMenuItem;
+    miDelimiter75: TMenuItem;
+    miDetailsCopyFallbackDir: TMenuItem;
+    miAutoSelFallbackDirEnabled: TMenuItem;
+    lbAutoSelFallbackDirCount: TLabel;
+    lbCount6: TLabel;
+    edAutoSelFallbackDirCount: TEdit;
+    udAutoSelFallbackDirCount: TUpDown;
+    imFavoritesFallbackDirs: TImage;
+    lbFavoritesFallbackDirs: TLabel;
+    lbSeconds4: TLabel;
+    lbTotalHosts: TLabel;
+    lbTrackHostExitsExpire: TLabel;
+    meTrackHostExits: TMemo;
+    cbUseTrackHostExits: TCheckBox;
+    edTrackHostExitsExpire: TEdit;
+    udTrackHostExitsExpire: TUpDown;
+    cbAutoSelFallbackDirNoLimit: TCheckBox;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1046,8 +1064,11 @@ type
     function GetTorHs: Integer;
     function LoadHiddenServices(ini: TMemIniFile): Integer;
     function PreferredBridgeFound: Boolean;
+    function GetFallbackStr(RouterID: string; RouterInfo: TRouterInfo): string;
     function CheckRouterFlags(NodeTypeID: Integer; RouterInfo: TRouterInfo): Boolean;
-    procedure UpdateBridgesControls(UpdateList: Boolean = True; UpdateUserBridges: Boolean = True);
+    procedure SetFallbackDirMenu(Menu: TMenuItem; RouterID: string; RouterInfo: TRouterInfo);
+    procedure UpdateBridgesControls(UpdateList: Boolean; UpdateUserBridges: Boolean);
+    procedure UpdateFallbackDirControls;
     procedure ShowRoutersParamsHint;
     procedure CalculateFilterNodes(AlwaysUpdate: Boolean = True);
     procedure CalculateTotalNodes(AlwaysUpdate: Boolean = True);
@@ -1071,6 +1092,7 @@ type
     procedure UpdateRoutersAfterFilterUpdate;
     procedure UpdateOptionsAfterRoutersUpdate;
     procedure UpdateRoutersAfterBridgesUpdate;
+    procedure UpdateRoutersAfterFallbackDrisUpdate;
     procedure SaveRoutersFilterdata(Default: Boolean = False; SaveFilters: Boolean = True);
     procedure LoadRoutersFilterData(Data: string; AutoUpdate: Boolean = True; ResetCustomFilter: Boolean = False);
     procedure ChangeHsTable(Param: Integer);
@@ -1101,6 +1123,7 @@ type
     procedure TransportsEnable(State: Boolean);
     procedure ServerAddressEnable(State: Boolean);
     procedure BridgesCheckControls;
+    procedure FallbackDirsCheckControls;
     procedure EnableOptionButtons(State: Boolean = True);
     procedure FindInFilter(IpAddr: string);
     procedure FindInRouters(RouterID: string; SocketStr: string = '');
@@ -1142,6 +1165,7 @@ type
     procedure UpdateConfigVersion;
     procedure LoadUserBridges(ini: TMemIniFile);
     procedure LoadBridgesFromFile;
+    procedure LoadFallbackDirs(ini: TMemIniFile; Default: Boolean);
     procedure LoadBuiltinBridges(ini: TMemIniFile; UpdateBridges, UpdateList: Boolean; ListName: string = '');
     procedure ResetTransports(ini: TMemIniFile);
     procedure LoadTransportsData(Data: TStringList);
@@ -1150,12 +1174,16 @@ type
     procedure SaveProxyData(ini: TMemIniFile);
     procedure SaveTransportsData(ini: TMemIniFile; ReloadServerTransport: Boolean);
     procedure SaveBridgesData(ini: TMemIniFile = nil);
+    procedure SaveFallbackDirsData(ini: TMemIniFile = nil; UseDic: Boolean = False; FastUpdate: Boolean = False);
+    procedure SaveFallbackDirs;
     procedure SetTransportsList(var ls: TStringList);
     procedure LimitBridgesList(var Data: TStringList; AutoSave: Boolean);
-    procedure ExcludeUnSuitableBridges(var Data: TStringList; DeleteUnsuitable: Boolean = False);
+    procedure ExcludeUnsuitableBridges(var Data: TStringList; DeleteUnsuitable: Boolean = False);
+    procedure ExcludeUnsuitableFallbackDirs(var Data: TStringList);
     procedure SetButtonGlyph(ls: TImageList; Index: Integer; Button: TSpeedButton);
     procedure LoadStaticArray(Data: array of TStaticPair);
     procedure ResetOptions;
+    procedure LoadUserOverrides(ini: TMemIniFile);
     procedure RestartTor(RestartCode: Byte = 0);
     procedure UpdateSystemInfo;
     procedure RestoreForm;
@@ -1200,10 +1228,11 @@ type
     procedure UpdateTransports;
     procedure UseDirPortEnable(State: Boolean);
     procedure SaveSortData;
-    procedure UpdateScaleFactor;
+    procedure UpdateScaleFactor;    
     procedure CheckTorAutoStart;
-    procedure UpdateTrayHint;
+    procedure UpdateTrayHint;    
     procedure CountTotalBridges(ShowSuitableCount: Boolean = True);
+    procedure CountTotalFallbackDirs(ShowSuitableCount: Boolean = True);
     function PrepareNodesToRemove(Data: string; NodeType: TNodeType; out Nodes: ArrOfNodes): Boolean;
     procedure RemoveFromNodesListWithConvert(Nodes: ArrOfNodes; NodeType: TNodeType);
     procedure SortPrepare(aSg: TStringGrid; ACol: Integer; ManualSort: Boolean = False);
@@ -1494,8 +1523,8 @@ type
     procedure miRequestObfuscatedBridgesClick(Sender: TObject);
     procedure miGetBridgesTelegramClick(Sender: TObject);
     procedure miPreferWebTelegramClick(Sender: TObject);
-    procedure miClearBridgesNotAliveClick(Sender: TObject);
-    procedure ClearBridgesAvailableCache(Sender: TObject);
+    procedure miClearMenuNotAliveClick(Sender: TObject);
+    procedure ClearAvailableCache(Sender: TObject);
     procedure cbUsePreferredBridgeClick(Sender: TObject);
     procedure miDisableSelectionUnSuitableAsBridgeClick(Sender: TObject);
     procedure miRtDisableBridgesClick(Sender: TObject);
@@ -1543,7 +1572,7 @@ type
       Shift: TShiftState; X, Y: Integer);
     procedure cbExcludeUnsuitableBridgesClick(Sender: TObject);
     procedure edReachableAddressesChange(Sender: TObject);
-    procedure miClearBridgesUnsuitableClick(Sender: TObject);
+    procedure miClearMenuUnsuitableClick(Sender: TObject);
     procedure cbUseBridgesLimitClick(Sender: TObject);
     procedure cbCacheNewBridgesClick(Sender: TObject);
     procedure meLogMouseUp(Sender: TObject; Button: TMouseButton;
@@ -1564,8 +1593,14 @@ type
       Shift: TShiftState);
     procedure edBridgesFileExit(Sender: TObject);
     procedure edBridgesFileChange(Sender: TObject);
-    procedure miClearBridgesAllClick(Sender: TObject);
+    procedure miClearMenuAllClick(Sender: TObject);
     procedure udBridgesLimitClick(Sender: TObject; Button: TUDBtnType);
+    procedure meFallbackDirsChange(Sender: TObject);
+    procedure cbUseFallbackDirsClick(Sender: TObject);
+    procedure meFallbackDirsExit(Sender: TObject);
+    procedure meFallbackDirsKeyPress(Sender: TObject; var Key: Char);
+    procedure cbxFallbackDirsTypeChange(Sender: TObject);
+    procedure meNodesListKeyPress(Sender: TObject; var Key: Char);
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
     procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -1597,12 +1632,13 @@ var
   NewBridgesList: TDictionary<string, string>;
   UsedBridgesList: TDictionary<string, Byte>;
   CompBridgesDic: TDictionary<string, string>;
+  UsedFallbackDirs: TDictionary<string, string>;
 
   ProgramDir, UserDir, HsDir, ThemesDir, TransportsDir, OnionAuthDir, LogsDir: string;
   DefaultsFile, UserConfigFile, UserBackupFile, TorConfigFile, TorStateFile, TorLogFile,
   TorExeFile, GeoIpFile, GeoIpv6File, NetworkCacheFile, BridgesCacheFile, BridgesFileName,
   UserProfile, LangFile, ConsensusFile, DescriptorsFile, NewDescriptorsFile: string;
-  ControlPassword, SelectedNode, SearchStr, UPnPMsg, GeoFileID, TorFileID, BridgeFileID: string;
+  ControlPassword, SelectedNode, SearchStr, UPnPMsg, GeoFileID, TorFileID, BridgeFileID, TorrcFileID, DefaultsFileID: string;
   Circuit, LastRoutersFilter, LastPreferBridgeID, ExitNodeID, ServerIPv4, ServerIPv6, TorVersion: string;
   jLimit: TJobObjectExtendedLimitInformation;
   TorVersionProcess, TorMainProcess: TProcessInfo;
@@ -1623,11 +1659,13 @@ var
   OptionsLocked, OptionsChanged, ShowNodesChanged, Connected, AlreadyStarted, SearchFirst, StopScan: Boolean;
   ConsensusUpdated, DescriptorsUpdated, FilterUpdated, RoutersUpdated, ExcludeUpdated, OpenDNSUpdated, LanguageUpdated,
   BridgesUpdated, BridgesRecalculate, BridgesFileUpdated, BridgesFileNeedSave: Boolean;
-  SelectExitCircuit, TotalsNeedSave, SupportVanguardsLite: Boolean;
+  SelectExitCircuit, TotalsNeedSave: Boolean;
+  SupportVanguardsLite, SupportRendPostPeriod: Boolean;
+  FallbackDirsRecalculate, FallbackDirsUpdated: Boolean;
   Scale: Real;
   HsToDelete: ArrOfStr;
   SystemLanguage: Word;
-  LastAuthCookieDate, LastConsensusDate, LastNewDescriptorsDate, LastTorrcDate: TDateTime;
+  LastAuthCookieDate, LastConsensusDate, LastNewDescriptorsDate: TDateTime;
   LastFullScanDate, LastPartialScanDate, TotalStartDate, LastSaveStats: Int64;
   LastPartialScansCounts: Integer;
   LockCircuits, LockCircuitInfo, LockStreams, LockStreamsInfo, UpdateTraffic: Boolean;
@@ -1637,10 +1675,11 @@ var
   CurrentScanPurpose, CurrentAutoScanPurpose: TScanPurpose;
   ScanThreads, CurrentScans, TotalScans, AliveNodesCount, PingNodesCount, ConnectProgress: Integer;
   SuitableBridgesCount, UnknownBridgesCountriesCount, FailedBridgesCount, FailedBridgesInterval, NewBridgesCount, UsedBridgesCount: Integer;
+  SuitableFallbackDirsCount, UsedFallbackDirsCount, UnknownFallbackDirCountriesCount, MissingFallbackDirCount: Integer;
   Scanner: TScanThread;
   UsedProxyType: TProxyType;
   LastUserStreamProtocol: Integer;
-  FindBridgesCountries, ScanNewBridges: Boolean;
+  FindBridgesCountries, FindFallbackDirCountries, ScanNewBridges: Boolean;
 
 implementation
 
@@ -1985,7 +2024,7 @@ end;
 procedure TScanThread.Execute;
 var
   MemoryStatus: TMemoryStatusEx;
-  lb, ls: TStringList;
+  Data, ls: TStringList;
   Item: TPair<string,TRouterInfo>;
   GeoIpInfo: TGeoIpInfo;
   AvailMemoryBefore: Int64;
@@ -1994,6 +2033,7 @@ var
   IpToScan, IpStr: string;
   PortToScan: Word;
   Bridge: TBridge;
+  FallbackDir: TFallbackDir;
 
   procedure AddToScanList(IpStr, PortStr: string; Flags: TRouterFlags);
   begin
@@ -2060,12 +2100,12 @@ begin
 
     if sScanPurpose in [spUserBridges, spNewBridges] then
     begin
-      lb := TStringList.Create;
+      Data := TStringList.Create;
       try
-        MemoToList(Tcp.meBridges, ltBridge, False, False, lb);
-        for i := 0 to lb.Count - 1 do
+        MemoToList(Tcp.meBridges, ltBridge, False, Data);
+        for i := 0 to Data.Count - 1 do
         begin
-          if TryParseBridge(lb[i], Bridge, False) then
+          if TryParseBridge(Data[i], Bridge, False) then
           begin
             IpStr := GetBridgeIp(Bridge);
             if sScanPurpose = spUserBridges then
@@ -2087,13 +2127,30 @@ begin
           end;
         end;
       finally
-        lb.Free;
+        Data.Free;
       end;
     end
     else
     begin
-      for Item in RoutersDic do
-        AddToScanList(Item.Value.IPv4, IntToStr(Item.Value.OrPort), Item.Value.Flags);
+      if sScanPurpose = spUserFallbackDirs then
+      begin
+        Data := TStringList.Create;
+        try
+          MemoToList(Tcp.meFallbackDirs, ltFallbackDir, False, Data);
+          for i := 0 to Data.Count - 1 do
+          begin
+            if TryParseFallbackDir(Data[i], FallbackDir, False) then
+              ls.Append(FallbackDir.IPv4 + ':' + IntToStr(FallbackDir.OrPort));
+          end;
+        finally
+          Data.Free;
+        end;
+      end
+      else
+      begin
+        for Item in RoutersDic do
+          AddToScanList(Item.Value.IPv4, IntToStr(Item.Value.Port), Item.Value.Flags);
+      end;
     end;
 
     if ls.Count > 0 then
@@ -2177,11 +2234,13 @@ begin
     LoadDescriptors
   else
   begin
+    if FirstLoad or (MissingFallbackDirCount > 0) then
+      SaveFallbackDirs;
     if ConnectState = 0 then
-    begin
+    begin 
       LoadFilterTotals;
       LoadRoutersCountries;
-      BridgesCheckControls;
+      BridgesCheckControls;     
       ShowFilter;
       ShowRouters;
       ShowCircuits;
@@ -2199,6 +2258,8 @@ begin
   DescriptorsUpdated := False;
   if UsedBridgesCount <> UsedBridgesList.Count then
     SaveBridgesData;
+  if FirstLoad or (MissingFallbackDirCount > 0) then
+    SaveFallbackDirs;
   if ConnectState = 0 then
   begin
     LoadFilterTotals;
@@ -2217,13 +2278,44 @@ end;
 procedure TConsensusThread.Execute;
 var
   ls: TStringList;
+  NeedUpdate: Boolean;
   i, j, FlagsCount: Integer;
-  RouterID, Key: string;
+  RouterID, FallbackStr: string;
   ParseStr, ParseFlag: ArrOfStr;
   Router: TRouterInfo;
-  Bridge: TPair<string, TBridgeInfo>;
+  GeoIpInfo: TGeoIpInfo; 
+  BridgeItem: TPair<string, TBridgeInfo>;
+  RouterItem: TPair<string, TRouterInfo>;
+  FallbackDir: TFallbackDir;
+  HashItem: TPair<string, Byte>;
   BridgeInfo: TBridgeInfo;
   HashList: TDictionary<string, Byte>;
+  LastRoutersCount: Integer;
+
+  procedure RemoveMissingRouter;
+  begin
+    if RoutersDic.TryGetValue(HashItem.Key, Router) then
+    begin
+      if not UsedFallbackDirs.ContainsKey(Router.IPv4 + '|' + IntToStr(Router.Port)) then
+        SetPortsValue(Router.IPv4, IntToStr(Router.Port), -1);
+      RoutersDic.Remove(HashItem.Key);
+    end;
+  end;
+
+  procedure RemoveMissingFallbackDir;
+  begin
+    if GeoIpDic.TryGetValue(FallbackDir.IPv4, GeoIpInfo) then
+    begin
+      if GetPortsValue(GeoIpInfo.ports, IntToStr(FallbackDir.OrPort)) <> -1 then
+      begin
+        SetPortsValue(FallbackDir.IPv4, IntToStr(FallbackDir.OrPort), -1);
+        Inc(MissingFallbackDirCount);
+      end;
+    end
+    else
+      Inc(MissingFallbackDirCount);
+  end;
+
 begin
   if not FileExists(ConsensusFile) then
     Exit;
@@ -2231,8 +2323,14 @@ begin
   HashList := TDictionary<string, Byte>.Create;
   ls := TStringList.Create;
   try
-    for Key in RoutersDic.Keys do
-      HashList.AddOrSetValue(Key, 0);
+    LastRoutersCount := RoutersDic.Count;
+    for RouterItem in RoutersDic do
+    begin
+      if rfRelay in RouterItem.Value.Flags then
+        HashList.AddOrSetValue(RouterItem.Key, 1)
+      else
+        HashList.AddOrSetValue(RouterItem.Key, 0);
+    end;
     ls.LoadFromFile(ConsensusFile);
     for i := 0 to ls.Count - 1 do
     begin
@@ -2243,7 +2341,7 @@ begin
         Router.Name := ParseStr[1];
         Router.IPv4 := ParseStr[5];
         Router.IPv6 := '';
-        Router.OrPort := StrToInt(ParseStr[6]);
+        Router.Port := StrToInt(ParseStr[6]);
         Router.DirPort := StrToInt(ParseStr[7]);
         Router.Flags := [rfRelay];
         Router.Version := '';
@@ -2309,17 +2407,23 @@ begin
       begin
         ParseStr := Explode(' ', ls[i]);
         Router.Bandwidth := StrToInt(SeparateRight(ParseStr[1], '='));
-
         if BridgesDic.TryGetValue(RouterID, BridgeInfo) then
         begin
           Include(Router.Flags, rfBridge);
-          Inc(Router.Params, ROUTER_BRIDGE);
-          BridgeInfo.Router := Router;          
+          TryUpdateMask(Router.Params, ROUTER_BRIDGE, True);
+          BridgeInfo.Router := Router;
           BridgeInfo.Kind := BRIDGE_RELAY;
           BridgesDic.AddOrSetValue(RouterID, BridgeInfo);
         end;
         RoutersDic.AddOrSetValue(RouterID, Router);
-        HashList.Remove(RouterID);
+
+        if HashList.ContainsKey(RouterID) then
+          HashList.Remove(RouterID)
+        else
+        begin
+          if LastRoutersCount > 0 then
+            SetPortsValue(Router.IPv4, IntToStr(Router.Port), 0);
+        end;
         Continue;
       end;
 
@@ -2336,23 +2440,55 @@ begin
     end;
     FileAge(ConsensusFile, LastConsensusDate);
 
-    for Key in HashList.Keys do
-      RoutersDic.Remove(Key);
+    for HashItem in HashList do
+    begin
+      if HashItem.Value = 1 then
+        RemoveMissingRouter
+      else
+      begin
+        if not BridgesDic.ContainsKey(HashItem.Key) then
+          RemoveMissingRouter;
+      end;
+    end;
 
     if BridgesDic.Count > 0 then
     begin
-      for Bridge in BridgesDic do
+      for BridgeItem in BridgesDic do
       begin
-        if Bridge.Value.Kind <> BRIDGE_RELAY then
+        NeedUpdate := False;
+        BridgeInfo := BridgeItem.Value;
+        if BridgeItem.Value.Kind = BRIDGE_RELAY then
         begin
-          BridgeInfo := Bridge.Value;
-          if TryUpdateMask(BridgeInfo.Router.Params, ROUTER_NOT_RECOMMENDED,
-            not VersionsDic.ContainsKey(BridgeInfo.Router.Version)) then
-              BridgesDic.AddOrSetValue(Bridge.Key, BridgeInfo);
-          RoutersDic.AddOrSetValue(Bridge.Key, BridgeInfo.Router);
+          if not (rfRelay in BridgeInfo.Router.Flags) then
+          begin
+            Include(BridgeInfo.Router.Flags, rfNoBridgeRelay);
+            NeedUpdate := True;
+          end;
+        end;
+        if TryUpdateMask(BridgeInfo.Router.Params, ROUTER_NOT_RECOMMENDED, not VersionsDic.ContainsKey(BridgeInfo.Router.Version))
+          or NeedUpdate then
+            BridgesDic.AddOrSetValue(BridgeItem.Key, BridgeInfo);
+        RoutersDic.AddOrSetValue(BridgeItem.Key, BridgeInfo.Router);
+      end;
+    end;
+
+    if (UsedFallbackDirs.Count > 0) and (RoutersDic.Count > 0) then
+    begin
+      for FallbackStr in UsedFallbackDirs.Values do
+      begin
+        if TryParseFallbackDir(FallbackStr, FallbackDir, False) then
+        begin
+          if RoutersDic.TryGetValue(FallbackDir.Hash, Router) then
+          begin
+            if (FallbackDir.IPv4 <> Router.IPv4) or (FallbackDir.OrPort <> Router.Port) then
+              RemoveMissingFallbackDir;
+          end
+          else
+            RemoveMissingFallbackDir; 
         end;
       end;
     end;
+
   finally
     ls.Free;
     HashList.Free;
@@ -2394,7 +2530,7 @@ var
 
     procedure Update(CheckSource: Boolean = False);
     begin
-      RouterInfo.OrPort := Bridge.Port;
+      RouterInfo.Port := Bridge.Port;
       BridgeInfo.Transport := Bridge.Transport;
       BridgeInfo.Params := Bridge.Params;
     end;
@@ -2425,7 +2561,7 @@ var
           begin
             if BridgesDic.TryGetValue(RouterID, BridgeInfoDic) then
             begin
-              RouterInfo.OrPort := BridgeInfoDic.Router.OrPort;
+              RouterInfo.Port := BridgeInfoDic.Router.Port;
               BridgeInfo.Source := BridgeInfoDic.Source;
               BridgeInfo.Transport := BridgeInfoDic.Transport;
               BridgeInfo.Params := BridgeInfoDic.Params;
@@ -2457,6 +2593,8 @@ var
   end;
 
 begin
+  if RoutersDic.Count = 0 then
+    Exit;
   ls := TStringList.Create;
   lb := TStringList.Create;
   UserBridges := TDictionary<string, TBridge>.Create;
@@ -2517,7 +2655,7 @@ begin
           DescRouter.Name := ParseStr[1];
           DescRouter.IPv4 := ParseStr[2];
           DescRouter.IPv6 := '';
-          DescRouter.OrPort := StrToInt(ParseStr[3]);
+          DescRouter.Port := StrToInt(ParseStr[3]);
           DescRouter.DirPort := 0;
           DescRouter.Flags := [rfBridge];
           DescRouter.Params := ROUTER_BRIDGE;
@@ -2570,11 +2708,8 @@ begin
           begin
             if rfRelay in Router.Flags then
             begin
-              if not (rfBridge in Router.Flags) then
-              begin
-                Include(Router.Flags, rfBridge);
-                Inc(Router.Params, ROUTER_BRIDGE);
-              end;
+              Include(Router.Flags, rfBridge);
+              TryUpdateMask(Router.Params, ROUTER_BRIDGE, True);
               if Router.Bandwidth < DescRouter.Bandwidth then
                 Router.Bandwidth := DescRouter.Bandwidth;
               UpdateBridges(Router);
@@ -2593,8 +2728,8 @@ begin
           begin
             if BridgesDic.TryGetValue(RouterID, BridgeData) then
             begin
-              SetPortsValue(BridgeData.Router.IPv4, IntToStr(BridgeData.Router.OrPort), 1);
-              BridgeKey := BridgeData.Router.IPv4 + '|' + IntToStr(BridgeData.Router.OrPort);
+              SetPortsValue(BridgeData.Router.IPv4, IntToStr(BridgeData.Router.Port), 1);
+              BridgeKey := BridgeData.Router.IPv4 + '|' + IntToStr(BridgeData.Router.Port);
               DirFetches.Remove(BridgeKey);
               if (NewBridgesStage = 1) and (NewBridgesCount > 0) then
               begin
@@ -2606,8 +2741,8 @@ begin
               end;
               if GeoIpDic.ContainsKey(BridgeData.Router.IPv6) then
               begin
-                SetPortsValue(BridgeData.Router.IPv6, IntToStr(BridgeData.Router.OrPort), 1);
-                BridgeKey := BridgeData.Router.IPv6 + '|' + IntToStr(BridgeData.Router.OrPort);
+                SetPortsValue(BridgeData.Router.IPv6, IntToStr(BridgeData.Router.Port), 1);
+                BridgeKey := BridgeData.Router.IPv6 + '|' + IntToStr(BridgeData.Router.Port);
                 DirFetches.Remove(BridgeKey);
                 if (NewBridgesStage = 1) and (NewBridgesCount > 0) then
                 begin
@@ -2794,7 +2929,6 @@ end;
 procedure TControlThread.GetData;
 var
   i: Integer;
-  UpdateCountry: Boolean;
   Item: TPair<string, TRouterInfo>;
   GeoIpItem: TPair<string, TGeoIpInfo>;
   ls: TStringList;
@@ -2802,7 +2936,27 @@ var
   FilterInfo: TFilterInfo;
   RouterInfo: TRouterInfo;
   Bridge: TBridge;
-  IpStr: string;
+  FallbackDir: TFallbackDir;
+  Str: string;
+
+  procedure CheckCountryUpdate(IpStr: string; FindData: Boolean = True);
+  begin
+    UpdateCountry := True;
+    if FindData then
+    begin
+      if GeoIpDic.TryGetValue(IpStr, GeoIpInfo) then
+      begin
+        if GeoIpInfo.cc <> DEFAULT_COUNTRY_ID then
+          UpdateCountry := False;
+      end;
+    end;
+    if UpdateCountry then
+    begin
+      Inc(InfoCount);
+      Temp := Temp + ' ip-to-country/' + IpStr;
+    end;
+  end;
+
 begin
   if InfoStage > 0 then
   begin
@@ -2814,30 +2968,32 @@ begin
 
       if GeoIpExists then
       begin
-        if FindBridgesCountries then
+        if FindBridgesCountries or FindFallbackDirCountries then
         begin
           ls := TStringList.Create;
           try
-            ls.Text := Tcp.meBridges.Text;
-            ls.Append(Tcp.edPreferredBridge.Text);
-            for i := 0 to ls.Count - 1 do
+            if FindBridgesCountries then
             begin
-              if TryParseBridge(ls[i], Bridge, False) then
+              ls.Text := Tcp.meBridges.Text;
+              ls.Append(Tcp.edPreferredBridge.Text);
+              for i := 0 to ls.Count - 1 do
               begin
-                IpStr := GetBridgeIp(Bridge);
-                if IpStr = '' then
-                  Continue;
-                UpdateCountry := True;
-                if GeoIpDic.TryGetValue(IpStr, GeoIpInfo) then
+                if TryParseBridge(ls[i], Bridge, False) then
                 begin
-                  if GeoIpInfo.cc <> DEFAULT_COUNTRY_ID then
-                    UpdateCountry := False;
+                  Str := GetBridgeIp(Bridge);
+                  if Str = '' then
+                    Continue;
+                  CheckCountryUpdate(Str);
                 end;
-                if UpdateCountry then
-                begin
-                  Inc(InfoCount);
-                  Temp := Temp + ' ip-to-country/' + IpStr;
-                end;
+              end;
+            end;
+            if FindFallbackDirCountries then
+            begin
+              ls.Text := Tcp.meFallbackDirs.Text;
+              for i := 0 to ls.Count - 1 do
+              begin
+                if TryParseFallbackDir(ls[i], FallbackDir, False) then
+                  CheckCountryUpdate(FallbackDir.IPv4);
               end;
             end;
           finally
@@ -2849,27 +3005,12 @@ begin
           if GeoIpUpdating then
           begin
             for GeoIpItem in GeoIpDic do
-            begin
-              Inc(InfoCount);
-              Temp := Temp + ' ip-to-country/' + GeoIpItem.Key;
-            end;
+              CheckCountryUpdate(GeoIpItem.Key, False);
           end
           else
           begin
             for Item in RoutersDic do
-            begin
-              UpdateCountry := True;
-              if GeoIpDic.TryGetValue(Item.Value.IPv4, GeoIpInfo) then
-              begin
-                if GeoIpInfo.cc <> DEFAULT_COUNTRY_ID then
-                  UpdateCountry := False;
-              end;
-              if UpdateCountry then
-              begin
-                Inc(InfoCount);
-                Temp := Temp + ' ip-to-country/' + Item.Value.IPv4;
-              end;
-            end;
+              CheckCountryUpdate(Item.Value.IPv4);
           end;
         end;
       end;
@@ -2923,9 +3064,10 @@ begin
     if InfoStage = 3 then
     begin
       InfoStage := 0;
-      if FindBridgesCountries then
+      if FindBridgesCountries or FindFallbackDirCountries then
       begin
         FindBridgesCountries := False;
+        FindFallbackDirCountries := False;
         if not ScanNewBridges then
         begin
           OptionsLocked := True;
@@ -3458,10 +3600,24 @@ begin
   end;
 end;
 
+procedure TTcp.UpdateRoutersAfterFallbackDrisUpdate;
+begin
+  if FallbackDirsRecalculate then
+    SaveFallbackDirsData;
+  if FallbackDirsUpdated then
+  begin
+    if not BridgesUpdated then
+      ShowRouters;
+    FallbackDirsUpdated := False;
+  end;
+end;
+
 procedure TTcp.UpdateRoutersAfterFilterUpdate;
 begin
   if FilterUpdated then
   begin
+    if FallbackDirsRecalculate then
+      SaveFallbackDirsData;
     if BridgesRecalculate then
       SaveBridgesData;
     if (cbxRoutersCountry.Tag = -2) or ExcludeUpdated then
@@ -3480,6 +3636,8 @@ procedure TTcp.UpdateOptionsAfterRoutersUpdate;
 begin
   if BridgesRecalculate then
     SaveBridgesData;
+  if FallbackDirsRecalculate then
+    SaveFallbackDirsData;
   if FilterUpdated then
   begin
     CalculateFilterNodes;
@@ -3575,6 +3733,8 @@ begin
   begin
     BridgesUpdated := True;
     BridgesRecalculate := True;
+    FallbackDirsUpdated := True;
+    FallbackDirsRecalculate := True;
   end;
 end;
 
@@ -3800,7 +3960,7 @@ procedure TTcp.sgRoutersDrawCell(Sender: TObject; ACol, ARow: Integer;
 var
   RouterID: string;
   RouterInfo: TRouterInfo;
-  Indent, Mask, Interval: Integer;
+  Indent, Mask, Interval, ImageIndex: Integer;
 
   procedure DrawFlagIcon(Flag: Word; Index: Integer);
   begin
@@ -3849,9 +4009,15 @@ begin
           if Mask and ROUTER_BRIDGE <> 0 then
           begin
             if rfRelay in RouterInfo.Flags then
-              lsMenus.Draw(sgRouters.Canvas, Rect.Left + (Rect.Width - Indent) div 2 + Interval, Rect.Top + (Rect.Height - 16) div 2, 62, True)
+              ImageIndex := 62
             else
-              lsMenus.Draw(sgRouters.Canvas, Rect.Left + (Rect.Width - Indent) div 2 + Interval, Rect.Top + (Rect.Height - 16) div 2, 28, True);
+            begin
+              if rfNoBridgeRelay in RouterInfo.Flags then
+                ImageIndex := 63
+              else
+                ImageIndex := 28;
+            end;
+            lsMenus.Draw(sgRouters.Canvas, Rect.Left + (Rect.Width - Indent) div 2 + Interval, Rect.Top + (Rect.Height - 16) div 2, ImageIndex, True);
             Inc(Interval, 16);
           end;
           DrawFlagIcon(ROUTER_AUTHORITY, 54);
@@ -3920,6 +4086,7 @@ begin
     EXCLUDE_ID: Result := lbExcludeNodes;
     FAVORITES_ID: Result := lbFavoritesTotal;
     BRIDGES_ID: Result := lbFavoritesBridges;
+    FALLBACK_DIR_ID: Result := lbFavoritesFallbackDirs;
     else
       Result := nil;
   end;
@@ -4106,12 +4273,17 @@ begin
           if SelData <> ''  then
             sgRouters.Cells[ROUTER_ENTRY_NODES, sgRouters.SelRow] := BOTH_CHAR;
         end;
+        if UsedFallbackDirs.ContainsKey(RouterInfo.IPv4 + '|' + IntToStr(RouterInfo.Port)) then
+          SaveFallbackDirsData;
       end;
     end
     else
     begin
       if NodeTypeID = ntExclude then
+      begin
         SaveBridgesData;
+        SaveFallbackDirsData;
+      end;
       ShowRouters;
       FilterUpdated := FindCountry;
     end;
@@ -4172,7 +4344,12 @@ begin
               if rfRelay in RouterInfo.Flags then
                 sgRouters.Hint := TransStr('645')
               else
-                sgRouters.Hint := TransStr('384');
+              begin
+                if rfNoBridgeRelay in RouterInfo.Flags then
+                  sgRouters.Hint := TransStr('655')
+                else
+                  sgRouters.Hint := TransStr('384');
+              end
             end;
             ROUTER_AUTHORITY: sgRouters.Hint := TransStr('385');
             ROUTER_ALIVE: sgRouters.Hint := TransStr('386');
@@ -4788,18 +4965,19 @@ end;
 
 procedure TTcp.CheckOptionsChanged;
 var
-  TorrcDate: TDateTime;
-  TorrcChanged, PathChanged, BridgesChanged: Boolean;
+  TorrcChanged, PathChanged, BridgesChanged, DefaultsChanged, FallbackDirsChanged, NeedReset: Boolean;
 begin
-  FileAge(TorConfigFile, TorrcDate);
-  TorrcChanged := TorrcDate <> LastTorrcDate;
+  DefaultsChanged := DefaultsFileID <> GetFileID(DefaultsFile);
+  TorrcChanged := TorrcFileID <> GetFileID(TorConfigFile);
   PathChanged := not CheckRequiredFiles;
+  FallbackDirsChanged := MissingFallbackDirCount > 0;
   BridgesChanged := (FailedBridgesCount > 0) or (AlreadyStarted and (NewBridgesCount > 0)) or
     ((cbxBridgesType.ItemIndex = BRIDGES_TYPE_FILE) and (BridgeFileID <> GetFileID(BridgesFileName)));
 
-  if OptionsChanged or TorrcChanged or PathChanged or BridgesChanged then
+  NeedReset := TorrcChanged or PathChanged or BridgesChanged or DefaultsChanged or FallbackDirsChanged;
+  if OptionsChanged or NeedReset then
   begin
-    if Restarting or TorrcChanged or PathChanged or BridgesChanged then
+    if Restarting or NeedReset then
       ResetOptions
     else
     begin
@@ -4873,10 +5051,11 @@ begin
           if GeoFileID <> GetFileID(GeoIpFile, True) then
             GeoIpUpdating := True;
           if UnknownBridgesCountriesCount > 0 then
-          begin
             FindBridgesCountries := True;
+          if UnknownFallbackDirCountriesCount > 0 then
+            FindFallbackDirCountries := True;
+          if FindBridgesCountries or FindFallbackDirCountries then
             InfoStage := 1;
-          end;
         end;
         StopCode := STOP_NORMAL;
         if miAutoClear.Checked then
@@ -5209,6 +5388,7 @@ begin
   lsMain.GetIcon(10, imExcludeNodes.Picture.Icon);
   lsMenus.GetIcon(46, imFavoritesTotal.Picture.Icon);
   lsMenus.GetIcon(28, imFavoritesBridges.Picture.Icon);
+  lsMenus.GetIcon(54, imFavoritesFallbackDirs.Picture.Icon);
   lsMenus.GetIcon(15, imBridgesFile.Picture.Icon);
 
   SetButtonGlyph(lsButtons, 4, sbShowOptions);
@@ -5456,9 +5636,16 @@ begin
         SetSettings('Scanner', 'PartialScanInterval', GetSettings('Scanner', 'NonResponsedScanInterval', udPartialScanInterval.Position, ini), ini);
         DeleteSettings('Scanner', 'LastNonResponsedScanDate', ini);
         DeleteSettings('Scanner', 'NonResponsedScanInterval', ini);
-        DeleteSettings('Routers', 'AddRelaysToBridgesCache, ', ini);
-        DeleteSettings('Main', 'LastGeoIpUpdateDate', ini);
         ConfigVersion := 4;
+      end;
+      if ConfigVersion = 4 then
+      begin
+        SetSettings('AutoSelNodes', 'AutoSelNodesType',
+          GetIntDef(GetSettings('AutoSelNodes', 'AutoSelNodesType', AUTOSEL_NODES_DEFAULT, ini) + miAutoSelFallbackDirEnabled.Tag,
+            AUTOSEL_NODES_DEFAULT, 0, AUTOSEL_NODES_MAX), ini);
+        DeleteSettings('Main', 'LastGeoIpUpdateDate', ini);
+        DeleteSettings('Routers', 'AddRelaysToBridgesCache, ', ini);
+        ConfigVersion := 5;
       end;
     end
     else
@@ -5824,7 +6011,7 @@ begin
         PortsData,
       ini);
     end;
-    if Count > 0 then
+    if SupportRendPostPeriod and (Count > 0) then
       SetTorConfig('RendPostPeriod', IntToStr(Tcp.udRendPostPeriod.Position * 60));
     if UpdateControls then
     begin
@@ -6059,25 +6246,64 @@ var
   i: Integer;
 begin
   NeedUpdate := True;
-  Bridges := TStringList.Create;
-  try
-    ini.ReadSectionValues('Bridges', Bridges);
-    if Bridges.Count > 0 then
-    begin
-      for i := Bridges.Count - 1 downto 0 do
+  if FileExists(UserConfigFile) then
+  begin
+    Bridges := TStringList.Create;
+    try
+      ini.ReadSectionValues('Bridges', Bridges);
+      if Bridges.Count > 0 then
       begin
-        Bridges[i] := Trim(SeparateRight(Bridges[i], '='));
-        if not ValidBridge(Bridges[i]) then
-          Bridges.Delete(i);
+        for i := Bridges.Count - 1 downto 0 do
+        begin
+          Bridges[i] := Trim(SeparateRight(Bridges[i], '='));
+          if not ValidBridge(Bridges[i]) then
+            Bridges.Delete(i);
+        end;
+        meBridges.Text := Bridges.Text;
+        NeedUpdate := False;
       end;
-      meBridges.Text := Bridges.Text;
-      NeedUpdate := False;
+    finally
+      Bridges.Free;
     end;
-  finally
-    Bridges.Free;
   end;
   if NeedUpdate then
     meBridges.Clear; 
+end;
+
+procedure TTcp.LoadFallbackDirs(ini: TMemIniFile; Default: Boolean);
+var
+  ls: TStringList;
+  NeedUpdate: Boolean;
+  FileName: string;
+  i: Integer;
+begin
+  NeedUpdate := True;
+  if Default then
+    FileName := DefaultsFile
+  else
+    FileName := UserConfigFile;
+  if FileExists(FileName) then
+  begin
+    ls := TStringList.Create;
+    try
+      ini.ReadSectionValues('FallbackDirs', ls);
+      if ls.Count > 0 then
+      begin
+        for i := ls.Count - 1 downto 0 do
+        begin
+          ls[i] := Trim(SeparateRight(ls[i], '='));
+          if not ValidFallbackDir(ls[i]) then
+            ls.Delete(i);
+        end;
+        meFallbackDirs.Text := ls.Text;
+        NeedUpdate := False;
+      end;
+    finally
+      ls.Free;
+    end;
+  end;
+  if NeedUpdate then
+    meFallbackDirs.Text := '';
 end;
 
 procedure TTcp.LoadBuiltinBridges(ini: TMemIniFile; UpdateBridges, UpdateList: Boolean; ListName: string = '');
@@ -6168,7 +6394,7 @@ begin
   Result := PortsDic.Count > 0;
 end;
 
-procedure TTcp.ExcludeUnSuitableBridges(var Data: TStringList; DeleteUnsuitable: Boolean = False);
+procedure TTcp.ExcludeUnsuitableBridges(var Data: TStringList; DeleteUnsuitable: Boolean = False);
 var
   cdPorts, cdAlive: Boolean;
   CheckEntryPorts, NeedCountry, NeedAlive, Cached, SpecialAddr, FindCountry: Boolean;
@@ -6208,7 +6434,7 @@ begin
           CountryID := DEFAULT_COUNTRY_ID;
           NeedCountry := True;
           NeedAlive := True;
-          FindCountry := NeedCountry;
+          FindCountry := True;
           cdAlive := False;
         end;
         if FindCountry and GeoIpExists then
@@ -6243,7 +6469,9 @@ begin
       end
       else
         Data.Delete(i);
-    end;
+    end
+    else
+      Data.Delete(i);
   end;
   if CheckEntryPorts then
     PortsDic.Clear;
@@ -6448,7 +6676,6 @@ begin
     FailedBridgesInterval := 0;
     UnknownBridgesCountriesCount := 0;
     DeleteTorConfig('Bridge', [cfMultiLine]);
-    DeleteTorConfig('DisableNetwork');
   end;
 
   ls := TStringList.Create;
@@ -6472,7 +6699,7 @@ begin
     end;
     edPreferredBridge.Text := PreferredBridge;
 
-    MemoToList(meBridges, ltBridge, False, cbExcludeUnsuitableBridges.Checked, ls);
+    MemoToList(meBridges, ltBridge, False, ls);
     if cbExcludeUnsuitableBridges.Checked then
       ExcludeUnSuitableBridges(ls, not AutoSave);
 
@@ -6751,6 +6978,16 @@ begin
     udMaxMemInQueues.Position := udMaxMemInQueues.Max;
 end;
 
+procedure TTcp.LoadUserOverrides(ini: TMemIniFile);
+begin
+  DefaultsDic.AddOrSetValue('BridgesBot', GetSettings('UserOverrides', 'BridgesBot', BRIDGES_BOT, ini));
+  DefaultsDic.AddOrSetValue('BridgesEmail', GetSettings('UserOverrides', 'BridgesEmail', BRIDGES_EMAIL, ini));
+  DefaultsDic.AddOrSetValue('BridgesSite', GetSettings('UserOverrides', 'BridgesSite', BRIDGES_SITE, ini));
+  DefaultsDic.AddOrSetValue('CheckUrl', GetSettings('UserOverrides', 'CheckUrl', CHECK_URL, ini));
+  DefaultsDic.AddOrSetValue('DownloadUrl', GetSettings('UserOverrides', 'DownloadUrl', DOWNLOAD_URL, ini));
+  DefaultsDic.AddOrSetValue('MetricsUrl', GetSettings('UserOverrides', 'MetricsUrl', METRICS_URL, ini));
+end;
+
 procedure TTcp.ResetOptions;
 var
   i, LogID: Integer;
@@ -6786,13 +7023,7 @@ begin
       TorConfig.Append('');
     end;
     CheckRequiredFiles(True);
-
-    DefaultsDic.AddOrSetValue('BridgesBot', GetSettings('UserOverrides', 'BridgesBot', BRIDGES_BOT, inidef));
-    DefaultsDic.AddOrSetValue('BridgesEmail', GetSettings('UserOverrides', 'BridgesEmail', BRIDGES_EMAIL, inidef));
-    DefaultsDic.AddOrSetValue('BridgesSite', GetSettings('UserOverrides', 'BridgesSite', BRIDGES_SITE, inidef));
-    DefaultsDic.AddOrSetValue('CheckUrl', GetSettings('UserOverrides', 'CheckUrl', CHECK_URL, inidef));
-    DefaultsDic.AddOrSetValue('DownloadUrl', GetSettings('UserOverrides', 'DownloadUrl', DOWNLOAD_URL, inidef));
-    DefaultsDic.AddOrSetValue('MetricsUrl', GetSettings('UserOverrides', 'MetricsUrl', METRICS_URL, inidef));
+    LoadUserOverrides(inidef);
 
     GetSettings('Main', cbConnectOnStartup, ini);
     GetSettings('Main', cbRestartOnControlFail, ini);
@@ -6896,8 +7127,10 @@ begin
     GetSettings('AutoSelNodes', udAutoSelEntryCount, ini);
     GetSettings('AutoSelNodes', udAutoSelMiddleCount, ini);
     GetSettings('AutoSelNodes', udAutoSelExitCount, ini);
+    GetSettings('AutoSelNodes', udAutoSelFallbackDirCount, ini);
     GetSettings('AutoSelNodes', udAutoSelMinWeight, ini);
     GetSettings('AutoSelNodes', udAutoSelMaxPing, ini);
+    GetSettings('AutoSelNodes', cbAutoSelFallbackDirNoLimit, ini);
     GetSettings('AutoSelNodes', cbAutoSelStableOnly, ini);
     GetSettings('AutoSelNodes', cbAutoSelFilterCountriesOnly, ini);
     GetSettings('AutoSelNodes', cbAutoSelUniqueNodes, ini);
@@ -7130,6 +7363,15 @@ begin
     CheckFavoritesState;
     CheckVanguards(True);
 
+    DeleteTorConfig('DisableNetwork');
+    GetSettings('Lists', cbUseFallbackDirs, ini);
+    GetSettings('Lists', cbxFallbackDirsType, ini);
+    case cbxFallbackDirsType.ItemIndex of
+      FALLBACK_TYPE_BUILTIN: LoadFallbackDirs(inidef, True);
+      FALLBACK_TYPE_USER: LoadFallbackDirs(ini, False);
+    end;
+    if not FirstLoad then
+      SaveFallbackDirsData(ini);
     BridgesFileNeedSave := False;
     SaveBridgesData(ini);
 
@@ -7228,6 +7470,7 @@ begin
         LoadConsensus
       else
       begin
+        SaveFallbackDirsData(ini);
         LoadRoutersCountries;
         ShowFilter;
         ShowRouters;
@@ -7252,7 +7495,8 @@ begin
       RoutersUpdated := False;
       FilterUpdated := False;
     end;
-
+    FallbackDirsUpdated := False;
+    DefaultsFileID := GetFileID(DefaultsFile);
     SaveTorConfig;
     OptionsLocked := False;
     EnableOptionButtons(False);
@@ -7384,7 +7628,7 @@ begin
           end;
           if BridgeInfo.Router.IPv6 <> '' then
             Inc(BridgeInfo.Router.Params, ROUTER_REACHABLE_IPV6);
-          BridgeInfo.Router.OrPort := StrToIntDef(ParseStr[3], 0);
+          BridgeInfo.Router.Port := StrToIntDef(ParseStr[3], 0);
           BridgeInfo.Router.DirPort := 0;
           BridgeInfo.Router.Bandwidth := StrToIntDef(ParseStr[4], 0);  
           BridgeInfo.Router.Version := ParseStr[5];
@@ -7407,7 +7651,7 @@ begin
           BridgeStr := Trim(
             BridgeInfo.Transport + ' ' +
             BridgeInfo.Router.IPv4 + ':' +
-            IntToStr(BridgeInfo.Router.OrPort) + ' ' +
+            IntToStr(BridgeInfo.Router.Port) + ' ' +
             ParseStr[0] + ' ' +
             BridgeInfo.Params
           );
@@ -7463,7 +7707,7 @@ begin
         Item.Key + '|' +
         Item.Value.Router.Name + '|' +
         Address + '|' +
-        IntToStr(Item.Value.Router.OrPort) + '|' +
+        IntToStr(Item.Value.Router.Port) + '|' +
         IntToStr(Item.Value.Router.Bandwidth) + '|' +
         Item.Value.Router.Version + '|' +
         IntToStr(Item.Value.Kind) + '|' +
@@ -7934,7 +8178,7 @@ end;
 
 procedure TTcp.ApplyOptions(AutoResolveErrors: Boolean = False);
 var
-  ini: TMemIniFile;
+  ini, inidef: TMemIniFile;
   i: Integer;
   Item: TPair<string, TFilterInfo>;
   NodeItem: TPair<string, TNodeTypes>;
@@ -8021,9 +8265,11 @@ begin
     SetSettings('AutoSelNodes', udAutoSelEntryCount, ini);
     SetSettings('AutoSelNodes', udAutoSelMiddleCount, ini);
     SetSettings('AutoSelNodes', udAutoSelExitCount, ini);
+    SetSettings('AutoSelNodes', udAutoSelFallbackDirCount, ini);
     SetSettings('AutoSelNodes', udAutoSelMinWeight, ini);
     SetSettings('AutoSelNodes', udAutoSelMaxPing, ini);
     SetSettings('AutoSelNodes', cbxAutoSelPriority, ini);
+    SetSettings('AutoSelNodes', cbAutoSelFallbackDirNoLimit, ini);
     SetSettings('AutoSelNodes', cbAutoSelStableOnly, ini);
     SetSettings('AutoSelNodes', cbAutoSelFilterCountriesOnly, ini);
     SetSettings('AutoSelNodes', cbAutoSelUniqueNodes, ini);
@@ -8109,7 +8355,24 @@ begin
 
     SaveReachableAddresses(ini);
     SaveProxyData(ini);
-    UpdateBridgesControls(True, False);
+
+    Temp := GetFileID(DefaultsFile);
+    if DefaultsFileID <> Temp then
+    begin
+      inidef := TMemIniFile.Create(DefaultsFile, TEncoding.UTF8);
+      try
+        if cbxBridgesType.ItemIndex <> BRIDGES_TYPE_FILE then
+          LoadBuiltinBridges(inidef, True, True, cbxBridgesList.Text);
+        if cbxFallbackDirsType.ItemIndex = FALLBACK_TYPE_BUILTIN then
+          LoadFallbackDirs(inidef, True);
+        LoadUserOverrides(inidef);
+      finally
+        inidef.Free;
+      end;
+      DefaultsFileID := Temp;
+    end;
+    DeleteTorConfig('DisableNetwork');
+    SaveFallbackDirsData(ini);
     SaveBridgesData(ini);
 
     for Item in FilterDic do
@@ -8204,11 +8467,12 @@ begin
       end
       else
       begin
-        if RoutersUpdated or BridgesUpdated then
+        if RoutersUpdated or BridgesUpdated or FallbackDirsUpdated then
           ShowRouters;
       end;
     end;
     BridgesUpdated := False;
+    FallbackDirsUpdated := False;
 
     if cbxLanguage.ItemIndex <> cbxLanguage.Tag then
       cbxLanguage.Tag := cbxLanguage.ItemIndex;
@@ -8218,7 +8482,7 @@ begin
     SaveTorConfig;
     ReloadTorConfig;
     if OpenDNSUpdated then
-    begin  
+    begin
       OpenDNSUpdated := False;
       GetServerInfo;
     end;
@@ -8243,7 +8507,8 @@ begin
       RenameFile(UserDir + 'cached-consensus.tmp', UserDir + 'cached-consensus');
       RenameFile(UserDir + 'cached-descriptors.tmp', UserDir + 'cached-descriptors');
       RenameFile(UserDir + 'cached-descriptors.new.tmp', UserDir + 'cached-descriptors.new');
-      ConsensusUpdated := True;
+      if RoutersDic.Count > 0 then
+        ConsensusUpdated := True;
     end;
   end;
 end;
@@ -8813,9 +9078,9 @@ begin
   try
     for Router in RoutersDic do
     begin
-      AddToIpList(Router.Value.IPv4, IntToStr(Router.Value.OrPort));
+      AddToIpList(Router.Value.IPv4, IntToStr(Router.Value.Port));
       if Router.Value.IPv6 <> '' then
-        AddToIpList(RemoveBrackets(Router.Value.IPv6, True), IntToStr(Router.Value.OrPort));
+        AddToIpList(RemoveBrackets(Router.Value.IPv6, True), IntToStr(Router.Value.Port));
     end;
 
     BridgesList.Text := meBridges.Text;
@@ -8936,6 +9201,11 @@ begin
   EnableOptionButtons;
 end;
 
+procedure TTcp.cbxFallbackDirsTypeChange(Sender: TObject);
+begin
+  UpdateFallbackDirControls;
+end;
+
 procedure TTcp.miWriteLogFileClick(Sender: TObject);
 begin
   SetConfigBoolean('Log', 'WriteLogFile', miWriteLogFile.Checked);
@@ -9054,6 +9324,7 @@ begin
       begin
         RoutersUpdated := True;
         BridgesRecalculate := True;
+        FallbackDirsRecalculate := True;
         UpdateOptionsAfterRoutersUpdate;
         ShowRouters;
         FilterUpdated := False;
@@ -9112,6 +9383,7 @@ begin
     miDetailsCopyNickname.Caption := Router.Name;
     miDetailsCopyIPv4.Caption := Router.IPv4;
     miDetailsCopyIPv6.Caption := Router.IPv6;
+    SetFallbackDirMenu(miDetailsCopyFallbackDir, SelectedNode, Router);
     UpdateBridgeCopyMenu(miDetailsCopyBridgeIPv4, SelectedNode, Router, False);
     UpdateBridgeCopyMenu(miDetailsCopyBridgeIPv6, SelectedNode, Router, True);
   end;
@@ -9438,10 +9710,10 @@ begin
   Menu.Visible := IpStr <> '';
   if not Menu.Visible then
     Exit;
-  Data := IpStr + ':' + IntToStr(Router.OrPort) + ' ' + RouterID;
+  Data := IpStr + ':' + IntToStr(Router.Port) + ' ' + RouterID;
 
   if BridgesDic.TryGetValue(RouterID, BridgeInfo) then
-    BridgeStr := Trim(BridgeInfo.Transport + ' ' + IpStr + ':' + IntToStr(BridgeInfo.Router.OrPort) + ' ' + RouterID + ' ' + BridgeInfo.Params)
+    BridgeStr := Trim(BridgeInfo.Transport + ' ' + IpStr + ':' + IntToStr(BridgeInfo.Router.Port) + ' ' + RouterID + ' ' + BridgeInfo.Params)
   else
     BridgeStr := '';
 
@@ -9455,6 +9727,46 @@ begin
     Data := Data + '...';
   end;
   Menu.Caption := Data;
+end;
+
+function TTcp.GetFallbackStr(RouterID: string; RouterInfo: TRouterInfo): string;
+begin
+  Result := RouterInfo.IPv4;
+  if RouterInfo.DirPort <> 0 then
+    Result := Result + ':' + IntToStr(RouterInfo.DirPort);
+  Result := Result + ' orport=' + IntToStr(RouterInfo.Port) + ' id=' + RouterID;
+  if RouterInfo.IPv6 <> '' then
+    Result := Result + ' ipv6=' + RouterInfo.IPv6 + ':' + IntToStr(RouterInfo.Port);
+end;
+
+procedure TTcp.SetFallbackDirMenu(Menu: TMenuItem; RouterID: string; RouterInfo: TRouterInfo);
+const
+  LIMIT = 85;
+var
+  Str: string;
+  DataLength: Integer;
+  BridgeInfo: TBridgeInfo;
+  ShowData: Boolean;
+begin
+  if rfRelay in RouterInfo.Flags then
+    ShowData := True
+  else
+  begin
+    if BridgesDic.TryGetValue(RouterID, BridgeInfo) then
+      ShowData := BridgeInfo.Transport = ''
+    else
+      ShowData := False;
+  end;
+  Menu.Visible := ShowData;
+  if ShowData then
+  begin
+    Str := GetFallbackStr(RouterID, RouterInfo);
+    Menu.Hint := Str;
+    DataLength := Length(Str);
+    if DataLength > LIMIT then
+      Str := Copy(Str, 1, LIMIT) + '...';
+    Menu.Caption := Str;
+  end;
 end;
 
 procedure TTcp.mnRoutersPopup(Sender: TObject);
@@ -9510,6 +9822,7 @@ begin
       miRtCopyIPv4.Caption := Router.IPv4;
       miRtCopyIPv6.Caption := Router.IPv6;
       miRtCopyIPv6.Visible := Router.IPv6 <> '';
+      SetFallbackDirMenu(miRtCopyFallbackDir, RouterID, Router);
       UpdateBridgeCopyMenu(miRtCopyBridgeIPv4, RouterID, Router, False);
       UpdateBridgeCopyMenu(miRtCopyBridgeIPv6, RouterID, Router, True);
       miRtSelectAsBridgeIPv4.Caption := miRtCopyBridgeIPv4.Caption;
@@ -9521,7 +9834,7 @@ begin
 
       if ReachablePortsExists then
       begin
-        FindPorts := PortsDic.ContainsKey(Router.OrPort);
+        FindPorts := PortsDic.ContainsKey(Router.Port);
         PortsDic.Clear;
       end
       else
@@ -9701,35 +10014,56 @@ end;
 
 procedure TTcp.EditMenuPopup(Sender: TObject);
 var
-  IsBridgeEdit, IsUserBridges, State: Boolean;
-  BridgesCount: Integer;
+  IsBridgeEdit, IsUserBridges, IsFallbackDirEdit, IsUserFallbackDirs, BridgesState, FallbackState: Boolean;
+  BridgesCount, FallbackDirCount: Integer;
 begin
   BridgesCount := meBridges.Lines.Count;
   IsBridgeEdit := Screen.ActiveControl = meBridges;
   IsUserBridges := IsBridgeEdit and (cbxBridgesType.ItemIndex <> BRIDGES_TYPE_BUILTIN) and (BridgesCount > 0);
-  State := IsUserBridges and not tmScanner.Enabled;
+
+  FallbackDirCount := meFallbackDirs.Lines.Count;
+  IsFallbackDirEdit := Screen.ActiveControl = meFallbackDirs;
+  IsUserFallbackDirs := IsFallbackDirEdit and (cbxFallbackDirsType.ItemIndex <> FALLBACK_TYPE_BUILTIN) and (FallbackDirCount > 0);
+
+  BridgesState := IsUserBridges and not tmScanner.Enabled;
+  FallbackState := IsUserFallbackDirs and not tmScanner.Enabled;
 
   miGetBridges.Visible := IsBridgeEdit;
-  miClear.Visible := not IsUserBridges;
-  miClearBridges.Visible := IsUserBridges;
+  miClear.Visible := not (IsUserBridges or IsUserFallbackDirs);
+  miClearMenu.Visible := IsUserBridges or IsUserFallbackDirs;
 
   miGetBridgesEmail.Enabled := IsBridgeEdit and RegistryFileExists(HKEY_CLASSES_ROOT, 'mailto\shell\open\command', '');
   miGetBridgesTelegram.Enabled := IsBridgeEdit and (RegistryFileExists(HKEY_CLASSES_ROOT, 'tg\shell\open\command', '') or miPreferWebTelegram.Checked);
 
-  miClearBridgesNotAlive.Enabled := State and cbEnableDetectAliveNodes.Checked;
-  miClearBridgesCached.Enabled := State;
-  miClearBridgesNonCached.Enabled := State;
-  miClearBridgesUnsuitable.Enabled := State and cbExcludeUnsuitableBridges.Checked and
-    (SuitableBridgesCount < BridgesCount);
+  miClearMenuAll.Enabled := BridgesState or FallbackState;
+  miClearMenuNotAlive.Enabled := (BridgesState or FallbackState) and cbEnableDetectAliveNodes.Checked;
+  miClearMenuCached.Enabled := BridgesState or FallbackState;
+  miClearMenuNonCached.Enabled := BridgesState or FallbackState;
+  miClearMenuUnsuitable.Enabled := (FallbackState and (SuitableFallbackDirsCount < FallbackDirCount)) or
+    (BridgesState and cbExcludeUnsuitableBridges.Checked and (SuitableBridgesCount < BridgesCount));
 
+  miClearMenu.Tag := 0;
+  if IsBridgeEdit then
+    miClearMenu.Tag := 1;
+  if IsFallbackDirEdit then
+    miClearMenu.Tag := 2;
+
+  if IsUserBridges then
+  begin
+    miClearMenuAll.Caption := TransStr('510');
+    miClearMenuUnsuitable.Caption := TransStr('634');
+  end;
+  if IsUserFallbackDirs then
+  begin
+    miClearMenuAll.Caption := TransStr('656');
+    miClearMenuUnsuitable.Caption := TransStr('657');
+  end;
+
+  EditMenuEnableCheck(miClear, emClear);
   EditMenuEnableCheck(miCopy, emCopy);
   EditMenuEnableCheck(miCut, emCut);
   EditMenuEnableCheck(miPaste, emPaste);
   EditMenuEnableCheck(miSelectAll, emSelectAll);
-  if IsUserBridges then
-    miClearBridgesAll.Enabled := State
-  else
-    EditMenuEnableCheck(miClear, emClear);
   EditMenuEnableCheck(miDelete, emDelete);
   EditMenuEnableCheck(miFind, emFind);
 end;
@@ -9767,8 +10101,8 @@ end;
 
 procedure TTcp.lbStatusFilterModeClick(Sender: TObject);
 begin
+  pcOptions.ActivePage := tsFilter;
   sbShowOptions.Click;
-  pcOptions.TabIndex := tsFilter.TabIndex;
 end;
 
 procedure TTcp.lbStatusProxyAddrClick(Sender: TObject);
@@ -10255,7 +10589,7 @@ var
 begin
   if UseDic then
   begin
-    ls := TStringList.Create;;
+    ls := TStringList.Create;
     try
       for Item in TrackHostDic do
         ls.Append(Item.Key);
@@ -10296,7 +10630,7 @@ begin
     if cbUseTrackHostExits.Checked then
       SendCommand('SETCONF TrackHostExits=' + TrackHostExits)
     else
-      SendCommand('SETCONF TrackHostExits=');
+      SendCommand('SETCONF TrackHostExits');
   end;
 end;
 
@@ -10557,7 +10891,12 @@ begin
       if CurrentScanPurpose in [spUserBridges, spNewBridges] then
         Result := TransStr('396')
       else
-        Result := TransStr('383');
+      begin
+        if CurrentScanPurpose = spUserFallbackDirs then
+          Result := TransStr('658')
+        else
+          Result := TransStr('383');
+      end;
     end;
     else
       Result := '';
@@ -10573,7 +10912,6 @@ begin
   State := ScanStage > 0;
   lbScanProgress.Caption := TransStr('631');
   lbScanType.Caption := GetScanTypeStr;
-  lbScanType.Left := lbScanProgress.Left;
   lbScanType.Visible := State;
   lbScanProgress.Visible := State;
   pbScanProgress.Visible := State;
@@ -10650,7 +10988,7 @@ begin
         2: ScanStart(stPing, CurrentScanPurpose);
       end;
 
-      if CurrentScanPurpose = spUserBridges then
+      if CurrentScanPurpose in [spUserBridges, spUserFallbackDirs] then
         SetOptionsEnable(False);
 
       tmScanner.Enabled := True;
@@ -10665,7 +11003,9 @@ var
   IpStr, PortStr: string;
   GeoIpInfo: TGeoIpInfo;
   Bridge: TBridge;
+  FallbackDir: TFallbackDir;
   ini: TMemIniFile;
+  CurrentMemo: TMemo;
 begin
   if not Assigned(Scanner) and (ScanThreads = 0) then
   begin
@@ -10676,38 +11016,70 @@ begin
     end
     else
     begin
-      if (CurrentScanPurpose = spUserBridges) and (CurrentScanType = stAlive) then
+      if (CurrentScanPurpose in [spUserBridges, spUserFallbackDirs]) and (CurrentScanType = stAlive) then
       begin
-        if meBridges.Text <> '' then
+        case CurrentScanPurpose of
+          spUserBridges: CurrentMemo := meBridges;
+          spUserFallbackDirs: CurrentMemo := meFallbackDirs;
+          else
+            Exit;
+        end;
+        if CurrentMemo.Text <> '' then
         begin
           DeleteCount := 0;
           ls := TStringList.Create;
           try
-            ls.Text := meBridges.Text;
-            for i := ls.Count - 1 downto 0 do
+            ls.Text := CurrentMemo.Text;
+            if CurrentScanPurpose = spUserBridges then
             begin
-              if TryParseBridge(ls[i], Bridge) then
+              for i := ls.Count - 1 downto 0 do
               begin
-                IpStr := GetBridgeIp(Bridge);
-                if IpStr = '' then
-                  Continue;
-                PortStr := IntToStr(Bridge.Port);
-                if GeoIpDic.TryGetValue(IpStr, GeoIpInfo) then
+                if TryParseBridge(ls[i], Bridge) then
                 begin
-                  if GetPortsValue(GeoIpInfo.ports, PortStr) = -1 then
+                  IpStr := GetBridgeIp(Bridge);
+                  if IpStr = '' then
+                    Continue;
+                  PortStr := IntToStr(Bridge.Port);
+                  if GeoIpDic.TryGetValue(IpStr, GeoIpInfo) then
                   begin
-                    ls.Delete(i);
-                    Inc(DeleteCount);
+                    if GetPortsValue(GeoIpInfo.ports, PortStr) = -1 then
+                    begin
+                      ls.Delete(i);
+                      Inc(DeleteCount);
+                    end;
+                    if (GeoIpInfo.cc = DEFAULT_COUNTRY_ID) and (GeoIpInfo.ping = 0) then
+                      GeoIpDic.Remove(IpStr);
                   end;
-                  if (GeoIpInfo.cc = DEFAULT_COUNTRY_ID) and (GeoIpInfo.ping = 0) then
-                    GeoIpDic.Remove(IpStr);
+                end;
+              end;
+            end;
+            if CurrentScanPurpose = spUserFallbackDirs then
+            begin
+              for i := ls.Count - 1 downto 0 do
+              begin
+                if TryParseFallbackDir(ls[i], FallbackDir) then
+                begin
+                  PortStr := IntToStr(FallbackDir.OrPort);
+                  if GeoIpDic.TryGetValue(FallbackDir.IPv4, GeoIpInfo) then
+                  begin
+                    if GetPortsValue(GeoIpInfo.ports, PortStr) = -1 then
+                    begin
+                      ls.Delete(i);
+                      Inc(DeleteCount);
+                    end;
+                    if (GeoIpInfo.cc = DEFAULT_COUNTRY_ID) and (GeoIpInfo.ping = 0) then
+                      GeoIpDic.Remove(FallbackDir.IPv4);
+                  end;
                 end;
               end;
             end;
             if DeleteCount > 0 then
             begin
-              meBridges.Text := ls.Text;
-              SaveBridgesData;
+              CurrentMemo.Text := ls.Text;
+              case CurrentScanPurpose of
+                spUserBridges: SaveBridgesData;
+                spUserFallbackDirs: SaveFallbackDirsData;
+              end;
             end;
           finally
             ls.Free;
@@ -10716,7 +11088,7 @@ begin
       end;
 
       case CurrentScanPurpose of
-        spUserBridges: SetOptionsEnable(True);
+        spUserBridges, spUserFallbackDirs: SetOptionsEnable(True);
         spAuto:
         begin
           if not StopScan then
@@ -10975,12 +11347,12 @@ end;
 
 function TTcp.FindSelectedBridge(Router: TRouterInfo): Boolean;
 begin
-  if UsedBridgesList.ContainsKey(Router.IPv4 + '|' + IntToStr(Router.OrPort)) then
+  if UsedBridgesList.ContainsKey(Router.IPv4 + '|' + IntToStr(Router.Port)) then
     Result := True
   else
   begin
     if Router.IPv6 <> '' then
-      Result := UsedBridgesList.ContainsKey(RemoveBrackets(Router.IPv6, True) + '|' + IntToStr(Router.OrPort))
+      Result := UsedBridgesList.ContainsKey(RemoveBrackets(Router.IPv6, True) + '|' + IntToStr(Router.Port))
     else
       Result := False;
   end;
@@ -11184,7 +11556,7 @@ begin
           1: cdQuery := FindStr(Query, Item.Value.Name);
           2: cdQuery := FindStr(Query, Item.Value.IPv4);
           3: cdQuery := FindStr(RemoveBrackets(Query, True), RemoveBrackets(Item.Value.IPv6, True));
-          4: cdQuery := PortsDic.ContainsKey(Item.Value.OrPort);
+          4: cdQuery := PortsDic.ContainsKey(Item.Value.Port);
           5: cdQuery := PortsDic.ContainsKey(Item.Value.DirPort);
           6: cdQuery := FindStr(Query, Item.Value.Version);
           7:
@@ -11276,6 +11648,7 @@ begin
           end;
         end;
         BRIDGES_ID: cdFavorites := cbUseBridges.Checked and FindSelectedBridge(Item.Value);
+        FALLBACK_DIR_ID: cdFavorites := cbUseFallbackDirs.Checked and (UsedFallbackDirs.ContainsKey(Item.Value.IPv4 + '|' + IntToStr(Item.Value.Port)));
         else
           cdFavorites := True;
       end;
@@ -11288,7 +11661,7 @@ begin
         sgRouters.Cells[ROUTER_IP, RoutersCount] := Item.Value.IPv4;
         sgRouters.Cells[ROUTER_COUNTRY, RoutersCount] := TransStr(CountryCode);
         sgRouters.Cells[ROUTER_WEIGHT, RoutersCount] := BytesFormat(Item.Value.Bandwidth * 1024) + '/' + TransStr('180');
-        sgRouters.Cells[ROUTER_PORT, RoutersCount] := IntToStr(Item.Value.OrPort);
+        sgRouters.Cells[ROUTER_PORT, RoutersCount] := IntToStr(Item.Value.Port);
         if Item.Value.Version <> '' then
           sgRouters.Cells[ROUTER_VERSION, RoutersCount] := Item.Value.Version
         else
@@ -11450,7 +11823,7 @@ begin
         ParseStr := Explode('|', GeoIpInfo.ports);
         for i := 0 to Length(ParseStr) - 1 do
         begin
-          if Pos(IntToStr(Item.Value.OrPort) + ':1', ParseStr[i]) = 1 then
+          if Pos(IntToStr(Item.Value.Port) + ':1', ParseStr[i]) = 1 then
           begin
             if NeedCount then
               Inc(CountryTotals[TOTAL_ALIVES][CountryID]);
@@ -11638,7 +12011,7 @@ begin
         sgCircuitInfo.Cells[CIRC_INFO_ID, NodesCount] := NodesData[i];
         sgCircuitInfo.Cells[CIRC_INFO_NAME, NodesCount] := Router.Name;
         if miShowPortAlongWithIp.Checked then
-          sgCircuitInfo.Cells[CIRC_INFO_IP, NodesCount] := Router.IPv4 + ':' + IntToStr(Router.OrPort)
+          sgCircuitInfo.Cells[CIRC_INFO_IP, NodesCount] := Router.IPv4 + ':' + IntToStr(Router.Port)
         else
           sgCircuitInfo.Cells[CIRC_INFO_IP, NodesCount] := Router.IPv4;
         sgCircuitInfo.Cells[CIRC_INFO_COUNTRY, NodesCount] := TransStr(CountryCodes[CountryCode]);
@@ -12177,7 +12550,7 @@ begin
   begin
     CheckScannerControls;
     CheckStatusControls;
-    if cbEnablePingMeasure.Checked then
+    if cbEnablePingMeasure.Checked and (RoutersDic.Count > 0) then
       ConsensusUpdated := True;
     EnableOptionButtons;
   end;
@@ -12191,8 +12564,8 @@ begin
       BridgesCheckControls;
     CheckScannerControls;
     CheckStatusControls;
-    if cbEnableDetectAliveNodes.Checked then
-      ConsensusUpdated := True;
+    if cbEnableDetectAliveNodes.Checked and (RoutersDic.Count > 0) then
+      ConsensusUpdated := True;     
     EnableOptionButtons;
   end;
 end;
@@ -12214,6 +12587,20 @@ begin
     Exit;
   HsMaxStreamsEnable(cbHsMaxStreams.Checked);
   ChangeHsTable(2);
+end;
+
+procedure TTcp.CountTotalFallbackDirs(ShowSuitableCount: Boolean = True);
+var
+  NumStr: string;
+  FallbackCount: Integer;
+begin
+  FallbackCount := meFallbackDirs.Lines.Count;
+  if ShowSuitableCount then
+    NumStr := IntToStr(SuitableFallbackDirsCount)
+  else
+    NumStr := INFINITY_CHAR;
+  lbTotalFallbackDirs.Caption := Format(TransStr('632'), [NumStr, FallbackCount]);
+  lbFavoritesFallbackDirs.Caption := IntToStr(UsedFallbackDirsCount)
 end;
 
 procedure TTcp.CountTotalBridges(ShowSuitableCount: Boolean = True);
@@ -12261,6 +12648,33 @@ begin
     Key := #0;
     if BridgesRecalculate then
       SaveBridgesData;
+  end;
+end;
+
+procedure TTcp.meFallbackDirsChange(Sender: TObject);
+begin
+  if not meFallbackDirs.Focused and (CurrentScanPurpose <> spUserFallbackDirs) then
+    Exit;
+  FallbackDirsUpdated := True;
+  FallbackDirsRecalculate := True;
+  if not CtrlKeyPressed(AnsiChar(VK_RETURN)) then
+    CountTotalFallbackDirs(False);
+  EnableOptionButtons;
+end;
+
+procedure TTcp.meFallbackDirsExit(Sender: TObject);
+begin
+  if FallbackDirsRecalculate then
+    SaveFallbackDirsData;
+end;
+
+procedure TTcp.meFallbackDirsKeyPress(Sender: TObject; var Key: Char);
+begin
+  if CtrlKeyPressed(AnsiChar(VK_RETURN)) then
+  begin
+    Key := #0;
+    if FallbackDirsRecalculate then
+      SaveFallbackDirsData;
   end;
 end;
 
@@ -12374,6 +12788,16 @@ begin
     SaveNodesList(cbxNodesListType.ItemIndex);
 end;
 
+procedure TTcp.meNodesListKeyPress(Sender: TObject; var Key: Char);
+begin
+  if CtrlKeyPressed(AnsiChar(VK_RETURN)) then
+  begin
+    Key := #0;
+    if NodesListStage = 1 then
+      SaveNodesList(cbxNodesListType.ItemIndex);
+  end;
+end;
+
 procedure TTcp.meMyFamilyChange(Sender: TObject);
 begin
   lbTotalMyFamily.Caption := TransStr('203') + ': ' + IntToStr(meMyFamily.Lines.Count);
@@ -12444,6 +12868,8 @@ begin
   begin
     BridgesUpdated := True;
     SaveBridgesData;
+    FallbackDirsUpdated := True;
+    SaveFallbackDirsData;
   end;
   EnableOptionButtons;
 end;
@@ -12527,6 +12953,20 @@ begin
   Result := LastPreferBridgeID <> '';
 end;
 
+procedure TTcp.FallbackDirsCheckControls;
+var
+  State, BuiltinState, FallbackDirsIsBuiltin: Boolean;
+begin
+  State := cbUseFallbackDirs.Checked;
+  FallbackDirsIsBuiltin := cbxFallbackDirsType.ItemIndex = FALLBACK_TYPE_BUILTIN;
+  BuiltinState := State and FallbackDirsIsBuiltin and (meFallbackDirs.Lines.Count > 0);
+  cbxFallbackDirsType.Enabled := State;
+  meFallbackDirs.Enabled := BuiltinState or (State and not FallbackDirsIsBuiltin);
+  meFallbackDirs.ReadOnly := FallbackDirsIsBuiltin;
+  lbFallbackDirsType.Enabled := State;
+  lbTotalFallbackDirs.Enabled := State;
+end;
+
 procedure TTcp.BridgesCheckControls;
 var
   State, BuiltinState, LimitState, PreferredState, UnsuitableState, QueueState, NewState,
@@ -12535,7 +12975,7 @@ begin
   if cbUseBridges.HelpContext = 1 then
     Exit;
   BridgeIsFile := cbxBridgesType.ItemIndex = BRIDGES_TYPE_FILE;
-  BridgeIsBuiltin := cbxBridgesType.ItemIndex = BRIDGES_TYPE_BUILTIN; 
+  BridgeIsBuiltin := cbxBridgesType.ItemIndex = BRIDGES_TYPE_BUILTIN;
   State := cbUseBridges.Checked;
   PreferredState := State and cbUsePreferredBridge.Checked;
   UnsuitableState := State and cbExcludeUnsuitableBridges.Checked;
@@ -12567,7 +13007,7 @@ begin
   udMaxDirFails.Enabled := UnsuitableState;
   udBridgesCheckDelay.Enabled := UnsuitableState;
   meBridges.Enabled := BuiltinState or (State and not BridgeIsBuiltin);
-  meBridges.ReadOnly := cbxBridgesType.ItemIndex = BRIDGES_TYPE_BUILTIN;
+  meBridges.ReadOnly := BridgeIsBuiltin;
   btnFindPreferredBridge.Enabled := PreferredState and PreferredBridgeFound;
   lbBridgesType.Enabled := State;
   lbBridgesSubType.Enabled := BuiltinState or FileState;
@@ -12634,6 +13074,14 @@ end;
 procedure TTcp.cbUseDirPortClick(Sender: TObject);
 begin
   UseDirPortEnable(cbUseDirPort.Checked);
+  EnableOptionButtons;
+end;
+
+procedure TTcp.cbUseFallbackDirsClick(Sender: TObject);
+begin
+  FallbackDirsUpdated := True;
+  FallbackDirsRecalculate := True;
+  FallbackDirsCheckControls;
   EnableOptionButtons;
 end;
 
@@ -12801,7 +13249,7 @@ end;
 
 procedure TTcp.cbxBridgesListChange(Sender: TObject);
 begin
-  UpdateBridgesControls(False);
+  UpdateBridgesControls(False, True);
 end;
 
 procedure TTcp.cbxBridgesListCloseUp(Sender: TObject);
@@ -12830,7 +13278,29 @@ begin
   EnableOptionButtons;
 end;
 
-procedure TTcp.UpdateBridgesControls(UpdateList: Boolean = True; UpdateUserBridges: Boolean = True);
+procedure TTcp.UpdateFallbackDirControls;
+var
+  ini: TMemIniFile;
+  FileName: string;
+  Default: Boolean;
+begin
+  Default := cbxFallbackDirsType.ItemIndex = FALLBACK_TYPE_BUILTIN;
+  if Default then
+    FileName := DefaultsFile
+  else
+    FileName := UserConfigFile;
+  ini := TMemIniFile.Create(FileName, TEncoding.UTF8);
+  try
+    LoadFallbackDirs(ini, Default);
+  finally
+    ini.Free;
+  end;
+  FallbackDirsUpdated := True;
+  SaveFallbackDirsData;
+  EnableOptionButtons;
+end;
+
+procedure TTcp.UpdateBridgesControls(UpdateList: Boolean; UpdateUserBridges: Boolean);
 var
   ini: TMemIniFile;
 begin
@@ -12846,7 +13316,7 @@ begin
     end;
     BRIDGES_TYPE_USER:
     begin
-      if UpdateUserBridges and FileExists(UserConfigFile) then
+      if UpdateUserBridges then
       begin
         ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
         try
@@ -12870,7 +13340,7 @@ end;
 procedure TTcp.cbxBridgesTypeChange(Sender: TObject);
 begin
   BridgesFileNeedSave := False;
-  UpdateBridgesControls;
+  UpdateBridgesControls(True, True);
 end;
 
 procedure TTcp.cbxBridgesTypeKeyDown(Sender: TObject; var Key: Word;
@@ -13091,7 +13561,10 @@ begin
     NodesListStage := 0;
   FilterUpdated := True;
   if FavoritesID = EXCLUDE_ID then
+  begin
     BridgesRecalculate := True;
+    FallbackDirsRecalculate := True;
+  end;
   UpdateOptionsAfterRoutersUpdate;
   ShowRouters;
 end;
@@ -13478,13 +13951,14 @@ end;
 procedure TTcp.sbShowOptionsMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
-  if (pcOptions.TabIndex = 2) and (ssDouble in Shift) and (Button = mbLeft) then
+  if (pcOptions.ActivePage = tsFilter) and (ssDouble in Shift) and (Button = mbLeft) then
     SetGridLastCell(sgFilter, True, True, True);
 end;
 
 procedure TTcp.sbShowRoutersClick(Sender: TObject);
 begin
   LastPlace := LP_ROUTERS;
+  UpdateRoutersAfterFallbackDrisUpdate;
   UpdateRoutersAfterBridgesUpdate;
   IncreaseFormSize;
   ResetFocus;
@@ -13801,7 +14275,7 @@ begin
       FILTER_BY_GUARD: IntToMenu(miRtFilters, 3);
       FILTER_BY_EXIT: IntToMenu(miRtFilters, 3);
       FILTER_BY_QUERY: IntToMenu(miRtFilters, 8);
-      ENTRY_ID..BRIDGES_ID: IntToMenu(miRtFilters, 0, True);
+      ENTRY_ID..FALLBACK_DIR_ID: IntToMenu(miRtFilters, 0, True);
     end;
   end;
 
@@ -13847,8 +14321,9 @@ begin
     TFont(lbFavoritesTotal.Font).Style := [];
     TFont(lbExcludeNodes.Font).Style := [];
     TFont(lbFavoritesBridges.Font).Style := [];
+    TFont(lbFavoritesFallbackDirs.Font).Style := [];
   end;
-  if CustomFilterID in [ENTRY_ID..BRIDGES_ID] then
+  if CustomFilterID in [ENTRY_ID..FALLBACK_DIR_ID] then
     TFont(GetFavoritesLabel(CustomFilterID).Font).Style := [fsUnderline];
 end;
 
@@ -13947,14 +14422,14 @@ begin
         else
         begin
           RoutersCustomFilter := StrToIntDef(ParseStr[i], 0);
-          if not (RoutersCustomFilter in [0, FILTER_BY_BRIDGE..BRIDGES_ID]) then
+          if not (RoutersCustomFilter in [0, FILTER_BY_BRIDGE..FALLBACK_DIR_ID]) then
             RoutersCustomFilter := 0;
         end;
       end;
       6:
       begin
         LastRoutersCustomFilter := StrToIntDef(ParseStr[i], 0);
-        if not (LastRoutersCustomFilter in [0, FILTER_BY_BRIDGE..BRIDGES_ID]) then
+        if not (LastRoutersCustomFilter in [0, FILTER_BY_BRIDGE..FALLBACK_DIR_ID]) then
           LastRoutersCustomFilter := 0;
       end;
       7:
@@ -14221,10 +14696,12 @@ begin
   begin
     if not Assigned(Controller) and not Assigned(Logger) and not Assigned(Consensus) and not Assigned(Descriptors) then
     begin
-      if CurrentScanPurpose in [spUserBridges, spNewBridges] then
-        ShowMsg(TransStr('400'))
-      else
-        StartTor;
+      case CurrentScanPurpose of
+        spUserBridges, spNewBridges: ShowMsg(Format(TransStr('400'), [TransStr('659')]));
+        spUserFallbackDirs: ShowMsg(Format(TransStr('400'), [TransStr('660')]));
+        else
+          StartTor;
+      end;
     end;
   end
   else
@@ -14433,8 +14910,8 @@ var
 begin
   if ValidAddress(IpAddr) <> 0 then
   begin
+    pcOptions.ActivePage := tsFilter;
     sbShowOptions.Click;
-    pcOptions.TabIndex := tsFilter.TabIndex;
     if GeoIpDic.TryGetValue(IpAddr, GeoIpInfo) then
       Index := sgFilter.Cols[FILTER_ID].IndexOf(CountryCodes[GeoIpInfo.cc])
     else
@@ -14567,9 +15044,9 @@ begin
   sgHsPorts.Enabled := State;
   edHsName.Enabled := State;
   edHsNumIntroductionPoints.Enabled := State;
-  edRendPostPeriod.Enabled := State;
+  edRendPostPeriod.Enabled := State and SupportRendPostPeriod;
   udHsNumIntroductionPoints.Enabled := State;
-  udRendPostPeriod.Enabled := State;
+  udRendPostPeriod.Enabled := State and SupportRendPostPeriod;
   cbxHsVersion.Enabled := State;
   cbxHsState.Enabled := State;
   cbHsMaxStreams.Enabled := State;
@@ -14578,8 +15055,8 @@ begin
   lbHsName.Enabled := State;
   lbHsVersion.Enabled := State;
   lbHsNumIntroductionPoints.Enabled := State;
-  lbRendPostPeriod.Enabled := State;
-  lbMinutes.Enabled := State;
+  lbRendPostPeriod.Enabled := State and SupportRendPostPeriod;
+  lbMinutes.Enabled := State and SupportRendPostPeriod;
   lbHsState.Enabled := State;
 end;
 
@@ -15081,7 +15558,10 @@ begin
     CalculateTotalNodes;
 
     if NodeTypeID = EXCLUDE_ID then
+    begin
       BridgesRecalculate := True;
+      FallbackDirsRecalculate := True;
+    end;
     RoutersUpdated := True;
     FilterUpdated := True;
     UpdateOptionsAfterRoutersUpdate;
@@ -15135,6 +15615,7 @@ begin
     CalculateTotalNodes;
 
     BridgesRecalculate := True;
+    FallbackDirsRecalculate := True;
     RoutersUpdated := True;
     FilterUpdated := True;
     UpdateOptionsAfterRoutersUpdate;
@@ -15243,18 +15724,21 @@ end;
 procedure TTcp.RoutersAutoSelectClick(Sender: TObject);
 var
   Router: Tpair<string, TRouterInfo>;
-  cdWeight, cdPing, CheckEntryPorts: Boolean;
+  cdWeight, cdPing, cdStable, CheckEntryPorts: Boolean;
   GeoIpInfo: TGeoIpInfo;
+  RouterInfo: TRouterInfo;
   NodeItem: TPair<string, TNodeTypes>;
   Flags: TRouterFlags;
   PriorityType, PingData, PingSum, PingCount, PingAvg: Integer;
   FilterNodeTypes, AutoSelNodeTypes: TNodeTypes;
   FilterInfo: TFilterInfo;
   CountryID: Byte;
-  EntryStr, MiddleStr, ExitStr, CountryCode, PortsData: string;
-  EntryNodes, MiddleNodes, ExitNodes: TStringList;
+  EntryStr, MiddleStr, ExitStr, FallbackStr, CountryCode, PortsData: string;
+  EntryNodes, MiddleNodes, ExitNodes, FallbackDirs: TStringList;
   UniqueList: TDictionary<string, Byte>;
   SortCompare: TStringListSortCompare;
+  ParseStr: ArrOfStr;
+  i: Integer;
 
   function ListToStr(ls: TStringList; Max: Integer): string;
   var
@@ -15309,28 +15793,38 @@ var
     Delete(Result, 1, 1);
   end;
 
-  procedure AddRouterToList(ls: TStringList; NodeType: TNodeType);
+  procedure AddRouterToList(ls: TStringList; NodeType: TNodeType; NoLimit: Boolean = False);
+  var
+    FNodeType: TNodeType;
   begin
-    if (NodeType in FilterNodeTypes) and (NodeType in AutoSelNodeTypes) then
+    if NodeType = ntFallbackDir then
+      FNodeType := ntEntry
+    else
+      FNodeType := NodeType;
+
+    if ((FNodeType in FilterNodeTypes) or NoLimit) and (NodeType in AutoSelNodeTypes) then
     begin
-      case PriorityType of
-        PRIORITY_BALANCED:
-        begin
-          ls.AddObject(Router.Key, TObject(Router.Value.Bandwidth));
-          if not UniqueList.ContainsKey(Router.Key) then
+      if (cdWeight or NoLimit) and cdPing  then
+      begin
+        case PriorityType of
+          PRIORITY_BALANCED:
           begin
-            if (PingData <= udAutoSelMaxPing.Position) then
+            ls.AddObject(Router.Key, TObject(Router.Value.Bandwidth));
+            if not UniqueList.ContainsKey(Router.Key) then
             begin
-              UniqueList.AddOrSetValue(Router.Key, 0);
-              Inc(PingSum, PingData);
-              Inc(PingCount);
+              if (PingData <= udAutoSelMaxPing.Position) then
+              begin
+                UniqueList.AddOrSetValue(Router.Key, 0);
+                Inc(PingSum, PingData);
+                Inc(PingCount);
+              end;
             end;
           end;
+          PRIORITY_WEIGHT: ls.AddObject(Router.Key, TObject(Router.Value.Bandwidth));
+          PRIORITY_PING: ls.AddObject(Router.Key, TObject(PingData));
+          else
+            ls.AddObject(Router.Key, TObject(Random(MAXWORD)));
         end;
-        PRIORITY_WEIGHT: ls.AddObject(Router.Key, TObject(Router.Value.Bandwidth));
-        PRIORITY_PING: ls.AddObject(Router.Key, TObject(PingData));
-        else
-          ls.AddObject(Router.Key, TObject(Random(MAXWORD)));
       end;
     end;
   end;
@@ -15343,6 +15837,7 @@ begin
   EntryNodes := TStringList.Create;
   MiddleNodes := TStringList.Create;
   ExitNodes := TStringList.Create;
+  FallbackDirs := TStringList.Create;
   UniqueList := TDictionary<string, Byte>.Create;
 
   if (PingNodesCount = 0) and (PriorityType in [PRIORITY_BALANCED, PRIORITY_PING]) then
@@ -15362,6 +15857,8 @@ begin
       Include(AutoSelNodeTypes, ntMiddle);
     if miAutoSelExitEnabled.Checked then
       Include(AutoSelNodeTypes, ntExit);
+    if miAutoSelFallbackDirEnabled.Checked then
+      Include(AutoSelNodeTypes, ntFallbackDir);
 
     for Router in RoutersDic do
     begin
@@ -15391,28 +15888,36 @@ begin
       CountryCode := CountryCodes[CountryID];
 
       cdWeight := Router.Value.Bandwidth >= udAutoSelMinWeight.Position * 1024;
-
-      if cdWeight and cdPing and (rfRelay in Flags) and not RouterInNodesList(Router.Key, Router.Value.IPv4, ntExclude) then
+      
+      if (rfRelay in Flags) and not RouterInNodesList(Router.Key, Router.Value.IPv4, ntExclude) then
       begin
+        cdStable := rfStable in Flags;
         if cbAutoSelFilterCountriesOnly.Checked and (PingNodesCount > 0) then
         begin
           if FilterDic.TryGetValue(CountryCode, FilterInfo) then
             FilterNodeTypes := FilterInfo.Data;
         end;
 
-        if (rfStable in Flags) or not cbAutoSelStableOnly.Checked then
+        if cdStable or not cbAutoSelStableOnly.Checked then
         begin
-          if (rfGuard in Flags) then
+          if (Router.Value.Params and ROUTER_ALIVE <> 0) or (AliveNodesCount = 0) then
           begin
-            if (Router.Value.Params and ROUTER_ALIVE <> 0) or (AliveNodesCount = 0) then
+            if CheckEntryPorts then
             begin
-              if CheckEntryPorts then
+              if PortsDic.ContainsKey(Router.Value.Port) then
               begin
-                if PortsDic.ContainsKey(Router.Value.OrPort) then
+                if rfGuard in Flags then
                   AddRouterToList(EntryNodes, ntEntry);
-              end
-              else
+                if (rfFast in Flags) and cdStable then
+                  AddRouterToList(FallbackDirs, ntFallbackDir, cbAutoSelFallbackDirNoLimit.Checked);
+              end;
+            end
+            else
+            begin
+              if rfGuard in Flags then
                 AddRouterToList(EntryNodes, ntEntry);
+              if cdStable and (rfFast in Flags) and cdStable then
+                AddRouterToList(FallbackDirs, ntFallbackDir, cbAutoSelFallbackDirNoLimit.Checked);
             end;
           end;
 
@@ -15454,6 +15959,8 @@ begin
       end;
     end;
 
+    if miAutoSelFallbackDirEnabled.Checked then
+      Exclude(AutoSelNodeTypes, ntFallbackDir);
     ClearRouters(AutoSelNodeTypes);
 
     if miAutoSelEntryEnabled.Checked then
@@ -15477,6 +15984,22 @@ begin
       GetNodes(MiddleStr, ntMiddle, True);
     end;
 
+    if miAutoSelFallbackDirEnabled.Checked then
+    begin
+      FallbackDirs.CustomSort(SortCompare);
+      FallbackStr := ListToStr(FallbackDirs, udAutoSelFallbackDirCount.Position);
+      cbUseFallbackDirs.Checked := True;
+      cbxFallbackDirsType.ItemIndex := FALLBACK_TYPE_USER;
+      ParseStr := Explode(',', FallbackStr);
+      UsedFallbackDirs.Clear;
+      for i := 0 to Length(ParseStr) - 1 do
+      begin
+        if RoutersDic.TryGetValue(ParseStr[i], RouterInfo) then
+          UsedFallbackDirs.AddOrSetValue(RouterInfo.IPv4 + '|' + IntToStr(RouterInfo.Port), GetFallbackStr(ParseStr[i], RouterInfo));
+      end;
+      SaveFallbackDirsData(nil, True);
+    end;
+
     CheckNodesListState(FAVORITES_ID);
     CalculateTotalNodes;
     ShowRouters;
@@ -15487,11 +16010,196 @@ begin
     EntryNodes.Free;
     MiddleNodes.Free;
     ExitNodes.Free;
+    FallbackDirs.Free;
     UniqueList.Free;
     if CheckEntryPorts then
       PortsDic.Clear;
   end;
+end;
 
+procedure TTcp.ExcludeUnsuitableFallbackDirs(var Data: TStringList);
+var
+  FallbackDirsCount, PortData, i: Integer;
+  CheckEntryPorts, CheckRouters, FindCountry, NeedCountry, NeedAlive: Boolean;
+  cdAlive, cdPorts, cdSocket: Boolean;
+  FallbackDir: TFallbackDir;
+  GeoIpInfo: TGeoIpInfo;
+  BridgeInfo: TBridgeInfo;
+  CountryID: Byte;
+  CountryStr: string;
+  Router: TRouterInfo; 
+begin
+  SuitableFallbackDirsCount := 0;
+  FallbackDirsCount := Data.Count;
+  if FallbackDirsCount = 0 then
+    Exit;
+  CheckEntryPorts := ReachablePortsExists;
+  CheckRouters := RoutersDic.Count > 0;
+  for i := Data.Count - 1 downto 0 do
+  begin
+    if TryParseFallbackDir(Data[i], FallbackDir, False) then
+    begin
+      if CheckEntryPorts then
+        cdPorts := PortsDic.ContainsKey(FallbackDir.OrPort)
+      else
+        cdPorts := True;
+
+      cdSocket := False;      
+      if CheckRouters then
+      begin
+        if RoutersDic.TryGetValue(FallbackDir.Hash, Router) then
+        begin
+          if (FallbackDir.IPv4 = Router.IPv4) and (FallbackDir.OrPort = Router.Port) then
+          begin
+            if rfRelay in Router.Flags then
+              cdSocket := True;
+          end;
+        end;
+      end;
+
+      if not cdSocket then
+      begin
+        if BridgesDic.TryGetValue(FallbackDir.Hash, BridgeInfo) then
+          cdSocket := BridgeInfo.Transport = ''
+        else
+          cdSocket := not CheckRouters;
+      end;
+
+      if GeoIpDic.TryGetValue(FallbackDir.IPv4, GeoIpInfo) then
+      begin
+        CountryID := GeoIpInfo.cc;
+        PortData := GetPortsValue(GeoIpInfo.ports, IntToStr(FallbackDir.OrPort));
+        cdAlive := PortData <> -1;
+        NeedAlive := PortData = 0;
+        NeedCountry := CountryID = DEFAULT_COUNTRY_ID;
+        FindCountry := NeedCountry and cdAlive;
+      end
+      else
+      begin
+        CountryID := DEFAULT_COUNTRY_ID;
+        cdAlive := False;
+        NeedAlive := True;
+        NeedCountry := True;
+        FindCountry := True;
+      end;
+
+      if FindCountry and GeoIpExists then
+        Inc(UnknownFallbackDirCountriesCount);
+
+      CountryStr := CountryCodes[CountryID];
+
+      if cdPorts and cdSocket and (cdAlive or NeedAlive) and not RouterInNodesList(FallbackDir.Hash, FallbackDir.IPv4, ntExclude, NeedCountry and NeedAlive, CountryStr) then
+        Inc(SuitableFallbackDirsCount)
+      else
+        Data.Delete(i);
+    end
+    else
+      Data.Delete(i);
+  end;
+  if CheckEntryPorts then
+    PortsDic.Clear;
+end;
+
+procedure TTcp.SaveFallbackDirs;
+var
+  ini: TMemIniFile;
+begin
+  LoadTorConfig;
+  ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
+  try
+    OptionsLocked := True;
+    SaveFallbackDirsData(ini, False, True);
+    OptionsLocked := False;    
+    SaveTorConfig;
+  finally
+    UpdateConfigFile(ini);
+  end;
+end;
+
+procedure TTcp.SaveFallbackDirsData(ini: TMemIniFile = nil; UseDic: Boolean = False; FastUpdate: Boolean = False);
+var
+  AutoSave: Boolean;
+  Item: Tpair<string, string>;
+  FallbackDir: TFallbackDir; 
+  ls: TStringList;
+  DataStr: string;
+  i: Integer;
+begin
+  UsedFallbackDirsCount := 0;
+  AutoSave := ini <> nil;
+  if AutoSave then
+  begin
+    MissingFallbackDirCount := 0;
+    UnknownFallbackDirCountriesCount := 0;
+    DeleteTorConfig('FallbackDir', [cfMultiLine]);
+  end;
+
+  ls := TStringList.Create;
+  try
+    if UseDic then
+    begin
+      for Item in UsedFallbackDirs do
+        ls.Append(Item.Value);
+      ls.CustomSort(CompTextAsc);
+    end
+    else
+    begin
+      UsedFallbackDirs.Clear;
+      MemoToList(meFallbackDirs, ltFallbackDir, True, ls);
+    end;
+    meFallbackDirs.Text := ls.Text;
+    ExcludeUnsuitableFallbackDirs(ls);
+    if not UseDic then
+    begin
+      for i := 0 to ls.Count - 1 do
+      begin
+        if TryParseFallbackDir(ls[i], FallbackDir, False) then
+          UsedFallbackDirs.AddOrSetValue(FallbackDir.IPv4 + '|' + IntToStr(FallbackDir.OrPort), ls[i]);
+      end;
+    end;
+
+    if (ls.Text = '') and AutoSave then
+      cbUseFallbackDirs.Checked := False;
+
+    if cbUseFallbackDirs.Checked then
+      UsedFallbackDirsCount := ls.Count;
+
+    if AutoSave then
+    begin
+      if (UnknownFallbackDirCountriesCount > 0) and (ConnectState = 0) then
+        SetTorConfig('DisableNetwork', '1');
+
+      if cbUseFallbackDirs.Checked then
+        SetTorConfig('FallbackDir', ls);
+
+      if cbxFallbackDirsType.ItemIndex = FALLBACK_TYPE_USER then
+      begin
+        ini.EraseSection('FallbackDirs');
+        for i := 0 to meFallbackDirs.Lines.Count - 1 do
+          SetSettings('FallbackDirs', IntToStr(i), meFallbackDirs.Lines[i], ini);
+      end;
+      SetSettings('Lists', cbUseFallbackDirs, ini);
+      SetSettings('Lists', cbxFallbackDirsType, ini);
+
+      if FastUpdate and (ConnectState <> 0) then
+      begin
+        if cbUseFallbackDirs.Checked then
+        begin
+          DataStr := '';
+          for i := 0 to ls.Count - 1 do
+            DataStr := DataStr + ' FallbackDir="' + ls[i] + '"';
+          SendCommand('SETCONF' + DataStr);
+        end
+        else
+          SendCommand('SETCONF FallbackDir');
+      end;
+    end;
+    FallbackDirsCheckControls;
+    CountTotalFallbackDirs;
+    FallbackDirsRecalculate := False;
+  finally
+    ls.Free;
+  end;
 end;
 
 procedure TTcp.miAboutClick(Sender: TObject);
@@ -15500,7 +16208,7 @@ begin
   [
     TransStr('105'),
     GetFileVersionStr(Paramstr(0)),
-    'Copyright © 2020, abysshint',
+    'Copyright © 2020-2023, abysshint',
     TransStr('357')
   ]), TransStr('355'), mtInfo, True) then
   begin
@@ -15754,6 +16462,7 @@ begin
   NetworkCacheFile := UserDir + 'network-cache';
   BridgesCacheFile := UserDir + 'bridges-cache';
 
+  UsedFallbackDirs := TDictionary<string, string>.Create;
   NewBridgesList := TDictionary<string, string>.Create;
   UsedBridgesList := TDictionary<string, Byte>.Create;
   CompBridgesDic := TDictionary<string, string>.Create;
@@ -15912,6 +16621,7 @@ begin
   lbExcludeNodes.HelpKeyword := IntToStr(EXCLUDE_ID);
   lbFavoritesTotal.HelpKeyword := IntToStr(FAVORITES_ID);
   lbFavoritesBridges.HelpKeyword := IntToStr(BRIDGES_ID);
+  lbFavoritesFallbackDirs.HelpKeyword := IntToStr(FALLBACK_DIR_ID);
 
   CheckFileEncoding(UserConfigFile, UserBackupFile);
   GetTorVersion(True);
@@ -15946,6 +16656,7 @@ begin
   if FirstStart then
     UpdateConfigVersion;
   SupportVanguardsLite := CheckFileVersion(TorVersion, '0.4.7.1');
+  SupportRendPostPeriod := not CheckFileVersion(TorVersion, '0.4.8.1');
   ResetOptions;
   if not Assigned(ShowTimer) then
   begin
@@ -16142,12 +16853,27 @@ begin
   if (Button = mbLeft) and (ssDouble in Shift) then
   begin
     FavoritesID := StrToInt(TLabel(Sender).HelpKeyword);
-    if (ssCtrl in Shift) and (FavoritesID in [ENTRY_ID..EXCLUDE_ID]) then
+    if ssCtrl in Shift then
     begin
-      sbShowOptions.Click;
-      pcOptions.TabIndex := tsLists.TabIndex;
-      cbxNodesListType.ItemIndex := FavoritesToNodes(FavoritesID);
-      LoadNodesList;
+      case FavoritesID of
+        ENTRY_ID..EXCLUDE_ID:
+        begin
+          pcOptions.ActivePage := tsLists;
+          sbShowOptions.Click;
+          cbxNodesListType.ItemIndex := FavoritesToNodes(FavoritesID);
+          LoadNodesList;
+        end;
+        BRIDGES_ID:
+        begin
+          pcOptions.ActivePage := tsNetwork;
+          sbShowOptions.Click;
+        end;
+        FALLBACK_DIR_ID:
+        begin
+          pcOptions.ActivePage := tsLists;
+          sbShowOptions.Click;
+        end;
+      end;
     end
     else
     begin
@@ -16159,7 +16885,7 @@ begin
       end
       else
       begin
-        if RoutersCustomFilter in [ENTRY_ID..BRIDGES_ID] then
+        if RoutersCustomFilter in [ENTRY_ID..FALLBACK_DIR_ID] then
           LastRoutersCustomFilter := 0
         else
           LastRoutersCustomFilter := RoutersCustomFilter;
@@ -16223,6 +16949,7 @@ begin
   UsedBridgesList.Free;
   CompBridgesDic.Free;
   RandomBridges.Free;
+  UsedFallbackDirs.Free;
   RangesDic.Free;
   DirFetches.Free;
   PortsDic.Free;
@@ -16319,7 +17046,7 @@ begin
   end;
   if not (Assigned(Consensus) or Assigned(Descriptors) or tmScanner.Enabled) then
   begin
-    if ScanNewBridges and not FindBridgesCountries then
+    if ScanNewBridges and not (FindBridgesCountries or FindFallbackDirCountries) then
       ScanNetwork(stAlive, spNewBridges)
     else
     begin
@@ -16753,6 +17480,13 @@ var
   Bridge: TBridge;
   i: Integer;
   ls: TStringList;
+
+  procedure AddToRemoveList;
+  begin
+    ls.Append(Item.Key);
+    Deleted := True;
+  end;
+
 begin
   if not CheckCacheOpConfirmation(TMenuItem(Sender).Caption) then
     Exit;
@@ -16788,25 +17522,26 @@ begin
           if rfRelay in RouterInfo.Flags then
           begin
             if not IpList.ContainsKey(Item.Key) then
-            begin
-              ls.Append(Item.Key);
-              if Item.Value.Source <> '' then
-                CompBridgesDic.Remove(Item.Value.Source);
-              Deleted := True;
-            end;
+              AddToRemoveList;
           end;
+        end
+        else
+        begin
+          if Item.Value.Kind = BRIDGE_RELAY then
+            AddToRemoveList;
         end;
         if not Deleted then
         begin
           if GeoIpDic.TryGetValue(Item.Value.Router.IPv4, GeoIpInfo) then
           begin
-            if GetPortsValue(GeoIpInfo.ports, IntToStr(Item.Value.Router.OrPort)) = -1 then
-            begin
-              ls.Append(Item.Key);
-              if Item.Value.Source <> '' then
-                CompBridgesDic.Remove(Item.Value.Source);
-            end;
+            if GetPortsValue(GeoIpInfo.ports, IntToStr(Item.Value.Router.Port)) = -1 then
+              AddToRemoveList;
           end;
+        end;
+        if Deleted then
+        begin
+          if Item.Value.Source <> '' then
+            CompBridgesDic.Remove(Item.Value.Source);
         end;
       end;
       for i := 0 to ls.Count - 1 do
@@ -16821,83 +17556,140 @@ begin
   SaveBridgesData;
 end;
 
-procedure TTcp.ClearBridgesAvailableCache(Sender: TObject);
+procedure TTcp.ClearAvailableCache(Sender: TObject);
 var
   ls: TStringList;
-  i: Integer;
-  HashStr: string;
-  DeleteFound: Boolean;
+  MenuID, i: Integer;
+  HashStr, Separator: string;
+  DeleteFlag: Boolean;
+  CurrentMemo: TMemo;
 begin
-  DeleteFound := TMenuItem(Sender).Tag = 1;
+  MenuID := miClearMenu.Tag;
+  case MenuID of
+    1: CurrentMemo := meBridges;
+    2: CurrentMemo := meFallbackDirs;
+    else
+      Exit;
+  end;
+  DeleteFlag := TMenuItem(Sender).Tag = 1;
   ls := TStringList.Create;
   try
-    ls.Text := meBridges.Text;
+    if MenuID = 2 then
+      Separator := '='
+    else
+      Separator := '';
+    ls.Text := CurrentMemo.Text;
     for i := ls.Count - 1 downto 0 do
     begin
-      if TryGetDataFromStr(ls[i], ltHash, HashStr) then
+      if TryGetDataFromStr(ls[i], ltHash, HashStr, Separator) then
       begin
-        if BridgesDic.ContainsKey(HashStr) then
+        if RoutersDic.ContainsKey(HashStr) then
         begin
-          if DeleteFound then
+          if DeleteFlag then
             ls.Delete(i);
         end
         else
         begin
-          if not DeleteFound then
+          if not DeleteFlag then
             ls.Delete(i);
         end;
       end;
     end;
-    meBridges.Text := ls.Text;
-    SaveBridgesData;
-    if meBridges.Text = '' then
+    CurrentMemo.Text := ls.Text;
+    case MenuID of
+      1: SaveBridgesData;
+      2: SaveFallbackDirsData;
+    end;
+    if CurrentMemo.Text = '' then
       ResetFocus;
   finally
     ls.Free;
   end;
 end;
 
-procedure TTcp.miClearBridgesAllClick(Sender: TObject);
+procedure TTcp.miClearMenuAllClick(Sender: TObject);
 begin
-  meBridges.Text := '';
-  SaveBridgesData;
+  case miClearMenu.Tag of
+    1:
+    begin
+      meBridges.Text := '';
+      SaveBridgesData;
+    end;
+    2:
+    begin
+      meFallbackDirs.Text := '';
+      SaveFallbackDirsData;
+    end
+    else
+      Exit;
+  end;
   EnableOptionButtons;
   ResetFocus;
 end;
 
-procedure TTcp.miClearBridgesNotAliveClick(Sender: TObject);
+procedure TTcp.miClearMenuNotAliveClick(Sender: TObject);
 begin
-  ScanNetwork(stAlive, spUserBridges);
+  case miClearMenu.Tag of
+    1: ScanNetwork(stAlive, spUserBridges);
+    2: ScanNetwork(stAlive, spUserFallbackDirs);
+  end;
 end;
 
-procedure TTcp.miClearBridgesUnsuitableClick(Sender: TObject);
+procedure TTcp.miClearMenuUnsuitableClick(Sender: TObject);
 var
   PrefferedBridge: string;
-  LastBridgesCount: Integer;
+  LastDataCount, SuitableDataCount, MenuID: Integer;
   ls: TStringList;
+  CurrentMemo: TMemo;
 begin
-  LastBridgesCount := meBridges.Lines.Count;
-  PrefferedBridge := Trim(edPreferredBridge.Text);
-
+  MenuID := miClearMenu.Tag;
+  case MenuID of
+    1: CurrentMemo := meBridges;
+    2: CurrentMemo := meFallbackDirs;
+    else
+      Exit;
+  end;
+  LastDataCount := CurrentMemo.Lines.Count;
   ls := TStringList.Create;
   try
-    ls.Text := PrefferedBridge;
-    ExcludeUnSuitableBridges(ls, True);
-    if (SuitableBridgesCount = 0) and (PrefferedBridge <> '') then
+    if MenuID = 1 then
     begin
-      cbUsePreferredBridge.Checked := False;
-      edPreferredBridge.Text := '';
-      BridgesUpdated := True;
+      PrefferedBridge := Trim(edPreferredBridge.Text);
+      ls.Text := PrefferedBridge;
+      ExcludeUnSuitableBridges(ls, True);
+      if (SuitableBridgesCount = 0) and (PrefferedBridge <> '') then
+      begin
+        cbUsePreferredBridge.Checked := False;
+        edPreferredBridge.Text := '';
+        BridgesUpdated := True;
+      end;
     end;
 
-    ls.Text := meBridges.Text;
-    ExcludeUnSuitableBridges(ls, True);
-    if LastBridgesCount <> SuitableBridgesCount then
-      meBridges.Text := ls.Text;
+    ls.Text := CurrentMemo.Text;
+    case MenuID of
+      1:
+      begin
+        ExcludeUnSuitableBridges(ls, True);
+        SuitableDataCount := SuitableBridgesCount;
+      end;
+      2:
+      begin
+        ExcludeUnSuitableFallbackDirs(ls);
+        SuitableDataCount := SuitableFallbackDirsCount;
+      end;
+      else
+        Exit;
+    end;
+    if LastDataCount <> SuitableDataCount then
+      CurrentMemo.Text := ls.Text;
 
     if BridgesUpdated then
       SaveBridgesData;
-    if meBridges.Text = '' then
+
+    if FallbackDirsUpdated then
+      SaveFallbackDirsData;
+
+    if CurrentMemo.Text = '' then
       ResetFocus;
   finally
     ls.Free;

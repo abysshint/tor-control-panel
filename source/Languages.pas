@@ -231,8 +231,8 @@ begin
     LoadStr('204', 'Внимание! Отключение кэша каталога ускорит работу сервера, но ваш сервер никогда не станет сторожевым узлом. Хотите продолжить?');
     LoadStr('206', 'Обычный');
     LoadLns('208', '\n  Щёлкните здесь для добавления адресов\n\n  Примеры:\n\n       Ip: 8.8.8.8\n     Сайт: metrics.torproject.org\n    Домен:.torproject.org\n      Все:.');
-    LoadLns('209', '\n  Щёлкните здесь для добавления узлов\n\n  Примеры:\n\n       Ip: 8.8.8.8\n     CIDR: 8.8.8.8/24\n   Страна: RU,DE,US,..\n      Хэш: ABCD1234CDEF567..');
-    LoadLns('210', '\n  Щёлкните здесь для добавления мостов\n\n  Примеры:\n\n           8.8.8.8:443\n           8.8.8.8:443 ABCD1234CDEF567..\n     obfs4 8.8.8.8:443 ABCD1234CDEF567.. cert=.. iat-mode=..\n   conjure 8.8.8.8:443 url=.. %s');
+    LoadLns('209', '\n  Щёлкните здесь для добавления узлов\n\n  Примеры:\n\n       Ip: 8.8.8.8\n     CIDR: 8.8.8.8/24\n   Страна: RU,DE,US,..\n      Хэш: ABCD1234CDEF5..');
+    LoadLns('210', '\n  Щёлкните здесь для добавления мостов\n\n  Примеры:\n\n           8.8.8.8:443\n           8.8.8.8:443 ABCD1234CDEF5..\n     obfs4 8.8.8.8:443 ABCD1234CDEF5.. cert=.. iat-mode=..\n   conjure 8.8.8.8:443 url=.. %s');
     LoadStr('212', 'Загрузка');
     LoadStr('213', 'Отправка');
     LoadStr('214', 'Получено');
@@ -300,7 +300,7 @@ begin
     LoadStr('290', 'Выходные');
     LoadStr('320', 'Ник,IP адрес,,Страна,Вес,Порт,Версия,Пинг,Флаги');
     LoadStr('321', 'Показано: %d из %d');
-    LoadLns('322', '\n  Список хэшей, определяющих ваше семейство\n\n  Пример:\n\n        ABCD1234CDEF567..');
+    LoadLns('322', '\n  Список хэшей, определяющих ваше семейство\n\n  Пример:\n\n        ABCD1234CDEF5..');
     LoadStr('323', 'Роутеры');
     LoadStr('324', 'Неправильные настройки');
     LoadStr('326', 'Протокол скрытых сервисов второй версии устарел, его поддержка была прекращена в версии 0.4.6.1 и выше. Вы действительно хотите использовать эту версию протокола?');
@@ -361,7 +361,7 @@ begin
     LoadStr('381', 'Ручной режим');
     LoadStr('382', 'Измерение пинга');
     LoadStr('383', 'Определение живых узлов');
-    LoadStr('384', 'Мост (Входной узел)');
+    LoadStr('384', 'Мост (Узел вне консенсуса)');
     LoadStr('385', 'Корневой каталог');
     LoadStr('386', 'Живой (отвечает на соединения)');
     LoadStr('387', 'Принимает IPv6-соединения');
@@ -378,7 +378,7 @@ begin
     LoadStr('397', 'Последняя поддерживаемая версия для вашей операционной системы: 0.4.4.6');
     LoadStr('398', 'Цифры в начале слова запрещены');
     LoadStr('399', 'Транспорт с таким названием и типом уже существует');
-    LoadLns('400', 'Идёт сканирование мостов...\n\nДождитесь окончания и повторите попытку.');
+    LoadLns('400', '%s...\n\nДождитесь окончания и повторите попытку.');
     LoadStr('401', 'Нет соединения');
     LoadStr('402', 'Начало учёта: %s');
     LoadStr('404', 'Остановка сканирования..');
@@ -392,6 +392,7 @@ begin
     LoadStr('471', 'Приоритет');
     LoadStr('477', 'ч.|час|часа|часов');
     LoadStr('495', 'Остановить сканирование');
+    LoadStr('510', 'Все мосты');
     LoadStr('515', 'Выделять все ячейки в строке');
     LoadStr('521', 'Выбранные страны');
     LoadStr('522', 'Избранные узлы');
@@ -416,9 +417,19 @@ begin
     LoadStr('629', 'г.|год|года|лет');
     LoadStr('631', 'Прогресс');
     LoadStr('632', 'Доступно: %s из %d');
+    LoadStr('633', 'Исключать неподходящие');
+    LoadStr('634', 'Неподходящие мосты');
     LoadStr('643', 'Всего выбрано');
     LoadStr('645', 'Мост (Узел консенсуса)');
     LoadStr('647', 'Имя файла');
+    LoadStr('652', 'Каталоги');
+    LoadLns('654', '\n  Щёлкните здесь для добавления каталогов\n\n  Примеры:\n\n   8.8.8.8 orport=80 id=ABCD1234CDEF5..\n   8.8.8.8 orport=80 id=ABCD1234CDEF5.. ipv6=[::1]:80\n   8.8.8.8:80 orport=443 id=ABCD1234CDEF5.. weight=1.0');
+    LoadStr('655', 'Мост (Неактивный узел консенсуса)');
+    LoadStr('656', 'Все каталоги');
+    LoadStr('657', 'Неподходящие каталоги');
+    LoadStr('658', 'Определение живых каталогов');
+    LoadLns('659', 'Идёт сканирование мостов');
+    LoadLns('660', 'Идёт сканирование каталогов');
 
     TranslateArray(HsHeader, TransStr('230'));
     TranslateArray(HsPortsHeader, TransStr('231'));
@@ -548,7 +559,7 @@ begin
     Tcp.edPreferredBridge.TextHint  := Load('422', 'Эта настройка переопределяет выбранный список  мостов');
     Tcp.btnFindPreferredBridge.Caption := TransStr('423');
     LoadList(Tcp.cbxBridgesType, '424', '"Встроенные","Пользовательские","Из файла"');
-    Tcp.cbExcludeUnsuitableBridges.Caption := Load('633', 'Исключать неподходящие');
+    Tcp.cbExcludeUnsuitableBridges.Caption := TransStr('633');
     Tcp.cbUseBridgesLimit.Caption := Load('635', 'Ограничить количество используемых мостов');
     Tcp.lbBridgesLimit.Caption := TransStr('175');
     Tcp.lbBridgesPriority.Caption := TransStr('471');
@@ -643,6 +654,10 @@ begin
     Tcp.lbNodesListType.Caption := Load('441', 'Список');
     LoadList(Tcp.cbxNodesListType, '442', '"Входные узлы","Средние узлы","Выходные узлы","Запрещённые узлы"');
     Tcp.cbEnableNodesList.Caption := Load('443', 'Включить');
+    Tcp.cbUseFallbackDirs.Caption := Load('650', 'Использовать резервные каталоги ретрансляторов');
+    Tcp.lbFallbackDirsType.Caption := TransStr('151');
+    LoadList(Tcp.cbxFallbackDirsType, '651', '"Встроенные","Пользовательские"');
+    Tcp.meFallbackDirs.TextHint.Text := TransStr('654');
 
     Tcp.gbNetworkScanner.Caption := TransStr('444');
     Tcp.cbEnableDetectAliveNodes.Caption := Load('445', 'Включить определение живых узлов');
@@ -681,11 +696,13 @@ begin
     Tcp.lbAutoSelEntry.Caption := TransStr('288');
     Tcp.lbAutoSelMiddle.Caption := TransStr('289');
     Tcp.lbAutoSelExit.Caption := TransStr('290');
+    Tcp.lbAutoSelFallbackDirCount.Caption := TransStr('652');
     Tcp.lbAutoSelMinWeight.Caption := Load('468', 'Вес');
     Tcp.lbAutoSelMaxPing.Caption := Load('469', 'Пинг');
     Tcp.lbCount1.Caption := TransStr('470');
     Tcp.lbCount2.Caption := TransStr('470');
     Tcp.lbCount3.Caption := TransStr('470');
+    Tcp.lbCount6.Caption := TransStr('470');
     Tcp.lbSpeed5.Caption := Prefixes[2] + '/' + TransStr('180');
     Tcp.lbMiliseconds5.Caption := TranslateTime(0, TIME_MILLISECOND, False, True);
     Tcp.lbAutoSelPriority.Caption := TransStr('471');
@@ -695,6 +712,7 @@ begin
     Tcp.cbAutoSelUniqueNodes.Caption := Load('475', 'Только уникальные');
     Tcp.cbAutoSelNodesWithPingOnly.Caption := Load('476', 'Только отвечающие на пинг');
     Tcp.cbAutoSelMiddleNodesWithoutDir.Caption := Load('591', 'Средние узлы без каталогов');
+    Tcp.cbAutoSelFallbackDirNoLimit.Caption := Load('653', 'Не ограничивать подбор каталогов');
 
     Tcp.gbTraffic.Caption := Load('211', 'Скорость');
     Tcp.lbDownloadSpeedCaption.Caption := TransStr('212') + ':';
@@ -750,7 +768,7 @@ begin
 
     Tcp.lbSpeed3.Caption := Prefixes[2] + '/' + TransStr('180');
     Tcp.btnShowNodes.Caption := TransStr('547');
-    LoadList(Tcp.cbxRoutersQuery, '548', '"Хеш","Ник","IPv4","IPv6","OR-порт","DIR-порт","Версия","Пинг","Транспорт"');
+    LoadList(Tcp.cbxRoutersQuery, '548', '"Хеш","Ник","IPv4","IPv6","Порт","DIR-порт","Версия","Пинг","Транспорт"');
     Tcp.edRoutersQuery.TextHint := Load('549', 'Введите запрос');
     Tcp.lbFavoritesTotalSelected.Caption := TransStr('643') + ':';
     Tcp.imFavoritesEntry.Hint := TransStr('288');
@@ -759,6 +777,7 @@ begin
     Tcp.imFavoritesTotal.Hint := TransStr('584');
     Tcp.imExcludeNodes.Hint := TransStr('287');
     Tcp.imFavoritesBridges.Hint := Load('644', 'Используемые мосты');
+    Tcp.imFavoritesFallbackDirs.Hint := Load('649', 'Используемые резервные каталоги');
 
     Tcp.miHsOpenDir.Caption := Load('273', 'Каталог сервиса');
     Tcp.miHsCopy.Caption := TransStr('274');
@@ -819,12 +838,10 @@ begin
     Tcp.miSelectAll.Caption := TransStr('277');
     Tcp.miFind.Caption := TransStr('423');
     Tcp.miClear.Caption := TransStr('278');
-    Tcp.miClearBridges.Caption := TransStr('278');
-    Tcp.miClearBridgesNotAlive.Caption := Load('507', 'Не отвечающие на соединения');
-    Tcp.miClearBridgesNonCached.Caption := Load('508', 'Отсутствующие в кэше');
-    Tcp.miClearBridgesCached.Caption := Load('509', 'Найденные в кэше');
-    Tcp.miClearBridgesAll.Caption := Load('510', 'Все мосты');
-    Tcp.miClearBridgesUnsuitable.Caption := Load('634', 'Неподходящие мосты');
+    Tcp.miClearMenu.Caption := TransStr('278');
+    Tcp.miClearMenuNotAlive.Caption := Load('507', 'Не отвечающие на соединения');
+    Tcp.miClearMenuNonCached.Caption := Load('508', 'Отсутствующие в кэше');
+    Tcp.miClearMenuCached.Caption := Load('509', 'Найденные в кэше');
 
     Tcp.miLogOptions.Caption := TransStr('107');
     Tcp.miWriteLogFile.Caption := Load('292', 'Записывать в файл');
@@ -1036,6 +1053,7 @@ begin
     Tcp.miAutoSelEntryEnabled.Caption := TransStr('288');
     Tcp.miAutoSelMiddleEnabled.Caption := TransStr('289');
     Tcp.miAutoSelExitEnabled.Caption := TransStr('290');
+    Tcp.miAutoSelFallbackDirEnabled.Caption := TransStr('652');
     Tcp.miAutoSelNodesSA.Caption := TransStr('368');
     Tcp.miAutoSelNodesUA.Caption := TransStr('369');
 

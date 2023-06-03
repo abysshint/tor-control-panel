@@ -15,6 +15,15 @@ const
   CREATE_BREAKAWAY_FROM_JOB = $01000000;
 
 type
+  TFallbackDir = record
+    Hash: string;
+    IPv4: string;
+    IPv6: string;
+    OrPort: Word;
+    DirPort: Word;
+    Weight: Double;
+  end;
+
   TBridge = record
     Ip: string;
     Port: Word;
@@ -103,6 +112,7 @@ var
   function ValidData(Str: string; ListType: TListType): Boolean;
   function ValidInt(IntStr: string; Min, Max: Integer): Boolean; overload;
   function ValidInt(IntStr: string; Min, Max: Int64): Boolean; overload;
+  function ValidFloat(FloatStr: string; Min, Max: Double): Boolean;
   function ValidHash(HashStr: string): Boolean;
   function ValidAddress(AddrStr: string; AllowCidr: Boolean = False; ReqBrackets: Boolean = False): Byte;
   function ValidHost(HostStr: string; AllowRootDomain: Boolean = False; AllowIp: Boolean = True; ReqBrackets: Boolean = False): Boolean;
@@ -110,9 +120,11 @@ var
   function ValidTransport(TransportStr: string): Boolean;
   function ValidSocket(SocketStr: string; AllowHostNames: Boolean = False): Byte;
   function ValidPolicy(PolicyStr: string): Boolean;
+  function ValidFallbackDir(FallbackStr: string): Boolean;
   function GetMsgCaption(Caption: string; MsgType: TMsgType): string;
   function GetBridgeStrFromDic(HashStr: string): string;
   function TryParseBridge(BridgeStr: string; out Bridge: TBridge; Validate: Boolean = True): Boolean;
+  function TryParseFallbackDir(FallbackStr: string; out FallbackDir: TFallbackDir; Validate: Boolean = True): Boolean;
   function TryParseTarget(TargetStr: string; out Target: TTarget): Boolean;
   function IpToInt(IpStr: string): Cardinal;
   function IntToIp(Ip: Cardinal): string;
@@ -132,13 +144,13 @@ var
   function RemoveBrackets(Str: string; Square: Boolean = False): string;
   function SearchEdit(EditControl: TCustomEdit; const SearchString: String; Options: TFindOptions; FindFirst: Boolean = False): Boolean;
   function ShowMsg(Msg: string; Caption: string = ''; MsgType: TMsgType = mtInfo; Question: Boolean = False): Boolean;
-  function MemoToLine(Memo: TMemo; ListType: TListType; Sorted: Boolean = False; Separator: string = ','; State: Boolean = False): string;
-  procedure MemoToList(Memo: TMemo; ListType: TListType; Sorted: Boolean; State: Boolean; out ls: TStringList);
+  function MemoToLine(Memo: TMemo; ListType: TListType; Sorted: Boolean = False; Separator: string = ','): string;
+  procedure MemoToList(Memo: TMemo; ListType: TListType; Sorted: Boolean; out ls: TStringList);
   function MenuToInt(Menu: TMenuItem): Integer;
   function GetTransportID(TypeStr: string): Byte;
   function GetTransportChar(TransportID: Byte): string;
   function TryUpdateMask(var Mask: Word; Param: Word; Condition: Boolean): Boolean;
-  function TryGetDataFromStr(Str: string; DataType: TListType; out DatatStr: string): Boolean;
+  function TryGetDataFromStr(Str: string; DataType: TListType; out DatatStr: string; Separator: string = ''): Boolean;
   function SampleDown(Data: ArrOfPoint; Threshold: Integer): ArrOfPoint;
   function FileTimeToDateTime(const FileTime: TFileTime): TDateTime;
   function GetPortsValue(const PortsData, PortStr: string): Integer;
@@ -1531,7 +1543,7 @@ begin
       TorConfig.Delete(i);
   TorConfig.SaveToFile(TorConfigFile, EncodingNoBom);
   FreeAndNil(TorConfig);
-  FileAge(TorConfigFile, LastTorrcDate);
+  TorrcFileID := GetFileID(TorConfigFile, True);
 end;
 
 function GetTorConfig(const Param, Default: string; Flags: TConfigFlags = []; ParamType: TParamType = ptString; MinValue: Integer = 0; MaxValue: Integer = 0; Prefix: string = ''): string;
@@ -1904,6 +1916,7 @@ begin
     ltNode: Result := ValidHash(Str) or (ValidAddress(Str, True, True) = 1) or FilterDic.ContainsKey(AnsiLowerCase(Str));
     ltSocket: Result := ValidSocket(Str) <> 0;
     ltTransport: Result := ValidTransport(Str);
+    ltFallbackDir: Result := ValidFallbackDir(Str);
     else
       Result := True;
   end;
@@ -1961,14 +1974,14 @@ begin
   end;
 end;
 
-function MemoToLine(Memo: TMemo; ListType: TListType; Sorted: Boolean = False; Separator: string = ','; State: Boolean = False): string;
+function MemoToLine(Memo: TMemo; ListType: TListType; Sorted: Boolean = False; Separator: string = ','): string;
 var
   ls: TStringList;
   i: Integer;
 begin
   ls := TStringList.Create;
   try
-    MemoToList(Memo, ListType, Sorted, State, ls);
+    MemoToList(Memo, ListType, Sorted, ls);
     Result := '';
     if ls.Count > 0 then
     begin
@@ -1981,7 +1994,7 @@ begin
   end;
 end;
 
-procedure MemoToList(Memo: TMemo; ListType: TListType; Sorted: Boolean; State: Boolean; out ls: TStringList);
+procedure MemoToList(Memo: TMemo; ListType: TListType; Sorted: Boolean; out ls: TStringList);
 var
   i: Integer;
   Str: string;
@@ -1990,7 +2003,7 @@ begin
     ls.Text := Memo.Text
   else
   begin
-    if ListType = ltBridge then
+    if ListType in [ltBridge, ltFallbackDir] then
       ls.Text := Memo.Text
     else
     begin
@@ -2036,6 +2049,10 @@ procedure AddUPnPEntry(Port: Integer; Desc, LanIp: string; Test: Boolean; var Ms
 var
   Nat: OleVariant;
   Ports: OleVariant;
+  procedure FormatMsg(Str: string);
+  begin
+    Msg := Msg + LanIp + ' : ' + inttostr(Port) + ' - ' + Str + BR;
+  end;
 begin
   try
     Nat := CreateOleObject('HNetCfg.NATUPnP');
@@ -2045,14 +2062,18 @@ begin
       Ports.Add(Port, 'TCP', Port, LanIp, True, Desc);
       if Test then
       begin
-        Msg := Msg + LanIp + ' : ' + inttostr(Port) + ' - ' + TransStr('245') + BR;
+        FormatMsg(TransStr('245'));
         if ConnectState = 0 then
           Ports.Remove(Port, 'TCP');
       end;
     end;
   except
     on E:Exception do
-      Exit
+    begin
+      if Test then
+        FormatMsg(TransStr('247'));
+      Exit;
+    end;
   end;
 end;
 
@@ -2181,20 +2202,25 @@ begin
   end;
 end;
 
-function TryGetDataFromStr(Str: string; DataType: TListType; out DatatStr: string): Boolean;
+function TryGetDataFromStr(Str: string; DataType: TListType; out DatatStr: string; Separator: string = ''): Boolean;
 var
   i: Integer;
   ParseStr: ArrOfStr;
+  Data: string;
 begin
   if Str <> '' then
   begin
     ParseStr := Explode(' ', Str);
     for i := 0 to Length(ParseStr) - 1 do
     begin
-      if ValidData(ParseStr[i], DataType) then
+      if Separator = '' then
+        Data := ParseStr[i]
+      else
+        Data := SeparateRight(ParseStr[i], Separator);
+      if ValidData(Data, DataType) then
       begin
         Result := True;
-        DatatStr := ParseStr[i];
+        DatatStr := Data;
         Exit;
       end;
     end;
@@ -2751,13 +2777,13 @@ begin
     begin
       case SocketID of
         1:
-        if (Item.Value.IPv4 = IpStr) and (Item.Value.OrPort = Port) then
+        if (Item.Value.IPv4 = IpStr) and (Item.Value.Port = Port) then
         begin
           Result := Item.Key;
           Break;
         end;
         2:
-        if (Item.Value.IPv6 = IpStr) and (Item.Value.OrPort = Port) then
+        if (Item.Value.IPv6 = IpStr) and (Item.Value.Port = Port) then
         begin
           Result := Item.Key;
           Break;
@@ -2811,11 +2837,31 @@ var
   n: Int64;
 begin
   if TryStrToInt64(IntStr, n) then
+  begin
     if (n >= Min) and (n <= Max) then
     begin
       Result := True;
       Exit;
     end;
+  end;
+  Result := False;
+end;
+
+function ValidFloat(FloatStr: string; Min, Max: Double): Boolean;
+var
+  n: Double;
+begin
+  if Pos(',', FloatStr) = 0 then
+  begin
+    if TryStrToFloat(StringReplace(FloatStr, '.', FormatSettings.DecimalSeparator, []), n) then
+    begin
+      if (n >= Min) and (n <= Max) then
+      begin
+        Result := True;
+        Exit;
+      end;
+    end;
+  end;
   Result := False;
 end;
 
@@ -3049,6 +3095,161 @@ begin
       Result := 0;
 end;
 
+function TryParseFallbackDir(FallbackStr: string; out FallbackDir: TFallbackDir; Validate: Boolean = True): Boolean;
+var
+  ParseStr: ArrOfStr;
+  Search, i: Integer;
+  Key, Data: string;
+  FindOrPort, FindHash, FindIPv4, FindIPv6, FindWeight: Boolean;
+begin
+  FallbackDir.Hash := '';
+  FallbackDir.IPv4 := '';
+  FallbackDir.IPv6 := '';
+  FallbackDir.OrPort := 0;
+  FallbackDir.DirPort := 0;
+  FallbackDir.Weight := 1.0;
+  if Validate then
+    Result := ValidFallbackDir(FallbackStr)
+  else
+    Result := FallbackStr <> '';
+  if Result then
+  begin
+    FindHash := True;
+    FindOrPort := True;
+    FindIPv4 := True;
+    FindIPv6 := True;
+    FindWeight := True;
+    ParseStr := Explode(' ', FallbackStr);
+    for i := 0 to Length(ParseStr) - 1 do
+    begin
+      Search := Pos('=', ParseStr[i]);
+      if Search > 0 then
+      begin
+        Key := Copy(ParseStr[i], 1, Search - 1);
+        Data := Copy(ParseStr[i], Search + 1);
+        if FindOrPort and (Key = 'orport') then
+        begin
+          FallbackDir.OrPort := StrToIntDef(Data, 0);
+          FindOrPort := False;
+        end
+        else
+        begin
+          if FindHash and (Key = 'id') then
+          begin
+            FallbackDir.Hash := Data;
+            FindHash := False;
+          end
+          else
+          begin
+            if FindIPv6 and (Key = 'ipv6') then
+            begin
+              FallbackDir.IPv6 := GetAddressFromSocket(Data);
+              FindIPv6 := False;
+            end
+            else
+            begin
+              if FindWeight and (Key = 'weight') then
+              begin
+                FallbackDir.Weight := StrToFloatDef(StringReplace(Data, '.', FormatSettings.DecimalSeparator, []), 1.0);
+                FindWeight := False;
+              end
+            end;
+          end;
+        end;
+      end
+      else
+      begin
+        if FindIPv4 then
+        begin
+          Data := ParseStr[i];
+          FallbackDir.IPv4 := GetAddressFromSocket(Data);
+          FallbackDir.DirPort := GetPortFromSocket(Data);
+          FindIPv4 := False;
+        end;
+      end;
+    end;
+  end;
+end;
+
+function ValidFallbackDir(FallbackStr: string): Boolean;
+var
+  i, DataLenght, Search: Integer;
+  ParseStr: ArrOfStr;
+  Key, Data: string;
+  FindIPv4, FindIPv6, FindPort, FindHash, FindWeight: Boolean;
+begin
+  Result := False;
+  ParseStr := Explode(' ', FallbackStr);
+  DataLenght := Length(ParseStr);
+  if DataLenght < 3 then
+    Exit;
+  FindIPv4 := True;
+  FindPort := True;
+  FindHash := True;
+  FindIPv6 := True;
+  FindWeight := True;
+  for i := 0 to DataLenght - 1 do
+  begin
+    Search := Pos('=', ParseStr[i]);
+    if Search > 0 then
+    begin
+      Key := Copy(ParseStr[i], 1, Search - 1);
+      Data := Copy(ParseStr[i], Search + 1);
+      if FindPort and (Key = 'orport') then
+      begin
+        if not ValidInt(Data, 1, 65535) then
+          Exit;
+        FindPort := False;
+      end
+      else
+      begin
+        if FindHash and (Key = 'id') then
+        begin
+          if not ValidHash(Data) then
+            Exit;
+          FindHash := False;
+        end
+        else
+        begin
+          if FindIPv6 and (Key = 'ipv6') then
+          begin
+            if ValidSocket(Data) <> 2 then
+              Exit;
+            FindIPv6 := False;
+          end
+          else
+          begin
+            if FindWeight and (Key = 'weight') then
+            begin
+              if not ValidFloat(Data, 0, Double.MaxValue) then
+                Exit;
+              FindWeight := False;
+            end
+            else
+              Exit;
+          end;
+        end;
+      end;
+    end
+    else
+    begin
+      if FindIPv4 then
+      begin
+        Data := ParseStr[i];
+        if not IsIPv4(Data) then
+        begin
+          if ValidSocket(Data) <> 1 then
+            Exit;
+        end;
+        FindIPv4 := False;
+      end
+      else
+        Exit;
+    end;
+  end;
+  Result := not (FindIPv4 or FindPort or FindHash)
+end;
+
 function ValidPolicy(PolicyStr: string): Boolean;
 var
   ParseStr, Ports: ArrOfStr;
@@ -3165,7 +3366,7 @@ begin
     Result := Trim(
       BridgeInfo.Transport + ' ' +
       BridgeInfo.Router.IPv4 + ':' +
-      IntToStr(BridgeInfo.Router.OrPort) + ' ' +
+      IntToStr(BridgeInfo.Router.Port) + ' ' +
       HashStr + ' ' +
       BridgeInfo.Params
     );
@@ -3254,7 +3455,6 @@ begin
     Exit;
   ParseStr := Explode(' ', BridgeStr);
   ParamCount := Length(ParseStr);
-
   if ParamCount > 1 then
   begin
     if TransportsDic.TryGetValue(ParseStr[0], T) then
@@ -3263,7 +3463,7 @@ begin
         Result := True;
     end
     else
-      Result := (ValidSocket(ParseStr[0]) <> 0) and ValidHash(ParseStr[1]);
+      Result := ValidHash(ParseStr[1]) and (ValidSocket(ParseStr[0]) <> 0);
   end
   else
     Result := ValidSocket(ParseStr[0]) <> 0;
