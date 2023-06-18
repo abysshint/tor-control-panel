@@ -22,10 +22,10 @@ var
   HsHeader: array [0..3] of string;
   HsPortsHeader: array [0..2] of string;
   RoutersHeader: array [0..8] of string;
-  CircuitsHeader: array [0..0] of string;
+  CircuitsHeader: array [0..1] of string;
   StreamsHeader: array [0..0] of string;
   StreamsInfoHeader: array [0..2] of string;
-  TransportsHeader: array [0..2] of string;
+  TransportsHeader: array [0..3] of string;
   Prefixes: array[0..6] of string;
   LangStr: TDictionary<string, string>;
   LangIniFile: TMemIniFile;
@@ -306,7 +306,7 @@ begin
     LoadStr('326', 'Протокол скрытых сервисов второй версии устарел, его поддержка была прекращена в версии 0.4.6.1 и выше. Вы действительно хотите использовать эту версию протокола?');
     LoadStr('327', 'Цепочки');
     LoadStr('328', 'Компактный режим');
-    LoadStr('329', 'Назначение');
+    LoadStr('329', 'Назначение,Флаги');
     LoadStr('330', 'Целевой адрес');
     LoadStr('331', 'Запрос каталога');
     LoadStr('332', 'Внутренний трафик');
@@ -320,7 +320,7 @@ begin
     LoadStr('340', 'Авангард скрытого сервиса');
     LoadStr('341', 'Проверка закрытия цепочки');
     LoadStr('342', 'Проверка доступности');
-    LoadStr('343', 'Маскировка времени');
+    LoadStr('343', 'Маскировка времени закрытия');
     LoadStr('344', 'Измерение ожидания');
     LoadStr('345', 'Другое назначение');
     LoadStr('346', 'Внимание! Частая смена сторожевых узлов может помочь злоумышленникам обнаружить вас. Используйте только в случае крайней необходимости. %sХотите продолжить?');
@@ -371,7 +371,7 @@ begin
     LoadStr('391', 'Плохой выходной узел');
     LoadStr('640', 'Только средний');
     LoadStr('392', 'Неизвестный флаг');
-    LoadStr('393', 'Транспорты,Обработчик,Тип');
+    LoadStr('393', 'Транспорты,Обработчик,,Тип');
     LoadStr('394', 'Список транспортов не может содержать пустые данные');
     LoadStr('395', 'Не найден файл обработчика, скопируйте его в каталог транспортов и повторите');
     LoadStr('396', 'Определение живых мостов');
@@ -403,6 +403,7 @@ begin
     LoadStr('528', 'Соединения');
     LoadStr('530', 'Назначение');
     LoadStr('547', 'Тип узла');
+    LoadStr('568', 'Показывать подсказки флагов при наведении мыши');
     LoadStr('584', 'Все избранные');
     LoadStr('593', 'HTTP-прокси');
     LoadStr('594', 'SOCKS4-трафик');
@@ -430,6 +431,13 @@ begin
     LoadStr('658', 'Определение живых каталогов');
     LoadLns('659', 'Идёт сканирование мостов');
     LoadLns('660', 'Идёт сканирование каталогов');
+    LoadStr('661', 'Пользовательская цепочка');
+    LoadStr('662', 'Не определено');
+    LoadStr('663', 'Клиент');
+    LoadStr('664', 'Сервис');
+    LoadStr('665', 'Авангард');
+    LoadStr('666', 'Точка входа');
+    LoadStr('667', 'Место встречи');
 
     TranslateArray(HsHeader, TransStr('230'));
     TranslateArray(HsPortsHeader, TransStr('231'));
@@ -626,7 +634,7 @@ begin
     Tcp.cbUseMyFamily.Caption := Load('435', 'Использовать семейство');
     Tcp.lbTotalMyFamily.Caption := TransStr('203') + ': ' + IntToStr(Tcp.meMyFamily.Lines.Count);
 
-    Tcp.lbHsName.Caption := Load('190', 'Название');;
+    Tcp.lbHsName.Caption := Load('190', 'Название');
     Tcp.edHsName.TextHint := Load('191', 'Имя каталога');
     Tcp.cbHsMaxStreams.Caption := Load('192', 'Ограничить число соединений');
     Tcp.lbHsMaxStreams.Caption := Load('193', 'Соединений на цепочку');
@@ -657,6 +665,7 @@ begin
     Tcp.cbUseFallbackDirs.Caption := Load('650', 'Использовать резервные каталоги ретрансляторов');
     Tcp.lbFallbackDirsType.Caption := TransStr('151');
     LoadList(Tcp.cbxFallbackDirsType, '651', '"Встроенные","Пользовательские"');
+    Tcp.cbExcludeUnsuitableFallbackDirs.Caption := TransStr('633');
     Tcp.meFallbackDirs.TextHint.Text := TransStr('654');
 
     Tcp.gbNetworkScanner.Caption := TransStr('444');
@@ -765,6 +774,7 @@ begin
     end;
 
     Tcp.gbSpeedGraph.Caption := Load('220', 'График скорости');
+    Tcp.imCircuitPurpose.Hint := TransStr('530');
 
     Tcp.lbSpeed3.Caption := Prefixes[2] + '/' + TransStr('180');
     Tcp.btnShowNodes.Caption := TransStr('547');
@@ -939,6 +949,7 @@ begin
     Tcp.miCircuitsSortID.Caption := TransStr('221');
     Tcp.miCircuitsSortPurpose.Caption := TransStr('530');
     Tcp.miCircuitsSortStreams.Caption := TransStr('528');
+    Tcp.miCircuitsSortFlags.Caption:= Load('668', 'Флаги');
     Tcp.miCircuitsSortDL.Caption := TransStr('214');
     Tcp.miCircuitsSortUL.Caption := TransStr('215');
     Tcp.miCircuitFilter.Caption := TransStr('526');
@@ -956,6 +967,7 @@ begin
     Tcp.miCircTesting.Caption := TransStr('342');
     Tcp.miCircCircuitPadding.Caption := TransStr('343');
     Tcp.miCircMeasureTimeout.Caption := TransStr('344');
+    Tcp.miCircController.Caption := TransStr('661');
     Tcp.miCircOther.Caption := TransStr('345');
     Tcp.miCircSA.Caption := TransStr('368');
     Tcp.miCircUA.Caption := TransStr('369');
@@ -963,7 +975,7 @@ begin
 
     Tcp.miHideCircuitsWithoutStreams.Caption := Load('531', 'Скрывать цепочки без соединений');
     Tcp.miAlwaysShowExitCircuit.Caption := Load('532', 'Всегда показывать выходную цепочку');
-    Tcp.miSelectExitCircuitWhetItChanges.Caption := Load('533', 'Выделять выходную цепочку при её изменении');
+    Tcp.miSelectExitCircuitWhenItChanges.Caption := Load('533', 'Выделять выходную цепочку при её изменении');
     Tcp.miShowCircuitsTraffic.Caption := Load('534', 'Показывать трафик цепочек');
     Tcp.miShowStreamsTraffic.Caption := Load('535', 'Показывать трафик соединений');
     Tcp.miShowStreamsInfo.Caption := Load('536', 'Показывать подробности соединений');
@@ -973,6 +985,7 @@ begin
     Tcp.miCircuitsUpdateLow.Caption := Load('540', 'Низкая');
     Tcp.miCircuitsUpdateManual.Caption := Load('541', 'Обновлять вручную');
     Tcp.miShowPortAlongWithIp.Caption := Load('611', 'Показывать порт вместе с IP адресом роутера');
+    Tcp.miCircuitsShowFlagsHint.Caption := TransStr('568');
 
     Tcp.miStreamsDestroyStream.Caption := TransStr('524');
     Tcp.miStreamsOpenInBrowser.Caption := Load('542', 'Открыть в браузере');
@@ -1025,7 +1038,7 @@ begin
     Tcp.miRoutersOptions.Caption := TransStr('107');
     Tcp.miRoutersScrollTop.Caption := TransStr('160');
     Tcp.miRoutersSelectRow.Caption := TransStr('515');
-    Tcp.miShowFlagsHint.Caption := Load('568', 'Показывать подсказки флагов при наведении мыши');
+    Tcp.miRoutersShowFlagsHint.Caption := TransStr('568');
     Tcp.miLoadCachedRoutersOnStartup.Caption := Load('569', 'Загружать роутеры из кэша при запуске');
     Tcp.miDisableSelectionUnSuitableAsBridge.Caption := Load('570', 'Запретить выбор в качестве моста неподходящих узлов');
     Tcp.miConvertNodes.Caption := Load('571', 'Преобразовывать IP, CIDR и коды стран в хэши');

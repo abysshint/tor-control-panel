@@ -5,7 +5,7 @@ object Tcp: TTcp
   BorderStyle = bsSingle
   Caption = #1055#1072#1085#1077#1083#1100' '#1091#1087#1088#1072#1074#1083#1077#1085#1080#1103' Tor'
   ClientHeight = 556
-  ClientWidth = 760
+  ClientWidth = 772
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -21,158 +21,10 @@ object Tcp: TTcp
   OnResize = FormResize
   PixelsPerInch = 96
   TextHeight = 13
-  object paCircuits: TPanel
-    Left = 3
-    Top = 92
-    Width = 753
-    Height = 460
-    BevelInner = bvLowered
-    Color = clWindow
-    DoubleBuffered = True
-    ParentBackground = False
-    ParentDoubleBuffered = False
-    ShowCaption = False
-    TabOrder = 4
-    Visible = False
-    object lbDetailsTime: TLabel
-      Left = 582
-      Top = 10
-      Width = 160
-      Height = 13
-      Alignment = taRightJustify
-      Caption = #1044#1072#1090#1072' '#1089#1086#1079#1076#1072#1085#1080#1103': '#1053#1077' '#1086#1087#1088#1077#1076#1077#1083#1077#1085#1072
-      Transparent = True
-    end
-    object lbCircuitsCount: TLabel
-      Left = 12
-      Top = 10
-      Width = 80
-      Height = 13
-      Caption = #1062#1077#1087#1086#1095#1077#1082': 0 '#1080#1079' 0'
-      Transparent = True
-    end
-    object lbStreamsCount: TLabel
-      Left = 152
-      Top = 10
-      Width = 75
-      Height = 13
-      Alignment = taRightJustify
-      Caption = #1057#1086#1077#1076#1080#1085#1077#1085#1080#1081': 0'
-      Transparent = True
-    end
-    object lbULCirc: TLabel
-      Left = 359
-      Top = 10
-      Width = 79
-      Height = 13
-      Caption = #1054#1090#1087#1088#1072#1074#1083#1077#1085#1086': '#8734
-      Transparent = True
-    end
-    object lbDLCirc: TLabel
-      Left = 237
-      Top = 10
-      Width = 66
-      Height = 13
-      Caption = #1055#1086#1083#1091#1095#1077#1085#1086': '#8734
-      Transparent = True
-    end
-    object sgStreams: TStringGrid
-      Tag = 4
-      Left = 237
-      Top = 153
-      Width = 505
-      Height = 176
-      ColCount = 6
-      DefaultRowHeight = 16
-      FixedCols = 0
-      RowCount = 2
-      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goDrawFocusSelected, goRowSelect, goThumbTracking, goFixedRowClick]
-      ParentShowHint = False
-      PopupMenu = mnStreams
-      ScrollBars = ssVertical
-      ShowHint = True
-      TabOrder = 2
-      OnDblClick = sgStreamsDblClick
-      OnDrawCell = sgStreamsDrawCell
-      OnFixedCellClick = sgStreamsFixedCellClick
-      OnKeyDown = sgStreamsKeyDown
-      OnMouseDown = sgStreamsMouseDown
-      OnMouseMove = sgStreamsMouseMove
-      OnSelectCell = sgStreamsSelectCell
-    end
-    object sgCircuits: TStringGrid
-      Tag = 3
-      Left = 12
-      Top = 33
-      Width = 215
-      Height = 416
-      DefaultRowHeight = 16
-      FixedCols = 0
-      RowCount = 2
-      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goDrawFocusSelected, goRowSelect, goThumbTracking, goFixedRowClick]
-      ParentShowHint = False
-      PopupMenu = mnCircuits
-      ScrollBars = ssVertical
-      ShowHint = True
-      TabOrder = 0
-      OnDrawCell = sgCircuitsDrawCell
-      OnFixedCellClick = sgCircuitsFixedCellClick
-      OnKeyDown = sgCircuitsKeyDown
-      OnMouseDown = sgCircuitsMouseDown
-      OnMouseMove = sgCircuitsMouseMove
-      OnSelectCell = sgCircuitsSelectCell
-    end
-    object sgCircuitInfo: TStringGrid
-      Tag = 7
-      Left = 237
-      Top = 33
-      Width = 505
-      Height = 110
-      ColCount = 7
-      DefaultRowHeight = 16
-      FixedCols = 0
-      RowCount = 2
-      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goDrawFocusSelected, goRowSelect, goThumbTracking]
-      ParentShowHint = False
-      PopupMenu = mnDetails
-      ScrollBars = ssNone
-      ShowHint = True
-      TabOrder = 1
-      OnDblClick = sgCircuitInfoDblClick
-      OnDrawCell = sgCircuitInfoDrawCell
-      OnKeyDown = sgCircuitInfoKeyDown
-      OnMouseDown = sgCircuitInfoMouseDown
-      OnMouseMove = sgCircuitInfoMouseMove
-      OnSelectCell = sgCircuitInfoSelectCell
-    end
-    object sgStreamsInfo: TStringGrid
-      Tag = 8
-      Left = 237
-      Top = 340
-      Width = 505
-      Height = 109
-      ColCount = 6
-      DefaultRowHeight = 16
-      FixedCols = 0
-      RowCount = 2
-      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goDrawFocusSelected, goRowSelect, goThumbTracking, goFixedRowClick]
-      ParentShowHint = False
-      PopupMenu = mnStreamsInfo
-      ScrollBars = ssVertical
-      ShowHint = True
-      TabOrder = 3
-      OnDrawCell = sgStreamsInfoDrawCell
-      OnFixedCellClick = sgStreamsInfoFixedCellClick
-      OnKeyDown = sgStreamsInfoKeyDown
-      OnMouseDown = sgStreamsInfoMouseDown
-      OnMouseMove = sgStreamsInfoMouseMove
-      OnSelectCell = sgStreamsInfoSelectCell
-    end
-  end
   object paButtons: TPanel
     Left = 0
     Top = 0
-    Width = 760
+    Width = 772
     Height = 91
     BevelOuter = bvNone
     DoubleBuffered = True
@@ -181,9 +33,9 @@ object Tcp: TTcp
     TabOrder = 0
     OnDblClick = paButtonsDblClick
     object sbShowLog: TSpeedButton
-      Left = 241
+      Left = 245
       Top = 53
-      Width = 117
+      Width = 119
       Height = 35
       GroupIndex = 1
       Caption = #1046#1091#1088#1085#1072#1083
@@ -191,9 +43,9 @@ object Tcp: TTcp
       OnClick = sbShowLogClick
     end
     object sbShowOptions: TSpeedButton
-      Left = 122
+      Left = 124
       Top = 53
-      Width = 117
+      Width = 119
       Height = 35
       GroupIndex = 1
       Caption = #1053#1072#1089#1090#1088#1086#1081#1082#1080
@@ -202,9 +54,9 @@ object Tcp: TTcp
       OnMouseDown = sbShowOptionsMouseDown
     end
     object sbShowStatus: TSpeedButton
-      Left = 360
+      Left = 366
       Top = 53
-      Width = 117
+      Width = 119
       Height = 35
       GroupIndex = 1
       Caption = #1057#1090#1072#1090#1091#1089
@@ -212,7 +64,7 @@ object Tcp: TTcp
       OnClick = sbShowStatusClick
     end
     object imExitFlag: TImage
-      Left = 181
+      Left = 183
       Top = 32
       Width = 20
       Height = 13
@@ -222,7 +74,7 @@ object Tcp: TTcp
       Visible = False
     end
     object lbExitCountryCaption: TLabel
-      Left = 137
+      Left = 139
       Top = 31
       Width = 41
       Height = 13
@@ -231,7 +83,7 @@ object Tcp: TTcp
       Transparent = True
     end
     object lbExitIpCaption: TLabel
-      Left = 131
+      Left = 133
       Top = 12
       Width = 47
       Height = 13
@@ -240,7 +92,7 @@ object Tcp: TTcp
       Transparent = True
     end
     object lbExitIp: TLabel
-      Left = 180
+      Left = 182
       Top = 12
       Width = 58
       Height = 13
@@ -251,7 +103,7 @@ object Tcp: TTcp
       OnMouseMove = lbExitMouseMove
     end
     object lbExitCountry: TLabel
-      Left = 180
+      Left = 182
       Top = 31
       Width = 77
       Height = 13
@@ -264,9 +116,9 @@ object Tcp: TTcp
       OnMouseMove = lbExitMouseMove
     end
     object sbShowCircuits: TSpeedButton
-      Left = 479
+      Left = 487
       Top = 53
-      Width = 117
+      Width = 119
       Height = 35
       GroupIndex = 1
       Caption = #1062#1077#1087#1086#1095#1082#1080
@@ -275,9 +127,9 @@ object Tcp: TTcp
       OnMouseDown = sbShowCircuitsMouseDown
     end
     object sbShowRouters: TSpeedButton
-      Left = 598
+      Left = 608
       Top = 53
-      Width = 117
+      Width = 119
       Height = 35
       GroupIndex = 1
       Caption = #1056#1086#1091#1090#1077#1088#1099
@@ -286,7 +138,7 @@ object Tcp: TTcp
       OnMouseDown = sbShowRoutersMouseDown
     end
     object sbDecreaseForm: TSpeedButton
-      Left = 717
+      Left = 729
       Top = 53
       Width = 40
       Height = 35
@@ -295,7 +147,7 @@ object Tcp: TTcp
       OnClick = sbDecreaseFormClick
     end
     object lbScanType: TLabel
-      Left = 588
+      Left = 600
       Top = 11
       Width = 170
       Height = 13
@@ -305,7 +157,7 @@ object Tcp: TTcp
       Visible = False
     end
     object lbScanProgress: TLabel
-      Left = 607
+      Left = 600
       Top = 26
       Width = 46
       Height = 13
@@ -317,7 +169,7 @@ object Tcp: TTcp
     object btnChangeCircuit: TButton
       Left = 3
       Top = 3
-      Width = 117
+      Width = 119
       Height = 48
       Caption = #1057#1084#1077#1085#1080#1090#1100' '#1094#1077#1087#1086#1095#1082#1091
       DoubleBuffered = False
@@ -334,7 +186,7 @@ object Tcp: TTcp
     object btnSwitchTor: TButton
       Left = 3
       Top = 53
-      Width = 117
+      Width = 119
       Height = 35
       Caption = #1057#1090#1072#1088#1090
       DoubleBuffered = False
@@ -347,9 +199,9 @@ object Tcp: TTcp
       OnClick = btnSwitchTorClick
     end
     object pbScanProgress: TProgressBar
-      Left = 656
+      Left = 649
       Top = 27
-      Width = 100
+      Width = 119
       Height = 13
       Hint = #1054#1089#1090#1072#1085#1086#1074#1080#1090#1100' '#1089#1082#1072#1085#1080#1088#1086#1074#1072#1085#1080#1077
       ParentShowHint = False
@@ -360,10 +212,41 @@ object Tcp: TTcp
       OnMouseDown = pbScanProgressMouseDown
     end
   end
+  object paLog: TPanel
+    Left = 3
+    Top = 92
+    Width = 765
+    Height = 460
+    BevelInner = bvLowered
+    Color = clWindow
+    DoubleBuffered = True
+    ParentBackground = False
+    ParentDoubleBuffered = False
+    ShowCaption = False
+    TabOrder = 2
+    Visible = False
+    object meLog: TMemo
+      Left = 2
+      Top = 2
+      Width = 761
+      Height = 456
+      Align = alClient
+      BevelInner = bvNone
+      BevelOuter = bvNone
+      BorderStyle = bsNone
+      HideSelection = False
+      PopupMenu = mnLog
+      ReadOnly = True
+      ScrollBars = ssVertical
+      TabOrder = 0
+      WordWrap = False
+      OnMouseUp = meLogMouseUp
+    end
+  end
   object paStatus: TPanel
     Left = 3
     Top = 92
-    Width = 753
+    Width = 765
     Height = 460
     BevelInner = bvLowered
     Color = clWindow
@@ -420,7 +303,7 @@ object Tcp: TTcp
     object gbServerInfo: TGroupBox
       Left = 12
       Top = 320
-      Width = 730
+      Width = 742
       Height = 129
       Caption = #1057#1077#1088#1074#1077#1088
       ParentBackground = False
@@ -530,7 +413,7 @@ object Tcp: TTcp
     object gbInfo: TGroupBox
       Left = 12
       Top = 247
-      Width = 730
+      Width = 742
       Height = 70
       Caption = #1057#1074#1077#1076#1077#1085#1080#1103
       ParentBackground = False
@@ -580,7 +463,7 @@ object Tcp: TTcp
         OnClick = lbUserDirClick
       end
       object lbStatusSocksAddrCaption: TLabel
-        Left = 297
+        Left = 303
         Top = 16
         Width = 76
         Height = 13
@@ -589,7 +472,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbStatusSocksAddr: TLabel
-        Left = 376
+        Left = 382
         Top = 16
         Width = 76
         Height = 13
@@ -602,7 +485,7 @@ object Tcp: TTcp
         OnMouseMove = lbStatusProxyAddrMouseMove
       end
       object lbStatusScannerCaption: TLabel
-        Left = 288
+        Left = 294
         Top = 48
         Width = 85
         Height = 13
@@ -611,7 +494,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbStatusScanner: TLabel
-        Left = 376
+        Left = 382
         Top = 48
         Width = 119
         Height = 13
@@ -619,7 +502,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbStatusHttpAddrCaption: TLabel
-        Left = 305
+        Left = 311
         Top = 32
         Width = 68
         Height = 13
@@ -628,7 +511,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbStatusHttpAddr: TLabel
-        Left = 376
+        Left = 382
         Top = 32
         Width = 59
         Height = 13
@@ -666,7 +549,7 @@ object Tcp: TTcp
     object gbSpeedGraph: TGroupBox
       Left = 176
       Top = 6
-      Width = 566
+      Width = 578
       Height = 238
       Caption = #1043#1088#1072#1092#1080#1082' '#1089#1082#1086#1088#1086#1089#1090#1080
       ParentBackground = False
@@ -674,7 +557,7 @@ object Tcp: TTcp
       object pbTraffic: TPaintBox
         Left = 2
         Top = 15
-        Width = 562
+        Width = 574
         Height = 221
         Align = alClient
         PopupMenu = mnTraffic
@@ -772,41 +655,10 @@ object Tcp: TTcp
       end
     end
   end
-  object paLog: TPanel
-    Left = 3
-    Top = 92
-    Width = 753
-    Height = 460
-    BevelInner = bvLowered
-    Color = clWindow
-    DoubleBuffered = True
-    ParentBackground = False
-    ParentDoubleBuffered = False
-    ShowCaption = False
-    TabOrder = 2
-    Visible = False
-    object meLog: TMemo
-      Left = 2
-      Top = 2
-      Width = 749
-      Height = 456
-      Align = alClient
-      BevelInner = bvNone
-      BevelOuter = bvNone
-      BorderStyle = bsNone
-      HideSelection = False
-      PopupMenu = mnLog
-      ReadOnly = True
-      ScrollBars = ssVertical
-      TabOrder = 0
-      WordWrap = False
-      OnMouseUp = meLogMouseUp
-    end
-  end
   object paRouters: TPanel
     Left = 3
     Top = 92
-    Width = 753
+    Width = 765
     Height = 460
     BevelInner = bvLowered
     Color = clWindow
@@ -818,7 +670,7 @@ object Tcp: TTcp
     Visible = False
     OnClick = paRoutersClick
     object lbRoutersCount: TLabel
-      Left = 659
+      Left = 674
       Top = 10
       Width = 84
       Height = 13
@@ -827,7 +679,7 @@ object Tcp: TTcp
       Transparent = True
     end
     object lbSpeed3: TLabel
-      Left = 289
+      Left = 293
       Top = 10
       Width = 23
       Height = 13
@@ -977,7 +829,7 @@ object Tcp: TTcp
       Tag = 2
       Left = 1
       Top = 33
-      Width = 752
+      Width = 764
       Height = 399
       ColCount = 14
       DefaultRowHeight = 16
@@ -1013,7 +865,7 @@ object Tcp: TTcp
       Tag = -1
       Left = 87
       Top = 7
-      Width = 148
+      Width = 152
       Height = 21
       AutoDropDown = True
       Style = csDropDownList
@@ -1025,7 +877,7 @@ object Tcp: TTcp
       OnEnter = cbxRoutersCountryEnter
     end
     object edRoutersWeight: TEdit
-      Left = 239
+      Left = 243
       Top = 7
       Width = 35
       Height = 21
@@ -1039,7 +891,7 @@ object Tcp: TTcp
       OnMouseDown = edRoutersWeightMouseDown
     end
     object udRoutersWeight: TUpDown
-      Left = 274
+      Left = 278
       Top = 7
       Width = 13
       Height = 21
@@ -1057,7 +909,7 @@ object Tcp: TTcp
     end
     object cbxRoutersQuery: TComboBox
       Tag = -1
-      Left = 316
+      Left = 320
       Top = 7
       Width = 75
       Height = 21
@@ -1082,9 +934,9 @@ object Tcp: TTcp
         #1058#1088#1072#1085#1089#1087#1086#1088#1090)
     end
     object edRoutersQuery: TEdit
-      Left = 395
+      Left = 399
       Top = 7
-      Width = 197
+      Width = 203
       Height = 21
       PopupMenu = EditMenu
       TabOrder = 6
@@ -1093,10 +945,159 @@ object Tcp: TTcp
       OnKeyDown = edRoutersQueryKeyDown
     end
   end
+  object paCircuits: TPanel
+    Left = 3
+    Top = 92
+    Width = 765
+    Height = 460
+    BevelInner = bvLowered
+    Color = clWindow
+    DoubleBuffered = True
+    ParentBackground = False
+    ParentDoubleBuffered = False
+    ShowCaption = False
+    TabOrder = 4
+    Visible = False
+    object lbDetailsTime: TLabel
+      Left = 596
+      Top = 10
+      Width = 160
+      Height = 13
+      Alignment = taRightJustify
+      Caption = #1044#1072#1090#1072' '#1089#1086#1079#1076#1072#1085#1080#1103': '#1053#1077' '#1086#1087#1088#1077#1076#1077#1083#1077#1085#1072
+      Transparent = True
+    end
+    object lbCircuitsCount: TLabel
+      Left = 12
+      Top = 10
+      Width = 80
+      Height = 13
+      Caption = #1062#1077#1087#1086#1095#1077#1082': 0 '#1080#1079' 0'
+      Transparent = True
+    end
+    object lbStreamsCount: TLabel
+      Left = 157
+      Top = 10
+      Width = 75
+      Height = 13
+      Alignment = taRightJustify
+      Caption = #1057#1086#1077#1076#1080#1085#1077#1085#1080#1081': 0'
+      Transparent = True
+    end
+    object lbCircPurpose: TLabel
+      Left = 261
+      Top = 10
+      Width = 77
+      Height = 13
+      Caption = #1053#1077' '#1086#1087#1088#1077#1076#1077#1083#1077#1085#1086
+      Transparent = True
+    end
+    object imCircuitPurpose: TImage
+      Left = 242
+      Top = 9
+      Width = 16
+      Height = 16
+      ParentShowHint = False
+      ShowHint = True
+    end
+    object sgStreamsInfo: TStringGrid
+      Tag = 8
+      Left = 243
+      Top = 340
+      Width = 510
+      Height = 109
+      ColCount = 6
+      DefaultRowHeight = 16
+      FixedCols = 0
+      RowCount = 2
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goDrawFocusSelected, goRowSelect, goThumbTracking, goFixedRowClick]
+      ParentShowHint = False
+      PopupMenu = mnStreamsInfo
+      ScrollBars = ssVertical
+      ShowHint = True
+      TabOrder = 3
+      OnDrawCell = sgStreamsInfoDrawCell
+      OnFixedCellClick = sgStreamsInfoFixedCellClick
+      OnKeyDown = sgStreamsInfoKeyDown
+      OnMouseDown = sgStreamsInfoMouseDown
+      OnMouseMove = sgStreamsInfoMouseMove
+      OnSelectCell = sgStreamsInfoSelectCell
+    end
+    object sgStreams: TStringGrid
+      Tag = 4
+      Left = 243
+      Top = 152
+      Width = 510
+      Height = 177
+      ColCount = 6
+      DefaultRowHeight = 16
+      FixedCols = 0
+      RowCount = 2
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goDrawFocusSelected, goRowSelect, goThumbTracking, goFixedRowClick]
+      ParentShowHint = False
+      PopupMenu = mnStreams
+      ScrollBars = ssVertical
+      ShowHint = True
+      TabOrder = 2
+      OnDblClick = sgStreamsDblClick
+      OnDrawCell = sgStreamsDrawCell
+      OnFixedCellClick = sgStreamsFixedCellClick
+      OnKeyDown = sgStreamsKeyDown
+      OnMouseDown = sgStreamsMouseDown
+      OnMouseMove = sgStreamsMouseMove
+      OnSelectCell = sgStreamsSelectCell
+    end
+    object sgCircuitInfo: TStringGrid
+      Tag = 7
+      Left = 243
+      Top = 33
+      Width = 510
+      Height = 108
+      ColCount = 7
+      DefaultRowHeight = 16
+      FixedCols = 0
+      RowCount = 2
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goDrawFocusSelected, goRowSelect, goThumbTracking]
+      ParentShowHint = False
+      PopupMenu = mnDetails
+      ScrollBars = ssNone
+      ShowHint = True
+      TabOrder = 1
+      OnDblClick = sgCircuitInfoDblClick
+      OnDrawCell = sgCircuitInfoDrawCell
+      OnKeyDown = sgCircuitInfoKeyDown
+      OnMouseDown = sgCircuitInfoMouseDown
+      OnMouseMove = sgCircuitInfoMouseMove
+      OnSelectCell = sgCircuitInfoSelectCell
+    end
+    object sgCircuits: TStringGrid
+      Tag = 3
+      Left = 12
+      Top = 33
+      Width = 220
+      Height = 416
+      ColCount = 7
+      DefaultRowHeight = 16
+      FixedCols = 0
+      RowCount = 2
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goDrawFocusSelected, goRowSelect, goThumbTracking, goFixedRowClick]
+      ParentShowHint = False
+      PopupMenu = mnCircuits
+      ScrollBars = ssVertical
+      ShowHint = True
+      TabOrder = 0
+      OnDrawCell = sgCircuitsDrawCell
+      OnFixedCellClick = sgCircuitsFixedCellClick
+      OnKeyDown = sgCircuitsKeyDown
+      OnMouseDown = sgCircuitsMouseDown
+      OnMouseMove = sgCircuitsMouseMove
+      OnSelectCell = sgCircuitsSelectCell
+    end
+  end
   object pcOptions: TPageControl
     Left = 4
     Top = 93
-    Width = 754
+    Width = 766
     Height = 458
     ActivePage = tsMain
     DoubleBuffered = True
@@ -1108,25 +1109,24 @@ object Tcp: TTcp
     object tsMain: TTabSheet
       Caption = #1054#1073#1097#1080#1077
       object gbProfile: TGroupBox
-        Left = 390
+        Left = 396
         Top = 353
-        Width = 350
+        Width = 356
         Height = 65
         Caption = #1055#1088#1086#1092#1080#1083#1100
         TabOrder = 3
         object lbCreateProfile: TLabel
-          Left = 10
-          Top = 20
-          Width = 223
-          Height = 31
+          Left = 51
+          Top = 23
+          Width = 190
+          Height = 26
           Alignment = taRightJustify
-          AutoSize = False
           Caption = #1071#1088#1083#1099#1082' '#1087#1088#1086#1075#1088#1072#1084#1084#1099' '#1089' '#1085#1086#1074#1099#1084' '#1087#1088#1086#1092#1080#1083#1077#1084' '#1085#1072' '#1088#1072#1073#1086#1095#1077#1084' '#1089#1090#1086#1083#1077
           Transparent = True
           WordWrap = True
         end
         object btnCreateProfile: TButton
-          Left = 255
+          Left = 261
           Top = 25
           Width = 75
           Height = 21
@@ -1138,7 +1138,7 @@ object Tcp: TTcp
       object gbControlAuth: TGroupBox
         Left = 10
         Top = 353
-        Width = 370
+        Width = 376
         Height = 65
         Caption = #1059#1087#1088#1072#1074#1083#1077#1085#1080#1077
         TabOrder = 1
@@ -1152,7 +1152,7 @@ object Tcp: TTcp
           Transparent = True
         end
         object lbAuthMetod: TLabel
-          Left = 174
+          Left = 180
           Top = 15
           Width = 87
           Height = 13
@@ -1161,7 +1161,7 @@ object Tcp: TTcp
           Transparent = True
         end
         object lbControlPassword: TLabel
-          Left = 127
+          Left = 133
           Top = 40
           Width = 37
           Height = 13
@@ -1171,10 +1171,10 @@ object Tcp: TTcp
           Transparent = True
         end
         object imGeneratePassword: TImage
-          Left = 343
-          Top = 37
-          Width = 20
-          Height = 20
+          Left = 353
+          Top = 40
+          Width = 16
+          Height = 16
           Cursor = crHandPoint
           Hint = #1057#1075#1077#1085#1077#1088#1080#1088#1086#1074#1072#1090#1100' '#1089#1083#1091#1095#1072#1081#1085#1099#1081' '#1087#1072#1088#1086#1083#1100
           Enabled = False
@@ -1206,7 +1206,7 @@ object Tcp: TTcp
           OnChanging = SpinChanging
         end
         object cbxAuthMetod: TComboBox
-          Left = 264
+          Left = 270
           Top = 12
           Width = 100
           Height = 21
@@ -1223,9 +1223,9 @@ object Tcp: TTcp
             #1055#1072#1088#1086#1083#1100)
         end
         object edControlPassword: TEdit
-          Left = 166
+          Left = 172
           Top = 37
-          Width = 174
+          Width = 177
           Height = 21
           Enabled = False
           MaxLength = 255
@@ -1238,14 +1238,14 @@ object Tcp: TTcp
         end
       end
       object gbInterface: TGroupBox
-        Left = 390
+        Left = 396
         Top = 5
-        Width = 350
+        Width = 356
         Height = 344
         Caption = #1048#1085#1090#1077#1088#1092#1077#1081#1089
         TabOrder = 2
         object lbTheme: TLabel
-          Left = 28
+          Left = 31
           Top = 319
           Width = 24
           Height = 13
@@ -1254,7 +1254,7 @@ object Tcp: TTcp
           Transparent = True
         end
         object lbLanguage: TLabel
-          Left = 214
+          Left = 220
           Top = 319
           Width = 26
           Height = 13
@@ -1265,7 +1265,7 @@ object Tcp: TTcp
         object cbStayOnTop: TCheckBox
           Left = 13
           Top = 177
-          Width = 330
+          Width = 336
           Height = 17
           Caption = #1054#1089#1090#1072#1074#1072#1090#1100#1089#1103' '#1087#1086#1074#1077#1088#1093' '#1074#1089#1077#1093' '#1086#1082#1086#1085
           TabOrder = 7
@@ -1274,7 +1274,7 @@ object Tcp: TTcp
         object cbShowBalloonOnlyWhenHide: TCheckBox
           Left = 29
           Top = 154
-          Width = 314
+          Width = 320
           Height = 17
           Caption = #1058#1086#1083#1100#1082#1086' '#1082#1086#1075#1076#1072' '#1087#1088#1086#1075#1088#1072#1084#1084#1072' '#1089#1074#1105#1088#1085#1091#1090#1072
           Checked = True
@@ -1285,7 +1285,7 @@ object Tcp: TTcp
         object cbShowBalloonHint: TCheckBox
           Left = 13
           Top = 131
-          Width = 330
+          Width = 336
           Height = 17
           Caption = #1055#1086#1082#1072#1079#1099#1074#1072#1090#1100' '#1074#1089#1087#1083#1099#1074#1072#1102#1097#1080#1077' '#1089#1086#1086#1073#1097#1077#1085#1080#1103
           Checked = True
@@ -1296,7 +1296,7 @@ object Tcp: TTcp
         object cbMinimizeOnClose: TCheckBox
           Left = 13
           Top = 108
-          Width = 330
+          Width = 336
           Height = 17
           Caption = #1057#1074#1086#1088#1072#1095#1080#1074#1072#1090#1100' '#1074' '#1090#1088#1077#1081' '#1087#1088#1080' '#1079#1072#1082#1088#1099#1090#1080#1080
           Checked = True
@@ -1307,7 +1307,7 @@ object Tcp: TTcp
         object cbMinimizeOnStartup: TCheckBox
           Left = 13
           Top = 85
-          Width = 330
+          Width = 336
           Height = 17
           Caption = #1057#1074#1086#1088#1072#1095#1080#1074#1072#1090#1100' '#1074' '#1090#1088#1077#1081' '#1087#1088#1080' '#1079#1072#1087#1091#1089#1082#1077
           TabOrder = 3
@@ -1316,7 +1316,7 @@ object Tcp: TTcp
         object cbConnectOnStartup: TCheckBox
           Left = 13
           Top = 16
-          Width = 330
+          Width = 336
           Height = 17
           Caption = #1055#1086#1076#1082#1083#1102#1095#1072#1090#1100#1089#1103' '#1087#1088#1080' '#1079#1072#1087#1091#1089#1082#1077' '#1087#1088#1086#1075#1088#1072#1084#1084#1099
           TabOrder = 0
@@ -1325,7 +1325,7 @@ object Tcp: TTcp
         object cbRestartOnControlFail: TCheckBox
           Left = 13
           Top = 39
-          Width = 330
+          Width = 336
           Height = 17
           Caption = #1055#1077#1088#1077#1079#1072#1087#1091#1089#1082' '#1087#1088#1080' '#1086#1073#1088#1099#1074#1077' '#1089#1074#1103#1079#1080' '#1089' '#1082#1083#1080#1077#1085#1090#1086#1084
           Checked = True
@@ -1336,7 +1336,7 @@ object Tcp: TTcp
         object cbNoDesktopBorders: TCheckBox
           Left = 13
           Top = 200
-          Width = 330
+          Width = 336
           Height = 17
           Caption = #1056#1072#1079#1088#1077#1096#1080#1090#1100' '#1086#1082#1085#1091' '#1074#1099#1093#1086#1076#1080#1090#1100' '#1079#1072' '#1075#1088#1072#1085#1080#1094#1099' '#1101#1082#1088#1072#1085#1072
           Checked = True
@@ -1347,7 +1347,7 @@ object Tcp: TTcp
         object cbRememberEnlargedPosition: TCheckBox
           Left = 13
           Top = 246
-          Width = 330
+          Width = 336
           Height = 17
           Caption = #1047#1072#1087#1086#1084#1080#1085#1072#1090#1100' '#1087#1086#1079#1080#1094#1080#1102' '#1091#1074#1077#1083#1080#1095#1077#1085#1085#1086#1075#1086' '#1086#1082#1085#1072
           TabOrder = 10
@@ -1356,7 +1356,7 @@ object Tcp: TTcp
         object cbHideIPv6Addreses: TCheckBox
           Left = 13
           Top = 269
-          Width = 330
+          Width = 336
           Height = 17
           Caption = #1057#1082#1088#1099#1074#1072#1090#1100' IPv6-'#1072#1076#1088#1077#1089#1072' '#1074' '#1089#1087#1080#1089#1082#1072#1093' '#1080#1085#1090#1077#1088#1092#1077#1081#1089#1086#1074
           Checked = True
@@ -1367,7 +1367,7 @@ object Tcp: TTcp
         object cbNoDesktopBordersOnlyEnlarged: TCheckBox
           Left = 29
           Top = 223
-          Width = 314
+          Width = 320
           Height = 17
           Caption = #1058#1086#1083#1100#1082#1086' '#1087#1088#1080' '#1091#1074#1077#1083#1080#1095#1077#1085#1085#1086#1084' '#1086#1082#1085#1077' '#1087#1088#1086#1075#1088#1072#1084#1084#1099
           Checked = True
@@ -1378,7 +1378,7 @@ object Tcp: TTcp
         object cbClearPreviousSearchQuery: TCheckBox
           Left = 13
           Top = 290
-          Width = 330
+          Width = 336
           Height = 17
           Caption = #1054#1095#1080#1097#1072#1090#1100' '#1087#1088#1077#1076#1099#1076#1091#1097#1080#1081' '#1087#1086#1080#1089#1082#1086#1074#1099#1081' '#1079#1072#1087#1088#1086#1089' '#1074' '#1089#1087#1080#1089#1082#1072#1093
           TabOrder = 12
@@ -1387,14 +1387,14 @@ object Tcp: TTcp
         object cbMinimizeToTray: TCheckBox
           Left = 13
           Top = 62
-          Width = 330
+          Width = 336
           Height = 17
           Caption = #1057#1074#1086#1088#1072#1095#1080#1074#1072#1090#1100' '#1074' '#1090#1088#1077#1081' '#1074#1084#1077#1089#1090#1086' '#1087#1072#1085#1077#1083#1080' '#1079#1072#1076#1072#1095
           TabOrder = 2
           OnClick = OptionsChange
         end
         object cbxThemes: TComboBox
-          Left = 55
+          Left = 58
           Top = 316
           Width = 130
           Height = 21
@@ -1411,7 +1411,7 @@ object Tcp: TTcp
             #1055#1086' '#1091#1084#1086#1083#1095#1072#1085#1080#1102)
         end
         object cbxLanguage: TComboBox
-          Left = 243
+          Left = 249
           Top = 316
           Width = 100
           Height = 21
@@ -1431,12 +1431,12 @@ object Tcp: TTcp
       object gbOptions: TGroupBox
         Left = 10
         Top = 5
-        Width = 370
+        Width = 376
         Height = 344
         Caption = #1054#1089#1085#1086#1074#1085#1099#1077
         TabOrder = 0
         object lbMaxCircuitDirtiness: TLabel
-          Left = 61
+          Left = 67
           Top = 17
           Width = 222
           Height = 13
@@ -1445,7 +1445,7 @@ object Tcp: TTcp
           Transparent = True
         end
         object lbSeconds1: TLabel
-          Left = 344
+          Left = 350
           Top = 17
           Width = 21
           Height = 13
@@ -1453,7 +1453,7 @@ object Tcp: TTcp
           Transparent = True
         end
         object lbMaxClientCircuitsPending: TLabel
-          Left = 67
+          Left = 73
           Top = 109
           Width = 216
           Height = 13
@@ -1462,7 +1462,7 @@ object Tcp: TTcp
           Transparent = True
         end
         object lbConnectionPadding: TLabel
-          Left = 11
+          Left = 17
           Top = 296
           Width = 250
           Height = 13
@@ -1471,7 +1471,7 @@ object Tcp: TTcp
           Transparent = True
         end
         object lbCircuitPadding: TLabel
-          Left = 29
+          Left = 35
           Top = 320
           Width = 232
           Height = 13
@@ -1480,7 +1480,7 @@ object Tcp: TTcp
           Transparent = True
         end
         object lbSocksTimeout: TLabel
-          Left = 50
+          Left = 56
           Top = 40
           Width = 233
           Height = 13
@@ -1489,7 +1489,7 @@ object Tcp: TTcp
           Transparent = True
         end
         object lbSeconds6: TLabel
-          Left = 344
+          Left = 350
           Top = 40
           Width = 21
           Height = 13
@@ -1497,7 +1497,7 @@ object Tcp: TTcp
           Transparent = True
         end
         object lbCircuitBuildTimeout: TLabel
-          Left = 99
+          Left = 105
           Top = 86
           Width = 184
           Height = 13
@@ -1507,7 +1507,7 @@ object Tcp: TTcp
           Transparent = True
         end
         object lbSeconds2: TLabel
-          Left = 344
+          Left = 350
           Top = 86
           Width = 21
           Height = 13
@@ -1516,7 +1516,7 @@ object Tcp: TTcp
           Transparent = True
         end
         object lbSeconds3: TLabel
-          Left = 344
+          Left = 350
           Top = 63
           Width = 21
           Height = 13
@@ -1524,7 +1524,7 @@ object Tcp: TTcp
           Transparent = True
         end
         object lbNewCircuitPeriod: TLabel
-          Left = 38
+          Left = 44
           Top = 63
           Width = 245
           Height = 13
@@ -1564,7 +1564,7 @@ object Tcp: TTcp
           OnClick = OptionsChange
         end
         object edMaxCircuitDirtiness: TEdit
-          Left = 286
+          Left = 292
           Top = 14
           Width = 42
           Height = 21
@@ -1578,7 +1578,7 @@ object Tcp: TTcp
           OnChange = EditChange
         end
         object udMaxCircuitDirtiness: TUpDown
-          Left = 328
+          Left = 334
           Top = 14
           Width = 13
           Height = 21
@@ -1636,7 +1636,7 @@ object Tcp: TTcp
           OnClick = OptionsChange
         end
         object edMaxClientCircuitsPending: TEdit
-          Left = 286
+          Left = 292
           Top = 106
           Width = 42
           Height = 21
@@ -1648,7 +1648,7 @@ object Tcp: TTcp
           OnChange = EditChange
         end
         object udMaxClientCircuitsPending: TUpDown
-          Left = 328
+          Left = 334
           Top = 106
           Width = 13
           Height = 21
@@ -1662,7 +1662,7 @@ object Tcp: TTcp
           OnChanging = SpinChanging
         end
         object cbxCircuitPadding: TComboBox
-          Left = 264
+          Left = 270
           Top = 316
           Width = 100
           Height = 21
@@ -1680,7 +1680,7 @@ object Tcp: TTcp
             #1042#1099#1082#1083#1102#1095#1077#1085#1086)
         end
         object cbxConnectionPadding: TComboBox
-          Left = 264
+          Left = 270
           Top = 292
           Width = 100
           Height = 21
@@ -1699,7 +1699,7 @@ object Tcp: TTcp
             #1042#1099#1082#1083#1102#1095#1077#1085#1086)
         end
         object edSocksTimeout: TEdit
-          Left = 286
+          Left = 292
           Top = 37
           Width = 42
           Height = 21
@@ -1713,7 +1713,7 @@ object Tcp: TTcp
           OnChange = EditChange
         end
         object udSocksTimeout: TUpDown
-          Left = 328
+          Left = 334
           Top = 37
           Width = 13
           Height = 21
@@ -1727,7 +1727,7 @@ object Tcp: TTcp
           OnChanging = SpinChanging
         end
         object edCircuitBuildTimeout: TEdit
-          Left = 286
+          Left = 292
           Top = 83
           Width = 42
           Height = 21
@@ -1740,7 +1740,7 @@ object Tcp: TTcp
           OnChange = EditChange
         end
         object udCircuitBuildTimeout: TUpDown
-          Left = 328
+          Left = 334
           Top = 83
           Width = 13
           Height = 21
@@ -1755,7 +1755,7 @@ object Tcp: TTcp
           OnChanging = SpinChanging
         end
         object edNewCircuitPeriod: TEdit
-          Left = 286
+          Left = 292
           Top = 60
           Width = 42
           Height = 21
@@ -1767,7 +1767,7 @@ object Tcp: TTcp
           OnChange = EditChange
         end
         object udNewCircuitPeriod: TUpDown
-          Left = 328
+          Left = 334
           Top = 60
           Width = 13
           Height = 21
@@ -1806,7 +1806,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbProxyUser: TLabel
-        Left = 462
+        Left = 474
         Top = 81
         Width = 30
         Height = 13
@@ -1816,7 +1816,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbProxyPort: TLabel
-        Left = 369
+        Left = 375
         Top = 81
         Width = 25
         Height = 13
@@ -1826,7 +1826,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbProxyPassword: TLabel
-        Left = 604
+        Left = 616
         Top = 81
         Width = 37
         Height = 13
@@ -1846,7 +1846,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbTotalBridges: TLabel
-        Left = 655
+        Left = 667
         Top = 127
         Width = 85
         Height = 13
@@ -1885,7 +1885,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbUseBuiltInProxy: TLabel
-        Left = 581
+        Left = 593
         Top = 9
         Width = 159
         Height = 13
@@ -1914,7 +1914,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbMaxDirFails: TLabel
-        Left = 522
+        Left = 534
         Top = 355
         Width = 140
         Height = 13
@@ -1924,7 +1924,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbBridgesCheckDelay: TLabel
-        Left = 512
+        Left = 524
         Top = 332
         Width = 150
         Height = 13
@@ -1934,7 +1934,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbSeconds5: TLabel
-        Left = 722
+        Left = 734
         Top = 331
         Width = 21
         Height = 13
@@ -1943,7 +1943,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbCount4: TLabel
-        Left = 722
+        Left = 734
         Top = 355
         Width = 18
         Height = 13
@@ -1952,7 +1952,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbBridgesQueueSize: TLabel
-        Left = 581
+        Left = 593
         Top = 378
         Width = 81
         Height = 13
@@ -1962,7 +1962,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbCount5: TLabel
-        Left = 723
+        Left = 735
         Top = 378
         Width = 18
         Height = 13
@@ -1997,7 +1997,7 @@ object Tcp: TTcp
       object meBridges: TMemo
         Left = 10
         Top = 150
-        Width = 730
+        Width = 742
         Height = 176
         Enabled = False
         PopupMenu = EditMenu
@@ -2011,7 +2011,7 @@ object Tcp: TTcp
       object cbUseReachableAddresses: TCheckBox
         Left = 10
         Top = 8
-        Width = 402
+        Width = 392
         Height = 17
         Margins.Left = 0
         Caption = #1052#1086#1081' '#1089#1077#1090#1077#1074#1086#1081' '#1101#1082#1088#1072#1085' '#1088#1072#1079#1088#1077#1096#1072#1077#1090' '#1087#1086#1076#1082#1083#1102#1095#1072#1090#1100#1089#1103' '#1090#1086#1083#1100#1082#1086' '#1082' '#1101#1090#1080#1084' '#1087#1086#1088#1090#1072#1084
@@ -2022,7 +2022,7 @@ object Tcp: TTcp
       object edReachableAddresses: TEdit
         Left = 106
         Top = 29
-        Width = 340
+        Width = 352
         Height = 21
         Enabled = False
         PopupMenu = EditMenu
@@ -2037,7 +2037,7 @@ object Tcp: TTcp
       object cbUseProxy: TCheckBox
         Left = 10
         Top = 55
-        Width = 402
+        Width = 360
         Height = 17
         Caption = #1071' '#1080#1089#1087#1086#1083#1100#1079#1091#1102' '#1087#1088#1086#1082#1089#1080' '#1076#1083#1103' '#1087#1086#1076#1082#1083#1102#1095#1077#1085#1080#1103' '#1082' '#1048#1085#1090#1077#1088#1085#1077#1090#1091
         TabOrder = 10
@@ -2046,7 +2046,7 @@ object Tcp: TTcp
       object edProxyAddress: TEdit
         Left = 153
         Top = 78
-        Width = 206
+        Width = 218
         Height = 21
         Enabled = False
         MaxLength = 255
@@ -2056,7 +2056,7 @@ object Tcp: TTcp
         OnChange = EditChange
       end
       object edProxyUser: TEdit
-        Left = 495
+        Left = 507
         Top = 78
         Width = 97
         Height = 21
@@ -2068,7 +2068,7 @@ object Tcp: TTcp
         OnChange = EditChange
       end
       object edProxyPassword: TEdit
-        Left = 644
+        Left = 656
         Top = 78
         Width = 97
         Height = 21
@@ -2109,7 +2109,7 @@ object Tcp: TTcp
         OnClick = cbUseBridgesClick
       end
       object cbxSOCKSHost: TComboBox
-        Left = 548
+        Left = 560
         Top = 29
         Width = 135
         Height = 21
@@ -2126,7 +2126,7 @@ object Tcp: TTcp
           '127.0.0.1')
       end
       object edProxyPort: TEdit
-        Left = 397
+        Left = 403
         Top = 78
         Width = 42
         Height = 21
@@ -2139,7 +2139,7 @@ object Tcp: TTcp
         OnChange = EditChange
       end
       object udProxyPort: TUpDown
-        Left = 439
+        Left = 445
         Top = 78
         Width = 13
         Height = 21
@@ -2153,7 +2153,7 @@ object Tcp: TTcp
         OnChanging = SpinChanging
       end
       object edSOCKSPort: TEdit
-        Left = 686
+        Left = 698
         Top = 29
         Width = 42
         Height = 21
@@ -2165,7 +2165,7 @@ object Tcp: TTcp
         OnChange = EditChange
       end
       object udSOCKSPort: TUpDown
-        Left = 728
+        Left = 740
         Top = 29
         Width = 13
         Height = 21
@@ -2178,7 +2178,7 @@ object Tcp: TTcp
         OnChanging = SpinChanging
       end
       object cbEnableSocks: TCheckBox
-        Left = 495
+        Left = 507
         Top = 31
         Width = 50
         Height = 17
@@ -2221,7 +2221,7 @@ object Tcp: TTcp
       object edPreferredBridge: TEdit
         Left = 55
         Top = 398
-        Width = 607
+        Width = 619
         Height = 21
         Enabled = False
         MaxLength = 576
@@ -2233,7 +2233,7 @@ object Tcp: TTcp
         OnKeyDown = edPreferredBridgeKeyDown
       end
       object btnFindPreferredBridge: TButton
-        Left = 664
+        Left = 676
         Top = 398
         Width = 77
         Height = 22
@@ -2245,7 +2245,7 @@ object Tcp: TTcp
         OnClick = btnFindPreferredBridgeClick
       end
       object cbEnableHttp: TCheckBox
-        Left = 495
+        Left = 507
         Top = 55
         Width = 50
         Height = 17
@@ -2254,7 +2254,7 @@ object Tcp: TTcp
         OnClick = cbEnableHttpClick
       end
       object cbxHTTPTunnelHost: TComboBox
-        Left = 548
+        Left = 560
         Top = 53
         Width = 135
         Height = 21
@@ -2272,7 +2272,7 @@ object Tcp: TTcp
           '127.0.0.1')
       end
       object edHTTPTunnelPort: TEdit
-        Left = 686
+        Left = 698
         Top = 53
         Width = 42
         Height = 21
@@ -2285,7 +2285,7 @@ object Tcp: TTcp
         OnChange = EditChange
       end
       object udHTTPTunnelPort: TUpDown
-        Left = 728
+        Left = 740
         Top = 53
         Width = 13
         Height = 21
@@ -2299,7 +2299,7 @@ object Tcp: TTcp
         OnChanging = SpinChanging
       end
       object cbExcludeUnsuitableBridges: TCheckBox
-        Left = 332
+        Left = 338
         Top = 330
         Width = 160
         Height = 17
@@ -2373,7 +2373,7 @@ object Tcp: TTcp
           #1057#1083#1091#1095#1072#1081#1085#1099#1081)
       end
       object cbCacheNewBridges: TCheckBox
-        Left = 332
+        Left = 338
         Top = 356
         Width = 155
         Height = 14
@@ -2385,7 +2385,7 @@ object Tcp: TTcp
         OnClick = cbCacheNewBridgesClick
       end
       object edMaxDirFails: TEdit
-        Left = 665
+        Left = 677
         Top = 352
         Width = 42
         Height = 21
@@ -2398,7 +2398,7 @@ object Tcp: TTcp
         OnChange = EditChange
       end
       object udMaxDirFails: TUpDown
-        Left = 707
+        Left = 719
         Top = 352
         Width = 13
         Height = 21
@@ -2412,7 +2412,7 @@ object Tcp: TTcp
         OnChanging = SpinChanging
       end
       object edBridgesCheckDelay: TEdit
-        Left = 665
+        Left = 677
         Top = 329
         Width = 42
         Height = 21
@@ -2425,7 +2425,7 @@ object Tcp: TTcp
         OnChange = EditChange
       end
       object udBridgesCheckDelay: TUpDown
-        Left = 707
+        Left = 719
         Top = 329
         Width = 13
         Height = 21
@@ -2440,7 +2440,7 @@ object Tcp: TTcp
         OnChanging = SpinChanging
       end
       object edBridgesQueueSize: TEdit
-        Left = 665
+        Left = 677
         Top = 375
         Width = 42
         Height = 21
@@ -2456,7 +2456,7 @@ object Tcp: TTcp
       end
       object udBridgesQueueSize: TUpDown
         Tag = 2
-        Left = 707
+        Left = 719
         Top = 375
         Width = 13
         Height = 21
@@ -2471,7 +2471,7 @@ object Tcp: TTcp
         OnChanging = SpinChanging
       end
       object cbScanNewBridges: TCheckBox
-        Left = 348
+        Left = 354
         Top = 377
         Width = 165
         Height = 17
@@ -2501,7 +2501,7 @@ object Tcp: TTcp
       Caption = #1060#1080#1083#1100#1090#1088
       ImageIndex = 2
       object lbFilterMode: TLabel
-        Left = 48
+        Left = 52
         Top = 8
         Width = 32
         Height = 13
@@ -2510,7 +2510,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbFilterCount: TLabel
-        Left = 660
+        Left = 672
         Top = 8
         Width = 84
         Height = 13
@@ -2519,7 +2519,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbFilterEntry: TLabel
-        Left = 388
+        Left = 392
         Top = 8
         Width = 6
         Height = 13
@@ -2527,7 +2527,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbFilterMiddle: TLabel
-        Left = 445
+        Left = 449
         Top = 8
         Width = 6
         Height = 13
@@ -2535,7 +2535,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbFilterExit: TLabel
-        Left = 503
+        Left = 507
         Top = 8
         Width = 6
         Height = 13
@@ -2543,7 +2543,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbFilterExclude: TLabel
-        Left = 556
+        Left = 560
         Top = 8
         Width = 6
         Height = 13
@@ -2551,7 +2551,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object imFilterEntry: TImage
-        Left = 369
+        Left = 373
         Top = 7
         Width = 16
         Height = 16
@@ -2559,7 +2559,7 @@ object Tcp: TTcp
         ShowHint = True
       end
       object imFilterMiddle: TImage
-        Left = 426
+        Left = 430
         Top = 7
         Width = 16
         Height = 16
@@ -2567,7 +2567,7 @@ object Tcp: TTcp
         ShowHint = True
       end
       object imFilterExit: TImage
-        Left = 482
+        Left = 486
         Top = 7
         Width = 16
         Height = 16
@@ -2575,7 +2575,7 @@ object Tcp: TTcp
         ShowHint = True
       end
       object imFilterExclude: TImage
-        Left = 537
+        Left = 541
         Top = 7
         Width = 16
         Height = 16
@@ -2583,7 +2583,7 @@ object Tcp: TTcp
         ShowHint = True
       end
       object lbFilterTotalSelected: TLabel
-        Left = 275
+        Left = 280
         Top = 8
         Width = 79
         Height = 13
@@ -2592,7 +2592,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object cbxFilterMode: TComboBox
-        Left = 83
+        Left = 87
         Top = 5
         Width = 150
         Height = 21
@@ -2613,7 +2613,7 @@ object Tcp: TTcp
         Tag = 1
         Left = -1
         Top = 31
-        Width = 752
+        Width = 764
         Height = 399
         ColCount = 13
         DefaultRowHeight = 16
@@ -2653,7 +2653,7 @@ object Tcp: TTcp
       Caption = #1057#1077#1088#1074#1077#1088
       ImageIndex = 3
       object lbORPort: TLabel
-        Left = 646
+        Left = 658
         Top = 30
         Width = 37
         Height = 13
@@ -2663,7 +2663,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbNickname: TLabel
-        Left = 86
+        Left = 98
         Top = 31
         Width = 19
         Height = 13
@@ -2673,7 +2673,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbServerMode: TLabel
-        Left = 32
+        Left = 44
         Top = 9
         Width = 73
         Height = 13
@@ -2682,7 +2682,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbRelayBandwidthRate: TLabel
-        Left = 458
+        Left = 468
         Top = 30
         Width = 44
         Height = 13
@@ -2692,7 +2692,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbRelayBandwidthBurst: TLabel
-        Left = 453
+        Left = 463
         Top = 54
         Width = 49
         Height = 13
@@ -2702,7 +2702,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbSpeed1: TLabel
-        Left = 563
+        Left = 573
         Top = 30
         Width = 22
         Height = 13
@@ -2711,7 +2711,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbSpeed2: TLabel
-        Left = 563
+        Left = 573
         Top = 54
         Width = 22
         Height = 13
@@ -2720,7 +2720,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbContactInfo: TLabel
-        Left = 54
+        Left = 66
         Top = 55
         Width = 51
         Height = 13
@@ -2730,7 +2730,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbDirPort: TLabel
-        Left = 641
+        Left = 653
         Top = 54
         Width = 42
         Height = 13
@@ -2740,7 +2740,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbExitPolicy: TLabel
-        Left = 14
+        Left = 26
         Top = 127
         Width = 91
         Height = 13
@@ -2750,7 +2750,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbMaxMemInQueues: TLabel
-        Left = 265
+        Left = 269
         Top = 31
         Width = 49
         Height = 13
@@ -2760,7 +2760,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbSizeMb: TLabel
-        Left = 375
+        Left = 379
         Top = 31
         Width = 14
         Height = 13
@@ -2769,7 +2769,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbBridgeType: TLabel
-        Left = 55
+        Left = 67
         Top = 79
         Width = 50
         Height = 13
@@ -2779,7 +2779,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbNumCPUs: TLabel
-        Left = 257
+        Left = 261
         Top = 78
         Width = 57
         Height = 13
@@ -2789,7 +2789,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbTransportPort: TLabel
-        Left = 630
+        Left = 642
         Top = 78
         Width = 53
         Height = 13
@@ -2799,18 +2799,16 @@ object Tcp: TTcp
         Transparent = True
       end
       object imUPnPTest: TImage
-        Left = 719
-        Top = 120
-        Width = 20
-        Height = 20
+        Left = 734
+        Top = 122
+        Width = 16
+        Height = 16
         Cursor = crHandPoint
         Hint = #1055#1088#1086#1074#1077#1088#1082#1072' '#1087#1077#1088#1077#1072#1076#1088#1077#1089#1072#1094#1080#1080' '#1087#1086#1088#1090#1086#1074
-        ParentShowHint = False
-        ShowHint = True
         OnClick = imUPnPTestClick
       end
       object lbTotalMyFamily: TLabel
-        Left = 699
+        Left = 711
         Top = 296
         Width = 41
         Height = 13
@@ -2820,7 +2818,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbPorts: TLabel
-        Left = 648
+        Left = 660
         Top = 8
         Width = 93
         Height = 13
@@ -2829,7 +2827,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbAddress: TLabel
-        Left = 28
+        Left = 32
         Top = 400
         Width = 31
         Height = 13
@@ -2839,7 +2837,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbBridgeDistribution: TLabel
-        Left = 17
+        Left = 29
         Top = 103
         Width = 88
         Height = 13
@@ -2849,7 +2847,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbMaxAdvertisedBandwidth: TLabel
-        Left = 424
+        Left = 434
         Top = 78
         Width = 78
         Height = 13
@@ -2859,7 +2857,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbSpeed4: TLabel
-        Left = 563
+        Left = 573
         Top = 78
         Width = 22
         Height = 13
@@ -2868,9 +2866,9 @@ object Tcp: TTcp
         Transparent = True
       end
       object edNickname: TEdit
-        Left = 108
+        Left = 120
         Top = 28
-        Width = 125
+        Width = 117
         Height = 21
         Enabled = False
         MaxLength = 19
@@ -2881,9 +2879,9 @@ object Tcp: TTcp
         OnChange = EditChange
       end
       object cbxServerMode: TComboBox
-        Left = 108
+        Left = 120
         Top = 5
-        Width = 125
+        Width = 117
         Height = 21
         AutoDropDown = True
         Style = csDropDownList
@@ -2892,7 +2890,7 @@ object Tcp: TTcp
         ParentDoubleBuffered = False
         TabOrder = 0
         Text = #1054#1090#1082#1083#1102#1095#1077#1085#1086
-        OnChange = cbxServerModeChange
+        OnChange = ServerControlsChange
         Items.Strings = (
           #1054#1090#1082#1083#1102#1095#1077#1085#1086
           #1056#1077#1090#1088#1072#1085#1089#1083#1103#1090#1086#1088
@@ -2900,19 +2898,19 @@ object Tcp: TTcp
           #1052#1086#1089#1090)
       end
       object cbUseRelayBandwidth: TCheckBox
-        Left = 422
+        Left = 432
         Top = 6
         Width = 160
         Height = 17
         Caption = #1054#1075#1088#1072#1085#1080#1095#1080#1090#1100' '#1089#1082#1086#1088#1086#1089#1090#1100
         Enabled = False
         TabOrder = 15
-        OnClick = cbUseRelayBandwidthClick
+        OnClick = ServerControlsChange
       end
       object edContactInfo: TEdit
-        Left = 108
+        Left = 120
         Top = 52
-        Width = 125
+        Width = 117
         Height = 21
         TabStop = False
         Enabled = False
@@ -2923,9 +2921,9 @@ object Tcp: TTcp
         OnChange = EditChange
       end
       object cbxExitPolicyType: TComboBox
-        Left = 108
+        Left = 120
         Top = 124
-        Width = 125
+        Width = 117
         Height = 21
         AutoDropDown = True
         Style = csDropDownList
@@ -2935,38 +2933,38 @@ object Tcp: TTcp
         ParentDoubleBuffered = False
         TabOrder = 5
         Text = #1055#1086' '#1091#1084#1086#1083#1095#1072#1085#1080#1102
-        OnChange = cbxExitPolicyTypeChange
+        OnChange = ServerControlsChange
         Items.Strings = (
           #1055#1086' '#1091#1084#1086#1083#1095#1072#1085#1080#1102
           #1054#1075#1088#1072#1085#1080#1095#1077#1085#1085#1072#1103
           #1053#1072#1089#1090#1088#1072#1080#1074#1072#1077#1084#1072#1103)
       end
       object cbUseUPnP: TCheckBox
-        Left = 244
+        Left = 248
         Top = 124
-        Width = 445
+        Width = 457
         Height = 17
         Caption = #1055#1099#1090#1072#1090#1100#1089#1103' '#1072#1074#1090#1086#1084#1072#1090#1080#1095#1077#1089#1082#1080' '#1085#1072#1089#1090#1088#1086#1080#1090#1100' '#1087#1077#1088#1077#1072#1076#1088#1077#1089#1072#1094#1080#1102' '#1087#1086#1088#1090#1086#1074
         Checked = True
         Enabled = False
         State = cbChecked
         TabOrder = 29
-        OnClick = cbUseUPnPClick
+        OnClick = ServerControlsChange
       end
       object cbUseMaxMemInQueues: TCheckBox
-        Left = 244
+        Left = 248
         Top = 7
         Width = 160
         Height = 17
         Caption = #1054#1075#1088#1072#1085#1080#1095#1080#1090#1100' '#1087#1072#1084#1103#1090#1100
         Enabled = False
         TabOrder = 9
-        OnClick = cbUseMaxMemInQueuesClick
+        OnClick = ServerControlsChange
       end
       object cbxBridgeType: TComboBox
-        Left = 108
+        Left = 120
         Top = 76
-        Width = 125
+        Width = 117
         Height = 21
         AutoDropDown = True
         Style = csDropDownList
@@ -2974,12 +2972,12 @@ object Tcp: TTcp
         Enabled = False
         ParentDoubleBuffered = False
         TabOrder = 3
-        OnChange = cbxBridgeTypeChange
+        OnChange = ServerControlsChange
       end
       object meExitPolicy: TMemo
         Left = 10
         Top = 148
-        Width = 223
+        Width = 227
         Height = 219
         Enabled = False
         Lines.Strings = (
@@ -2993,19 +2991,19 @@ object Tcp: TTcp
         OnChange = OptionsChange
       end
       object cbUseNumCPUs: TCheckBox
-        Left = 244
+        Left = 248
         Top = 54
         Width = 160
         Height = 17
         Caption = #1054#1075#1088#1072#1085#1080#1095#1080#1090#1100' '#1087#1088#1086#1094#1077#1089#1089#1086#1088
         Enabled = False
         TabOrder = 12
-        OnClick = cbUseNumCPUsClick
+        OnClick = ServerControlsChange
       end
       object cbPublishServerDescriptor: TCheckBox
-        Left = 244
+        Left = 248
         Top = 145
-        Width = 445
+        Width = 457
         Height = 17
         Caption = #1055#1091#1073#1083#1080#1082#1086#1074#1072#1090#1100' '#1089#1077#1088#1074#1077#1088' '#1074' '#1082#1072#1090#1072#1083#1086#1075#1077' '#1088#1077#1090#1088#1072#1085#1089#1083#1103#1090#1086#1088#1086#1074
         Checked = True
@@ -3015,20 +3013,20 @@ object Tcp: TTcp
         OnClick = OptionsChange
       end
       object cbUseDirPort: TCheckBox
-        Left = 244
+        Left = 248
         Top = 166
-        Width = 445
+        Width = 457
         Height = 17
         TabStop = False
         Caption = #1042#1082#1083#1102#1095#1080#1090#1100' '#1079#1077#1088#1082#1072#1083#1086' '#1082#1072#1090#1072#1083#1086#1075#1072' '#1088#1077#1090#1088#1072#1085#1089#1083#1103#1090#1086#1088#1086#1074
         Enabled = False
         TabOrder = 31
-        OnClick = cbUseDirPortClick
+        OnClick = ServerControlsChange
       end
       object cbDirReqStatistics: TCheckBox
-        Left = 244
+        Left = 248
         Top = 208
-        Width = 445
+        Width = 457
         Height = 17
         Caption = #1057#1086#1073#1080#1088#1072#1090#1100' '#1089#1090#1072#1090#1080#1089#1090#1080#1082#1091' '#1079#1072#1087#1088#1086#1089#1086#1074' '#1082#1072#1090#1072#1083#1086#1075#1072
         Checked = True
@@ -3038,7 +3036,7 @@ object Tcp: TTcp
         OnClick = OptionsChange
       end
       object cbIPv6Exit: TCheckBox
-        Left = 260
+        Left = 264
         Top = 271
         Width = 320
         Height = 17
@@ -3048,9 +3046,9 @@ object Tcp: TTcp
         OnClick = OptionsChange
       end
       object cbHiddenServiceStatistics: TCheckBox
-        Left = 244
+        Left = 248
         Top = 187
-        Width = 445
+        Width = 457
         Height = 17
         Caption = 
           #1057#1086#1073#1080#1088#1072#1090#1100' '#1089#1090#1072#1090#1080#1089#1090#1080#1082#1091' '#1086' '#1089#1074#1086#1077#1081' '#1088#1086#1083#1080' '#1074' '#1082#1072#1095#1077#1089#1090#1074#1077' '#1091#1079#1083#1072' '#1089#1082#1088#1099#1090#1086#1075#1086' '#1089#1077#1088#1074#1080#1089 +
@@ -3062,7 +3060,7 @@ object Tcp: TTcp
         OnClick = OptionsChange
       end
       object edORPort: TEdit
-        Left = 686
+        Left = 698
         Top = 27
         Width = 42
         Height = 21
@@ -3075,7 +3073,7 @@ object Tcp: TTcp
         OnChange = EditChange
       end
       object udORPort: TUpDown
-        Left = 728
+        Left = 740
         Top = 27
         Width = 13
         Height = 21
@@ -3089,7 +3087,7 @@ object Tcp: TTcp
         OnChanging = SpinChanging
       end
       object edDirPort: TEdit
-        Left = 686
+        Left = 698
         Top = 51
         Width = 42
         Height = 21
@@ -3102,7 +3100,7 @@ object Tcp: TTcp
         OnChange = EditChange
       end
       object udDirPort: TUpDown
-        Left = 728
+        Left = 740
         Top = 51
         Width = 13
         Height = 21
@@ -3116,7 +3114,7 @@ object Tcp: TTcp
         OnChanging = SpinChanging
       end
       object edTransportPort: TEdit
-        Left = 686
+        Left = 698
         Top = 75
         Width = 42
         Height = 21
@@ -3129,7 +3127,7 @@ object Tcp: TTcp
         OnChange = EditChange
       end
       object udTransportPort: TUpDown
-        Left = 728
+        Left = 740
         Top = 75
         Width = 13
         Height = 21
@@ -3143,7 +3141,7 @@ object Tcp: TTcp
         OnChanging = SpinChanging
       end
       object edMaxMemInQueues: TEdit
-        Left = 317
+        Left = 321
         Top = 28
         Width = 42
         Height = 21
@@ -3156,7 +3154,7 @@ object Tcp: TTcp
         OnChange = EditChange
       end
       object udMaxMemInQueues: TUpDown
-        Left = 359
+        Left = 363
         Top = 28
         Width = 13
         Height = 21
@@ -3171,7 +3169,7 @@ object Tcp: TTcp
         OnChanging = SpinChanging
       end
       object edNumCPUs: TEdit
-        Left = 317
+        Left = 321
         Top = 75
         Width = 42
         Height = 21
@@ -3184,7 +3182,7 @@ object Tcp: TTcp
         OnChange = EditChange
       end
       object udNumCPUs: TUpDown
-        Left = 359
+        Left = 363
         Top = 75
         Width = 13
         Height = 21
@@ -3198,7 +3196,7 @@ object Tcp: TTcp
         OnChanging = SpinChanging
       end
       object edRelayBandwidthRate: TEdit
-        Left = 505
+        Left = 515
         Top = 27
         Width = 42
         Height = 21
@@ -3211,7 +3209,7 @@ object Tcp: TTcp
         OnChange = EditChange
       end
       object udRelayBandwidthRate: TUpDown
-        Left = 547
+        Left = 557
         Top = 27
         Width = 13
         Height = 21
@@ -3226,7 +3224,7 @@ object Tcp: TTcp
         OnChanging = SpinChanging
       end
       object edRelayBandwidthBurst: TEdit
-        Left = 505
+        Left = 515
         Top = 51
         Width = 42
         Height = 21
@@ -3239,7 +3237,7 @@ object Tcp: TTcp
         OnChange = EditChange
       end
       object udRelayBandwidthBurst: TUpDown
-        Left = 547
+        Left = 557
         Top = 51
         Width = 13
         Height = 21
@@ -3254,9 +3252,9 @@ object Tcp: TTcp
         OnChanging = SpinChanging
       end
       object meMyFamily: TMemo
-        Left = 244
+        Left = 248
         Top = 320
-        Width = 496
+        Width = 504
         Height = 98
         DoubleBuffered = True
         Enabled = False
@@ -3268,7 +3266,7 @@ object Tcp: TTcp
         OnChange = meMyFamilyChange
       end
       object cbDirCache: TCheckBox
-        Left = 244
+        Left = 248
         Top = 103
         Width = 162
         Height = 17
@@ -3279,24 +3277,24 @@ object Tcp: TTcp
         OnMouseDown = cbDirCacheMouseDown
       end
       object cbListenIPv6: TCheckBox
-        Left = 244
+        Left = 248
         Top = 250
-        Width = 445
+        Width = 457
         Height = 17
         Caption = #1055#1088#1086#1089#1083#1091#1096#1080#1074#1072#1090#1100' IPv6-'#1072#1076#1088#1077#1089#1072
         Enabled = False
         TabOrder = 35
-        OnClick = cbListenIPv6Click
+        OnClick = ServerControlsChange
       end
       object cbAssumeReachable: TCheckBox
-        Left = 244
+        Left = 248
         Top = 229
-        Width = 445
+        Width = 457
         Height = 17
         Caption = #1054#1090#1082#1083#1102#1095#1080#1090#1100' '#1087#1088#1086#1074#1077#1088#1082#1091' '#1076#1086#1089#1090#1091#1087#1085#1086#1089#1090#1080' '#1089#1077#1088#1074#1077#1088#1072
         Enabled = False
         TabOrder = 34
-        OnClick = cbListenIPv6Click
+        OnClick = OptionsChange
       end
       object cbUseAddress: TCheckBox
         Left = 10
@@ -3306,10 +3304,10 @@ object Tcp: TTcp
         Caption = #1047#1072#1076#1072#1090#1100' '#1074#1085#1077#1096#1085#1080#1081' '#1072#1076#1088#1077#1089' '#1074#1088#1091#1095#1085#1091#1102
         Enabled = False
         TabOrder = 7
-        OnClick = cbUseAddressClick
+        OnClick = ServerControlsChange
       end
       object edAddress: TEdit
-        Left = 63
+        Left = 67
         Top = 397
         Width = 170
         Height = 21
@@ -3321,19 +3319,19 @@ object Tcp: TTcp
         OnChange = EditChange
       end
       object cbUseMyFamily: TCheckBox
-        Left = 244
+        Left = 248
         Top = 292
-        Width = 335
+        Width = 337
         Height = 17
         Caption = #1048#1089#1087#1086#1083#1100#1079#1086#1074#1072#1090#1100' '#1089#1077#1084#1077#1081#1089#1090#1074#1086
         Enabled = False
         TabOrder = 37
-        OnClick = cbUseMyFamilyClick
+        OnClick = ServerControlsChange
       end
       object cbxBridgeDistribution: TComboBox
-        Left = 108
+        Left = 120
         Top = 100
-        Width = 125
+        Width = 117
         Height = 21
         AutoDropDown = True
         Style = csDropDownList
@@ -3352,7 +3350,7 @@ object Tcp: TTcp
           #1053#1077' '#1088#1072#1089#1087#1088#1086#1089#1090#1088#1072#1085#1103#1090#1100)
       end
       object edMaxAdvertisedBandwidth: TEdit
-        Left = 505
+        Left = 515
         Top = 75
         Width = 42
         Height = 21
@@ -3365,7 +3363,7 @@ object Tcp: TTcp
         OnChange = EditChange
       end
       object udMaxAdvertisedBandwidth: TUpDown
-        Left = 547
+        Left = 557
         Top = 75
         Width = 13
         Height = 21
@@ -3387,7 +3385,7 @@ object Tcp: TTcp
         Tag = 6
         Left = 456
         Top = 11
-        Width = 284
+        Width = 296
         Height = 294
         ColCount = 3
         DefaultRowHeight = 16
@@ -3438,12 +3436,12 @@ object Tcp: TTcp
       object gbHsEdit: TGroupBox
         Left = 10
         Top = 309
-        Width = 730
+        Width = 742
         Height = 109
         Caption = #1055#1072#1085#1077#1083#1100' '#1088#1077#1076#1072#1082#1090#1080#1088#1086#1074#1072#1085#1080#1103
         TabOrder = 2
         object lbHsSocket: TLabel
-          Left = 478
+          Left = 490
           Top = 22
           Width = 36
           Height = 13
@@ -3453,7 +3451,7 @@ object Tcp: TTcp
           Transparent = True
         end
         object lbHsVirtualPort: TLabel
-          Left = 565
+          Left = 577
           Top = 50
           Width = 95
           Height = 13
@@ -3463,7 +3461,7 @@ object Tcp: TTcp
           Transparent = True
         end
         object lbHsVersion: TLabel
-          Left = 268
+          Left = 288
           Top = 22
           Width = 92
           Height = 13
@@ -3473,7 +3471,7 @@ object Tcp: TTcp
           Transparent = True
         end
         object lbHsNumIntroductionPoints: TLabel
-          Left = 296
+          Left = 316
           Top = 50
           Width = 64
           Height = 13
@@ -3483,7 +3481,7 @@ object Tcp: TTcp
           Transparent = True
         end
         object lbRendPostPeriod: TLabel
-          Left = 248
+          Left = 268
           Top = 78
           Width = 112
           Height = 13
@@ -3493,7 +3491,7 @@ object Tcp: TTcp
           Transparent = True
         end
         object lbMinutes: TLabel
-          Left = 420
+          Left = 440
           Top = 78
           Width = 22
           Height = 13
@@ -3522,7 +3520,7 @@ object Tcp: TTcp
           Transparent = True
         end
         object lbHsState: TLabel
-          Left = 571
+          Left = 583
           Top = 78
           Width = 54
           Height = 13
@@ -3532,7 +3530,7 @@ object Tcp: TTcp
           Transparent = True
         end
         object cbxHsAddress: TComboBox
-          Left = 517
+          Left = 529
           Top = 19
           Width = 142
           Height = 21
@@ -3550,7 +3548,7 @@ object Tcp: TTcp
             '127.0.0.1')
         end
         object cbxHsVersion: TComboBox
-          Left = 362
+          Left = 382
           Top = 19
           Width = 54
           Height = 21
@@ -3590,7 +3588,7 @@ object Tcp: TTcp
           OnChange = edHsChange
         end
         object edHsNumIntroductionPoints: TEdit
-          Left = 362
+          Left = 382
           Top = 47
           Width = 42
           Height = 21
@@ -3606,7 +3604,7 @@ object Tcp: TTcp
         end
         object udHsNumIntroductionPoints: TUpDown
           Tag = 1
-          Left = 404
+          Left = 424
           Top = 47
           Width = 13
           Height = 21
@@ -3650,7 +3648,7 @@ object Tcp: TTcp
           OnMouseDown = udHsMouseDown
         end
         object udRendPostPeriod: TUpDown
-          Left = 404
+          Left = 424
           Top = 75
           Width = 13
           Height = 21
@@ -3665,7 +3663,7 @@ object Tcp: TTcp
           OnChanging = SpinChanging
         end
         object edRendPostPeriod: TEdit
-          Left = 362
+          Left = 382
           Top = 75
           Width = 42
           Height = 21
@@ -3678,7 +3676,7 @@ object Tcp: TTcp
           OnChange = EditChange
         end
         object edHsRealPort: TEdit
-          Left = 662
+          Left = 674
           Top = 19
           Width = 42
           Height = 21
@@ -3694,7 +3692,7 @@ object Tcp: TTcp
         end
         object udHsRealPort: TUpDown
           Tag = 3
-          Left = 704
+          Left = 716
           Top = 19
           Width = 13
           Height = 21
@@ -3708,7 +3706,7 @@ object Tcp: TTcp
           OnMouseDown = udHsMouseDown
         end
         object edHsVirtualPort: TEdit
-          Left = 662
+          Left = 674
           Top = 47
           Width = 42
           Height = 21
@@ -3724,7 +3722,7 @@ object Tcp: TTcp
         end
         object udHsVirtualPort: TUpDown
           Tag = 4
-          Left = 704
+          Left = 716
           Top = 47
           Width = 13
           Height = 21
@@ -3738,7 +3736,7 @@ object Tcp: TTcp
           OnMouseDown = udHsMouseDown
         end
         object cbxHsState: TComboBox
-          Left = 628
+          Left = 640
           Top = 75
           Width = 89
           Height = 21
@@ -3761,7 +3759,7 @@ object Tcp: TTcp
       Caption = #1057#1087#1080#1089#1082#1080
       ImageIndex = 12
       object lbTotalNodesList: TLabel
-        Left = 699
+        Left = 711
         Top = 31
         Width = 41
         Height = 13
@@ -3770,7 +3768,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbNodesListType: TLabel
-        Left = 438
+        Left = 450
         Top = 31
         Width = 36
         Height = 13
@@ -3779,7 +3777,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbNodesListTypeCaption: TLabel
-        Left = 438
+        Left = 450
         Top = 9
         Width = 197
         Height = 13
@@ -3788,7 +3786,7 @@ object Tcp: TTcp
       end
       object lbVanguardLayerType: TLabel
         AlignWithMargins = True
-        Left = 171
+        Left = 183
         Top = 401
         Width = 119
         Height = 13
@@ -3797,7 +3795,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbTotalFallbackDirs: TLabel
-        Left = 343
+        Left = 355
         Top = 216
         Width = 85
         Height = 13
@@ -3826,7 +3824,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbTotalHosts: TLabel
-        Left = 387
+        Left = 399
         Top = 31
         Width = 41
         Height = 13
@@ -3847,30 +3845,30 @@ object Tcp: TTcp
         Transparent = True
       end
       object cbEnableNodesList: TCheckBox
-        Left = 606
+        Left = 618
         Top = 30
         Width = 72
         Height = 17
         Caption = #1042#1082#1083#1102#1095#1080#1090#1100
-        TabOrder = 6
+        TabOrder = 11
         OnClick = cbEnableNodesListClick
       end
       object meNodesList: TMemo
-        Left = 438
+        Left = 450
         Top = 53
         Width = 302
         Height = 366
         Enabled = False
         PopupMenu = EditMenu
         ScrollBars = ssVertical
-        TabOrder = 7
+        TabOrder = 12
         WordWrap = False
         OnChange = meNodesListChange
         OnExit = meNodesListExit
         OnKeyPress = meNodesListKeyPress
       end
       object cbxNodesListType: TComboBox
-        Left = 478
+        Left = 490
         Top = 28
         Width = 122
         Height = 21
@@ -3879,7 +3877,7 @@ object Tcp: TTcp
         DoubleBuffered = False
         ItemIndex = 3
         ParentDoubleBuffered = False
-        TabOrder = 5
+        TabOrder = 10
         Text = #1047#1072#1087#1088#1077#1097#1105#1085#1085#1099#1077' '#1091#1079#1083#1099
         OnChange = cbxNodesListTypeChange
         OnKeyDown = cbxNodesListTypeKeyDown
@@ -3897,11 +3895,11 @@ object Tcp: TTcp
         Caption = #1048#1089#1087#1086#1083#1100#1079#1086#1074#1072#1090#1100' '#1072#1074#1072#1085#1075#1072#1088#1076#1099' '#1076#1083#1103' '#1089#1082#1088#1099#1090#1099#1093' '#1089#1077#1088#1074#1080#1089#1086#1074
         Checked = True
         State = cbChecked
-        TabOrder = 3
+        TabOrder = 8
         OnClick = cbUseHiddenServiceVanguardsClick
       end
       object cbxVanguardLayerType: TComboBox
-        Left = 293
+        Left = 305
         Top = 398
         Width = 135
         Height = 21
@@ -3910,7 +3908,7 @@ object Tcp: TTcp
         DoubleBuffered = False
         ItemIndex = 0
         ParentDoubleBuffered = False
-        TabOrder = 4
+        TabOrder = 9
         Text = #1040#1074#1090#1086#1074#1099#1073#1086#1088
         OnChange = OptionsChange
         Items.Strings = (
@@ -3925,18 +3923,18 @@ object Tcp: TTcp
         Width = 320
         Height = 17
         Caption = #1048#1089#1087#1086#1083#1100#1079#1086#1074#1072#1090#1100' '#1088#1077#1079#1077#1088#1074#1085#1099#1077' '#1082#1072#1090#1072#1083#1086#1075#1080' '#1088#1077#1090#1088#1072#1085#1089#1083#1103#1090#1086#1088#1086#1074
-        TabOrder = 0
+        TabOrder = 4
         OnClick = cbUseFallbackDirsClick
       end
       object meFallbackDirs: TMemo
         Left = 10
         Top = 238
-        Width = 418
+        Width = 430
         Height = 136
         Enabled = False
         PopupMenu = EditMenu
         ScrollBars = ssVertical
-        TabOrder = 2
+        TabOrder = 7
         WordWrap = False
         OnChange = meFallbackDirsChange
         OnExit = meFallbackDirsExit
@@ -3953,7 +3951,7 @@ object Tcp: TTcp
         Enabled = False
         ItemIndex = 0
         ParentDoubleBuffered = False
-        TabOrder = 1
+        TabOrder = 5
         Text = #1042#1089#1090#1088#1086#1077#1085#1085#1099#1077
         OnChange = cbxFallbackDirsTypeChange
         Items.Strings = (
@@ -3963,12 +3961,12 @@ object Tcp: TTcp
       object meTrackHostExits: TMemo
         Left = 10
         Top = 53
-        Width = 418
+        Width = 430
         Height = 136
         Enabled = False
         PopupMenu = EditMenu
         ScrollBars = ssVertical
-        TabOrder = 8
+        TabOrder = 3
         WordWrap = False
         OnChange = meTrackHostExitsChange
       end
@@ -3978,7 +3976,7 @@ object Tcp: TTcp
         Width = 320
         Height = 17
         Caption = #1057#1086#1093#1088#1072#1085#1103#1090#1100' '#1074#1099#1093#1086#1076#1085#1086#1081' '#1091#1079#1077#1083' '#1076#1083#1103' '#1091#1082#1072#1079#1072#1085#1085#1099#1093' '#1072#1076#1088#1077#1089#1086#1074
-        TabOrder = 9
+        TabOrder = 0
         OnClick = cbUseTrackHostExitsClick
       end
       object edTrackHostExitsExpire: TEdit
@@ -3990,7 +3988,7 @@ object Tcp: TTcp
         MaxLength = 7
         NumbersOnly = True
         PopupMenu = EditMenu
-        TabOrder = 10
+        TabOrder = 1
         Text = '1800'
         OnChange = EditChange
       end
@@ -4005,9 +4003,21 @@ object Tcp: TTcp
         Max = 2592000
         Increment = 60
         Position = 1800
-        TabOrder = 11
+        TabOrder = 2
         Thousands = False
         OnChanging = SpinChanging
+      end
+      object cbExcludeUnsuitableFallbackDirs: TCheckBox
+        Left = 168
+        Top = 215
+        Width = 152
+        Height = 17
+        Caption = #1048#1089#1082#1083#1102#1095#1072#1090#1100' '#1085#1077#1087#1086#1076#1093#1086#1076#1103#1097#1080#1077
+        Checked = True
+        Enabled = False
+        State = cbChecked
+        TabOrder = 6
+        OnClick = cbExcludeUnsuitableFallbackDirsClick
       end
     end
     object tsOther: TTabSheet
@@ -4016,7 +4026,7 @@ object Tcp: TTcp
       object gbNetworkScanner: TGroupBox
         Left = 10
         Top = 5
-        Width = 339
+        Width = 341
         Height = 413
         Caption = #1057#1077#1090#1077#1074#1086#1081' '#1089#1082#1072#1085#1077#1088
         TabOrder = 0
@@ -4534,14 +4544,14 @@ object Tcp: TTcp
         end
       end
       object gbTransports: TGroupBox
-        Left = 359
+        Left = 361
         Top = 5
-        Width = 381
+        Width = 391
         Height = 236
         Caption = #1055#1086#1076#1082#1083#1102#1095#1072#1077#1084#1099#1077' '#1090#1088#1072#1085#1089#1087#1086#1088#1090#1099
         TabOrder = 1
         object lbTransports: TLabel
-          Left = 12
+          Left = 20
           Top = 133
           Width = 61
           Height = 13
@@ -4552,7 +4562,7 @@ object Tcp: TTcp
         end
         object lbTransportsHandler: TLabel
           AlignWithMargins = True
-          Left = 11
+          Left = 19
           Top = 157
           Width = 62
           Height = 13
@@ -4562,7 +4572,7 @@ object Tcp: TTcp
           Transparent = True
         end
         object lbHandlerParams: TLabel
-          Left = 16
+          Left = 24
           Top = 180
           Width = 57
           Height = 13
@@ -4572,7 +4582,7 @@ object Tcp: TTcp
           Transparent = True
         end
         object lbTransportType: TLabel
-          Left = 252
+          Left = 260
           Top = 157
           Width = 18
           Height = 13
@@ -4585,7 +4595,7 @@ object Tcp: TTcp
           Tag = 6
           Left = 12
           Top = 18
-          Width = 357
+          Width = 367
           Height = 109
           ColCount = 4
           DefaultRowHeight = 16
@@ -4604,9 +4614,9 @@ object Tcp: TTcp
         end
         object edTransports: TEdit
           Tag = 1
-          Left = 76
+          Left = 84
           Top = 130
-          Width = 293
+          Width = 295
           Height = 21
           Enabled = False
           PopupMenu = EditMenu
@@ -4616,7 +4626,7 @@ object Tcp: TTcp
         end
         object edTransportsHandler: TEdit
           Tag = 2
-          Left = 76
+          Left = 84
           Top = 154
           Width = 160
           Height = 21
@@ -4628,9 +4638,9 @@ object Tcp: TTcp
         end
         object meHandlerParams: TMemo
           Tag = 3
-          Left = 76
+          Left = 84
           Top = 178
-          Width = 293
+          Width = 295
           Height = 46
           Enabled = False
           PopupMenu = EditMenu
@@ -4640,9 +4650,9 @@ object Tcp: TTcp
           OnChange = edTransportsChange
         end
         object cbxTransportType: TComboBox
-          Left = 273
+          Left = 281
           Top = 154
-          Width = 96
+          Width = 98
           Height = 21
           AutoDropDown = True
           Style = csDropDownList
@@ -4660,9 +4670,9 @@ object Tcp: TTcp
         end
       end
       object gbAutoSelectRouters: TGroupBox
-        Left = 359
+        Left = 361
         Top = 245
-        Width = 381
+        Width = 391
         Height = 173
         Caption = #1040#1074#1090#1086#1087#1086#1076#1073#1086#1088' '#1088#1086#1091#1090#1077#1088#1086#1074
         TabOrder = 2
@@ -4752,7 +4762,7 @@ object Tcp: TTcp
           Transparent = True
         end
         object lbAutoSelPriority: TLabel
-          Left = 178
+          Left = 188
           Top = 22
           Width = 55
           Height = 13
@@ -4862,34 +4872,34 @@ object Tcp: TTcp
           OnChanging = SpinChanging
         end
         object cbAutoSelNodesWithPingOnly: TCheckBox
-          Left = 168
+          Left = 178
           Top = 141
           Width = 208
           Height = 17
           Caption = #1058#1086#1083#1100#1082#1086' '#1086#1090#1074#1077#1095#1072#1102#1097#1080#1077' '#1085#1072' '#1087#1080#1085#1075
           Checked = True
           State = cbChecked
-          TabOrder = 17
+          TabOrder = 18
           OnClick = OptionsChange
         end
         object cbAutoSelUniqueNodes: TCheckBox
-          Left = 168
+          Left = 178
           Top = 103
           Width = 208
           Height = 17
           Caption = #1058#1086#1083#1100#1082#1086' '#1091#1085#1080#1082#1072#1083#1100#1085#1099#1077
           Checked = True
           State = cbChecked
-          TabOrder = 15
+          TabOrder = 16
           OnClick = OptionsChange
         end
         object cbAutoSelStableOnly: TCheckBox
-          Left = 168
+          Left = 178
           Top = 122
           Width = 208
           Height = 17
           Caption = #1058#1086#1083#1100#1082#1086' '#1089#1090#1072#1073#1080#1083#1100#1085#1099#1077
-          TabOrder = 16
+          TabOrder = 17
           OnClick = OptionsChange
         end
         object edAutoSelMaxPing: TEdit
@@ -4949,18 +4959,18 @@ object Tcp: TTcp
           OnChanging = SpinChanging
         end
         object cbAutoSelFilterCountriesOnly: TCheckBox
-          Left = 168
+          Left = 178
           Top = 84
           Width = 208
           Height = 17
           Caption = #1058#1086#1083#1100#1082#1086' '#1089#1090#1088#1072#1085#1099' '#1080#1079' '#1092#1080#1083#1100#1090#1088#1072
           Checked = True
           State = cbChecked
-          TabOrder = 14
+          TabOrder = 15
           OnClick = OptionsChange
         end
         object cbxAutoSelPriority: TComboBox
-          Left = 236
+          Left = 246
           Top = 19
           Width = 134
           Height = 21
@@ -4979,14 +4989,14 @@ object Tcp: TTcp
             #1057#1083#1091#1095#1072#1081#1085#1099#1081)
         end
         object cbAutoSelMiddleNodesWithoutDir: TCheckBox
-          Left = 168
+          Left = 178
           Top = 65
           Width = 208
           Height = 17
           Caption = #1057#1088#1077#1076#1085#1080#1077' '#1091#1079#1083#1099' '#1073#1077#1079' '#1082#1072#1090#1072#1083#1086#1075#1086#1074
           Checked = True
           State = cbChecked
-          TabOrder = 13
+          TabOrder = 14
           OnClick = OptionsChange
         end
         object edAutoSelFallbackDirCount: TEdit
@@ -5018,21 +5028,21 @@ object Tcp: TTcp
           OnChanging = SpinChanging
         end
         object cbAutoSelFallbackDirNoLimit: TCheckBox
-          Left = 168
+          Left = 178
           Top = 46
           Width = 208
           Height = 17
           Caption = #1053#1077' '#1086#1075#1088#1072#1085#1080#1095#1080#1074#1072#1090#1100' '#1087#1086#1076#1073#1086#1088' '#1082#1072#1090#1072#1083#1086#1075#1086#1074
           Checked = True
           State = cbChecked
-          TabOrder = 18
+          TabOrder = 13
           OnClick = OptionsChange
         end
       end
     end
   end
   object btnApplyOptions: TButton
-    Left = 602
+    Left = 614
     Top = 528
     Width = 72
     Height = 19
@@ -5043,7 +5053,7 @@ object Tcp: TTcp
     OnClick = btnApplyOptionsClick
   end
   object btnCancelOptions: TButton
-    Left = 680
+    Left = 692
     Top = 528
     Width = 72
     Height = 19
@@ -5059,8 +5069,8 @@ object Tcp: TTcp
     PopupMenu = mnTray
     Visible = True
     OnClick = tiTrayClick
-    Left = 689
-    Top = 320
+    Left = 721
+    Top = 336
   end
   object mnTray: TPopupMenu
     AutoHotkeys = maManual
@@ -5129,8 +5139,8 @@ object Tcp: TTcp
   object tmUpdateIp: TTimer
     Enabled = False
     OnTimer = tmUpdateIpTimer
-    Left = 640
-    Top = 97
+    Left = 672
+    Top = 113
   end
   object mnLog: TPopupMenu
     AutoHotkeys = maManual
@@ -5432,20 +5442,20 @@ object Tcp: TTcp
     ColorDepth = cd24Bit
     Height = 13
     Width = 20
-    Left = 690
-    Top = 98
+    Left = 722
+    Top = 114
   end
   object lsButtons: TImageList
     ColorDepth = cd32Bit
     Height = 20
     Width = 20
-    Left = 689
-    Top = 229
+    Left = 721
+    Top = 245
   end
   object lsMenus: TImageList
     ColorDepth = cd32Bit
-    Left = 690
-    Top = 186
+    Left = 722
+    Top = 202
   end
   object mnChangeCircuit: TPopupMenu
     AutoHotkeys = maManual
@@ -6262,8 +6272,8 @@ object Tcp: TTcp
     Enabled = False
     Interval = 3000
     OnTimer = tmConsensusTimer
-    Left = 642
-    Top = 275
+    Left = 674
+    Top = 291
   end
   object mnRouters: TPopupMenu
     AutoHotkeys = maManual
@@ -6423,11 +6433,11 @@ object Tcp: TTcp
         Checked = True
         OnClick = miRoutersSelectRowClick
       end
-      object miShowFlagsHint: TMenuItem
+      object miRoutersShowFlagsHint: TMenuItem
         AutoCheck = True
         Caption = #1055#1086#1082#1072#1079#1099#1074#1072#1090#1100' '#1087#1086#1076#1089#1082#1072#1079#1082#1080' '#1092#1083#1072#1075#1086#1074' '#1087#1088#1080' '#1085#1072#1074#1077#1076#1077#1085#1080#1080' '#1084#1099#1096#1080
         Checked = True
-        OnClick = miShowFlagsHintClick
+        OnClick = miRoutersShowFlagsHintClick
       end
       object miDelimiter40: TMenuItem
         Caption = '-'
@@ -6622,8 +6632,8 @@ object Tcp: TTcp
   object tmCircuits: TTimer
     Enabled = False
     OnTimer = tmCircuitsTimer
-    Left = 641
-    Top = 142
+    Left = 673
+    Top = 158
   end
   object mnCircuits: TPopupMenu
     AutoHotkeys = maManual
@@ -6676,21 +6686,34 @@ object Tcp: TTcp
         RadioItem = True
         OnClick = SelectCircuitsSort
       end
-      object miCircuitsSortStreams: TMenuItem
+      object miCircuitsSortFlags: TMenuItem
         Tag = 2
-        Caption = #1057#1086#1077#1076#1080#1085#1077#1085#1080#1103
+        Caption = #1060#1083#1072#1075#1080
         RadioItem = True
         OnClick = SelectCircuitsSort
       end
-      object miCircuitsSortDL: TMenuItem
+      object miCircuitsSortParams: TMenuItem
         Tag = 3
+        Caption = #1055#1072#1088#1072#1084#1077#1090#1088#1099
+        RadioItem = True
+        Visible = False
+        OnClick = SelectCircuitsSort
+      end
+      object miCircuitsSortDL: TMenuItem
+        Tag = 4
         Caption = #1055#1086#1083#1091#1095#1077#1085#1086
         RadioItem = True
         OnClick = SelectCircuitsSort
       end
       object miCircuitsSortUL: TMenuItem
-        Tag = 4
+        Tag = 5
         Caption = #1054#1090#1087#1088#1072#1074#1083#1077#1085#1086
+        RadioItem = True
+        OnClick = SelectCircuitsSort
+      end
+      object miCircuitsSortStreams: TMenuItem
+        Tag = 6
+        Caption = #1057#1086#1077#1076#1080#1085#1077#1085#1080#1103
         RadioItem = True
         OnClick = SelectCircuitsSort
       end
@@ -6786,7 +6809,7 @@ object Tcp: TTcp
       object miCircCircuitPadding: TMenuItem
         Tag = 4096
         AutoCheck = True
-        Caption = #1052#1072#1089#1082#1080#1088#1086#1074#1082#1072' '#1074#1088#1077#1084#1077#1085#1080
+        Caption = #1052#1072#1089#1082#1080#1088#1086#1074#1082#1072' '#1074#1088#1077#1084#1077#1085#1080' '#1079#1072#1082#1088#1099#1090#1080#1103
         Checked = True
         OnClick = SetCircuitsFilter
       end
@@ -6794,6 +6817,13 @@ object Tcp: TTcp
         Tag = 8192
         AutoCheck = True
         Caption = #1048#1079#1084#1077#1088#1077#1085#1080#1077' '#1086#1078#1080#1076#1072#1085#1080#1103
+        Checked = True
+        OnClick = SetCircuitsFilter
+      end
+      object miCircController: TMenuItem
+        Tag = 32768
+        AutoCheck = True
+        Caption = #1055#1086#1083#1100#1079#1086#1074#1072#1090#1077#1083#1100#1089#1082#1072#1103' '#1094#1077#1087#1086#1095#1082#1072
         Checked = True
         OnClick = SetCircuitsFilter
       end
@@ -6835,11 +6865,11 @@ object Tcp: TTcp
         Checked = True
         OnClick = miAlwaysShowExitCircuitClick
       end
-      object miSelectExitCircuitWhetItChanges: TMenuItem
+      object miSelectExitCircuitWhenItChanges: TMenuItem
         AutoCheck = True
         Caption = #1042#1099#1076#1077#1083#1103#1090#1100' '#1074#1099#1093#1086#1076#1085#1091#1102' '#1094#1077#1087#1086#1095#1082#1091' '#1087#1088#1080' '#1077#1105' '#1080#1079#1084#1077#1085#1077#1085#1080#1080
         Checked = True
-        OnClick = miSelectExitCircuitWhetItChangesClick
+        OnClick = miSelectExitCircuitWhenItChangesClick
       end
       object miDelimiter38: TMenuItem
         Caption = '-'
@@ -6863,6 +6893,12 @@ object Tcp: TTcp
         Caption = #1055#1086#1082#1072#1079#1099#1074#1072#1090#1100' '#1087#1086#1076#1088#1086#1073#1085#1086#1089#1090#1080' '#1089#1086#1077#1076#1080#1085#1077#1085#1080#1081
         Checked = True
         OnClick = miShowStreamsInfoClick
+      end
+      object miCircuitsShowFlagsHint: TMenuItem
+        AutoCheck = True
+        Caption = #1055#1086#1082#1072#1079#1099#1074#1072#1090#1100' '#1087#1086#1076#1089#1082#1072#1079#1082#1080' '#1092#1083#1072#1075#1086#1074' '#1087#1088#1080' '#1085#1072#1074#1077#1076#1077#1085#1080#1080' '#1084#1099#1096#1080
+        Checked = True
+        OnClick = miCircuitsShowFlagsHintClick
       end
       object miShowPortAlongWithIp: TMenuItem
         AutoCheck = True
@@ -6978,8 +7014,8 @@ object Tcp: TTcp
     GrayscaleFactor = 255
     Height = 20
     Width = 20
-    Left = 689
-    Top = 275
+    Left = 721
+    Top = 291
     Bitmap = {
       494C010103000800040014001400FFFFFFFF0510FFFFFFFFFFFFFFFF424D7600
       0000000000007600000028000000500000001400000001000400000000002003
@@ -7024,8 +7060,8 @@ object Tcp: TTcp
   end
   object lsMain: TImageList
     ColorDepth = cd32Bit
-    Left = 690
-    Top = 142
+    Left = 722
+    Top = 158
   end
   object mnStreamsInfo: TPopupMenu
     AutoHotkeys = maManual
@@ -7085,14 +7121,14 @@ object Tcp: TTcp
   end
   object FindDialog: TFindDialog
     OnFind = FindDialogFind
-    Left = 644
-    Top = 318
+    Left = 676
+    Top = 334
   end
   object tmScanner: TTimer
     Enabled = False
     OnTimer = tmScannerTimer
-    Left = 642
-    Top = 186
+    Left = 674
+    Top = 202
   end
   object mnTransports: TPopupMenu
     AutoHotkeys = maManual
@@ -7234,12 +7270,12 @@ object Tcp: TTcp
   object tmTraffic: TTimer
     Enabled = False
     OnTimer = tmTrafficTimer
-    Left = 642
-    Top = 231
+    Left = 674
+    Top = 247
   end
   object OpenDialog: TOpenDialog
     Filter = #1058#1077#1082#1089#1090#1086#1074#1099#1077' '#1092#1072#1081#1083#1099'|*.txt|'#1042#1089#1077' '#1092#1072#1081#1083#1099'|*.*'
-    Left = 645
-    Top = 361
+    Left = 677
+    Top = 377
   end
 end

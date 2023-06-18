@@ -8,7 +8,7 @@ uses
   Vcl.Clipbrd;
 
 type
-  TColsDataType = (dtInteger, dtText, dtSize, dtParams);
+  TColsDataType = (dtInteger, dtText, dtSize, dtParams, dtFlags);
 
   TUpDown = class (Vcl.ComCtrls.TUpDown)
   public

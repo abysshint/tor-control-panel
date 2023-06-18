@@ -91,11 +91,10 @@ var
   function GetDirFromArray(Data: array of string; FileName: string = ''; ShowFileName: Boolean = False): string;
   function GetLogFileName(SeparateType: Integer): string;
   function GetRoutersParamsCount(Mask: Integer): Integer;
+  function GetCircuitsParamsCount(PurposeID: Integer): Integer;
   function GetTorConfig(const Param, Default: string; Flags: TConfigFlags = []; ParamType: TParamType = ptString; MinValue: Integer = 0; MaxValue: Integer = 0; Prefix: string = ''): string;
   function BytesFormat(Bytes: Double): string;
   function FormatSizeToBytes(SizeStr: string): Int64;
-  function UTCToLocalTime(AValue: TDateTime): TDateTime;
-  function TorDateFormat(Date: string): string;
   function CheckEditSymbols(Key: Char; UserSymbols: AnsiString = ''; EditMsg: string = ''): string;
   function CheckEditString(Str: string; UserSymbols: AnsiString = ''; AllowNumbersFirst: Boolean = True; EditMsg: string = ''; edComponent: TEdit = nil): string;
   function IsEmptyRow(aSg: TStringGrid; ARow: Integer): Boolean;
@@ -140,6 +139,8 @@ var
   function CompSizeDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
   function CompParamsAsc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
   function CompParamsDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
+  function CompFlagsAsc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
+  function CompFlagsDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
   function GetTaskBarPos: TTaskBarPos;
   function RemoveBrackets(Str: string; Square: Boolean = False): string;
   function SearchEdit(EditControl: TCustomEdit; const SearchString: String; Options: TFindOptions; FindFirst: Boolean = False): Boolean;
@@ -867,44 +868,6 @@ begin
     UnSelMenu.Tag := 0;
     UnSelMenu.HelpContext := Integer(HandleDisabled);
   end;
-
-end;
-
-function TorDateFormat(Date: string): string;
-var
-  fs: TFormatSettings;
-begin
-  fs.DateSeparator := '-';
-  fs.ShortDateFormat := 'yyyy-MM-dd';
-  fs.TimeSeparator := ':';
-  fs.ShortTimeFormat := 'hh:mm';
-  fs.LongTimeFormat := 'hh:mm:ss';
-  Result := DateTimeToStr(UTCToLocalTime(StrToDateTime(Date, fs)));
-end;
-
-function UTCToLocalTime(AValue: TDateTime): TDateTime;
-var
-  ST1, ST2: TSystemTime;
-  TZ: TTimeZoneInformation;
-begin
-  GetTimeZoneInformation(TZ);
-  DateTimeToSystemTime(AValue, ST1);
-  SystemTimeToTzSpecificLocalTime(@TZ, ST1, ST2);
-  Result := SystemTimeToDateTime(ST2);
-end;
-
-function LocalTimeToUTC(AValue: TDateTime): TDateTime;
-var
-  ST1, ST2: TSystemTime;
-  TZ: TTimeZoneInformation;
-begin
-  GetTimeZoneInformation(TZ);
-  TZ.Bias := -TZ.Bias;
-  TZ.StandardBias := -TZ.StandardBias;
-  TZ.DaylightBias := -TZ.DaylightBias;
-  DateTimeToSystemTime(AValue, ST1);
-  SystemTimeToTzSpecificLocalTime(@TZ, ST1, ST2);
-  Result := SystemTimeToDateTime(ST2);
 end;
 
 function HasBrackets(Str: string): Boolean;
@@ -2471,6 +2434,16 @@ begin
   Result := CompareValue(RoutersDic.Items[aSl[aIndex2]].Params, RoutersDic.Items[aSl[aIndex1]].Params);
 end;
 
+function CompFlagsAsc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
+begin
+  Result := CompareValue(StrToIntDef(SeparateLeft(aSl[aIndex1], '|'), 0), StrToIntDef(SeparateLeft(aSl[aIndex2], '|'), 0));
+end;
+
+function CompFlagsDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
+begin
+  Result := CompareValue(StrToIntDef(SeparateLeft(aSl[aIndex2], '|'), 0), StrToIntDef(SeparateLeft(aSl[aIndex1],'|'), 0));
+end;
+
 procedure SgSort(aSg: TStringGrid; aCol: Integer; aCompare: TStringListSortCompare);
 var
   SlSort, SlRow: TStringList;
@@ -3748,6 +3721,16 @@ begin
     Result := Mask and Param <> 0;
     if Result then
       Dec(Mask, Param);
+  end;
+end;
+
+function GetCircuitsParamsCount(PurposeID: Integer): Integer;
+begin
+  case PurposeID of
+    HS_CLIENT_HSDIR..HS_SERVICE_REND: Result := 3;
+    HS_VANGUARDS: Result := 2;
+    else
+      Result := 1;
   end;
 end;
 

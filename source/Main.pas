@@ -70,9 +70,10 @@ type
     PurposeID: Integer;
     Streams: Integer;
     Nodes: string;
-    Date: string;
+    Date: TDateTime;
     BytesRead: int64;
     BytesWritten: int64;
+    Flags: Word;
   end;
 
   TStreamInfo = record
@@ -168,6 +169,7 @@ type
     CountryCode, IpID: Byte;
     UpdateCountry: Boolean;
     function AuthStageReady(AuthMethod: Integer): Boolean;
+    function GetCircuitFlags(Circuit: TCircuitInfo): Word;
     procedure GetData;
     procedure SendData(cmd: string);
     procedure CheckDirFetches(StreamInfo: TStreamInfo; Counter: Integer);
@@ -582,7 +584,7 @@ type
     cbUseOpenDNS: TCheckBox;
     cbUseOpenDNSOnlyWhenUnknown: TCheckBox;
     miStreamsSortTrack: TMenuItem;
-    miSelectExitCircuitWhetItChanges: TMenuItem;
+    miSelectExitCircuitWhenItChanges: TMenuItem;
     lsTray: TImageList;
     paButtons: TPanel;
     sbShowLog: TSpeedButton;
@@ -659,8 +661,6 @@ type
     tsOther: TTabSheet;
     miReplaceDisabledFavoritesWithCountries: TMenuItem;
     miDelimiter40: TMenuItem;
-    lbULCirc: TLabel;
-    lbDLCirc: TLabel;
     miCircuitsSortDL: TMenuItem;
     miCircuitsSortUL: TMenuItem;
     miDelimiter41: TMenuItem;
@@ -708,7 +708,7 @@ type
     lbFilterExclude: TLabel;
     lbStatusScannerCaption: TLabel;
     lbStatusScanner: TLabel;
-    miShowFlagsHint: TMenuItem;
+    miRoutersShowFlagsHint: TMenuItem;
     lbHsState: TLabel;
     cbxHsState: TComboBox;
     gbTransports: TGroupBox;
@@ -1044,6 +1044,13 @@ type
     edTrackHostExitsExpire: TEdit;
     udTrackHostExitsExpire: TUpDown;
     cbAutoSelFallbackDirNoLimit: TCheckBox;
+    cbExcludeUnsuitableFallbackDirs: TCheckBox;
+    lbCircPurpose: TLabel;
+    imCircuitPurpose: TImage;
+    miCircuitsSortFlags: TMenuItem;
+    miCircController: TMenuItem;
+    miCircuitsSortParams: TMenuItem;
+    miCircuitsShowFlagsHint: TMenuItem;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1066,10 +1073,12 @@ type
     function PreferredBridgeFound: Boolean;
     function GetFallbackStr(RouterID: string; RouterInfo: TRouterInfo): string;
     function CheckRouterFlags(NodeTypeID: Integer; RouterInfo: TRouterInfo): Boolean;
+    procedure SaveScanData;
     procedure SetFallbackDirMenu(Menu: TMenuItem; RouterID: string; RouterInfo: TRouterInfo);
     procedure UpdateBridgesControls(UpdateList: Boolean; UpdateUserBridges: Boolean);
     procedure UpdateFallbackDirControls;
     procedure ShowRoutersParamsHint;
+    procedure ShowCircuitsFlagsHint;
     procedure CalculateFilterNodes(AlwaysUpdate: Boolean = True);
     procedure CalculateTotalNodes(AlwaysUpdate: Boolean = True);
     procedure CloseCircuit(CircuitID: string; AutoUpdate: Boolean = True);
@@ -1092,7 +1101,7 @@ type
     procedure UpdateRoutersAfterFilterUpdate;
     procedure UpdateOptionsAfterRoutersUpdate;
     procedure UpdateRoutersAfterBridgesUpdate;
-    procedure UpdateRoutersAfterFallbackDrisUpdate;
+    procedure UpdateRoutersAfterFallbackDirsUpdate;
     procedure SaveRoutersFilterdata(Default: Boolean = False; SaveFilters: Boolean = True);
     procedure LoadRoutersFilterData(Data: string; AutoUpdate: Boolean = True; ResetCustomFilter: Boolean = False);
     procedure ChangeHsTable(Param: Integer);
@@ -1121,7 +1130,6 @@ type
     procedure HsMaxStreamsEnable(State: Boolean);
     procedure HsPortsEnable(State: Boolean);
     procedure TransportsEnable(State: Boolean);
-    procedure ServerAddressEnable(State: Boolean);
     procedure BridgesCheckControls;
     procedure FallbackDirsCheckControls;
     procedure EnableOptionButtons(State: Boolean = True);
@@ -1150,11 +1158,8 @@ type
     procedure SaveNodesList(NodesID: Integer);
     procedure LoadFilterTotals;
     procedure LoadRoutersCountries;
-    procedure MaxMemInQueuesEnable(State: Boolean);
-    procedure NumCPUsEnable(State: Boolean);
     procedure OpenMetricsUrl(Page, Query: string);
     procedure ProxyParamCheck;
-    procedure RelayBandwidthEnable(State: Boolean);
     procedure ReloadTorConfig;
     function CheckRequiredFiles(AutoSave: Boolean = False): Boolean;
     function ReachablePortsExists: Boolean;
@@ -1190,13 +1195,14 @@ type
     procedure SelectHs;
     procedure SelectHsPorts;
     procedure SelectTransports;
+    procedure CheckCircuitsControls(UpdateAll: Boolean = True);
     procedure CheckStreamsControls;
     procedure ChangeCircuit(DirectClick: Boolean = True);
     procedure SendCommand(const cmd: string);
     procedure CheckSelectRowOptions(aSg: TStringGrid; Checked: Boolean; Save: Boolean = False);
     procedure SetButtonsProp(Btn: TSpeedButton; LeftSmall, LeftBig: Integer);
     procedure ShowBalloon(Msg: string; Title: string = ''; Notice: Boolean = False; MsgType: TMsgType = mtInfo);
-    procedure ShowCircuits;
+    procedure ShowCircuits(AlwaysUpdate: Boolean = True);
     procedure ShowStreams(CircID: string);
     procedure ShowStreamsInfo(CircID, TargetStr: string);
     procedure ShowCircuitInfo(CircID: string);
@@ -1217,7 +1223,6 @@ type
     procedure SetCustomFilterStyle(CustomFilterID: Integer);
     procedure ResetGuards(GuardType: TGuardType);
     procedure MyFamilyEnable(State: Boolean);
-    procedure TransportPortEnable(State: Boolean);
     procedure FastAndStableEnable(State: Boolean; AutoCheck: Boolean = True);
     procedure HsControlsEnable(State: Boolean);
     procedure CheckLogAutoScroll(AlwaysUpdate: Boolean = False);
@@ -1237,6 +1242,7 @@ type
     procedure RemoveFromNodesListWithConvert(Nodes: ArrOfNodes; NodeType: TNodeType);
     procedure SortPrepare(aSg: TStringGrid; ACol: Integer; ManualSort: Boolean = False);
     procedure GridSort(aSg: TStringGrid);
+    procedure ServerControlsChange(Sender: TObject);
     procedure SelectLogAutoDelInterval(Sender: TObject);
     procedure SelectLogLinesLimit(Sender: TObject);
     procedure SelectLogSeparater(Sender: TObject);
@@ -1289,22 +1295,14 @@ type
     procedure cbEnableNodesListClick(Sender: TObject);
     procedure cbHsMaxStreamsClick(Sender: TObject);
     procedure cbLearnCircuitBuildTimeoutClick(Sender: TObject);
-    procedure cbUseMaxMemInQueuesClick(Sender: TObject);
-    procedure cbUseNumCPUsClick(Sender: TObject);
-    procedure cbUseRelayBandwidthClick(Sender: TObject);
     procedure cbShowBalloonHintClick(Sender: TObject);
     procedure cbStayOnTopClick(Sender: TObject);
     procedure cbUseTrackHostExitsClick(Sender: TObject);
     procedure cbUseBridgesClick(Sender: TObject);
-    procedure cbUseDirPortClick(Sender: TObject);
     procedure cbUseProxyClick(Sender: TObject);
-    procedure cbUseUPnPClick(Sender: TObject);
-    procedure cbxBridgeTypeChange(Sender: TObject);
-    procedure cbxExitPolicyTypeChange(Sender: TObject);
     procedure cbxHsAddressChange(Sender: TObject);
     procedure cbxHsVersionChange(Sender: TObject);
     procedure cbxProxyTypeChange(Sender: TObject);
-    procedure cbxServerModeChange(Sender: TObject);
     procedure cbxProxyHostDropDown(Sender: TObject);
     procedure edHsChange(Sender: TObject);
     procedure edTransportsChange(Sender: TObject);
@@ -1420,9 +1418,7 @@ type
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure miDetailsUpdateIpClick(Sender: TObject);
     procedure ShowFavoritesRouters(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-    procedure cbListenIPv6Click(Sender: TObject);
     procedure cbDirCacheMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-    procedure cbUseAddressClick(Sender: TObject);
     procedure cbUseOpenDNSClick(Sender: TObject);
     procedure cbUseOpenDNSOnlyWhenUnknownClick(Sender: TObject);
     procedure miHideCircuitsWithoutStreamsClick(Sender: TObject);
@@ -1436,7 +1432,7 @@ type
     procedure miLoadCachedRoutersOnStartupClick(Sender: TObject);
     procedure miUpdateIpToCountryCacheClick(Sender: TObject);
     procedure cbUseReachableAddressesClick(Sender: TObject);
-    procedure miSelectExitCircuitWhetItChangesClick(Sender: TObject);
+    procedure miSelectExitCircuitWhenItChangesClick(Sender: TObject);
     procedure sgStreamsFixedCellClick(Sender: TObject; ACol, ARow: Integer);
     procedure sgCircuitsFixedCellClick(Sender: TObject; ACol, ARow: Integer);
     procedure sbShowOptionsClick(Sender: TObject);
@@ -1450,7 +1446,6 @@ type
     procedure FormResize(Sender: TObject);
     procedure btnSwitchTorClick(Sender: TObject);
     procedure sbDecreaseFormClick(Sender: TObject);
-    procedure cbUseMyFamilyClick(Sender: TObject);
     procedure lbExitIpMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure edRoutersQueryKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure miAboutClick(Sender: TObject);
@@ -1493,7 +1488,7 @@ type
     procedure mnShowNodesPopup(Sender: TObject);
     procedure cbAutoScanNewNodesClick(Sender: TObject);
     procedure edRoutersQueryChange(Sender: TObject);
-    procedure miShowFlagsHintClick(Sender: TObject);
+    procedure miRoutersShowFlagsHintClick(Sender: TObject);
     procedure cbxHsStateChange(Sender: TObject);
     procedure sgTransportsDrawCell(Sender: TObject; ACol, ARow: Integer;
       Rect: TRect; State: TGridDrawState);
@@ -1601,6 +1596,8 @@ type
     procedure meFallbackDirsKeyPress(Sender: TObject; var Key: Char);
     procedure cbxFallbackDirsTypeChange(Sender: TObject);
     procedure meNodesListKeyPress(Sender: TObject; var Key: Char);
+    procedure cbExcludeUnsuitableFallbackDirsClick(Sender: TObject);
+    procedure miCircuitsShowFlagsHintClick(Sender: TObject);
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
     procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -1647,7 +1644,7 @@ var
   SessionDL, SessionUL, TotalDL, TotalUL: Int64;
   ConnectState, StopCode, FormSize, LastPlace, InfoStage, GetIpStage, NodesListStage, NewBridgesStage: Byte;
   EncodingNoBom: TUTF8EncodingNoBOM;
-  SearchTimer, LastCountriesHash: Cardinal;
+  SearchTimer, LastCountriesHash, LastFallbackDirsHash: Cardinal;
   DecFormPos, IncFormPos, IncFormSize: TPoint;
   RoutersCustomFilter, LastRoutersCustomFilter, RoutersFilters, LastFilters: Integer;
   GeoIpExists, FirstLoad, Restarting, Closing, WindowsShutdown, CursorShow, GeoIpUpdating, GeoIpModified, ServerIsObfs4: Boolean;
@@ -1669,9 +1666,10 @@ var
   LastFullScanDate, LastPartialScanDate, TotalStartDate, LastSaveStats: Int64;
   LastPartialScansCounts: Integer;
   LockCircuits, LockCircuitInfo, LockStreams, LockStreamsInfo, UpdateTraffic: Boolean;
+  CircuitsUpdated: Boolean;
   FindObject: TMemo;
   ScanStage, AutoScanStage: Byte;
-  CurrentScanType: TScanType;
+  CurrentScanType, InitScanType: TScanType;
   CurrentScanPurpose, CurrentAutoScanPurpose: TScanPurpose;
   ScanThreads, CurrentScans, TotalScans, AliveNodesCount, PingNodesCount, ConnectProgress: Integer;
   SuitableBridgesCount, UnknownBridgesCountriesCount, FailedBridgesCount, FailedBridgesInterval, NewBridgesCount, UsedBridgesCount: Integer;
@@ -1679,7 +1677,7 @@ var
   Scanner: TScanThread;
   UsedProxyType: TProxyType;
   LastUserStreamProtocol: Integer;
-  FindBridgesCountries, FindFallbackDirCountries, ScanNewBridges: Boolean;
+  FindBridgesCountries, FindFallbackDirCountries, ScanNewBridges, UpdateFallbackDirs: Boolean;
 
 implementation
 
@@ -2234,7 +2232,7 @@ begin
     LoadDescriptors
   else
   begin
-    if FirstLoad or (MissingFallbackDirCount > 0) then
+    if FirstLoad or (MissingFallbackDirCount > 0) or UpdateFallbackDirs then
       SaveFallbackDirs;
     if ConnectState = 0 then
     begin 
@@ -2258,7 +2256,7 @@ begin
   DescriptorsUpdated := False;
   if UsedBridgesCount <> UsedBridgesList.Count then
     SaveBridgesData;
-  if FirstLoad or (MissingFallbackDirCount > 0) then
+  if FirstLoad or (MissingFallbackDirCount > 0) or UpdateFallbackDirs then
     SaveFallbackDirs;
   if ConnectState = 0 then
   begin
@@ -2926,6 +2924,38 @@ begin
   end;
 end;
 
+function TControlThread.GetCircuitFlags(Circuit: TCircuitInfo): Word;
+begin
+  if bfOneHop in (Circuit.BuildFlags) then
+    Result := CF_DIR_REQUEST
+  else
+  begin
+    case Circuit.PurposeID of
+      GENERAL:
+      begin
+        if bfInternal in (Circuit.BuildFlags) then
+          Result := CF_INTERNAL
+        else
+          Result := CF_EXIT;
+      end;
+      HS_CLIENT_HSDIR: Result := CF_HIDDEN_SERVICE + CF_CLIENT + CF_DIR_REQUEST;
+      HS_CLIENT_INTRO: Result := CF_HIDDEN_SERVICE + CF_CLIENT + CF_INTRO;
+      HS_CLIENT_REND: Result := CF_HIDDEN_SERVICE + CF_CLIENT + CF_REND;
+      HS_SERVICE_HSDIR: Result := CF_HIDDEN_SERVICE + CF_SERVICE + CF_DIR_REQUEST;
+      HS_SERVICE_INTRO: Result := CF_HIDDEN_SERVICE + CF_SERVICE + CF_INTRO;
+      HS_SERVICE_REND: Result := CF_HIDDEN_SERVICE + CF_SERVICE + CF_REND;
+      HS_VANGUARDS: Result := CF_HIDDEN_SERVICE + CF_VANGUARDS;
+      PATH_BIAS_TESTING: Result := CF_PATH_BIAS_TESTING;
+      TESTING: Result := CF_TESTING;
+      CIRCUIT_PADDING: Result := CF_CIRCUIT_PADDING;
+      MEASURE_TIMEOUT: Result := CF_MEASURE_TIMEOUT;
+      CONTROLLER_CIRCUIT: Result := CF_CONTROLLER;
+      else
+        Result := CF_OTHER;
+    end;
+  end;
+end;
+
 procedure TControlThread.GetData;
 var
   i: Integer;
@@ -3185,11 +3215,12 @@ begin
         if Pos('NEED_UPTIME', ParseStr[5]) <> 0 then
           Include(CircuitInfo.BuildFlags, bfNeedUptime);
         CircuitInfo.PurposeID := GetConstantIndex(SeparateRight(ParseStr[6], '='));
+        CircuitInfo.Flags := GetCircuitFlags(CircuitInfo);
         for i := 7 to Length(ParseStr) - 1 do
         begin
           if Pos('TIME_CREATED', ParseStr[i]) <> 0 then
           begin
-            CircuitInfo.Date := TorDateFormat(SeparateRight(ParseStr[i], '='));
+            CircuitInfo.Date := ISO8601ToDate(SeparateRight(ParseStr[i], '='), False);
             Break;
           end;
         end;
@@ -3200,10 +3231,12 @@ begin
         Delete(Temp, 1, 1);
         CircuitInfo.Nodes := Temp;
         CircuitsDic.AddOrSetValue(CircuitID, CircuitInfo);
+        CircuitsUpdated := True;
       end;
       CLOSED:
       begin
         CircuitsDic.Remove(CircuitID);
+        CircuitsUpdated := True;
         if CircuitID = Circuit then
           Tcp.SendDataThroughProxy;
       end;
@@ -3272,7 +3305,7 @@ begin
                   ExitNodeID := Temp;
                   Tcp.lbExitIp.Caption := Ip;
                   Tcp.lbExitCountry.Caption := TransStr(CountryCodes[CountryCode]);
-                  Tcp.lbExitCountry.Left := Round(206 * Scale);
+                  Tcp.lbExitCountry.Left := Round(208 * Scale);
                   Tcp.imExitFlag.Picture := nil;
                   Tcp.lsFlags.GetBitmap(CountryCode, Tcp.imExitFlag.Picture.Bitmap);
                   Tcp.imExitFlag.Visible := True;
@@ -3285,7 +3318,7 @@ begin
                   Tcp.miChangeCircuit.Enabled := True;
                   Tcp.tmUpdateIp.Interval := Tcp.udMaxCircuitDirtiness.Position * 1000;
                   Tcp.tmUpdateIp.Enabled := True;
-                  if Tcp.miSelectExitCircuitWhetItChanges.Checked then
+                  if Tcp.miSelectExitCircuitWhenItChanges.Checked then
                     SelectExitCircuit := True;
                   Tcp.UpdateTrayHint;
                 end;
@@ -3318,6 +3351,7 @@ begin
           end;
         end;
         CircuitsDic.AddOrSetValue(CircuitID, CircuitInfo);
+        CircuitsUpdated := True;
       end;
     end
     else
@@ -3386,6 +3420,7 @@ begin
         Inc(CircuitInfo.BytesRead, StrToInt64Def(SeparateRight(ParseStr[3], '='), 0));
         Inc(CircuitInfo.BytesWritten, StrToInt64Def(SeparateRight(ParseStr[4], '='), 0));
         CircuitsDic.AddOrSetValue(CircuitID, CircuitInfo);
+        CircuitsUpdated := True;
       end;
       Exit;
     end;
@@ -3523,15 +3558,66 @@ end;
 
 procedure TTcp.sgCircuitsDrawCell(Sender: TObject; ACol, ARow: Integer;
   Rect: TRect; State: TGridDrawState);
+var
+  PurposeID, Indent, Mask, Interval: Integer;
+  Params: string;
+
+  procedure DrawFlagIcon(Flag: Word; Index: Integer);
+  begin
+    if Indent > Interval then
+    begin
+      if Mask and Flag <> 0 then
+      begin
+        lsMenus.Draw(sgCircuits.Canvas, Rect.Left + (Rect.Width - Indent) div 2 + Interval, Rect.Top + (Rect.Height - 16) div 2, Index, True);
+        Inc(Interval, 16);
+      end;
+    end
+    else
+      Exit;
+  end;
+
 begin
   if ARow = 0 then
   begin
     case ACol of
-      CIRC_PURPOSE: DrawText(sgCircuits.Canvas.Handle, PChar(CircuitsHeader[ACol - 1]), Length(CircuitsHeader[ACol - 1]), Rect, DT_CENTER);
+      CIRC_BYTES_READ: GridDrawIcon(sgCircuits, Rect, lsMain, 15);
+      CIRC_BYTES_WRITTEN: GridDrawIcon(sgCircuits, Rect, lsMain, 16);
       CIRC_STREAMS: GridDrawIcon(sgCircuits, Rect, lsMain, 8);
+      else
+        DrawText(sgCircuits.Canvas.Handle, PChar(CircuitsHeader[ACol - 1]), Length(CircuitsHeader[ACol - 1]), Rect, DT_CENTER)
     end;
-    if (ACol = sgCircuits.SortCol) and (ACol = CIRC_PURPOSE) then
+    if (ACol = sgCircuits.SortCol) and (ACol <> CIRC_STREAMS) then
       GridDrawSortArrows(sgCircuits, Rect);
+  end;
+  if ARow > 0 then
+  begin
+    if (ACol = CIRC_FLAGS) and miShowCircuitsTraffic.Checked then
+    begin
+      Params := sgCircuits.Cells[CIRC_PARAMS, ARow];
+      if Params <> '' then
+      begin
+        PurposeID := StrToIntDef(SeparateRight(Params, '|'), -1);
+        Mask := StrToIntDef(SeparateLeft(Params, '|'), CF_OTHER);
+        Interval := 0;
+        Indent := GetCircuitsParamsCount(PurposeID) * 16;
+
+        DrawFlagIcon(CF_EXIT, 42);
+        DrawFlagIcon(CF_INTERNAL, 61);
+        DrawFlagIcon(CF_HIDDEN_SERVICE, 53);
+        DrawFlagIcon(CF_VANGUARDS, 40);
+        DrawFlagIcon(CF_CLIENT, 32);
+        DrawFlagIcon(CF_SERVICE, 65);
+        DrawFlagIcon(CF_DIR_REQUEST, 54);
+        DrawFlagIcon(CF_INTRO, 64);
+        DrawFlagIcon(CF_REND, 66);
+        DrawFlagIcon(CF_MEASURE_TIMEOUT, 69);
+        DrawFlagIcon(CF_CIRCUIT_PADDING, 22);
+        DrawFlagIcon(CF_TESTING, 56);
+        DrawFlagIcon(CF_PATH_BIAS_TESTING, 67);
+        DrawFlagIcon(CF_CONTROLLER, 70);
+        DrawFlagIcon(CF_OTHER, 68);
+      end;
+    end;
   end;
 end;
 
@@ -3552,7 +3638,10 @@ procedure TTcp.sgCircuitsMouseMove(Sender: TObject; Shift: TShiftState; X, Y: In
 begin
   sgCircuits.MouseToCell(X, Y, sgCircuits.MovCol, sgCircuits.MovRow);
   GridSetFocus(sgCircuits);
-  GridShowHints(sgCircuits);
+  if miCircuitsShowFlagsHint.Checked and (sgCircuits.MovCol = CIRC_FLAGS) then
+    ShowCircuitsFlagsHint
+  else
+    GridShowHints(sgCircuits);
   GridCheckAutoPopup(sgCircuits, sgCircuits.MovRow, True);
 end;
 
@@ -3600,7 +3689,7 @@ begin
   end;
 end;
 
-procedure TTcp.UpdateRoutersAfterFallbackDrisUpdate;
+procedure TTcp.UpdateRoutersAfterFallbackDirsUpdate;
 begin
   if FallbackDirsRecalculate then
     SaveFallbackDirsData;
@@ -3840,7 +3929,7 @@ begin
           DrawText(sgHs.Canvas.Handle, PChar(HsHeader[ACol]), Length(HsHeader[ACol]), Rect, DT_CENTER);
     end;
   end;
-  GridScrollCheck(sgHs, HS_NAME, 183);
+  GridScrollCheck(sgHs, HS_NAME, 184);
 end;
 
 procedure TTcp.sgHsEnter(Sender: TObject);
@@ -3858,7 +3947,7 @@ procedure TTcp.sgHsPortsDrawCell(Sender: TObject; ACol, ARow: Integer;
 begin
   if ARow = 0 then
     DrawText(sgHsPorts.Canvas.Handle, PChar(HsPortsHeader[ACol]), Length(HsPortsHeader[ACol]), Rect, DT_CENTER);
-  GridScrollCheck(sgHsPorts, HSP_INTERFACE, 151);
+  GridScrollCheck(sgHsPorts, HSP_INTERFACE, 163);
 end;
 
 procedure TTcp.sgHsPortsEnter(Sender: TObject);
@@ -3964,11 +4053,16 @@ var
 
   procedure DrawFlagIcon(Flag: Word; Index: Integer);
   begin
-    if Mask and Flag <> 0 then
+    if Indent > Interval then
     begin
-      lsMenus.Draw(sgRouters.Canvas, Rect.Left + (Rect.Width - Indent) div 2 + Interval, Rect.Top + (Rect.Height - 16) div 2, Index, True);
-      Inc(Interval, 16);
-    end;
+      if Mask and Flag <> 0 then
+      begin
+        lsMenus.Draw(sgRouters.Canvas, Rect.Left + (Rect.Width - Indent) div 2 + Interval, Rect.Top + (Rect.Height - 16) div 2, Index, True);
+        Inc(Interval, 16);
+      end;
+    end
+    else
+      Exit;
   end;
 
 begin
@@ -4293,6 +4387,88 @@ begin
   end;
 end;
 
+procedure TTcp.ShowCircuitsFlagsHint;
+var
+  Fail: Boolean;
+  Mask, MaxItems: Integer;
+  Params: string;
+  CellRect, CellPoint: TRect;
+  Data: array of Word;
+  ArrayIndex: Integer;
+
+  procedure CheckMask(Param: Integer);
+  begin
+    if Mask and Param <> 0 then
+    begin
+      SetLength(Data, MaxItems + 1);
+      Data[MaxItems] := Param;
+      Inc(MaxItems);
+    end;
+  end;
+begin
+  Fail := True;
+  if not IsEmptyRow(sgCircuits, sgCircuits.MovRow) then
+  begin
+    Params := sgCircuits.Cells[CIRC_PARAMS, sgCircuits.MovRow];
+    if Params <> '' then
+    begin
+      Mask := StrToIntDef(SeparateLeft(Params, '|'), CF_OTHER);
+      MaxItems := 0;
+
+      CheckMask(CF_EXIT);
+      CheckMask(CF_INTERNAL);
+      CheckMask(CF_HIDDEN_SERVICE);
+      CheckMask(CF_VANGUARDS);
+      CheckMask(CF_CLIENT);
+      CheckMask(CF_SERVICE);
+      CheckMask(CF_DIR_REQUEST);
+      CheckMask(CF_INTRO);
+      CheckMask(CF_REND);
+      CheckMask(CF_MEASURE_TIMEOUT);
+      CheckMask(CF_CIRCUIT_PADDING);
+      CheckMask(CF_TESTING);
+      CheckMask(CF_PATH_BIAS_TESTING);
+      CheckMask(CF_CONTROLLER);
+      CheckMask(CF_OTHER);
+
+      CellRect := sgCircuits.CellRect(CIRC_FLAGS, sgCircuits.MovRow);
+      CellPoint := sgCircuits.ClientToScreen(CellRect);
+
+      ArrayIndex := (Mouse.CursorPos.X - CellPoint.Left - (CellRect.Width - MaxItems * 16) div 2);
+      if InRange(ArrayIndex, 0, MaxItems * 16 - 1) then
+      begin
+        case Data[ArrayIndex div 16] of
+          CF_EXIT: sgCircuits.Hint := TransStr('333');
+          CF_INTERNAL: sgCircuits.Hint := TransStr('332');
+          CF_HIDDEN_SERVICE: sgCircuits.Hint := TransStr('122');
+          CF_VANGUARDS: sgCircuits.Hint := TransStr('665');
+          CF_CLIENT: sgCircuits.Hint := TransStr('663');
+          CF_SERVICE: sgCircuits.Hint := TransStr('664');
+          CF_DIR_REQUEST: sgCircuits.Hint := TransStr('331');
+          CF_INTRO: sgCircuits.Hint := TransStr('666');
+          CF_REND: sgCircuits.Hint := TransStr('667');
+          CF_MEASURE_TIMEOUT: sgCircuits.Hint := TransStr('344');
+          CF_CIRCUIT_PADDING: sgCircuits.Hint := TransStr('343');
+          CF_TESTING: sgCircuits.Hint := TransStr('342');
+          CF_PATH_BIAS_TESTING: sgCircuits.Hint := TransStr('341');
+          CF_CONTROLLER: sgCircuits.Hint := TransStr('661');
+          CF_OTHER: sgCircuits.Hint := TransStr('345');
+          else
+            sgCircuits.Hint := TransStr('392');
+        end;
+        Application.ActivateHint(Mouse.CursorPos);
+        Exit;
+      end;
+    end;
+  end;
+
+  if Fail then
+  begin
+    Application.CancelHint;
+    sgCircuits.Hint := '';
+  end;
+end;
+
 procedure TTcp.ShowRoutersParamsHint;
 var
   RouterInfo: TRouterInfo;
@@ -4382,7 +4558,7 @@ begin
   sgRouters.MouseToCell(X, Y, sgRouters.MovCol, sgRouters.MovRow);
   if not (edRoutersQuery.Focused or edRoutersWeight.Focused) then
     GridSetFocus(sgRouters);
-  if miShowFlagsHint.Checked and (sgRouters.MovCol = ROUTER_FLAGS) then
+  if miRoutersShowFlagsHint.Checked and (sgRouters.MovCol = ROUTER_FLAGS) then
     ShowRoutersParamsHint
   else
     GridShowHints(sgRouters);
@@ -4522,9 +4698,9 @@ end;
 procedure TTcp.sgTransportsDrawCell(Sender: TObject; ACol, ARow: Integer;
   Rect: TRect; State: TGridDrawState);
 begin
-  if (ARow = 0) and (ACol < PT_PARAMS) then
+  if ARow = 0 then
     DrawText(sgTransports.Canvas.Handle, PChar(TransportsHeader[ACol]), Length(TransportsHeader[ACol]), Rect, DT_CENTER);
-  GridScrollCheck(sgTransports, PT_TRANSPORTS, 194);
+  GridScrollCheck(sgTransports, PT_TRANSPORTS, 204);
 end;
 
 procedure TTcp.sgTransportsKeyDown(Sender: TObject; var Key: Word;
@@ -4970,7 +5146,7 @@ begin
   DefaultsChanged := DefaultsFileID <> GetFileID(DefaultsFile);
   TorrcChanged := TorrcFileID <> GetFileID(TorConfigFile);
   PathChanged := not CheckRequiredFiles;
-  FallbackDirsChanged := MissingFallbackDirCount > 0;
+  FallbackDirsChanged := (MissingFallbackDirCount > 0) or UpdateFallbackDirs;
   BridgesChanged := (FailedBridgesCount > 0) or (AlreadyStarted and (NewBridgesCount > 0)) or
     ((cbxBridgesType.ItemIndex = BRIDGES_TYPE_FILE) and (BridgeFileID <> GetFileID(BridgesFileName)));
 
@@ -5065,6 +5241,11 @@ begin
         end;
         StreamsDic.Clear;
         CircuitsDic.Clear;
+        LockCircuits := False;
+        LockCircuitInfo := False;
+        LockStreams := False;
+        LockStreamsInfo := False;
+        ShowCircuits;
         Circuit := '';
         ExitNodeID := '';
         DLSpeed := 0;
@@ -5079,10 +5260,6 @@ begin
         ConnectState := 1;
         TotalsNeedSave := False;
         SelectExitCircuit := False;
-        LockCircuits := False;
-        LockCircuitInfo := False;
-        LockStreams := False;
-        LockStreamsInfo := False;
         tmTraffic.Enabled := True;
         tmCircuits.Enabled := True;
         tmConsensus.Enabled := True;
@@ -5207,7 +5384,7 @@ begin
   btnChangeCircuit.Enabled := True;
   miChangeCircuit.Enabled := False;
   imExitFlag.Visible := False;
-  lbExitCountry.Left := Round(180 * Scale);
+  lbExitCountry.Left := Round(182 * Scale);
   lbExitCountry.Caption := TransStr('110');
   lbExitCountry.Cursor := crDefault;
   lbExitCountry.Hint := '';
@@ -5374,8 +5551,9 @@ begin
   else
     pbTraffic.Color := ColorToRGB(StyleServices.GetStyleColor(scWindow));
 
-  lsButtons.GetIcon(6, imGeneratePassword.Picture.Icon);
-  lsButtons.GetIcon(7, imUPnPTest.Picture.Icon);
+  lsMain.GetIcon(19, imCircuitPurpose.Picture.Icon);
+  lsMain.GetIcon(21, imGeneratePassword.Picture.Icon);
+  lsMain.GetIcon(20, imUPnPTest.Picture.Icon);
 
   lsMain.GetIcon(7, imFilterEntry.Picture.Icon);
   lsMain.GetIcon(8, imFilterMiddle.Picture.Icon);
@@ -5393,10 +5571,11 @@ begin
 
   SetButtonGlyph(lsButtons, 4, sbShowOptions);
   SetButtonGlyph(lsButtons, 5, sbShowLog);
-  SetButtonGlyph(lsButtons, 9, sbShowStatus);
-  SetButtonGlyph(lsButtons, 10, sbShowCircuits);
-  SetButtonGlyph(lsButtons, 8, sbShowRouters);
-  SetButtonGlyph(lsButtons, 11, sbDecreaseForm);
+
+  SetButtonGlyph(lsButtons, 7, sbShowStatus);
+  SetButtonGlyph(lsButtons, 8, sbShowCircuits);
+  SetButtonGlyph(lsButtons, 6, sbShowRouters);
+  SetButtonGlyph(lsButtons, 9, sbDecreaseForm);
 
   btnSwitchTor.ImageIndex := ConnectState;
   btnSwitchTor.Refresh;
@@ -5646,6 +5825,17 @@ begin
         DeleteSettings('Main', 'LastGeoIpUpdateDate', ini);
         DeleteSettings('Routers', 'AddRelaysToBridgesCache, ', ini);
         ConfigVersion := 5;
+      end;
+      if ConfigVersion = 5 then
+      begin
+        SetSettings('Routers', 'RoutersShowFlagsHint', GetSettings('Routers', 'ShowFlagsHint', True, ini), ini);
+        SetSettings('Circuits', 'SelectExitCircuitWhenItChanges', GetSettings('Circuits', 'SelectExitCircuitWhetItChanges', True, ini), ini);
+        SetSettings('Circuits', 'PurposeFilter',
+          GetIntDef(GetSettings('Circuits', 'PurposeFilter', CIRCUIT_FILTER_DEFAULT, ini) + miCircController.Tag,
+            CIRCUIT_FILTER_DEFAULT, 0, CIRCUIT_FILTER_MAX), ini);
+        DeleteSettings('Routers', 'ShowFlagsHint', ini);
+        DeleteSettings('Circuits', 'SelectExitCircuitWhetItChanges', ini);
+        ConfigVersion := 6;
       end;
     end
     else
@@ -7083,7 +7273,7 @@ begin
 
     GetSettings('Routers', miRoutersScrollTop, ini);
     GetSettings('Routers', miRoutersSelectRow, ini);
-    GetSettings('Routers', miShowFlagsHint, ini);
+    GetSettings('Routers', miRoutersShowFlagsHint, ini);
     GetSettings('Routers', miDisableSelectionUnSuitableAsBridge, ini);
     GetSettings('Routers', miDisableFiltersOnAuthorityOrBridge, ini);
     GetSettings('Routers', miLoadCachedRoutersOnStartup, ini);
@@ -7099,11 +7289,12 @@ begin
 
     GetSettings('Circuits', miHideCircuitsWithoutStreams, ini, False);
     GetSettings('Circuits', miAlwaysShowExitCircuit, ini);
-    GetSettings('Circuits', miSelectExitCircuitWhetItChanges, ini);
+    GetSettings('Circuits', miSelectExitCircuitWhenItChanges, ini);
     GetSettings('Circuits', miShowCircuitsTraffic, ini);
     GetSettings('Circuits', miShowStreamsTraffic, ini);
     GetSettings('Circuits', miShowStreamsInfo, ini);
     GetSettings('Circuits', miShowPortAlongWithIp, ini);
+    GetSettings('Circuits', miCircuitsShowFlagsHint, ini);
 
     GetSettings('Scanner', cbEnablePingMeasure, ini);
     GetSettings('Scanner', cbEnableDetectAliveNodes, ini);
@@ -7365,6 +7556,7 @@ begin
 
     DeleteTorConfig('DisableNetwork');
     GetSettings('Lists', cbUseFallbackDirs, ini);
+    GetSettings('Lists', cbExcludeUnsuitableFallbackDirs, ini);
     GetSettings('Lists', cbxFallbackDirsType, ini);
     case cbxFallbackDirsType.ItemIndex of
       FALLBACK_TYPE_BUILTIN: LoadFallbackDirs(inidef, True);
@@ -7422,10 +7614,10 @@ begin
     LineToMemo(GetSettings('Lists', 'TrackHostExits', '', ini), meTrackHostExits, ltHost, True);
     SaveTrackHostExits(ini);
 
-    CheckServerControls;
     CheckScannerControls;
     if not FirstLoad then
       CheckStatusControls;
+    CheckCircuitsControls;
     CheckStreamsControls;
     CheckCachedFiles;
 
@@ -9192,15 +9384,6 @@ begin
   ClearRouters(NodeTypes, False);
 end;
 
-procedure TTcp.cbxExitPolicyTypeChange(Sender: TObject);
-begin
-  if cbxExitPolicyType.ItemIndex = 2 then
-    meExitPolicy.Enabled := True
-  else
-    meExitPolicy.Enabled := False;
-  EnableOptionButtons;
-end;
-
 procedure TTcp.cbxFallbackDirsTypeChange(Sender: TObject);
 begin
   UpdateFallbackDirControls;
@@ -10039,7 +10222,8 @@ begin
   miClearMenuNotAlive.Enabled := (BridgesState or FallbackState) and cbEnableDetectAliveNodes.Checked;
   miClearMenuCached.Enabled := BridgesState or FallbackState;
   miClearMenuNonCached.Enabled := BridgesState or FallbackState;
-  miClearMenuUnsuitable.Enabled := (FallbackState and (SuitableFallbackDirsCount < FallbackDirCount)) or
+  miClearMenuUnsuitable.Enabled :=
+    (FallbackState and cbExcludeUnsuitableFallbackDirs.Checked and (SuitableFallbackDirsCount < FallbackDirCount)) or
     (BridgesState and cbExcludeUnsuitableBridges.Checked and (SuitableBridgesCount < BridgesCount));
 
   miClearMenu.Tag := 0;
@@ -10368,7 +10552,7 @@ begin
     Btn.ShowHint := False;
     Btn.Hint := '';
     Btn.Margin := 8;
-    Btn.Width := Round(117 * Scale);
+    Btn.Width := Round(119 * Scale);
     Btn.Left := Round(LeftBig * Scale);
   end;
 end;
@@ -10377,19 +10561,19 @@ procedure TTcp.ChangeButtonsCaption;
 begin
   if FormSize = 0 then
   begin
-    btnChangeCircuit.Width := Round(117 * Scale);
-    btnSwitchTor.Width := Round(117 * Scale);
+    btnChangeCircuit.Width := Round(119 * Scale);
+    btnSwitchTor.Width := Round(119 * Scale);
   end
   else
   begin
-    btnChangeCircuit.Width := Round(117 * Scale);
-    btnSwitchTor.Width := Round(117 * Scale);
+    btnChangeCircuit.Width := Round(119 * Scale);
+    btnSwitchTor.Width := Round(119 * Scale);
   end;
-  SetButtonsProp(sbShowOptions, 122, 122);
-  SetButtonsProp(sbShowLog, 164, 241);
-  SetButtonsProp(sbShowStatus, 206, 360);
-  SetButtonsProp(sbShowCircuits, 248, 479);
-  SetButtonsProp(sbShowRouters, 290, 598);
+  SetButtonsProp(sbShowOptions, 124, 124);
+  SetButtonsProp(sbShowLog, 166, 245);
+  SetButtonsProp(sbShowStatus, 208, 366);
+  SetButtonsProp(sbShowCircuits, 250, 487);
+  SetButtonsProp(sbShowRouters, 292, 608);
   CheckLabelEndEllipsis(lbExitCountry, 150, epEndEllipsis, True, False);
 end;
 
@@ -10400,12 +10584,12 @@ begin
   if FormSize = 0 then
   begin
     H := Round(91 * Scale);
-    W := Round(333 * Scale);
+    W := Round(335 * Scale);
   end
   else
   begin
     H := Round(556 * Scale);
-    W := Round(760 * Scale);
+    W := Round(772 * Scale);
   end;
   if ClientHeight <> H then
     ClientHeight := H;
@@ -10777,6 +10961,7 @@ begin
   SetSettings('Server', cbPublishServerDescriptor, ini);
   SetSettings('Server', cbUseMyFamily, ini);
   SetSettings('Server', 'MyFamily', MyFamily, ini);
+  CheckServerControls;
 end;
 
 procedure TTcp.CheckPaddingControls;
@@ -10912,6 +11097,7 @@ begin
   State := ScanStage > 0;
   lbScanProgress.Caption := TransStr('631');
   lbScanType.Caption := GetScanTypeStr;
+  lbScanType.Left := lbScanProgress.Left;
   lbScanType.Visible := State;
   lbScanProgress.Visible := State;
   pbScanProgress.Visible := State;
@@ -10920,7 +11106,6 @@ end;
 procedure TTcp.ScanNetwork(ScanType: TScanType; ScanPurpose: TScanPurpose);
 var
   CurrentDate: Int64;
-  MaxPartialScans: Integer;
 begin
   if (ScanType = stNone) or (ScanPurpose = spNone) then
     Exit;
@@ -10946,14 +11131,8 @@ begin
 
       if CurrentScanPurpose = spAuto then
       begin
-        MaxPartialScans := udPartialScansCounts.Position;
         if CurrentDate >= (LastFullScanDate + (udFullScanInterval.Position * 3600)) then
-        begin
-          CurrentAutoScanPurpose := spAll;
-          LastFullScanDate := CurrentDate;
-          LastPartialScanDate := CurrentDate;
-          LastPartialScansCounts := MaxPartialScans;
-        end
+          CurrentAutoScanPurpose := spAll
         else
         begin
           CurrentAutoScanPurpose := spNew;
@@ -10973,8 +11152,6 @@ begin
                 2: CurrentAutoScanPurpose := spNewAndAlive;
                 3: CurrentAutoScanPurpose := spNewAndBridges;
               end;
-              LastPartialScanDate := CurrentDate;
-              Dec(LastPartialScansCounts);
             end;
           end;
         end;
@@ -10982,6 +11159,8 @@ begin
       end
       else
         CurrentAutoScanPurpose := spNone;
+
+      InitScanType := ScanType;
 
       case ScanStage of
         1: ScanStart(ScanType, CurrentScanPurpose);
@@ -11000,12 +11179,35 @@ procedure TTcp.tmScannerTimer(Sender: TObject);
 var
   ls: TStringList;
   i, DeleteCount: Integer;
-  IpStr, PortStr: string;
+  CurrentDate: Int64;
+  Str: string;
   GeoIpInfo: TGeoIpInfo;
   Bridge: TBridge;
   FallbackDir: TFallbackDir;
-  ini: TMemIniFile;
   CurrentMemo: TMemo;
+
+  procedure DeleteListData(IpStr, PortStr: string);
+  begin
+    if GeoIpDic.TryGetValue(IpStr, GeoIpInfo) then
+    begin
+      if GetPortsValue(GeoIpInfo.ports, PortStr) = -1 then
+      begin
+        ls.Delete(i);
+        Inc(DeleteCount);
+      end;
+      if (GeoIpInfo.cc = DEFAULT_COUNTRY_ID) and (GeoIpInfo.ping = 0) then
+        GeoIpDic.Remove(IpStr);
+    end;
+  end;
+
+  procedure ResetScanData;
+  begin
+    LastFullScanDate := CurrentDate;
+    LastPartialScanDate := CurrentDate;
+    LastPartialScansCounts := udPartialScansCounts.Position;
+    SaveScanData;
+  end;
+
 begin
   if not Assigned(Scanner) and (ScanThreads = 0) then
   begin
@@ -11016,90 +11218,95 @@ begin
     end
     else
     begin
-      if (CurrentScanPurpose in [spUserBridges, spUserFallbackDirs]) and (CurrentScanType = stAlive) then
+      if CurrentScanType = stAlive then
       begin
-        case CurrentScanPurpose of
-          spUserBridges: CurrentMemo := meBridges;
-          spUserFallbackDirs: CurrentMemo := meFallbackDirs;
-          else
-            Exit;
-        end;
-        if CurrentMemo.Text <> '' then
+        if CurrentScanPurpose in [spUserBridges, spUserFallbackDirs] then
         begin
-          DeleteCount := 0;
-          ls := TStringList.Create;
-          try
-            ls.Text := CurrentMemo.Text;
-            if CurrentScanPurpose = spUserBridges then
-            begin
-              for i := ls.Count - 1 downto 0 do
+          case CurrentScanPurpose of
+            spUserBridges: CurrentMemo := meBridges;
+            spUserFallbackDirs: CurrentMemo := meFallbackDirs;
+            else
+              Exit;
+          end;
+          if CurrentMemo.Text <> '' then
+          begin
+            DeleteCount := 0;
+            ls := TStringList.Create;
+            try
+              ls.Text := CurrentMemo.Text;
+              if CurrentScanPurpose = spUserBridges then
               begin
-                if TryParseBridge(ls[i], Bridge) then
+                for i := ls.Count - 1 downto 0 do
                 begin
-                  IpStr := GetBridgeIp(Bridge);
-                  if IpStr = '' then
-                    Continue;
-                  PortStr := IntToStr(Bridge.Port);
-                  if GeoIpDic.TryGetValue(IpStr, GeoIpInfo) then
+                  if TryParseBridge(ls[i], Bridge) then
                   begin
-                    if GetPortsValue(GeoIpInfo.ports, PortStr) = -1 then
-                    begin
-                      ls.Delete(i);
-                      Inc(DeleteCount);
-                    end;
-                    if (GeoIpInfo.cc = DEFAULT_COUNTRY_ID) and (GeoIpInfo.ping = 0) then
-                      GeoIpDic.Remove(IpStr);
+                    Str := GetBridgeIp(Bridge);
+                    if Str = '' then
+                      Continue;
+                    DeleteListData(Str, IntToStr(Bridge.Port));
                   end;
                 end;
               end;
-            end;
-            if CurrentScanPurpose = spUserFallbackDirs then
-            begin
-              for i := ls.Count - 1 downto 0 do
+              if CurrentScanPurpose = spUserFallbackDirs then
               begin
-                if TryParseFallbackDir(ls[i], FallbackDir) then
+                for i := ls.Count - 1 downto 0 do
                 begin
-                  PortStr := IntToStr(FallbackDir.OrPort);
-                  if GeoIpDic.TryGetValue(FallbackDir.IPv4, GeoIpInfo) then
-                  begin
-                    if GetPortsValue(GeoIpInfo.ports, PortStr) = -1 then
-                    begin
-                      ls.Delete(i);
-                      Inc(DeleteCount);
-                    end;
-                    if (GeoIpInfo.cc = DEFAULT_COUNTRY_ID) and (GeoIpInfo.ping = 0) then
-                      GeoIpDic.Remove(FallbackDir.IPv4);
-                  end;
+                  if TryParseFallbackDir(ls[i], FallbackDir) then
+                    DeleteListData(FallbackDir.IPv4, IntToStr(FallbackDir.OrPort));
                 end;
               end;
-            end;
-            if DeleteCount > 0 then
-            begin
-              CurrentMemo.Text := ls.Text;
-              case CurrentScanPurpose of
-                spUserBridges: SaveBridgesData;
-                spUserFallbackDirs: SaveFallbackDirsData;
+              if DeleteCount > 0 then
+              begin
+                CurrentMemo.Text := ls.Text;
+                case CurrentScanPurpose of
+                  spUserBridges: SaveBridgesData;
+                  spUserFallbackDirs: SaveFallbackDirsData;
+                end;
               end;
+            finally
+              ls.Free;
             end;
-          finally
-            ls.Free;
+          end;
+        end
+        else
+        begin
+          if cbExcludeUnsuitableFallbackDirs.Checked then
+          begin
+            ls := TStringList.Create;
+            try
+              ls.Text := meFallbackDirs.Text;
+              ExcludeUnsuitableFallbackDirs(ls);
+              if LastFallbackDirsHash <> Crc32(AnsiString(ls.Text)) then
+                UpdateFallbackDirs := True;
+            finally
+              ls.Free;
+            end;
           end;
         end;
       end;
 
+      CurrentDate := DateTimeToUnix(Now);
       case CurrentScanPurpose of
         spUserBridges, spUserFallbackDirs: SetOptionsEnable(True);
+        spAll:
+        begin
+          if (InitScanType = stBoth) and not StopScan then
+            ResetScanData;
+        end;
         spAuto:
         begin
           if not StopScan then
           begin
-            ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
-            try
-              SetSettings('Scanner', 'LastFullScanDate', LastFullScanDate, ini);
-              SetSettings('Scanner', 'LastPartialScanDate', LastPartialScanDate, ini);
-              SetSettings('Scanner', 'LastPartialScansCounts', LastPartialScansCounts, ini);
-            finally
-              UpdateConfigFile(ini);
+            if CurrentAutoScanPurpose = spAll then
+              ResetScanData
+            else
+            begin
+              if CurrentAutoScanPurpose <> spNew then
+              begin
+                LastPartialScanDate := CurrentDate;
+                Dec(LastPartialScansCounts);
+                SaveScanData;
+              end;
             end;
           end;
         end;
@@ -11126,6 +11333,7 @@ begin
       CurrentScanPurpose := spNone;
       CurrentAutoScanPurpose := spNone;
       CurrentScanType := stNone;
+      InitScanType := stNone;
       StopScan := False;
       tmScanner.Enabled := False;
     end;
@@ -11317,13 +11525,13 @@ begin
   GridSort(sgFilter);
   SetGridLastCell(sgFilter, True, miFilterScrollTop.Checked);
   if cbEnablePingMeasure.Checked and cbEnableDetectAliveNodes.Checked then
-    GridScrollCheck(sgFilter, FILTER_NAME, 257)
+    GridScrollCheck(sgFilter, FILTER_NAME, 268)
   else
   begin
     if cbEnablePingMeasure.Checked or cbEnableDetectAliveNodes.Checked then
-      GridScrollCheck(sgFilter, FILTER_NAME, 313)
+      GridScrollCheck(sgFilter, FILTER_NAME, 324)
     else
-      GridScrollCheck(sgFilter, FILTER_NAME, 369);
+      GridScrollCheck(sgFilter, FILTER_NAME, 380);
   end;
   EndUpdateTable(sgFilter);
   lbFilterCount.Caption := Format(TransStr('321'), [FilterCount, FilterDic.Count]);
@@ -11762,9 +11970,9 @@ begin
   GridSort(sgRouters);
   SetGridLastCell(sgRouters, True, miRoutersScrollTop.Checked);
   if cbEnablePingMeasure.Checked then
-    GridScrollCheck(sgRouters, ROUTER_COUNTRY, 121)
+    GridScrollCheck(sgRouters, ROUTER_COUNTRY, 133)
   else
-    GridScrollCheck(sgRouters, ROUTER_COUNTRY, 141);
+    GridScrollCheck(sgRouters, ROUTER_COUNTRY, 153);
   EndUpdateTable(sgRouters);
   lbRoutersCount.Caption := Format(TransStr('321'), [RoutersCount, RoutersDic.Count]);
 
@@ -11882,7 +12090,7 @@ begin
   CheckCountryIndexInList;
 end;
 
-procedure TTcp.ShowCircuits;
+procedure TTcp.ShowCircuits(AlwaysUpdate: Boolean = True);
 var
   CircuitsCount: Integer;
   Item: TPair<string, TCircuitInfo>;
@@ -11891,94 +12099,104 @@ var
 begin
   if LockCircuits then
     Exit;
-  LockCircuits := True;
-  CircuitsCount := 0;
-  TotalConnections := 0;
-  PurposeStr := '';
-  if sgCircuits.SelRow = 0 then
-    sgCircuits.SelRow := 1;
-  sgCircuits.RowID := sgCircuits.Cells[CIRC_ID, sgCircuits.SelRow];
-  BeginUpdateTable(sgCircuits);
-  ClearGrid(sgCircuits, False);
-  for Item in CircuitsDic do
+  if AlwaysUpdate or CircuitsUpdated then
   begin
-    Inc(TotalConnections, Item.Value.Streams);
-    if miHideCircuitsWithoutStreams.Checked then
-    begin
-      if Item.Value.Streams = 0 then
-      begin
-        if (Item.Key = Circuit) then
-        begin
-          if not miAlwaysShowExitCircuit.Checked then
-            Continue;
-        end
-        else
-          Continue;
-      end;
-    end;
+    LockCircuits := True;
+    CircuitsCount := 0;
+    TotalConnections := 0;
     PurposeStr := '';
-    if bfOneHop in (Item.Value.BuildFlags) then
+    if sgCircuits.SelRow = 0 then
+      sgCircuits.SelRow := 1;
+    sgCircuits.RowID := sgCircuits.Cells[CIRC_ID, sgCircuits.SelRow];
+    BeginUpdateTable(sgCircuits);
+    ClearGrid(sgCircuits, False);
+
+    for Item in CircuitsDic do
     begin
-      if miCircOneHop.Checked then
-        PurposeStr := TransStr('331')
-    end
-    else
-    begin
-      case Item.Value.PurposeID of
-        GENERAL:
+      Inc(TotalConnections, Item.Value.Streams);
+      if miHideCircuitsWithoutStreams.Checked then
+      begin
+        if Item.Value.Streams = 0 then
         begin
-          if bfInternal in (Item.Value.BuildFlags) then
+          if Item.Key = Circuit then
           begin
-            if miCircInternal.Checked then
-              PurposeStr := TransStr('332')
+            if not miAlwaysShowExitCircuit.Checked then
+              Continue;
           end
           else
-            if miCircExit.Checked or (miAlwaysShowExitCircuit.Checked and (Item.Key = Circuit)) then
-              PurposeStr := TransStr('333')
+            Continue;
         end;
-        HS_CLIENT_HSDIR: if miCircHsClientDir.Checked then PurposeStr := TransStr('334');
-        HS_CLIENT_INTRO: if miCircHsClientIntro.Checked then PurposeStr := TransStr('335');
-        HS_CLIENT_REND: if miCircHsClientRend.Checked then PurposeStr := TransStr('336');
-        HS_SERVICE_HSDIR: if miCircHsServiceDir.Checked then PurposeStr := TransStr('337');
-        HS_SERVICE_INTRO: if miCircHsServiceIntro.Checked then PurposeStr := TransStr('338');
-        HS_SERVICE_REND: if miCircHsServiceRend.Checked then PurposeStr := TransStr('339');
-        HS_VANGUARDS: if miCircHsVanguards.Checked then PurposeStr := TransStr('340');
-        PATH_BIAS_TESTING: if miCircPathBiasTesting.Checked then PurposeStr := TransStr('341');
-        TESTING: if miCircTesting.Checked then PurposeStr := TransStr('342');
-        CIRCUIT_PADDING: if miCircCircuitPadding.Checked then PurposeStr := TransStr('343');
-        MEASURE_TIMEOUT: if miCircMeasureTimeout.Checked then PurposeStr := TransStr('344');
+      end;
+      PurposeStr := '';
+      if bfOneHop in Item.Value.BuildFlags then
+      begin
+        if miCircOneHop.Checked then
+          PurposeStr := TransStr('331');
+      end
+      else
+      begin
+        case Item.Value.PurposeID of
+          GENERAL:
+          begin
+            if bfInternal in Item.Value.BuildFlags then
+            begin
+              if miCircInternal.Checked then
+                PurposeStr := TransStr('332');
+            end
+            else
+            begin
+              if miCircExit.Checked or (miAlwaysShowExitCircuit.Checked and (Item.Key = Circuit)) then
+                PurposeStr := TransStr('333');
+            end;
+          end;
+          HS_CLIENT_HSDIR: if miCircHsClientDir.Checked then PurposeStr := TransStr('334');
+          HS_CLIENT_INTRO: if miCircHsClientIntro.Checked then PurposeStr := TransStr('335');
+          HS_CLIENT_REND: if miCircHsClientRend.Checked then PurposeStr := TransStr('336');
+          HS_SERVICE_HSDIR: if miCircHsServiceDir.Checked then PurposeStr := TransStr('337');
+          HS_SERVICE_INTRO: if miCircHsServiceIntro.Checked then PurposeStr := TransStr('338');
+          HS_SERVICE_REND: if miCircHsServiceRend.Checked then PurposeStr := TransStr('339');
+          HS_VANGUARDS: if miCircHsVanguards.Checked then PurposeStr := TransStr('340');
+          PATH_BIAS_TESTING: if miCircPathBiasTesting.Checked then PurposeStr := TransStr('341');
+          TESTING: if miCircTesting.Checked then PurposeStr := TransStr('342');
+          CIRCUIT_PADDING: if miCircCircuitPadding.Checked then PurposeStr := TransStr('343');
+          MEASURE_TIMEOUT: if miCircMeasureTimeout.Checked then PurposeStr := TransStr('344');
+          CONTROLLER_CIRCUIT: if miCircController.Checked then PurposeStr := TransStr('661');
+          else
+            if miCircOther.Checked then PurposeStr := TransStr('345');
+        end;
+      end;
+      if PurposeStr <> '' then
+      begin
+        Inc(CircuitsCount);
+        sgCircuits.Cells[CIRC_ID, CircuitsCount] := Item.Key;
+        sgCircuits.Cells[CIRC_PURPOSE, CircuitsCount] := PurposeStr;
+        sgCircuits.Cells[CIRC_PARAMS, CircuitsCount] := IntToStr(Item.Value.Flags) + '|' + IntToStr(Item.Value.PurposeID);
+        sgCircuits.Cells[CIRC_BYTES_READ, CircuitsCount] := BytesFormat(Item.Value.BytesRead);
+        sgCircuits.Cells[CIRC_BYTES_WRITTEN, CircuitsCount] := BytesFormat(Item.Value.BytesWritten);
+        if Item.Value.Streams > 0 then
+          sgCircuits.Cells[CIRC_STREAMS, CircuitsCount] := IntToStr(Item.Value.Streams)
         else
-          if miCircOther.Checked then PurposeStr := TransStr('345');
+          sgCircuits.Cells[CIRC_STREAMS, CircuitsCount] := NONE_CHAR;
       end;
     end;
-    if PurposeStr <> '' then
-    begin
-      Inc(CircuitsCount);
-      sgCircuits.Cells[CIRC_ID, CircuitsCount] := Item.Key;
-      sgCircuits.Cells[CIRC_PURPOSE, CircuitsCount] := PurposeStr;
-      if Item.Value.Streams > 0 then
-        sgCircuits.Cells[CIRC_STREAMS, CircuitsCount] := IntToStr(Item.Value.Streams)
-      else
-        sgCircuits.Cells[CIRC_STREAMS, CircuitsCount] := NONE_CHAR;
-      sgCircuits.Cells[CIRC_BYTES_READ, CircuitsCount] := IntToStr(Item.Value.BytesRead);
-      sgCircuits.Cells[CIRC_BYTES_WRITTEN, CircuitsCount] := IntToStr(Item.Value.BytesWritten);
-    end;
+    if CircuitsCount > 0 then
+      sgCircuits.RowCount := CircuitsCount + 1
+    else
+      sgCircuits.RowCount := 2;
+    GridSort(sgCircuits);
+    if SelectExitCircuit then
+      FindInCircuits(Circuit, ExitNodeID)
+    else
+      SetGridLastCell(sgCircuits, False);
+    CheckCircuitsControls(False);
+    EndUpdateTable(sgCircuits);
+    lbCircuitsCount.Caption := Format(TransStr('349'), [CircuitsCount, CircuitsDic.Count]);
+    lbStreamsCount.Caption := TransStr('350') + ': ' + IntToStr(TotalConnections);
+
+    LockCircuits := False;
+    CircuitsUpdated := False;
   end;
-  if CircuitsCount > 0 then
-    sgCircuits.RowCount := CircuitsCount + 1
-  else
-    sgCircuits.RowCount := 2;
-  GridSort(sgCircuits);
-  if SelectExitCircuit then
-    FindInCircuits(Circuit, ExitNodeID)
-  else
-    SetGridLastCell(sgCircuits, False);
-  GridScrollCheck(sgCircuits, CIRC_PURPOSE, 180);
-  EndUpdateTable(sgCircuits);
-  lbCircuitsCount.Caption := Format(TransStr('349'), [CircuitsCount, CircuitsDic.Count]);
-  lbStreamsCount.Caption := TransStr('350') + ': ' + IntToStr(TotalConnections);
   ShowCircuitInfo(sgCircuits.Cells[CIRC_ID, sgCircuits.SelRow]);
-  LockCircuits := False;
 end;
 
 procedure TTcp.ShowCircuitInfo(CircID: string);
@@ -12037,10 +12255,12 @@ begin
       end;
       sgCircuitInfo.Cells[CIRC_INFO_PING, NodesCount] := PingData;
     end;
-    lbDetailsTime.Caption := TransStr('221') + ': ' + CircuitInfo.Date;
+    lbCircPurpose.Caption := sgCircuits.Cells[CIRC_PURPOSE, sgCircuits.SelRow];
+    lbDetailsTime.Caption := TransStr('221') + ': ' + DateTimeToStr(CircuitInfo.Date);
   end
   else
   begin
+    lbCircPurpose.Caption := TransStr('662');
     lbDetailsTime.Caption := TransStr('221') + ': ' + TransStr('110');
     CheckCircuitExists(CircID);
   end;
@@ -12169,13 +12389,6 @@ begin
         end;
       end;
     end;
-    lbDLCirc.Caption := TransStr('214') + ': ' + BytesFormat(CircuitInfo.BytesRead);
-    lbULCirc.Caption := TransStr('215') + ': ' + BytesFormat(CircuitInfo.BytesWritten);
-  end
-  else
-  begin
-    lbDLCirc.Caption := TransStr('214') + ': ' + INFINITY_CHAR;
-    lbULCirc.Caption := TransStr('215') + ': ' + INFINITY_CHAR;
   end;
 
   if StreamsCount > 0 then
@@ -12186,9 +12399,10 @@ begin
   GridSort(sgStreams);
   SetGridLastCell(sgStreams, False, False, False, -1, -1, 1);
   if miShowStreamsTraffic.Checked then
-    GridScrollCheck(sgStreams, STREAMS_TARGET, 323)
+    GridScrollCheck(sgStreams, STREAMS_TARGET, 338)
   else
-    GridScrollCheck(sgStreams, STREAMS_TARGET, 446);
+    GridScrollCheck(sgStreams, STREAMS_TARGET, 451);
+
   EndUpdateTable(sgStreams);
   ShowStreamsInfo(CircID, sgStreams.Cells[STREAMS_TARGET, sgStreams.SelRow]);
   LockStreams := False;
@@ -12290,9 +12504,9 @@ begin
   GridSort(sgStreamsInfo);
   SetGridLastCell(sgStreamsInfo, False);
   if miShowStreamsTraffic.Checked then
-    GridScrollCheck(sgStreamsInfo, STREAMS_INFO_PURPOSE, 119)
+    GridScrollCheck(sgStreamsInfo, STREAMS_INFO_PURPOSE, 134)
   else
-    GridScrollCheck(sgStreamsInfo, STREAMS_INFO_PURPOSE, 163);
+    GridScrollCheck(sgStreamsInfo, STREAMS_INFO_PURPOSE, 177);
   EndUpdateTable(sgStreamsInfo);
   CheckCircuitStreams(CircID, StreamsCount);
   LockStreamsInfo := False;
@@ -12374,21 +12588,6 @@ begin
   BridgesUpdated := True;
   BridgesRecalculate := True;
   SaveBridgesData;
-  EnableOptionButtons;
-end;
-
-procedure TTcp.ServerAddressEnable(State: Boolean);
-begin
-  edAddress.Enabled := State;
-  lbAddress.Enabled := State;
-end;
-
-procedure TTcp.cbUseAddressClick(Sender: TObject);
-begin
-  if cbUseAddress.Checked then
-    ServerAddressEnable(True)
-  else
-    ServerAddressEnable(False);
   EnableOptionButtons;
 end;
 
@@ -12493,7 +12692,7 @@ begin
   begin
     sgFilter.ColWidths[FILTER_ALIVE] := Round(55 * Scale);
     sgFilter.ColWidths[FILTER_PING] := Round(55 * Scale);
-    GridScrollCheck(sgFilter, FILTER_NAME, 257);
+    GridScrollCheck(sgFilter, FILTER_NAME, 268);
   end
   else
   begin
@@ -12501,7 +12700,7 @@ begin
     begin
       sgFilter.ColWidths[FILTER_ALIVE] := -1;
       sgFilter.ColWidths[FILTER_PING] := Round(55 * Scale);
-      GridScrollCheck(sgFilter, FILTER_NAME, 313);
+      GridScrollCheck(sgFilter, FILTER_NAME, 324);
     end
     else
     begin
@@ -12509,13 +12708,13 @@ begin
       begin
         sgFilter.ColWidths[FILTER_ALIVE] := Round(55 * Scale);
         sgFilter.ColWidths[FILTER_PING] := -1;
-        GridScrollCheck(sgFilter, FILTER_NAME, 313);
+        GridScrollCheck(sgFilter, FILTER_NAME, 324);
       end
       else
       begin
         sgFilter.ColWidths[FILTER_ALIVE] := -1;
         sgFilter.ColWidths[FILTER_PING] := -1;
-        GridScrollCheck(sgFilter, FILTER_NAME, 369);
+        GridScrollCheck(sgFilter, FILTER_NAME, 380);
       end;
     end;
   end;
@@ -12523,24 +12722,24 @@ begin
   if PingState then
   begin
     sgCircuitInfo.ColWidths[CIRC_INFO_NAME] := Round(120 * Scale);
-    sgCircuitInfo.ColWidths[CIRC_INFO_IP] := Round(120 * Scale);
-    sgCircuitInfo.ColWidths[CIRC_INFO_COUNTRY] := Round(119 * Scale);
+    sgCircuitInfo.ColWidths[CIRC_INFO_IP] := Round(130 * Scale);
+    sgCircuitInfo.ColWidths[CIRC_INFO_COUNTRY] := Round(114 * Scale);
     sgCircuitInfo.ColWidths[CIRC_INFO_PING] := Round(48 * Scale);
     sgRouters.ColWidths[ROUTER_NAME] := Round(106 * Scale);
     sgRouters.ColWidths[ROUTER_IP] := Round(88 * Scale);
     sgRouters.ColWidths[ROUTER_PING] := Round(44 * Scale);
-    GridScrollCheck(sgRouters, ROUTER_COUNTRY, 121);
+    GridScrollCheck(sgRouters, ROUTER_COUNTRY, 133);
   end
   else
   begin
     sgCircuitInfo.ColWidths[CIRC_INFO_NAME] := Round(135 * Scale);
-    sgCircuitInfo.ColWidths[CIRC_INFO_IP] := Round(135 * Scale);
-    sgCircuitInfo.ColWidths[CIRC_INFO_COUNTRY] := Round(139 * Scale);
+    sgCircuitInfo.ColWidths[CIRC_INFO_IP] := Round(145 * Scale);
+    sgCircuitInfo.ColWidths[CIRC_INFO_COUNTRY] := Round(134 * Scale);
     sgCircuitInfo.ColWidths[CIRC_INFO_PING] := -1;
     sgRouters.ColWidths[ROUTER_NAME] := Round(121 * Scale);
     sgRouters.ColWidths[ROUTER_IP] := Round(98 * Scale);
     sgRouters.ColWidths[ROUTER_PING] := Round(-1 * Scale);
-    GridScrollCheck(sgRouters, ROUTER_COUNTRY, 141);
+    GridScrollCheck(sgRouters, ROUTER_COUNTRY, 153);
   end;
 end;
 
@@ -12595,11 +12794,16 @@ var
   FallbackCount: Integer;
 begin
   FallbackCount := meFallbackDirs.Lines.Count;
-  if ShowSuitableCount then
-    NumStr := IntToStr(SuitableFallbackDirsCount)
+  if cbExcludeUnsuitableFallbackDirs.Checked then
+  begin
+    if ShowSuitableCount then
+      NumStr := IntToStr(SuitableFallbackDirsCount)
+    else
+      NumStr := INFINITY_CHAR;
+    lbTotalFallbackDirs.Caption := Format(TransStr('632'), [NumStr, FallbackCount]);
+  end
   else
-    NumStr := INFINITY_CHAR;
-  lbTotalFallbackDirs.Caption := Format(TransStr('632'), [NumStr, FallbackCount]);
+    lbTotalFallbackDirs.Caption := TransStr('203') + ': ' + IntToStr(FallbackCount);
   lbFavoritesFallbackDirs.Caption := IntToStr(UsedFallbackDirsCount)
 end;
 
@@ -12708,13 +12912,17 @@ begin
       if aSg.SortType = SORT_ASC then aCompare := CompSizeAsc else aCompare := CompSizeDesc;
     dtParams:
       if aSg.SortType = SORT_ASC then aCompare := CompParamsAsc else aCompare := CompParamsDesc;
+    dtFlags:
+      if aSg.SortType = SORT_ASC then aCompare := CompFlagsAsc else aCompare := CompFlagsDesc;
     else
       if aSg.SortType = SORT_ASC then aCompare := CompTextAsc else aCompare := CompTextDesc;
   end;
-  if aSg.ColsDataType[aSg.SortCol] = dtParams then
-    aCol := 0
-  else
-    aCol := aSg.SortCol;
+  case aSg.ColsDataType[aSg.SortCol] of
+    dtParams: aCol := 0;
+     dtFlags: aCol := CIRC_PARAMS;
+    else
+      aCol := aSg.SortCol;
+  end;
   sgSort(aSg, aCol, aCompare);
 end;
 
@@ -12722,11 +12930,13 @@ procedure TTcp.SortPrepare(aSg: TStringGrid; ACol: Integer; ManualSort: Boolean 
 var
   ScrollTop: Boolean;
 begin
-  if (aSg.SortCol = ACol) then
+  if aSg.SortCol = ACol then
+  begin
     case aSg.SortType of
       SORT_ASC: aSg.SortType := SORT_DESC;
       SORT_DESC: aSg.SortType := SORT_ASC;
-    end
+    end;
+  end
   else
     aSg.SortType := SORT_ASC;
   aSg.SortCol := ACol;
@@ -12804,57 +13014,19 @@ begin
   EnableOptionButtons;
 end;
 
-procedure TTcp.MaxMemInQueuesEnable(State: Boolean);
+procedure TTcp.ServerControlsChange(Sender: TObject);
 begin
-  edMaxMemInQueues.Enabled := State;
-  udMaxMemInQueues.Enabled := State;
-  lbMaxMemInQueues.Enabled := State;
-  lbSizeMb.Enabled := State;
-end;
-
-procedure TTcp.cbUseMaxMemInQueuesClick(Sender: TObject);
-begin
-  if not cbUseMaxMemInQueues.Focused then
-    Exit;
-  MaxMemInQueuesEnable(cbUseMaxMemInQueues.Checked);
-  EnableOptionButtons;
-end;
-
-procedure TTcp.NumCPUsEnable(State: Boolean);
-begin
-  edNumCPUs.Enabled := State;
-  udNumCPUs.Enabled := State;
-  lbNumCPUs.Enabled := State;
+  if TWinControl(Sender).Focused then
+  begin
+    CheckServerControls;
+    EnableOptionButtons;
+  end;
 end;
 
 procedure TTcp.cbNoDesktopBordersClick(Sender: TObject);
 begin
   cbNoDesktopBordersOnlyEnlarged.Enabled := cbNoDesktopBorders.Checked;
   EnableOptionButtons;
-end;
-
-procedure TTcp.cbUseNumCPUsClick(Sender: TObject);
-begin
-  if not cbUseNumCPUs.Focused then
-    Exit;
-  NumCPUsEnable(cbUseNumCPUs.Checked);
-  EnableOptionButtons;
-end;
-
-procedure TTcp.RelayBandwidthEnable(State: Boolean);
-begin
-  edRelayBandwidthRate.Enabled := State;
-  edRelayBandwidthBurst.Enabled := State;
-  edMaxAdvertisedBandwidth.Enabled := State;
-  udRelayBandwidthRate.Enabled := State;
-  udRelayBandwidthBurst.Enabled := State;
-  udMaxAdvertisedBandwidth.Enabled := State;
-  lbRelayBandwidthRate.Enabled := State;
-  lbRelayBandwidthBurst.Enabled := State;
-  lbMaxAdvertisedBandwidth.Enabled := State;
-  lbSpeed1.Enabled := State;
-  lbSpeed2.Enabled := State;
-  lbSpeed4.Enabled := State;
 end;
 
 procedure TTcp.cbUseReachableAddressesClick(Sender: TObject);
@@ -12871,12 +13043,6 @@ begin
     FallbackDirsUpdated := True;
     SaveFallbackDirsData;
   end;
-  EnableOptionButtons;
-end;
-
-procedure TTcp.cbUseRelayBandwidthClick(Sender: TObject);
-begin
-  RelayBandwidthEnable(cbUseRelayBandwidth.Checked);
   EnableOptionButtons;
 end;
 
@@ -12960,7 +13126,9 @@ begin
   State := cbUseFallbackDirs.Checked;
   FallbackDirsIsBuiltin := cbxFallbackDirsType.ItemIndex = FALLBACK_TYPE_BUILTIN;
   BuiltinState := State and FallbackDirsIsBuiltin and (meFallbackDirs.Lines.Count > 0);
+
   cbxFallbackDirsType.Enabled := State;
+  cbExcludeUnsuitableFallbackDirs.Enabled := State;
   meFallbackDirs.Enabled := BuiltinState or (State and not FallbackDirsIsBuiltin);
   meFallbackDirs.ReadOnly := FallbackDirsIsBuiltin;
   lbFallbackDirsType.Enabled := State;
@@ -13071,12 +13239,6 @@ begin
   lbDirPort.Enabled := State;
 end;
 
-procedure TTcp.cbUseDirPortClick(Sender: TObject);
-begin
-  UseDirPortEnable(cbUseDirPort.Checked);
-  EnableOptionButtons;
-end;
-
 procedure TTcp.cbUseFallbackDirsClick(Sender: TObject);
 begin
   FallbackDirsUpdated := True;
@@ -13094,19 +13256,6 @@ begin
   lbVanguardLayerType.Enabled := State;
   if cbUseHiddenServiceVanguards.Focused then
     EnableOptionButtons;
-end;
-
-procedure TTcp.cbUseMyFamilyClick(Sender: TObject);
-begin
-  if FirstLoad then
-    Exit;
-  MyFamilyEnable(cbUseMyFamily.Checked);
-  if cbUseMyFamily.Checked then
-  begin
-    if meMyFamily.CanFocus then
-      meMyFamily.SetFocus;
-  end;
-  EnableOptionButtons;
 end;
 
 procedure TTcp.cbUseOpenDNSClick(Sender: TObject);
@@ -13178,12 +13327,6 @@ begin
   EnableOptionButtons;
 end;
 
-procedure TTcp.cbUseUPnPClick(Sender: TObject);
-begin
-  imUPnPTest.Visible := cbUseUPnP.Checked;
-  EnableOptionButtons;
-end;
-
 procedure TTcp.CheckAuthMetodContols;
 var
   State: Boolean;
@@ -13205,15 +13348,6 @@ begin
   udCircuitBuildTimeout.Enabled := State;
   lbCircuitBuildTimeout.Enabled := State;
   lbSeconds2.Enabled := State;
-  EnableOptionButtons;
-end;
-
-procedure TTcp.cbListenIPv6Click(Sender: TObject);
-begin
-  if cbListenIPv6.Checked and (cbxServerMode.ItemIndex = SERVER_MODE_EXIT) then
-    cbIPv6Exit.Enabled := True
-  else
-    cbIPv6Exit.Enabled := False;
   EnableOptionButtons;
 end;
 
@@ -13240,13 +13374,6 @@ begin
   cbAutoSelNodesWithPingOnly.Enabled := cbxAutoSelPriority.ItemIndex in [1, 3];
 end;
 
-procedure TTcp.TransportPortEnable(State: Boolean);
-begin
-  edTransportPort.Enabled := State;
-  udTransportPort.Enabled := State;
-  lbTransportPort.Enabled := State;
-end;
-
 procedure TTcp.cbxBridgesListChange(Sender: TObject);
 begin
   UpdateBridgesControls(False, True);
@@ -13269,12 +13396,6 @@ procedure TTcp.cbxBridgesPriorityChange(Sender: TObject);
 begin
   BridgesUpdated := True;
   BridgesRecalculate := True;
-  EnableOptionButtons;
-end;
-
-procedure TTcp.cbxBridgeTypeChange(Sender: TObject);
-begin
-  TransportPortEnable(cbxBridgeType.ItemIndex > 0);
   EnableOptionButtons;
 end;
 
@@ -13628,117 +13749,94 @@ end;
 
 procedure TTcp.CheckServerControls;
 var
-  State: Boolean;
+  State, MemState, CpuState, BandState, AddrState, DirState: Boolean;
+  BridgeState, FamilyState, ExitState, TransportState: Boolean;
 begin
   if cbxServerMode.HelpContext = 1 then
     Exit;
   State := cbxServerMode.ItemIndex <> SERVER_MODE_NONE;
-  edNickname.Enabled := State;
-  edContactInfo.Enabled := State;
-  edORPort.Enabled := State;
-  udOrPort.Enabled := State;
-  cbUseRelayBandwidth.Enabled := State;
-  cbUseMaxMemInQueues.Enabled := State;
-  cbUseNumCPUs.Enabled := State;
-  cbUseUPnP.Enabled := State;
-  cbPublishServerDescriptor.Enabled := State;
-  cbDirReqStatistics.Enabled := State;
-  cbHiddenServiceStatistics.Enabled := State;
-  cbAssumeReachable.Enabled := State;
-  cbListenIPv6.Enabled := State;
-  cbUseAddress.Enabled := State;
-  if State then
-  begin
-    if cbUseRelayBandwidth.Checked then
-      RelayBandwidthEnable(True);
-    if cbUseMaxMemInQueues.Checked then
-      MaxMemInQueuesEnable(True);
-    if cbUseNumCPUs.Checked then
-      NumCPUsEnable(True);
-    if cbUseAddress.Checked then
-      ServerAddressEnable(True);
-    if cbxServerMode.ItemIndex <> SERVER_MODE_BRIDGE then
-    begin
-      MyFamilyEnable(cbUseMyFamily.Checked);
-      UseDirPortEnable(cbUseDirPort.Checked);
-      cbUseMyFamily.Enabled := True;
-    end
-    else
-    begin
-      cbUseMyFamily.Enabled := False;
-      MyFamilyEnable(False);
-    end;
-    imUPnPTest.Visible := True;
-    lbNickname.Enabled := True;
-    lbContactInfo.Enabled := True;
-    lbPorts.Enabled := True;
-    lbORPort.Enabled := True;
-  end
-  else
-  begin
-    cbUseDirPort.Enabled := False;
-    cbUseMyFamily.Enabled := False;
-    TransportPortEnable(False);
-    UseDirPortEnable(False);
-    RelayBandwidthEnable(False);
-    MaxMemInQueuesEnable(False);
-    NumCPUsEnable(False);
-    MyFamilyEnable(False);
-    ServerAddressEnable(False);
-    meExitPolicy.Enabled := False;
-    imUPnPTest.Visible := False;
-    lbNickname.Enabled := False;
-    lbContactInfo.Enabled := False;
-    lbPorts.Enabled := False;
-    lbORPort.Enabled := False;
-    lbTotalMyFamily.Enabled := False;
-  end;
-
-  if cbxServerMode.ItemIndex = SERVER_MODE_EXIT then
-  begin
-    if cbListenIPv6.Checked then
-      cbIPv6Exit.Enabled := True;
-    cbxExitPolicyType.Enabled := True;
-    meExitPolicy.enabled := cbxExitPolicyType.ItemIndex = 2;
-    lbExitPolicy.Enabled := True;
-  end
-  else
-  begin
-    cbIPv6Exit.Enabled := False;
-    cbxExitPolicyType.Enabled := False;
-    meExitPolicy.enabled := False;
-    lbExitPolicy.Enabled := False;
-  end;
-
-  if cbxServerMode.ItemIndex = SERVER_MODE_BRIDGE then
+  BridgeState := cbxServerMode.ItemIndex = SERVER_MODE_BRIDGE;
+  if BridgeState then
   begin
     cbUseDirPort.Checked := False;
-    cbUseDirPort.Enabled := False;
-    cbDirCache.Enabled := False;
-    cbDirCache.Checked := True;
-    cbxBridgeType.Enabled := True;
-    cbxBridgeDistribution.Enabled := True;
     cbUseMyFamily.Checked := False;
-    TransportPortEnable(cbxBridgeType.ItemIndex > 0);
-    lbBridgeType.Enabled := True;
-    lbBridgeDistribution.Enabled := True;
-  end
-  else
-  begin
-    cbxBridgeType.Enabled := False;
-    cbxBridgeDistribution.Enabled := False;
-    if cbxServerMode.ItemIndex > SERVER_MODE_NONE then
-      cbUseDirPort.Enabled := True;
-    TransportPortEnable(False);
-    lbBridgeType.Enabled := False;
-    lbBridgeDistribution.Enabled := False;
   end;
-end;
+  if BridgeState or cbUseDirPort.Checked then
+    cbDirCache.Checked := True;
+  AddrState := State and cbUseAddress.Checked;
+  BandState := State and cbUseRelayBandwidth.Checked;
+  CpuState := State and cbUseNumCPUs.Checked;
+  DirState := State and cbUseDirPort.Checked;
+  ExitState := State and (cbxServerMode.ItemIndex = SERVER_MODE_EXIT);
+  FamilyState := State and cbUseMyFamily.Checked and not BridgeState;
+  MemState := State and cbUseMaxMemInQueues.Checked;
+  TransportState := State and BridgeState and (cbxBridgeType.ItemIndex > 0);
 
-procedure TTcp.cbxServerModeChange(Sender: TObject);
-begin
-  CheckServerControls;
-  EnableOptionButtons
+  edNickname.Enabled := State;
+  edContactInfo.Enabled := State;
+  edMaxMemInQueues.Enabled := MemState;
+  edNumCPUs.Enabled := CpuState;
+  edRelayBandwidthRate.Enabled := BandState;
+  edRelayBandwidthBurst.Enabled := BandState;
+  edMaxAdvertisedBandwidth.Enabled := BandState;
+  edORPort.Enabled := State;
+  edDirPort.Enabled := DirState;
+  edTransportPort.Enabled := TransportState;
+  edAddress.Enabled := AddrState;
+
+  udMaxMemInQueues.Enabled := MemState;
+  udNumCPUs.Enabled := CpuState;
+  udRelayBandwidthRate.Enabled := BandState;
+  udRelayBandwidthBurst.Enabled := BandState;
+  udMaxAdvertisedBandwidth.Enabled := BandState;
+  udOrPort.Enabled := State;
+  udDirPort.Enabled := DirState;
+  udTransportPort.Enabled := TransportState;
+
+  cbxBridgeType.Enabled := BridgeState;
+  cbxBridgeDistribution.Enabled := BridgeState;
+  cbxExitPolicyType.Enabled := ExitState;
+  cbUseNumCPUs.Enabled := State;
+  cbUseMaxMemInQueues.Enabled := State;
+  cbUseRelayBandwidth.Enabled := State;
+  cbDirCache.Enabled := State and not (BridgeState or cbUseDirPort.Checked);
+  cbUseUPnP.Enabled := State;
+  cbPublishServerDescriptor.Enabled := State;
+  cbUseDirPort.Enabled := State and not BridgeState;
+  cbHiddenServiceStatistics.Enabled := State;
+  cbDirReqStatistics.Enabled := State;
+  cbAssumeReachable.Enabled := State;
+  cbListenIPv6.Enabled := State;
+  cbIPv6Exit.Enabled := ExitState and cbListenIPv6.Checked;
+  cbUseAddress.Enabled := State;
+  cbUseMyFamily.Enabled := State and not BridgeState;
+
+  meExitPolicy.enabled := ExitState and (cbxExitPolicyType.ItemIndex = 2);
+  meMyFamily.Enabled := FamilyState;
+
+  imUPnPTest.Visible := State;
+  imUPnPTest.ShowHint := State and (ConnectState = 0);
+
+  lbNickname.Enabled := State;
+  lbContactInfo.Enabled := State;
+  lbBridgeType.Enabled := BridgeState;
+  lbBridgeDistribution.Enabled := BridgeState;
+  lbExitPolicy.Enabled := ExitState;
+  lbTotalMyFamily.Enabled := FamilyState;
+  lbAddress.Enabled := AddrState;
+  lbMaxMemInQueues.Enabled := MemState;
+  lbSizeMb.Enabled := MemState;
+  lbNumCPUs.Enabled := CpuState;
+  lbRelayBandwidthRate.Enabled := BandState;
+  lbRelayBandwidthBurst.Enabled := BandState;
+  lbMaxAdvertisedBandwidth.Enabled := BandState;
+  lbSpeed1.Enabled := BandState;
+  lbSpeed2.Enabled := BandState;
+  lbSpeed4.Enabled := BandState;
+  lbPorts.Enabled := State;
+  lbORPort.Enabled := State;
+  lbDirPort.Enabled := DirState;
+  lbTransportPort.Enabled := TransportState;
 end;
 
 procedure TTcp.cbxHsStateChange(Sender: TObject);
@@ -13826,6 +13924,16 @@ begin
       EnableOptionButtons;
     end;
   end;
+end;
+
+procedure TTcp.cbExcludeUnsuitableFallbackDirsClick(Sender: TObject);
+begin
+  if not TCheckBox(Sender).Focused then
+    Exit;
+  FallbackDirsUpdated := True;
+  FallbackDirsRecalculate := True;
+  SaveFallbackDirsData;
+  EnableOptionButtons;
 end;
 
 procedure TTcp.CheckBridgeFileSave;
@@ -13958,7 +14066,7 @@ end;
 procedure TTcp.sbShowRoutersClick(Sender: TObject);
 begin
   LastPlace := LP_ROUTERS;
-  UpdateRoutersAfterFallbackDrisUpdate;
+  UpdateRoutersAfterFallbackDirsUpdate;
   UpdateRoutersAfterBridgesUpdate;
   IncreaseFormSize;
   ResetFocus;
@@ -14197,53 +14305,27 @@ begin
   sbShowCircuits.Click;
 end;
 
-procedure TTcp.miShowFlagsHintClick(Sender: TObject);
+procedure TTcp.miRoutersShowFlagsHintClick(Sender: TObject);
 begin
-  SetConfigBoolean('Routers', 'ShowFlagsHint', miShowFlagsHint.Checked);
-end;
-
-procedure TTcp.CheckStreamsControls;
-begin
-  lbDLCirc.Visible := miShowCircuitsTraffic.Checked;
-  lbULCirc.Visible := miShowCircuitsTraffic.Checked;
-  sgStreamsInfo.Visible := miShowStreamsInfo.Checked;
-  if miShowStreamsInfo.Checked then
-    sgStreams.Height := Round(176 * Scale)
-  else
-    sgStreams.Height := Round(296 * Scale);
-
-  if miShowStreamsTraffic.Checked then
-  begin
-    sgStreams.ColWidths[STREAMS_BYTES_READ] := Round(60 * Scale);
-    sgStreams.ColWidths[STREAMS_BYTES_WRITTEN] := Round(60 * Scale);
-    GridScrollCheck(sgStreams, STREAMS_TARGET, 323);
-    sgStreamsInfo.ColWidths[STREAMS_INFO_SOURCE_ADDR] := Round(129 * Scale);
-    sgStreamsInfo.ColWidths[STREAMS_INFO_DEST_ADDR] := Round(129 * Scale);
-    sgStreamsInfo.ColWidths[STREAMS_INFO_BYTES_READ] := Round(60 * Scale);
-    sgStreamsInfo.ColWidths[STREAMS_INFO_BYTES_WRITTEN] := Round(60 * Scale);
-    GridScrollCheck(sgStreamsInfo, STREAMS_INFO_PURPOSE, 119);
-  end
-  else
-  begin
-    sgStreams.ColWidths[STREAMS_BYTES_READ] := -1;
-    sgStreams.ColWidths[STREAMS_BYTES_WRITTEN] := -1;
-    GridScrollCheck(sgStreams, STREAMS_TARGET, 446);
-    sgStreamsInfo.ColWidths[STREAMS_INFO_SOURCE_ADDR] := Round(169 * Scale);
-    sgStreamsInfo.ColWidths[STREAMS_INFO_DEST_ADDR] := Round(169 * Scale);
-    sgStreamsInfo.ColWidths[STREAMS_INFO_BYTES_READ] := -1;
-    sgStreamsInfo.ColWidths[STREAMS_INFO_BYTES_WRITTEN] := -1;
-    GridScrollCheck(sgStreamsInfo, STREAMS_INFO_PURPOSE, 163);
-  end;
+  SetConfigBoolean('Routers', 'RoutersShowFlagsHint', miRoutersShowFlagsHint.Checked);
 end;
 
 procedure TTcp.ShowTrafficSelect(Sender: TObject);
 begin
-  CheckStreamsControls;
   if ConnectState = 2 then
     SendCommand('SETEVENTS ' + GetControlEvents);
   case TMenuItem(Sender).Tag of
-    1: SetConfigBoolean('Circuits', 'ShowCircuitsTraffic', miShowCircuitsTraffic.Checked);
-    2: SetConfigBoolean('Circuits', 'ShowStreamsTraffic', miShowStreamsTraffic.Checked);
+    1:
+    begin
+      CheckCircuitsControls;
+      ShowCircuits;
+      SetConfigBoolean('Circuits', 'ShowCircuitsTraffic', miShowCircuitsTraffic.Checked);
+    end;
+    2:
+    begin
+      CheckStreamsControls;
+      SetConfigBoolean('Circuits', 'ShowStreamsTraffic', miShowStreamsTraffic.Checked);
+    end;
   end;
 end;
 
@@ -14608,10 +14690,10 @@ begin
   SetConfigInteger('Filter', 'TplLoad', MenuToInt(miTplLoad));
 end;
 
-procedure TTcp.miSelectExitCircuitWhetItChangesClick(Sender: TObject);
+procedure TTcp.miSelectExitCircuitWhenItChangesClick(Sender: TObject);
 begin
   ShowCircuits;
-  SetConfigBoolean('Circuits', 'SelectExitCircuitWhetItChanges', miSelectExitCircuitWhetItChanges.Checked);
+  SetConfigBoolean('Circuits', 'SelectExitCircuitWhenItChanges', miSelectExitCircuitWhenItChanges.Checked);
 end;
 
 procedure TTcp.miSelectGraphDLClick(Sender: TObject);
@@ -14729,6 +14811,11 @@ begin
   SetConfigInteger('Circuits', 'UpdateInterval', TMenuItem(Sender).Tag);
 end;
 
+procedure TTcp.miCircuitsShowFlagsHintClick(Sender: TObject);
+begin
+  SetConfigBoolean('Circuits', 'CircuitsShowFlagsHint', miCircuitsShowFlagsHint.Checked);
+end;
+
 procedure TTcp.miCircuitsUpdateNowClick(Sender: TObject);
 begin
   ShowCircuits;
@@ -14836,15 +14923,10 @@ begin
   Result := ShowMsg(Format(TransStr('405'),[OpStr]), '', mtQuestion, True);
 end;
 
-procedure TTcp.miResetScannerScheduleClick(Sender: TObject);
+procedure TTcp.SaveScanData;
 var
   ini: TMemIniFile;
 begin
-  if not CheckCacheOpConfirmation(TMenuItem(Sender).Caption) then
-    Exit;
-  LastFullScanDate := 0;
-  LastPartialScanDate := 0;
-  LastPartialScansCounts := udPartialScansCounts.Position;
   ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
   try
     SetSettings('Scanner', 'LastFullScanDate', LastFullScanDate, ini);
@@ -14853,6 +14935,17 @@ begin
   finally
     UpdateConfigFile(ini);
   end;
+end;
+
+procedure TTcp.miResetScannerScheduleClick(Sender: TObject);
+
+begin
+  if not CheckCacheOpConfirmation(TMenuItem(Sender).Caption) then
+    Exit;
+  LastFullScanDate := 0;
+  LastPartialScanDate := 0;
+  LastPartialScansCounts := udPartialScansCounts.Position;
+  SaveScanData;
 end;
 
 procedure TTcp.miResetTotalsCounterClick(Sender: TObject);
@@ -16096,6 +16189,7 @@ begin
     else
       Data.Delete(i);
   end;
+
   if CheckEntryPorts then
     PortsDic.Clear;
 end;
@@ -16125,6 +16219,7 @@ var
   DataStr: string;
   i: Integer;
 begin
+  LastFallbackDirsHash := 0;
   UsedFallbackDirsCount := 0;
   AutoSave := ini <> nil;
   if AutoSave then
@@ -16143,14 +16238,17 @@ begin
       ls.CustomSort(CompTextAsc);
     end
     else
-    begin
-      UsedFallbackDirs.Clear;
       MemoToList(meFallbackDirs, ltFallbackDir, True, ls);
-    end;
     meFallbackDirs.Text := ls.Text;
-    ExcludeUnsuitableFallbackDirs(ls);
+    if cbExcludeUnsuitableFallbackDirs.Checked then
+    begin
+      ExcludeUnsuitableFallbackDirs(ls);
+      LastFallbackDirsHash := Crc32(AnsiString(ls.Text));
+    end;
+
     if not UseDic then
     begin
+      UsedFallbackDirs.Clear;
       for i := 0 to ls.Count - 1 do
       begin
         if TryParseFallbackDir(ls[i], FallbackDir, False) then
@@ -16170,7 +16268,9 @@ begin
         SetTorConfig('DisableNetwork', '1');
 
       if cbUseFallbackDirs.Checked then
-        SetTorConfig('FallbackDir', ls);
+        SetTorConfig('FallbackDir', ls)
+      else
+        UsedFallbackDirs.Clear;
 
       if cbxFallbackDirsType.ItemIndex = FALLBACK_TYPE_USER then
       begin
@@ -16179,6 +16279,7 @@ begin
           SetSettings('FallbackDirs', IntToStr(i), meFallbackDirs.Lines[i], ini);
       end;
       SetSettings('Lists', cbUseFallbackDirs, ini);
+      SetSettings('Lists', cbExcludeUnsuitableFallbackDirs, ini);
       SetSettings('Lists', cbxFallbackDirsType, ini);
 
       if FastUpdate and (ConnectState <> 0) then
@@ -16193,6 +16294,7 @@ begin
         else
           SendCommand('SETCONF FallbackDir');
       end;
+      UpdateFallbackDirs := False;
     end;
     FallbackDirsCheckControls;
     CountTotalFallbackDirs;
@@ -16330,6 +16432,61 @@ begin
     ConstDic.AddOrSetValue(Data[i].Key, Data[i].Value);
 end;
 
+procedure TTcp.CheckCircuitsControls(UpdateAll: Boolean = True);
+begin
+  if miShowCircuitsTraffic.Checked then
+  begin
+    if UpdateAll then
+    begin
+      sgCircuits.ColWidths[CIRC_PURPOSE] := -1;
+      sgCircuits.ColWidths[CIRC_BYTES_READ] := Round(55 * Scale);
+      sgCircuits.ColWidths[CIRC_BYTES_WRITTEN] := Round(55 * Scale);
+    end;
+    GridScrollCheck(sgCircuits, CIRC_FLAGS, 73);
+  end
+  else
+  begin
+    if UpdateAll then
+    begin
+      sgCircuits.ColWidths[CIRC_FLAGS] := -1;
+      sgCircuits.ColWidths[CIRC_BYTES_READ] := -1;
+      sgCircuits.ColWidths[CIRC_BYTES_WRITTEN] := -1;
+    end;
+    GridScrollCheck(sgCircuits, CIRC_PURPOSE, 185);
+  end;
+end;
+
+procedure TTcp.CheckStreamsControls;
+begin
+  sgStreamsInfo.Visible := miShowStreamsInfo.Checked;
+  if miShowStreamsInfo.Checked then
+    sgStreams.Height := Round(177 * Scale)
+  else
+    sgStreams.Height := Round(297 * Scale);
+  if miShowStreamsTraffic.Checked then
+  begin
+    sgStreams.ColWidths[STREAMS_BYTES_READ] := Round(55 * Scale);
+    sgStreams.ColWidths[STREAMS_BYTES_WRITTEN] := Round(55 * Scale);
+    GridScrollCheck(sgStreams, STREAMS_TARGET, 338);
+    sgStreamsInfo.ColWidths[STREAMS_INFO_SOURCE_ADDR] := Round(129 * Scale);
+    sgStreamsInfo.ColWidths[STREAMS_INFO_DEST_ADDR] := Round(129 * Scale);
+    sgStreamsInfo.ColWidths[STREAMS_INFO_BYTES_READ] := Round(55 * Scale);
+    sgStreamsInfo.ColWidths[STREAMS_INFO_BYTES_WRITTEN] := Round(55 * Scale);
+    GridScrollCheck(sgStreamsInfo, STREAMS_INFO_PURPOSE, 134);
+  end
+  else
+  begin
+    sgStreams.ColWidths[STREAMS_BYTES_READ] := -1;
+    sgStreams.ColWidths[STREAMS_BYTES_WRITTEN] := -1;
+    GridScrollCheck(sgStreams, STREAMS_TARGET, 451);
+    sgStreamsInfo.ColWidths[STREAMS_INFO_SOURCE_ADDR] := Round(164 * Scale);
+    sgStreamsInfo.ColWidths[STREAMS_INFO_DEST_ADDR] := Round(164 * Scale);
+    sgStreamsInfo.ColWidths[STREAMS_INFO_BYTES_READ] := -1;
+    sgStreamsInfo.ColWidths[STREAMS_INFO_BYTES_WRITTEN] := -1;
+    GridScrollCheck(sgStreamsInfo, STREAMS_INFO_PURPOSE, 177);
+  end;
+end;
+
 procedure TTcp.UpdateScaleFactor;
 var
   Factor: Integer;
@@ -16384,20 +16541,20 @@ begin
   sgRouters.ColWidths[ROUTER_EXIT_NODES] := Round(23 * Scale);
   sgRouters.ColWidths[ROUTER_EXCLUDE_NODES] := Round(23 * Scale);
   sgCircuits.ColWidths[CIRC_ID] := -1;
+  sgCircuits.ColWidths[CIRC_PARAMS] := -1;
   sgCircuits.ColWidths[CIRC_STREAMS] := Round(30 * Scale);
-  sgCircuits.ColWidths[CIRC_BYTES_READ] := 0;
-  sgCircuits.ColWidths[CIRC_BYTES_WRITTEN] := 0;
   sgCircuitInfo.ColWidths[CIRC_INFO_ID] := -1;
   sgCircuitInfo.ColWidths[CIRC_INFO_FLAG] := Round(23 * Scale);
-  sgCircuitInfo.ColWidths[CIRC_INFO_WEIGHT] := Round(64 * Scale);
+  sgCircuitInfo.ColWidths[CIRC_INFO_WEIGHT] := Round(66 * Scale);
   sgStreams.ColWidths[STREAMS_ID] := -1;
   sgStreams.ColWidths[STREAMS_TRACK] := Round(24 * Scale);
   sgStreams.ColWidths[STREAMS_COUNT] := Round(30 * Scale);
   sgStreamsInfo.ColWidths[STREAMS_INFO_ID] := -1;
   sgTransports.ColWidths[PT_HANDLER] := Round(120 * Scale);
-  sgTransports.ColWidths[PT_TYPE] := Round(35 * Scale);
+  sgTransports.ColWidths[PT_TYPE] := Round(37 * Scale);
   sgTransports.ColWidths[PT_PARAMS] := -1;
   CheckScannerControls;
+  CheckCircuitsControls;
   CheckStreamsControls;
 end;
 
@@ -16561,6 +16718,8 @@ begin
   sgRouters.ColsDefaultAlignment[ROUTER_MIDDLE_NODES] := taCenter;
   sgRouters.ColsDefaultAlignment[ROUTER_EXIT_NODES] := taCenter;
   sgRouters.ColsDefaultAlignment[ROUTER_EXCLUDE_NODES] := taCenter;
+  sgCircuits.ColsDefaultAlignment[CIRC_BYTES_READ] := taRightJustify;
+  sgCircuits.ColsDefaultAlignment[CIRC_BYTES_WRITTEN] := taRightJustify;
   sgCircuits.ColsDefaultAlignment[CIRC_STREAMS] := taCenter;
   sgCircuitInfo.ColsDefaultAlignment[CIRC_INFO_WEIGHT] := taRightJustify;
   sgCircuitInfo.ColsDefaultAlignment[CIRC_INFO_PING] := taCenter;
@@ -16584,6 +16743,9 @@ begin
   sgRouters.ColsDataType[ROUTER_PORT] := dtInteger;
   sgRouters.ColsDataType[ROUTER_FLAGS] := dtParams;
   sgCircuits.ColsDataType[CIRC_ID] := dtInteger;
+  sgCircuits.ColsDataType[CIRC_FLAGS] := dtFlags;
+  sgCircuits.ColsDataType[CIRC_BYTES_READ] := dtSize;
+  sgCircuits.ColsDataType[CIRC_BYTES_WRITTEN] := dtSize;
   sgCircuits.ColsDataType[CIRC_STREAMS] := dtInteger;
   sgStreams.ColsDataType[STREAMS_ID] := dtInteger;
   sgStreams.ColsDataType[STREAMS_TRACK] := dtInteger;
@@ -17009,7 +17171,7 @@ end;
 
 procedure TTcp.tmCircuitsTimer(Sender: TObject);
 begin
-  ShowCircuits;
+  ShowCircuits(ConnectState <> 2)
 end;
 
 procedure TTcp.tmConsensusTimer(Sender: TObject);
@@ -17463,7 +17625,7 @@ begin
     Exit;
   if CircuitsDic.ContainsKey(CircuitID) then
   begin
-    CircuitsDic.Remove(CircuitID);   
+    CircuitsDic.Remove(CircuitID);
     SendCommand('CLOSECIRCUIT ' + CircuitID);
   end;
   if AutoUpdate then
