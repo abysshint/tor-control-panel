@@ -70,10 +70,10 @@ var
   function CreateShortcut(const CmdLine, Args, WorkDir, LinkFile, IconFile: string): IPersistFile;
   function GetFullFileName(FileName: string): string;
   function GetHost(Host: string): string;
-  function GetAddressFromSocket(SocketStr: string): string;
+  function GetAddressFromSocket(SocketStr: string; UseFormatHost: Boolean = False): string;
   function GetPortFromSocket(SocketStr: string): Word;
   function GetRouterBySocket(SocketStr: string): string;
-  function FormatHost(HostStr: string): string;
+  function FormatHost(HostStr: string; Validate: Boolean = True): string;
   function ExtractDomain(Url: string; HasPort: Boolean = False): string;
   function GetAvailPhysMemory: Cardinal;
   function GetCPUCount: Integer;
@@ -122,8 +122,8 @@ var
   function ValidFallbackDir(FallbackStr: string): Boolean;
   function GetMsgCaption(Caption: string; MsgType: TMsgType): string;
   function GetBridgeStrFromDic(HashStr: string): string;
-  function TryParseBridge(BridgeStr: string; out Bridge: TBridge; Validate: Boolean = True): Boolean;
-  function TryParseFallbackDir(FallbackStr: string; out FallbackDir: TFallbackDir; Validate: Boolean = True): Boolean;
+  function TryParseBridge(BridgeStr: string; out Bridge: TBridge; Validate: Boolean = True; UseFormatHost: Boolean = False): Boolean;
+  function TryParseFallbackDir(FallbackStr: string; out FallbackDir: TFallbackDir; Validate: Boolean = True; UseFormatHost: Boolean = False): Boolean;
   function TryParseTarget(TargetStr: string; out Target: TTarget): Boolean;
   function IpToInt(IpStr: string): Cardinal;
   function IntToIp(Ip: Cardinal): string;
@@ -2706,13 +2706,18 @@ begin
     SetLength(Result, Pred(Search));
 end;
 
-function GetAddressFromSocket(SocketStr: string): string;
+function GetAddressFromSocket(SocketStr: string; UseFormatHost: Boolean = False): string;
 var
   Search: Integer;
 begin
   Search := RPos(':', SocketStr);
   if Search > 0 then
-    Result := RemoveBrackets(Copy(SocketStr, 1, Search - 1), True)
+  begin
+    if UseFormatHost then
+      Result := Copy(SocketStr, 1, Search - 1)
+    else
+      Result := RemoveBrackets(Copy(SocketStr, 1, Search - 1), True)
+  end
   else
     Result := SocketStr;
 end;
@@ -2722,12 +2727,17 @@ begin
   Result := StrToIntDef(Copy(SocketStr, RPos(':', SocketStr) + 1), 0);
 end;
 
-function FormatHost(HostStr: string): string;
+function FormatHost(HostStr: string; Validate: Boolean = True): string;
 begin
-  if IsIPv6(HostStr) then
-    Result := '[' + HostStr + ']'
+  if Validate then
+  begin
+    if IsIPv6(HostStr) then
+      Result := '[' + HostStr + ']'
+    else
+      Result := HostStr;
+  end
   else
-    Result := HostStr;
+    Result := '[' + HostStr + ']'
 end;
 
 function GetRouterBySocket(SocketStr: string): string;
@@ -3068,7 +3078,7 @@ begin
       Result := 0;
 end;
 
-function TryParseFallbackDir(FallbackStr: string; out FallbackDir: TFallbackDir; Validate: Boolean = True): Boolean;
+function TryParseFallbackDir(FallbackStr: string; out FallbackDir: TFallbackDir; Validate: Boolean = True; UseFormatHost: Boolean = False): Boolean;
 var
   ParseStr: ArrOfStr;
   Search, i: Integer;
@@ -3116,7 +3126,7 @@ begin
           begin
             if FindIPv6 and (Key = 'ipv6') then
             begin
-              FallbackDir.IPv6 := GetAddressFromSocket(Data);
+              FallbackDir.IPv6 := GetAddressFromSocket(Data, UseFormatHost);
               FindIPv6 := False;
             end
             else
@@ -3348,7 +3358,7 @@ begin
   Result := '';
 end;
 
-function TryParseBridge(BridgeStr: string; out Bridge: TBridge; Validate: Boolean = True): Boolean;
+function TryParseBridge(BridgeStr: string; out Bridge: TBridge; Validate: Boolean = True; UseFormatHost: Boolean = False): Boolean;
 var
   ParseStr: ArrOfStr;
   ParamsState: Byte;
@@ -3394,7 +3404,7 @@ begin
       end;
       if ValidSocket(ParseStr[i]) <> 0 then
       begin
-        Bridge.Ip := GetAddressFromSocket(ParseStr[i]);
+        Bridge.Ip := GetAddressFromSocket(ParseStr[i], UseFormatHost);
         Bridge.Port := GetPortFromSocket(ParseStr[i]);
         ParamsState := 1;
         Continue;

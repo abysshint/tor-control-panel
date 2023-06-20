@@ -5938,6 +5938,100 @@ object Tcp: TTcp
     object miDelimiter11: TMenuItem
       Caption = '-'
     end
+    object miExtractData: TMenuItem
+      Caption = #1048#1079#1074#1083#1077#1095#1100' '#1076#1072#1085#1085#1099#1077
+      ImageIndex = 71
+      object miExtractPorts: TMenuItem
+        Tag = 1
+        Caption = #1055#1086#1088#1090#1099
+        ImageIndex = 72
+        OnClick = ExtractMemoDataClick
+      end
+      object miExtractIpv4: TMenuItem
+        Tag = 2
+        Caption = 'IPv4-'#1072#1076#1088#1077#1089#1072
+        ImageIndex = 33
+        OnClick = ExtractMemoDataClick
+      end
+      object miExtractIpv6: TMenuItem
+        Tag = 3
+        Caption = 'IPv6-'#1072#1076#1088#1077#1089#1072
+        ImageIndex = 34
+        OnClick = ExtractMemoDataClick
+      end
+      object miExtractFingerprints: TMenuItem
+        Tag = 4
+        Caption = #1048#1076#1077#1085#1090#1080#1092#1080#1082#1072#1090#1086#1088#1099
+        ImageIndex = 23
+        OnClick = ExtractMemoDataClick
+      end
+      object miDelimiter76: TMenuItem
+        Caption = '-'
+      end
+      object miExtractIpv4Bridges: TMenuItem
+        Tag = 5
+        Caption = 'IPv4-'#1084#1086#1089#1090#1099
+        ImageIndex = 59
+        OnClick = ExtractMemoDataClick
+      end
+      object miExtractIpv6Bridges: TMenuItem
+        Tag = 6
+        Caption = 'IPv6-'#1084#1086#1089#1090#1099
+        ImageIndex = 60
+        OnClick = ExtractMemoDataClick
+      end
+      object miDelimiter77: TMenuItem
+        Caption = '-'
+      end
+      object miExtractFallbackDirs: TMenuItem
+        Tag = 7
+        Caption = #1056#1077#1079#1077#1088#1074#1085#1099#1077' '#1082#1072#1090#1072#1083#1086#1075#1080
+        ImageIndex = 54
+        OnClick = ExtractMemoDataClick
+      end
+      object miDelimiter78: TMenuItem
+        Caption = '-'
+      end
+      object miFormatIPv6OnExtract: TMenuItem
+        AutoCheck = True
+        Caption = #1060#1086#1088#1084#1072#1090#1080#1088#1086#1074#1072#1090#1100' IPv6-'#1072#1076#1088#1077#1089#1072
+        Checked = True
+        OnClick = miFormatIPv6OnExtractClick
+      end
+      object miSortOnExtract: TMenuItem
+        AutoCheck = True
+        Caption = #1057#1086#1088#1090#1080#1088#1086#1074#1072#1090#1100' '#1089#1087#1080#1089#1086#1082
+        Checked = True
+        OnClick = miSortOnExtractClick
+      end
+      object miRemoveDuplicateOnExtract: TMenuItem
+        AutoCheck = True
+        Caption = #1059#1076#1072#1083#1103#1090#1100' '#1076#1091#1073#1083#1080#1082#1072#1090#1099
+        Checked = True
+        OnClick = miRemoveDuplicateOnExtractClick
+      end
+      object miExtractDelimiterType: TMenuItem
+        Caption = #1056#1072#1079#1076#1077#1083#1080#1090#1077#1083#1100
+        object miExtractDelimiterAuto: TMenuItem
+          Caption = #1040#1074#1090#1086#1074#1099#1073#1086#1088
+          Checked = True
+          RadioItem = True
+          OnClick = ExtractDelimiterSelect
+        end
+        object miExtractDelimiterLineBreak: TMenuItem
+          Tag = 1
+          Caption = #1053#1086#1074#1072#1103' '#1089#1090#1088#1086#1082#1072
+          RadioItem = True
+          OnClick = ExtractDelimiterSelect
+        end
+        object miExtractDelimiterComma: TMenuItem
+          Tag = 2
+          Caption = #1047#1072#1087#1103#1090#1072#1103
+          RadioItem = True
+          OnClick = ExtractDelimiterSelect
+        end
+      end
+    end
     object miClear: TMenuItem
       Tag = 5
       Caption = #1054#1095#1080#1089#1090#1080#1090#1100

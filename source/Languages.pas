@@ -852,6 +852,14 @@ begin
     Tcp.miClearMenuNotAlive.Caption := Load('507', 'Не отвечающие на соединения');
     Tcp.miClearMenuNonCached.Caption := Load('508', 'Отсутствующие в кэше');
     Tcp.miClearMenuCached.Caption := Load('509', 'Найденные в кэше');
+    Tcp.miExtractData.Caption := Load('669', 'Извлечь данные');
+    Tcp.miFormatIPv6OnExtract.Caption := Load('670', 'Форматировать IPv6-адреса');
+    Tcp.miRemoveDuplicateOnExtract.Caption := Load('671', 'Удалять дубликаты');
+    Tcp.miSortOnExtract.Caption := Load('672', 'Сортировать список');
+    Tcp.miExtractDelimiterType.Caption := Load('673', 'Разделитель');
+    Tcp.miExtractDelimiterAuto.Caption := Load('674', 'Автовыбор');
+    Tcp.miExtractDelimiterLineBreak.Caption := Load('675', 'Новая строка');
+    Tcp.miExtractDelimiterComma.Caption := Load('676', 'Запятая');
 
     Tcp.miLogOptions.Caption := TransStr('107');
     Tcp.miWriteLogFile.Caption := Load('292', 'Записывать в файл');

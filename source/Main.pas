@@ -1051,6 +1051,24 @@ type
     miCircController: TMenuItem;
     miCircuitsSortParams: TMenuItem;
     miCircuitsShowFlagsHint: TMenuItem;
+    miExtractData: TMenuItem;
+    miExtractIpv4: TMenuItem;
+    miExtractFingerprints: TMenuItem;
+    miExtractIpv6: TMenuItem;
+    miDelimiter76: TMenuItem;
+    miExtractIpv4Bridges: TMenuItem;
+    miExtractIpv6Bridges: TMenuItem;
+    miDelimiter77: TMenuItem;
+    miExtractFallbackDirs: TMenuItem;
+    miDelimiter78: TMenuItem;
+    miFormatIPv6OnExtract: TMenuItem;
+    miExtractPorts: TMenuItem;
+    miRemoveDuplicateOnExtract: TMenuItem;
+    miSortOnExtract: TMenuItem;
+    miExtractDelimiterType: TMenuItem;
+    miExtractDelimiterAuto: TMenuItem;
+    miExtractDelimiterLineBreak: TMenuItem;
+    miExtractDelimiterComma: TMenuItem;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1143,6 +1161,7 @@ type
     procedure IncreaseFormSize;
     procedure SetDownState;
     procedure InitPortForwarding(Test: Boolean);
+    procedure ExtractMemoData(MemoID: Integer; ExtractType: Integer);
     procedure ResetFocus;
     procedure ScanStart(ScanType: TScanType; ScanPurpose: TScanPurpose);
     procedure ScanNetwork(ScanType: TScanType; ScanPurpose: TScanPurpose);
@@ -1411,6 +1430,8 @@ type
     procedure sgHsEnter(Sender: TObject);
     procedure meBridgesChange(Sender: TObject);
     procedure OptionsChange(Sender: TObject);
+    procedure ExtractDelimiterSelect(Sender: TObject);
+    procedure ExtractMemoDataClick(Sender: TObject);
     procedure SetResetGuards(Sender: TObject);
     procedure cbxHsAddressDropDown(Sender: TObject);
     procedure miRtSaveDefaultClick(Sender: TObject);
@@ -1598,6 +1619,9 @@ type
     procedure meNodesListKeyPress(Sender: TObject; var Key: Char);
     procedure cbExcludeUnsuitableFallbackDirsClick(Sender: TObject);
     procedure miCircuitsShowFlagsHintClick(Sender: TObject);
+    procedure miFormatIPv6OnExtractClick(Sender: TObject);
+    procedure miRemoveDuplicateOnExtractClick(Sender: TObject);
+    procedure miSortOnExtractClick(Sender: TObject);
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
     procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -7232,6 +7256,11 @@ begin
     GetSettings('Main', cbRememberEnlargedPosition, ini);
     GetSettings('Main', cbClearPreviousSearchQuery, ini);
 
+    GetSettings('Extractor', miFormatIPv6OnExtract, ini);
+    GetSettings('Extractor', miRemoveDuplicateOnExtract, ini);
+    GetSettings('Extractor', miSortOnExtract, ini);
+    miExtractDelimiterType.Items[GetIntDef(GetSettings('Extractor', 'ExtractDelimiterType', 0, ini), 0, 0, 2)].Checked := True;
+
     if FirstLoad then
     begin
       LoadNetworkCache;
@@ -10198,7 +10227,7 @@ end;
 procedure TTcp.EditMenuPopup(Sender: TObject);
 var
   IsBridgeEdit, IsUserBridges, IsFallbackDirEdit, IsUserFallbackDirs, BridgesState, FallbackState: Boolean;
-  BridgesCount, FallbackDirCount: Integer;
+  BridgesCount, FallbackDirCount, MemoID: Integer;
 begin
   BridgesCount := meBridges.Lines.Count;
   IsBridgeEdit := Screen.ActiveControl = meBridges;
@@ -10226,11 +10255,14 @@ begin
     (FallbackState and cbExcludeUnsuitableFallbackDirs.Checked and (SuitableFallbackDirsCount < FallbackDirCount)) or
     (BridgesState and cbExcludeUnsuitableBridges.Checked and (SuitableBridgesCount < BridgesCount));
 
-  miClearMenu.Tag := 0;
+  MemoID := MEMO_NONE;
   if IsBridgeEdit then
-    miClearMenu.Tag := 1;
+    MemoID := MEMO_BRIDGES;
   if IsFallbackDirEdit then
-    miClearMenu.Tag := 2;
+    MemoID := MEMO_FALLBACK_DIRS;
+
+  miClearMenu.Tag := MemoID;
+  miExtractData.Tag := MemoID;
 
   if IsUserBridges then
   begin
@@ -10250,6 +10282,202 @@ begin
   EditMenuEnableCheck(miSelectAll, emSelectAll);
   EditMenuEnableCheck(miDelete, emDelete);
   EditMenuEnableCheck(miFind, emFind);
+
+  if IsBridgeEdit or IsFallbackDirEdit then
+  begin
+    ExtractMemoData(MemoID, EXTRACT_PREVIEW);
+    miExtractData.Visible := miExtractPorts.Visible or miExtractIpv4.Visible or
+      miExtractIpv6.Visible or miExtractFingerprints.Visible or miExtractIpv4Bridges.Visible or
+      miExtractIpv6Bridges.Visible or miExtractFallbackDirs.Visible;
+  end
+  else
+    miExtractData.Visible := False;
+end;
+
+procedure TTcp.ExtractMemoData(MemoID: Integer; ExtractType: Integer);
+var
+  lr, ls: TStringList;
+  i: Integer;
+  PreviewState: Boolean;
+  CurrentMemo: TMemo;
+  FallbackDir: TFallbackDir;
+  Bridge: TBridge;
+  DataStr, Delimiter: string;
+  PortStr, IPv4Str, IPv6Str, HashStr, IPv4BridgesStr, IPv6BridgesStr, FallbackDirsStr: string;
+  PortCount, IPv4Count, IPv6Count, HashCount, IPv4BridgesCount, IPv6BridgesCount, FallbackDirsCount: Integer;
+  UniqueList: TDictionary<string, Byte>;
+
+  procedure UpdateMenu(Menu: TMenuItem; DataStr: string; Count: Integer);
+  var
+    Str: string;
+  begin
+    case Count of
+      0: Str := '';
+      1: Str := DataStr;
+      else
+        Str := DataStr + '.. (' + IntToStr(Count) + ')';
+    end;
+    Menu.Visible := Count > 0;
+    Menu.Caption := Str;
+  end;
+
+  procedure FormatData(var Str: string; var Count: Integer; Data: string; CurrentType: Integer);
+  begin
+    if PreviewState then
+    begin
+      if Count = 0 then
+        Str := Data;
+      if miRemoveDuplicateOnExtract.Checked then
+      begin
+        if UniqueList.ContainsKey(Data) then
+          Exit
+        else
+        begin
+          UniqueList.AddOrSetValue(Data, 0);
+          Inc(Count);
+        end;
+      end
+      else
+        Inc(Count);
+    end
+    else
+    begin
+      if ExtractType = CurrentType then
+      begin
+        if miRemoveDuplicateOnExtract.Checked then
+        begin
+          if UniqueList.ContainsKey(Data) then
+            Exit
+          else
+          begin
+            UniqueList.AddOrSetValue(Data, 0);
+            lr.Append(Data);
+            Inc(Count);
+          end;
+        end
+        else
+        begin
+          lr.Append(Data);
+          Inc(Count);
+        end;
+      end;
+    end;
+  end;
+
+begin
+  PortCount := 0;
+  IPv4Count := 0;
+  IPv6Count := 0;
+  HashCount := 0;
+  IPv4BridgesCount := 0;
+  IPv6BridgesCount := 0;
+  FallbackDirsCount := 0;
+  PortStr := '';
+  IPv4Str := '';
+  IPv6Str := '';
+  HashStr := '';
+  IPv4BridgesStr := '';
+  IPv6BridgesStr := '';
+  FallbackDirsStr := '';
+
+  if (miExtractDelimiterAuto.Checked and (ExtractType <> EXTRACT_PORT)) or miExtractDelimiterLineBreak.Checked then
+    Delimiter := BR
+  else
+    Delimiter := ',';
+
+  PreviewState := ExtractType = EXTRACT_PREVIEW;
+  case MemoID of
+    MEMO_BRIDGES: CurrentMemo := meBridges;
+    MEMO_FALLBACK_DIRS: CurrentMemo := meFallbackDirs;
+    else
+      CurrentMemo := nil;
+  end;
+
+  if CurrentMemo <> nil then
+  begin
+    UniqueList := TDictionary<string, Byte>.Create;
+    ls := TStringList.Create;
+    lr := TStringList.Create;
+    try
+      if CurrentMemo.SelLength > 0 then
+        ls.Text := Trim(CurrentMemo.SelText)
+      else
+        ls.Text := Trim(CurrentMemo.Text);
+      if ls.Text <> '' then
+      begin
+        case MemoID of
+          MEMO_BRIDGES:
+          begin
+            for i := 0 to ls.Count - 1 do
+            begin
+              if TryParseBridge(Trim(ls[i]), Bridge, OptionsChanged, miFormatIPv6OnExtract.Checked) then
+              begin
+                FormatData(PortStr, PortCount, IntToStr(Bridge.Port), EXTRACT_PORT);
+                if Bridge.Hash <> '' then
+                  FormatData(HashStr, HashCount, Bridge.Hash, EXTRACT_HASH);
+                if IsIpv4(Bridge.Ip) then
+                begin
+                  FormatData(IPv4Str, IPv4Count, Bridge.Ip, EXTRACT_IPV4);
+                  if (Bridge.Transport = '') and (Bridge.Hash <> '') then
+                    FormatData(FallbackDirsStr, FallbackDirsCount, Bridge.Ip + ' orport=' + IntToStr(Bridge.Port) + ' id=' + Bridge.Hash, EXTRACT_FALLBACK_DIR);
+                end
+                else
+                  FormatData(IPv6Str, IPv6Count, Bridge.Ip, EXTRACT_IPV6);
+              end;
+            end;
+          end;
+          MEMO_FALLBACK_DIRS:
+          begin
+            for i := 0 to ls.Count - 1 do
+            begin
+              if TryParseFallbackDir(Trim(ls[i]), FallbackDir, OptionsChanged, miFormatIPv6OnExtract.Checked) then
+              begin
+                FormatData(PortStr, PortCount, IntToStr(FallbackDir.OrPort), EXTRACT_PORT);
+                FormatData(HashStr, HashCount, FallbackDir.Hash, EXTRACT_HASH);
+                FormatData(IPv4Str, IPv4Count, FallbackDir.IPv4, EXTRACT_IPV4);
+                FormatData(IPv4BridgesStr, IPv4BridgesCount, FallbackDir.IPv4 + ':' + IntToStr(FallbackDir.OrPort) + ' ' + FallbackDir.Hash, EXTRACT_IPV4_BRIDGE);
+                if FallbackDir.IPv6 <> '' then
+                begin
+                  FormatData(IPv6Str, IPv6Count, FallbackDir.IPv6, EXTRACT_IPV6);
+                  FormatData(IPv6BridgesStr, IPv6BridgesCount, FormatHost(FallbackDir.IPv6) + ':' + IntToStr(FallbackDir.OrPort) + ' ' + FallbackDir.Hash, EXTRACT_IPV6_BRIDGE);
+                end;
+              end;
+            end;
+          end;
+        end;
+      end;
+      if ExtractType = EXTRACT_PREVIEW then
+      begin
+        UpdateMenu(miExtractPorts, PortStr, PortCount);
+        UpdateMenu(miExtractIpv4, IPv4Str, IPv4Count);
+        UpdateMenu(miExtractIpv6, IPv6Str, IPv6Count);
+        UpdateMenu(miExtractFingerprints, HashStr, HashCount);
+        UpdateMenu(miExtractIpv4Bridges, IPv4BridgesStr, IPv4BridgesCount);
+        UpdateMenu(miExtractIpv6Bridges, IPv6BridgesStr, IPv6BridgesCount);
+        UpdateMenu(miExtractFallbackDirs, FallbackDirsStr, FallbackDirsCount);
+      end
+      else
+      begin
+        if miSortOnExtract.Checked then
+        begin
+          if ExtractType = EXTRACT_HASH then
+            lr.Sort
+          else
+            lr.CustomSort(CompTextAsc);
+        end;
+        DataStr := '';
+        for i := 0 to lr.Count - 1 do
+          DataStr := DataStr + Delimiter + lr[i];
+        Delete(DataStr, 1, Length(Delimiter));
+        if DataStr <> '' then
+          Clipboard.AsText := DataStr;
+      end;
+    finally
+      ls.Free;
+      lr.Free;
+      UniqueList.Free;
+    end;
+  end;
 end;
 
 procedure TTcp.ResetFocus;
@@ -14299,6 +14527,11 @@ begin
   SetConfigBoolean('Circuits', 'ShowStreamsInfo', miShowStreamsInfo.Checked);
 end;
 
+procedure TTcp.miSortOnExtractClick(Sender: TObject);
+begin
+  SetConfigBoolean('Extractor', 'SortOnExtract', miSortOnExtract.Checked);
+end;
+
 procedure TTcp.miShowCircuitsClick(Sender: TObject);
 begin
   RestoreForm;
@@ -14854,6 +15087,22 @@ begin
   Tcp.Close;
 end;
 
+procedure TTcp.ExtractDelimiterSelect(Sender: TObject);
+begin
+  TMenuItem(Sender).Checked := True;
+  SetConfigInteger('Extractor', 'ExtractDelimiterType', TMenuItem(Sender).Tag);
+end;
+
+procedure TTcp.ExtractMemoDataClick(Sender: TObject);
+begin
+  ExtractMemoData(miExtractData.Tag, TMenuItem(Sender).Tag);
+end;
+
+procedure TTcp.miFormatIPv6OnExtractClick(Sender: TObject);
+begin
+  SetConfigBoolean('Extractor', 'FormatIPv6OnExtract', miFormatIPv6OnExtract.Checked);
+end;
+
 procedure TTcp.miFilterHideUnusedClick(Sender: TObject);
 begin
   ShowFilter;
@@ -14906,6 +15155,11 @@ begin
       Param := 'get vanilla';
   end;
   ShellOpen('mailto:' + GetDefaultsValue('BridgesEmail', BRIDGES_EMAIL) + '?Body=' + string(EncodeURL(Param)));
+end;
+
+procedure TTcp.miRemoveDuplicateOnExtractClick(Sender: TObject);
+begin
+  SetConfigBoolean('Extractor', 'RemoveDuplicateOnExtract', miRemoveDuplicateOnExtract.Checked);
 end;
 
 procedure TTcp.miRequestIPv6BridgesClick(Sender: TObject);
@@ -17721,22 +17975,22 @@ end;
 procedure TTcp.ClearAvailableCache(Sender: TObject);
 var
   ls: TStringList;
-  MenuID, i: Integer;
+  MemoID, i: Integer;
   HashStr, Separator: string;
   DeleteFlag: Boolean;
   CurrentMemo: TMemo;
 begin
-  MenuID := miClearMenu.Tag;
-  case MenuID of
-    1: CurrentMemo := meBridges;
-    2: CurrentMemo := meFallbackDirs;
+  MemoID := miClearMenu.Tag;
+  case MemoID of
+    MEMO_BRIDGES: CurrentMemo := meBridges;
+    MEMO_FALLBACK_DIRS: CurrentMemo := meFallbackDirs;
     else
       Exit;
   end;
   DeleteFlag := TMenuItem(Sender).Tag = 1;
   ls := TStringList.Create;
   try
-    if MenuID = 2 then
+    if MemoID = MEMO_FALLBACK_DIRS then
       Separator := '='
     else
       Separator := '';
@@ -17758,9 +18012,9 @@ begin
       end;
     end;
     CurrentMemo.Text := ls.Text;
-    case MenuID of
-      1: SaveBridgesData;
-      2: SaveFallbackDirsData;
+    case MemoID of
+      MEMO_BRIDGES: SaveBridgesData;
+      MEMO_FALLBACK_DIRS: SaveFallbackDirsData;
     end;
     if CurrentMemo.Text = '' then
       ResetFocus;
@@ -17772,12 +18026,12 @@ end;
 procedure TTcp.miClearMenuAllClick(Sender: TObject);
 begin
   case miClearMenu.Tag of
-    1:
+    MEMO_BRIDGES:
     begin
       meBridges.Text := '';
       SaveBridgesData;
     end;
-    2:
+    MEMO_FALLBACK_DIRS:
     begin
       meFallbackDirs.Text := '';
       SaveFallbackDirsData;
@@ -17792,29 +18046,29 @@ end;
 procedure TTcp.miClearMenuNotAliveClick(Sender: TObject);
 begin
   case miClearMenu.Tag of
-    1: ScanNetwork(stAlive, spUserBridges);
-    2: ScanNetwork(stAlive, spUserFallbackDirs);
+    MEMO_BRIDGES: ScanNetwork(stAlive, spUserBridges);
+    MEMO_FALLBACK_DIRS: ScanNetwork(stAlive, spUserFallbackDirs);
   end;
 end;
 
 procedure TTcp.miClearMenuUnsuitableClick(Sender: TObject);
 var
   PrefferedBridge: string;
-  LastDataCount, SuitableDataCount, MenuID: Integer;
+  LastDataCount, SuitableDataCount, MemoID: Integer;
   ls: TStringList;
   CurrentMemo: TMemo;
 begin
-  MenuID := miClearMenu.Tag;
-  case MenuID of
-    1: CurrentMemo := meBridges;
-    2: CurrentMemo := meFallbackDirs;
+  MemoID := miClearMenu.Tag;
+  case MemoID of
+    MEMO_BRIDGES: CurrentMemo := meBridges;
+    MEMO_FALLBACK_DIRS: CurrentMemo := meFallbackDirs;
     else
       Exit;
   end;
   LastDataCount := CurrentMemo.Lines.Count;
   ls := TStringList.Create;
   try
-    if MenuID = 1 then
+    if MemoID = MEMO_BRIDGES then
     begin
       PrefferedBridge := Trim(edPreferredBridge.Text);
       ls.Text := PrefferedBridge;
@@ -17828,13 +18082,13 @@ begin
     end;
 
     ls.Text := CurrentMemo.Text;
-    case MenuID of
-      1:
+    case MemoID of
+      MEMO_BRIDGES:
       begin
         ExcludeUnSuitableBridges(ls, True);
         SuitableDataCount := SuitableBridgesCount;
       end;
-      2:
+      MEMO_FALLBACK_DIRS:
       begin
         ExcludeUnSuitableFallbackDirs(ls);
         SuitableDataCount := SuitableFallbackDirsCount;
