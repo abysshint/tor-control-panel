@@ -215,7 +215,7 @@ begin
     LoadStr('114', 'Страна');
     LoadStr('122', 'Скрытый сервис');
     LoadStr('130', 'Пароль');
-    LoadStr('135', 'сек.|секунда|секунды|секунд');
+    LoadStr('135', 'сек|секунда|секунды|секунд');
     LoadStr('146', 'Преобразование в хэши включено');
     LoadStr('151', 'Тип');
     LoadStr('153', 'Порт');
@@ -226,7 +226,7 @@ begin
     LoadStr('175', 'Максимум');
     LoadStr('180', 'c');
     LoadStr('181', 'Проверка переадресации портов');
-    LoadStr('197', 'мин.|минута|минуты|минут');
+    LoadStr('197', 'мин|минута|минуты|минут');
     LoadStr('203', 'Всего');
     LoadStr('204', 'Внимание! Отключение кэша каталога ускорит работу сервера, но ваш сервер никогда не станет сторожевым узлом. Хотите продолжить?');
     LoadStr('206', 'Обычный');
@@ -387,10 +387,10 @@ begin
     LoadStr('419', 'Список');
     LoadStr('423', 'Найти...');
     LoadStr('444', 'Сетевой сканер');
-    LoadStr('459', 'мсeк.|миллисекунда|миллисекунды|миллисекунд');
-    LoadStr('470', 'шт.');
+    LoadStr('459', 'мс|миллисекунда|миллисекунды|миллисекунд');
+    LoadStr('470', 'шт');
     LoadStr('471', 'Приоритет');
-    LoadStr('477', 'ч.|час|часа|часов');
+    LoadStr('477', 'ч|час|часа|часов');
     LoadStr('495', 'Остановить сканирование');
     LoadStr('510', 'Все мосты');
     LoadStr('515', 'Выделять все ячейки в строке');
@@ -689,6 +689,8 @@ begin
     Tcp.lbMiliseconds4.Caption := TranslateTime(0, TIME_MILLISECOND, False, True);
     Tcp.lbHours1.Caption := TranslateTime(0, TIME_HOUR, False, True);
     Tcp.lbHours2.Caption := TranslateTime(0, TIME_HOUR, False, True);
+    Tcp.lbAutoSelRoutersAfterScanType.Caption := Load('592', 'Автоподбор после сканирования');
+    LoadList(Tcp.cbxAutoSelRoutersAfterScanType, '677', '"Выключен","Любого","Полного","Частичного","Новых узлов"');
     Tcp.lbAutoScanType.Caption := Load('603', 'Узлы для сканирования');
     LoadList(Tcp.cbxAutoScanType, '604', '"Автовыбор","Новые и без ответа","Новые и живые","Новые и мосты","Только новые"');
 
@@ -705,7 +707,8 @@ begin
     Tcp.lbAutoSelEntry.Caption := TransStr('288');
     Tcp.lbAutoSelMiddle.Caption := TransStr('289');
     Tcp.lbAutoSelExit.Caption := TransStr('290');
-    Tcp.lbAutoSelFallbackDirCount.Caption := TransStr('652');
+    Tcp.lbAutoSelFallbackDir.Caption := TransStr('652');
+
     Tcp.lbAutoSelMinWeight.Caption := Load('468', 'Вес');
     Tcp.lbAutoSelMaxPing.Caption := Load('469', 'Пинг');
     Tcp.lbCount1.Caption := TransStr('470');
@@ -1070,13 +1073,6 @@ begin
     Tcp.miClearRoutersFavorites.Caption := TransStr('584');
     Tcp.miClearRoutersIncorrect.Caption := Load('585', 'Неправильные узлы');
     Tcp.miClearRoutersAbsent.Caption := Load('586', 'Отсутствующие в консенсусе');
-    Tcp.miAutoSelNodesType.Caption := Load('592', 'Изменять список узлов при автоподборе');
-    Tcp.miAutoSelEntryEnabled.Caption := TransStr('288');
-    Tcp.miAutoSelMiddleEnabled.Caption := TransStr('289');
-    Tcp.miAutoSelExitEnabled.Caption := TransStr('290');
-    Tcp.miAutoSelFallbackDirEnabled.Caption := TransStr('652');
-    Tcp.miAutoSelNodesSA.Caption := TransStr('368');
-    Tcp.miAutoSelNodesUA.Caption := TransStr('369');
 
     Tcp.miTransportsInsert.Caption := TransStr('279');
     Tcp.miTransportsDelete.Caption := TransStr('280');

@@ -210,6 +210,8 @@ var
   procedure EditMenuEnableCheck(MenuItem: TMenuItem; MenuType: TEditMenuType);
   procedure MenuSelectPrepare(SelMenu: TMenuItem = nil; UnSelMenu: TMenuItem = nil; HandleDisabled: Boolean = False);
   procedure ShellOpen(Url: string);
+  procedure SetMaskData(var Mask: Integer; CheckBoxControl: TCheckBox);
+  procedure GetMaskData(var Mask: Integer; CheckBoxControl: TCheckBox);
   procedure GetSettings(Section: string; UpDownControl: TUpDown; ini: TMemIniFile); overload;
   procedure GetSettings(Section: string; CheckBoxControl: TCheckBox; ini: TMemIniFile); overload;
   procedure GetSettings(Section: string; MenuControl: TMenuItem; ini: TMemIniFile; Default: Boolean = True); overload;
@@ -238,6 +240,19 @@ implementation
 
 uses
   Main, Languages;
+
+procedure SetMaskData(var Mask: Integer; CheckBoxControl: TCheckBox);
+begin
+  if CheckBoxControl.Checked then
+    Inc(Mask, CheckBoxControl.Tag);
+end;
+
+procedure GetMaskData(var Mask: Integer; CheckBoxControl: TCheckBox);
+begin
+  if FirstLoad then
+    CheckBoxControl.ResetValue := CheckBoxControl.Checked;
+  CheckBoxControl.Checked := Mask and CheckBoxControl.Tag <> 0;
+end;
 
 function GetPortsValue(const PortsData, PortStr: string): Integer;
 var
@@ -802,7 +817,6 @@ begin
     2: begin Default := ROUTER_FILTER_DEFAULT; Max := ROUTER_FILTER_MAX; end;
     3: begin Default := CIRCUIT_FILTER_DEFAULT; Max := CIRCUIT_FILTER_MAX;end;
   4,5: begin Default := TPL_MENU_DEFAULT; Max := TPL_MENU_MAX; end;
-    6: begin Default := AUTOSEL_NODES_DEFAULT; Max := AUTOSEL_NODES_MAX; end;
   end;
   if (Mask < 0) or (Mask > Max) then
     Mask := Default;

@@ -48,8 +48,6 @@ const
   SHOW_NODES_FILTER_MAX = 16352;
   TPL_MENU_DEFAULT = 7;
   TPL_MENU_MAX = 7;
-  AUTOSEL_NODES_DEFAULT = 15;
-  AUTOSEL_NODES_MAX = 15;
 
   L1_NUM_GUARDS = 2;
   L2_NUM_GUARDS = 4;
@@ -138,6 +136,18 @@ const
 
   HS_STATE_ENABLED = 0;
   HS_STATE_DISABLED = 1;
+
+  AUTOSCAN_AUTO = 0;
+  AUTOSCAN_NEW_AND_FAILED = 1;
+  AUTOSCAN_NEW_AND_ALIVE = 2;
+  AUTOSCAN_NEW_AND_BRIDGES = 3;
+  AUTOSCAN_NEW = 4;
+
+  AUTOSEL_SCAN_DISABLED = 0;
+  AUTOSEL_SCAN_ANY = 1;
+  AUTOSEL_SCAN_FULL = 2;
+  AUTOSEL_SCAN_PARTIAL = 3;
+  AUTOSEL_SCAN_NEW = 4;
 
   GRID_FILTER = 1;
   GRID_ROUTERS = 2;
@@ -440,7 +450,7 @@ var
   );
 
   TransportDirs: array [0..1] of string = (
-    '%ProgramDir%\Tor\pluggable_transports\',
+    '%ProgramDir%\Tor\Pluggable_Transports\',
     '%ProgramDir%\Tor\PluggableTransports\'
   );
 

@@ -858,21 +858,10 @@ type
     udAutoSelMiddleCount: TUpDown;
     edAutoSelEntryCount: TEdit;
     udAutoSelEntryCount: TUpDown;
-    lbAutoSelEntry: TLabel;
-    lbAutoSelMiddle: TLabel;
-    lbAutoSelExit: TLabel;
     miEnableConvertNodesOnRemoveFromNodesList: TMenuItem;
     cbAutoSelNodesWithPingOnly: TCheckBox;
     cbAutoSelUniqueNodes: TCheckBox;
     cbAutoSelStableOnly: TCheckBox;
-    lbAutoSelMaxPing: TLabel;
-    lbAutoSelMinWeight: TLabel;
-    lbSpeed5: TLabel;
-    lbMiliseconds5: TLabel;
-    edAutoSelMaxPing: TEdit;
-    udAutoSelMaxPing: TUpDown;
-    edAutoSelMinWeight: TEdit;
-    udAutoSelMinWeight: TUpDown;
     lbCount1: TLabel;
     lbCount2: TLabel;
     lbCount3: TLabel;
@@ -896,13 +885,6 @@ type
     miSelectGraphUL: TMenuItem;
     tmTraffic: TTimer;
     cbAutoSelMiddleNodesWithoutDir: TCheckBox;
-    miAutoSelNodesType: TMenuItem;
-    miAutoSelEntryEnabled: TMenuItem;
-    miAutoSelMiddleEnabled: TMenuItem;
-    miAutoSelExitEnabled: TMenuItem;
-    miDelimiter65: TMenuItem;
-    miAutoSelNodesSA: TMenuItem;
-    miAutoSelNodesUA: TMenuItem;
     lbUseBuiltInProxy: TLabel;
     cbEnableHttp: TCheckBox;
     cbxHTTPTunnelHost: TComboBox;
@@ -1029,8 +1011,6 @@ type
     miRtCopyFallbackDir: TMenuItem;
     miDelimiter75: TMenuItem;
     miDetailsCopyFallbackDir: TMenuItem;
-    miAutoSelFallbackDirEnabled: TMenuItem;
-    lbAutoSelFallbackDirCount: TLabel;
     lbCount6: TLabel;
     edAutoSelFallbackDirCount: TEdit;
     udAutoSelFallbackDirCount: TUpDown;
@@ -1060,7 +1040,7 @@ type
     miExtractIpv6Bridges: TMenuItem;
     miDelimiter77: TMenuItem;
     miExtractFallbackDirs: TMenuItem;
-    miDelimiter78: TMenuItem;
+    miDelimiter65: TMenuItem;
     miFormatIPv6OnExtract: TMenuItem;
     miExtractPorts: TMenuItem;
     miRemoveDuplicateOnExtract: TMenuItem;
@@ -1069,6 +1049,24 @@ type
     miExtractDelimiterAuto: TMenuItem;
     miExtractDelimiterLineBreak: TMenuItem;
     miExtractDelimiterComma: TMenuItem;
+    lbAutoSelRoutersAfterScanType: TLabel;
+    cbxAutoSelRoutersAfterScanType: TComboBox;
+    cbAutoSelEntryEnabled: TCheckBox;
+    cbAutoSelMiddleEnabled: TCheckBox;
+    cbAutoSelExitEnabled: TCheckBox;
+    cbAutoSelFallbackDirEnabled: TCheckBox;
+    lbAutoSelEntry: TLabel;
+    lbAutoSelMiddle: TLabel;
+    lbAutoSelExit: TLabel;
+    lbAutoSelFallbackDir: TLabel;
+    lbAutoSelMaxPing: TLabel;
+    lbAutoSelMinWeight: TLabel;
+    lbSpeed5: TLabel;
+    lbMiliseconds5: TLabel;
+    edAutoSelMaxPing: TEdit;
+    udAutoSelMaxPing: TUpDown;
+    edAutoSelMinWeight: TEdit;
+    udAutoSelMinWeight: TUpDown;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1252,7 +1250,8 @@ type
     procedure UpdateTransports;
     procedure UseDirPortEnable(State: Boolean);
     procedure SaveSortData;
-    procedure UpdateScaleFactor;    
+    procedure UpdateScaleFactor;
+    function RoutersAutoSelect: Boolean;
     procedure CheckTorAutoStart;
     procedure UpdateTrayHint;    
     procedure CountTotalBridges(ShowSuitableCount: Boolean = True);
@@ -1565,20 +1564,18 @@ type
     procedure miEnableConvertNodesOnRemoveFromNodesListClick(Sender: TObject);
     procedure miManualPingMeasureClick(Sender: TObject);
     procedure miManualDetectAliveNodesClick(Sender: TObject);
-    procedure cbxAutoSelPriorityChange(Sender: TObject);
+    procedure AutoSelOptionsUpdate(Sender: TObject);
     procedure pbTrafficPaint(Sender: TObject);
     procedure SelectTrafficPeriod(Sender: TObject);
     procedure tmTrafficTimer(Sender: TObject);
     procedure miSelectGraphDLClick(Sender: TObject);
     procedure miSelectGraphULClick(Sender: TObject);
     procedure FormPaint(Sender: TObject);
-    procedure AutoSelNodesType(Sender: TObject);
     procedure cbEnableHttpClick(Sender: TObject);
     procedure lbStatusProxyAddrMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure SelectCheckIpProxy(Sender: TObject);
     procedure miOpenLogsFolderClick(Sender: TObject);
     procedure lbStatusFilterModeClick(Sender: TObject);
-    procedure cbxAutoScanTypeChange(Sender: TObject);
     procedure miExcludeBridgesWhenCountingClick(Sender: TObject);
     procedure miShowPortAlongWithIpClick(Sender: TObject);
     procedure mnTrafficPopup(Sender: TObject);
@@ -1678,7 +1675,7 @@ var
   Descriptors: TDescriptorsThread;
   Logger, VersionChecker: TReadPipeThread;
   OptionsLocked, OptionsChanged, ShowNodesChanged, Connected, AlreadyStarted, SearchFirst, StopScan: Boolean;
-  ConsensusUpdated, DescriptorsUpdated, FilterUpdated, RoutersUpdated, ExcludeUpdated, OpenDNSUpdated, LanguageUpdated,
+  ConsensusUpdated, FilterUpdated, RoutersUpdated, ExcludeUpdated, OpenDNSUpdated, LanguageUpdated,
   BridgesUpdated, BridgesRecalculate, BridgesFileUpdated, BridgesFileNeedSave: Boolean;
   SelectExitCircuit, TotalsNeedSave: Boolean;
   SupportVanguardsLite, SupportRendPostPeriod: Boolean;
@@ -2252,7 +2249,7 @@ procedure TTcp.TConsensusThreadTerminate(Sender: TObject);
 begin
   Consensus := nil;
   ConsensusUpdated := False;
-  if cbUseBridges.Checked or DescriptorsUpdated then
+  if cbUseBridges.Checked then
     LoadDescriptors
   else
   begin
@@ -2277,7 +2274,6 @@ end;
 procedure TTcp.TDescriptorsThreadTerminate(Sender: TObject);
 begin
   Descriptors := nil;
-  DescriptorsUpdated := False;
   if UsedBridgesCount <> UsedBridgesList.Count then
     SaveBridgesData;
   if FirstLoad or (MissingFallbackDirCount > 0) or UpdateFallbackDirs then
@@ -3143,13 +3139,7 @@ begin
           if Tcp.cbAutoScanNewNodes.Checked and
             (Tcp.cbEnablePingMeasure.Checked or Tcp.cbEnableDetectAliveNodes.Checked) then
               AutoScanStage := 1;
-        end
-        else
-        begin
-          if AutoScanStage = 3 then
-            AutoScanStage := 0;
         end;
-
         Tcp.SaveNetworkCache;
       end;
     end;
@@ -4849,7 +4839,6 @@ begin
     3: SetCircuitsFilter(Sender);
     4: miTplSaveClick(Sender);
     5: miTplLoadClick(Sender);
-    6: AutoSelNodesType(Sender);
   end;
 end;
 
@@ -5844,8 +5833,8 @@ begin
       if ConfigVersion = 4 then
       begin
         SetSettings('AutoSelNodes', 'AutoSelNodesType',
-          GetIntDef(GetSettings('AutoSelNodes', 'AutoSelNodesType', AUTOSEL_NODES_DEFAULT, ini) + miAutoSelFallbackDirEnabled.Tag,
-            AUTOSEL_NODES_DEFAULT, 0, AUTOSEL_NODES_MAX), ini);
+          GetIntDef(GetSettings('AutoSelNodes', 'AutoSelNodesType', 15, ini) + 8,
+            15, 0, 15), ini);
         DeleteSettings('Main', 'LastGeoIpUpdateDate', ini);
         DeleteSettings('Routers', 'AddRelaysToBridgesCache, ', ini);
         ConfigVersion := 5;
@@ -6665,7 +6654,6 @@ begin
       end;
 
       Cached := BridgesDic.ContainsKey(Bridge.Hash);
-
       CountryStr := CountryCodes[CountryID];
 
       if cdPorts and (cdAlive or NeedAlive) and not RouterInNodesList(Bridge.Hash, IpStr, ntExclude, NeedCountry and NeedAlive, CountryStr) then
@@ -7204,7 +7192,7 @@ end;
 
 procedure TTcp.ResetOptions;
 var
-  i, LogID: Integer;
+  i, LogID, AutoSelNodesType: Integer;
   ini, inidef: TMemIniFile;
   ScrollBars, SeparateType, DisplayedLinesType, LogAutoDelType: Byte;
   ParseStr: ArrOfStr;
@@ -7342,6 +7330,7 @@ begin
     GetSettings('Scanner', udPartialScanInterval, ini);
     GetSettings('Scanner', udPartialScansCounts, ini);
     GetSettings('Scanner', cbxAutoScanType, ini);
+    GetSettings('Scanner', cbxAutoSelRoutersAfterScanType, ini);
 
     GetSettings('AutoSelNodes', cbxAutoSelPriority, ini);
     GetSettings('AutoSelNodes', udAutoSelEntryCount, ini);
@@ -7356,7 +7345,11 @@ begin
     GetSettings('AutoSelNodes', cbAutoSelUniqueNodes, ini);
     GetSettings('AutoSelNodes', cbAutoSelNodesWithPingOnly, ini);
     GetSettings('AutoSelNodes', cbAutoSelMiddleNodesWithoutDir, ini);
-
+    AutoSelNodesType := GetIntDef(GetSettings('AutoSelNodes', 'AutoSelNodesType', 15, ini), 15, 0, 15);
+    GetMaskData(AutoSelNodesType, cbAutoSelEntryEnabled);
+    GetMaskData(AutoSelNodesType, cbAutoSelMiddleEnabled);
+    GetMaskData(AutoSelNodesType, cbAutoSelExitEnabled);
+    GetMaskData(AutoSelNodesType, cbAutoSelFallbackDirEnabled);
     CheckAutoSelControls;
 
     GetSettings('Status', miSelectGraphDL, ini);
@@ -7393,7 +7386,6 @@ begin
     IntToMenu(miCircuitFilter, GetSettings('Circuits', 'PurposeFilter', CIRCUIT_FILTER_DEFAULT, ini));
     IntToMenu(miTplSave, GetSettings('Filter', 'TplSave', TPL_MENU_DEFAULT, ini));
     IntToMenu(miTplLoad, GetSettings('Filter', 'TplLoad', TPL_MENU_DEFAULT, ini));
-    IntToMenu(miAutoSelNodesType, GetSettings('AutoSelNodes', 'AutoSelNodesType', AUTOSEL_NODES_DEFAULT, ini));
 
     CheckSelectRowOptions(sgFilter, miFilterSelectRow.Checked);
     CheckSelectRowOptions(sgRouters, miRoutersSelectRow.Checked);
@@ -8400,7 +8392,7 @@ end;
 procedure TTcp.ApplyOptions(AutoResolveErrors: Boolean = False);
 var
   ini, inidef: TMemIniFile;
-  i: Integer;
+  i, AutoSelNodesType: Integer;
   Item: TPair<string, TFilterInfo>;
   NodeItem: TPair<string, TNodeTypes>;
   Temp: string;
@@ -8482,6 +8474,7 @@ begin
     SetSettings('Scanner', udPartialScanInterval, ini);
     SetSettings('Scanner', udPartialScansCounts, ini);
     SetSettings('Scanner', cbxAutoScanType, ini);
+    SetSettings('Scanner', cbxAutoSelRoutersAfterScanType, ini);
 
     SetSettings('AutoSelNodes', udAutoSelEntryCount, ini);
     SetSettings('AutoSelNodes', udAutoSelMiddleCount, ini);
@@ -8496,6 +8489,13 @@ begin
     SetSettings('AutoSelNodes', cbAutoSelUniqueNodes, ini);
     SetSettings('AutoSelNodes', cbAutoSelNodesWithPingOnly, ini);
     SetSettings('AutoSelNodes', cbAutoSelMiddleNodesWithoutDir, ini);
+
+    AutoSelNodesType := 0;
+    SetMaskData(AutoSelNodesType, cbAutoSelEntryEnabled);
+    SetMaskData(AutoSelNodesType, cbAutoSelMiddleEnabled);
+    SetMaskData(AutoSelNodesType, cbAutoSelExitEnabled);
+    SetMaskData(AutoSelNodesType, cbAutoSelFallbackDirEnabled);
+    SetSettings('AutoSelNodes', 'AutoSelNodesType', AutoSelNodesType, ini);
 
     SetDesktopPosition(Tcp.Left, Tcp.Top);
     SetSettings('Main', 'FormPosition', GetFormPositionStr, ini);
@@ -9922,12 +9922,24 @@ begin
   Menu.Visible := IpStr <> '';
   if not Menu.Visible then
     Exit;
-  Data := IpStr + ':' + IntToStr(Router.Port) + ' ' + RouterID;
 
   if BridgesDic.TryGetValue(RouterID, BridgeInfo) then
+  begin
+    if BridgeInfo.Source <> '' then
+    begin
+      if UseIPv6 then
+      begin
+        Menu.Visible := False;
+        Exit;
+      end;
+      IpStr := BridgeInfo.Source;
+    end;
     BridgeStr := Trim(BridgeInfo.Transport + ' ' + IpStr + ':' + IntToStr(BridgeInfo.Router.Port) + ' ' + RouterID + ' ' + BridgeInfo.Params)
+  end
   else
     BridgeStr := '';
+
+  Data := IpStr + ':' + IntToStr(Router.Port) + ' ' + RouterID;
 
   if TryGetDataFromStr(BridgeStr, ltTransport, Transport) then
   begin
@@ -10022,7 +10034,6 @@ begin
   miAvoidAddingIncorrectNodes.Enabled := ActionState and TypeState;
 
   MenuSelectPrepare(miRtFilterSA, miRtFilterUA);
-  MenuSelectPrepare(miAutoSelNodesSA, miAutoSelNodesUA);
 
   if State then
   begin
@@ -11364,21 +11375,21 @@ begin
         else
         begin
           CurrentAutoScanPurpose := spNew;
-          if cbxAutoScanType.ItemIndex <> 4 then
+          if cbxAutoScanType.ItemIndex <> AUTOSCAN_NEW then
           begin
             if (LastPartialScansCounts > 0) and (CurrentDate >= (LastPartialScanDate + (udPartialScanInterval.Position * 3600))) then
             begin
               case cbxAutoScanType.ItemIndex of
-                0:
+                AUTOSCAN_AUTO:
                 begin
                   if LastPartialScansCounts mod 3 = 0 then
                     CurrentAutoScanPurpose := spNewAndFailed
                   else
                     CurrentAutoScanPurpose := spNewAndAlive
                 end;
-                1: CurrentAutoScanPurpose := spNewAndFailed;
-                2: CurrentAutoScanPurpose := spNewAndAlive;
-                3: CurrentAutoScanPurpose := spNewAndBridges;
+                AUTOSCAN_NEW_AND_FAILED: CurrentAutoScanPurpose := spNewAndFailed;
+                AUTOSCAN_NEW_AND_ALIVE: CurrentAutoScanPurpose := spNewAndAlive;
+                AUTOSCAN_NEW_AND_BRIDGES: CurrentAutoScanPurpose := spNewAndBridges;
               end;
             end;
           end;
@@ -11406,7 +11417,7 @@ end;
 procedure TTcp.tmScannerTimer(Sender: TObject);
 var
   ls: TStringList;
-  i, DeleteCount: Integer;
+  i, DeleteCount, AutoSelType: Integer;
   CurrentDate: Int64;
   Str: string;
   GeoIpInfo: TGeoIpInfo;
@@ -11539,23 +11550,42 @@ begin
           end;
         end;
       end;
-      if AutoScanStage = 2 then
+
+      if (TotalScans > 0) or (CurrentScanPurpose = spNewBridges) then
       begin
-        if ConnectState <> 0 then
-          AutoScanStage := 3
-        else
-          AutoScanStage := 0;
-      end;
-      LoadConsensus;
-      if CurrentScanPurpose = spNewBridges then
-      begin
+        LoadConsensus;
+        case CurrentScanPurpose of
+          spNewBridges:
+          begin
+            if ConnectState = 0 then
+              SetOptionsEnable(True);
+            OptionsLocked := True;
+            ApplyOptions(True);
+          end;
+          spAuto:
+          begin
+            AutoSelType := cbxAutoSelRoutersAfterScanType.ItemIndex;
+            if (AutoSelType <> AUTOSEL_SCAN_DISABLED) and (NewBridgesStage = 0) then
+            begin
+              if (AutoSelType = AUTOSEL_SCAN_ANY) or
+                ((AutoSelType = AUTOSEL_SCAN_FULL) and (CurrentAutoScanPurpose = spAll)) or
+                ((AutoSelType = AUTOSEL_SCAN_PARTIAL) and (CurrentAutoScanPurpose <> spNew)) or
+                ((AutoSelType = AUTOSEL_SCAN_NEW) and (CurrentAutoScanPurpose = spNew)) then
+              begin
+                OptionsLocked := True;
+                if RoutersAutoSelect then
+                  ApplyOptions(True)
+                else
+                  OptionsLocked := False;
+              end;
+            end;
+          end;
+        end;
         if ConnectState = 0 then
-          SetOptionsEnable(True);
-        OptionsLocked := True;
-        ApplyOptions(True);
+          SaveNetworkCache;
       end;
-      if ConnectState = 0 then
-        SaveNetworkCache;      
+      if AutoScanStage = 2 then
+        AutoScanStage := 0;
       ScanStage := 0;
       UpdateScannerControls;
       CurrentScanPurpose := spNone;
@@ -12871,7 +12901,7 @@ begin
   AliveState := cbEnableDetectAliveNodes.Checked;
   State := PingState or AliveState;
   AutoState := State and cbAutoScanNewNodes.Checked;
-  TypeState := cbxAutoScanType.ItemIndex <> 4;
+  TypeState := cbxAutoScanType.ItemIndex <> AUTOSCAN_NEW;
 
   edFullScanInterval.Enabled := AutoState;
   edPartialScanInterval.Enabled := AutoState and TypeState;
@@ -12912,7 +12942,9 @@ begin
   lbScanPortionTimeout.Enabled := State;
   lbMiliseconds4.Enabled := State;
   lbScanPortionSize.Enabled := State;
+  lbAutoSelRoutersAfterScanType.Enabled := AutoState;
   lbAutoScanType.Enabled := AutoState;
+  cbxAutoSelRoutersAfterScanType.Enabled := AutoState;
   cbxAutoScanType.Enabled := AutoState;
   cbAutoScanNewNodes.Enabled := State;
 
@@ -13585,21 +13617,52 @@ begin
   EnableOptionButtons;
 end;
 
-procedure TTcp.cbxAutoScanTypeChange(Sender: TObject);
-begin
-  CheckScannerControls;
-  EnableOptionButtons;
-end;
-
-procedure TTcp.cbxAutoSelPriorityChange(Sender: TObject);
+procedure TTcp.AutoSelOptionsUpdate(Sender: TObject);
 begin
   CheckAutoSelControls;
   EnableOptionButtons;
 end;
 
 procedure TTCP.CheckAutoSelControls;
+var
+  State, EntryState, MiddleState, ExitState, FallbackDirState: Boolean;
 begin
-  cbAutoSelNodesWithPingOnly.Enabled := cbxAutoSelPriority.ItemIndex in [1, 3];
+  State := cbAutoSelEntryEnabled.Checked or cbAutoSelMiddleEnabled.Checked or cbAutoSelExitEnabled.Checked or cbAutoSelFallbackDirEnabled.Checked;
+  EntryState := State and cbAutoSelEntryEnabled.Checked;
+  MiddleState := State and cbAutoSelMiddleEnabled.Checked;
+  ExitState := State and cbAutoSelExitEnabled.Checked;
+  FallbackDirState := State and cbAutoSelFallbackDirEnabled.Checked;
+
+  edAutoSelEntryCount.Enabled := EntryState;
+  edAutoSelMiddleCount.Enabled := MiddleState;
+  edAutoSelExitCount.Enabled := ExitState;
+  edAutoSelFallbackDirCount.Enabled := FallbackDirState;
+  edAutoSelMinWeight.Enabled := State;
+  edAutoSelMaxPing.Enabled := State;
+  udAutoSelEntryCount.Enabled := EntryState;
+  udAutoSelMiddleCount.Enabled := MiddleState;
+  udAutoSelExitCount.Enabled := ExitState;
+  udAutoSelFallbackDirCount.Enabled := FallbackDirState;
+  udAutoSelMinWeight.Enabled := State;
+  udAutoSelMaxPing.Enabled := State;
+  cbxAutoSelPriority.Enabled := State;
+  cbxAutoSelRoutersAfterScanType.Enabled := State;
+  cbAutoSelFallbackDirNoLimit.Enabled := FallbackDirState;
+  cbAutoSelMiddleNodesWithoutDir.Enabled := MiddleState;
+  cbAutoSelFilterCountriesOnly.Enabled := State;
+  cbAutoSelUniqueNodes.Enabled := State;
+  cbAutoSelStableOnly.Enabled := State;
+  cbAutoSelNodesWithPingOnly.Enabled := State and (cbxAutoSelPriority.ItemIndex in [PRIORITY_WEIGHT, PRIORITY_RANDOM]);
+  lbAutoSelPriority.Enabled := State;
+  lbCount1.Enabled := EntryState;
+  lbCount2.Enabled := MiddleState;
+  lbCount3.Enabled := ExitState;
+  lbCount6.Enabled := FallbackDirState;
+  lbSpeed5.Enabled := State;
+  lbMiliseconds5.Enabled := State;
+  lbAutoSelMinWeight.Enabled := State;
+  lbAutoSelMaxPing.Enabled := State;
+  lbAutoSelRoutersAfterScanType.Enabled := State;
 end;
 
 procedure TTcp.cbxBridgesListChange(Sender: TObject);
@@ -15579,7 +15642,7 @@ begin
         SubMenu.ImageIndex := 50;
         SubMenu.OnClick := RoutersAutoSelectClick;
         Submenu.Enabled := (RoutersDic.Count > 0) and (InfoStage = 0) and
-          (miAutoSelEntryEnabled.Checked or miAutoSelMiddleEnabled.Checked or miAutoSelExitEnabled.Checked) and
+          (cbAutoSelEntryEnabled.Checked or cbAutoSelMiddleEnabled.Checked or cbAutoSelExitEnabled.Checked or cbAutoSelFallbackDirEnabled.Checked) and
           not (Assigned(Consensus) or Assigned(Descriptors) or tmScanner.Enabled);
         Submenu.Visible := not AutoSave;
       end;
@@ -16068,7 +16131,7 @@ begin
 
 end;
 
-procedure TTcp.RoutersAutoSelectClick(Sender: TObject);
+function TTcp.RoutersAutoSelect: Boolean;
 var
   Router: Tpair<string, TRouterInfo>;
   cdWeight, cdPing, cdStable, CheckEntryPorts: Boolean;
@@ -16177,7 +16240,10 @@ var
   end;
 
 begin
-  if (RoutersDic.Count = 0) or (InfoStage > 0) or Assigned(Consensus) or Assigned(Descriptors) or tmScanner.Enabled then
+  Result := False;
+  if RoutersDic.Count = 0 then
+    Exit;
+  if not (cbAutoSelEntryEnabled.Checked or cbAutoSelMiddleEnabled.Checked or cbAutoSelExitEnabled.Checked or cbAutoSelFallbackDirEnabled.Checked) then
     Exit;
 
   CheckEntryPorts := ReachablePortsExists;
@@ -16198,13 +16264,13 @@ begin
 
   try
     AutoSelNodeTypes := [];
-    if miAutoSelEntryEnabled.Checked then
+    if cbAutoSelEntryEnabled.Checked then
       Include(AutoSelNodeTypes, ntEntry);
-    if miAutoSelMiddleEnabled.Checked then
+    if cbAutoSelMiddleEnabled.Checked then
       Include(AutoSelNodeTypes, ntMiddle);
-    if miAutoSelExitEnabled.Checked then
+    if cbAutoSelExitEnabled.Checked then
       Include(AutoSelNodeTypes, ntExit);
-    if miAutoSelFallbackDirEnabled.Checked then
+    if cbAutoSelFallbackDirEnabled.Checked then
       Include(AutoSelNodeTypes, ntFallbackDir);
 
     for Router in RoutersDic do
@@ -16235,7 +16301,7 @@ begin
       CountryCode := CountryCodes[CountryID];
 
       cdWeight := Router.Value.Bandwidth >= udAutoSelMinWeight.Position * 1024;
-      
+
       if (rfRelay in Flags) and not RouterInNodesList(Router.Key, Router.Value.IPv4, ntExclude) then
       begin
         cdStable := rfStable in Flags;
@@ -16290,48 +16356,48 @@ begin
 
     UniqueList.Clear;
     if cbAutoSelUniqueNodes.Checked and not
-      (miAutoSelEntryEnabled.Checked and miAutoSelMiddleEnabled.Checked and miAutoSelExitEnabled.Checked) then
+      (cbAutoSelEntryEnabled.Checked and cbAutoSelMiddleEnabled.Checked and cbAutoSelExitEnabled.Checked) then
     begin
       for NodeItem in NodesDic do
       begin
         if ValidHash(NodeItem.Key) then
         begin
-          if not miAutoSelEntryEnabled.Checked and (ntEntry in NodeItem.Value) then
+          if not cbAutoSelEntryEnabled.Checked and (ntEntry in NodeItem.Value) then
             UniqueList.AddOrSetValue(NodeItem.Key, 0);
-          if not miAutoSelMiddleEnabled.Checked and (ntMiddle in NodeItem.Value) then
+          if not cbAutoSelMiddleEnabled.Checked and (ntMiddle in NodeItem.Value) then
             UniqueList.AddOrSetValue(NodeItem.Key, 0);
-          if not miAutoSelExitEnabled.Checked and (ntExit in NodeItem.Value) then
+          if not cbAutoSelExitEnabled.Checked and (ntExit in NodeItem.Value) then
             UniqueList.AddOrSetValue(NodeItem.Key, 0);
         end;
       end;
     end;
 
-    if miAutoSelFallbackDirEnabled.Checked then
+    if cbAutoSelFallbackDirEnabled.Checked then
       Exclude(AutoSelNodeTypes, ntFallbackDir);
     ClearRouters(AutoSelNodeTypes);
 
-    if miAutoSelEntryEnabled.Checked then
+    if cbAutoSelEntryEnabled.Checked then
     begin
       EntryNodes.CustomSort(SortCompare);
       EntryStr := ListToStr(EntryNodes, udAutoSelEntryCount.Position);
       GetNodes(EntryStr, ntEntry, True);
     end;
 
-    if miAutoSelExitEnabled.Checked then
+    if cbAutoSelExitEnabled.Checked then
     begin
       ExitNodes.CustomSort(SortCompare);
       ExitStr := ListToStr(ExitNodes, udAutoSelExitCount.Position);
       GetNodes(ExitStr, ntExit, True);
     end;
 
-    if miAutoSelMiddleEnabled.Checked then
+    if cbAutoSelMiddleEnabled.Checked then
     begin
       MiddleNodes.CustomSort(SortCompare);
       MiddleStr := ListToStr(MiddleNodes, udAutoSelMiddleCount.Position);
       GetNodes(MiddleStr, ntMiddle, True);
     end;
 
-    if miAutoSelFallbackDirEnabled.Checked then
+    if cbAutoSelFallbackDirEnabled.Checked then
     begin
       FallbackDirs.CustomSort(SortCompare);
       FallbackStr := ListToStr(FallbackDirs, udAutoSelFallbackDirCount.Position);
@@ -16352,7 +16418,7 @@ begin
     ShowRouters;
     RoutersUpdated := True;
     EnableOptionButtons;
-
+    Result := True;
   finally
     EntryNodes.Free;
     MiddleNodes.Free;
@@ -16374,7 +16440,7 @@ var
   BridgeInfo: TBridgeInfo;
   CountryID: Byte;
   CountryStr: string;
-  Router: TRouterInfo; 
+  Router: TRouterInfo;
 begin
   SuitableFallbackDirsCount := 0;
   FallbackDirsCount := Data.Count;
@@ -16391,7 +16457,7 @@ begin
       else
         cdPorts := True;
 
-      cdSocket := False;      
+      cdSocket := False;
       if CheckRouters then
       begin
         if RoutersDic.TryGetValue(FallbackDir.Hash, Router) then
@@ -16448,6 +16514,11 @@ begin
     PortsDic.Clear;
 end;
 
+procedure TTcp.RoutersAutoSelectClick(Sender: TObject);
+begin
+  RoutersAutoSelect;
+end;
+
 procedure TTcp.SaveFallbackDirs;
 var
   ini: TMemIniFile;
@@ -16457,7 +16528,7 @@ begin
   try
     OptionsLocked := True;
     SaveFallbackDirsData(ini, False, True);
-    OptionsLocked := False;    
+    OptionsLocked := False;
     SaveTorConfig;
   finally
     UpdateConfigFile(ini);
@@ -16602,11 +16673,6 @@ procedure TTcp.miAutoScrollClick(Sender: TObject);
 begin
   SetConfigBoolean('Log', 'AutoScroll', miAutoScroll.Checked);
   CheckLogAutoScroll;
-end;
-
-procedure TTcp.AutoSelNodesType(Sender: TObject);
-begin
-  SetConfigInteger('AutoSelNodes', 'AutoSelNodesType', MenuToInt(miAutoSelNodesType));
 end;
 
 procedure TTcp.miAvoidAddingIncorrectNodesClick(Sender: TObject);
@@ -17455,7 +17521,7 @@ begin
       end;
     end;
   end;
-  if cbUseBridges.Checked and cbExcludeUnsuitableBridges.Checked then
+  if cbUseBridges.Checked and cbExcludeUnsuitableBridges.Checked and (CurrentScanPurpose <> spAuto) then
   begin
     if (FailedBridgesCount > 0) or (((NewBridgesCount > 0) or (NewBridgesStage = 1)) and (ConnectState = 2)) then
       Inc(FailedBridgesInterval, 3);
@@ -17910,7 +17976,22 @@ begin
   DeleteFile(NewDescriptorsFile);
   ClearAll := TMenuItem(Sender).Tag = 1;
   if ClearAll then
-    BridgesDic.Clear
+  begin
+    for Item in BridgesDic do
+    begin
+      if RoutersDic.TryGetValue(Item.Key, RouterInfo) then
+      begin
+        if not (rfRelay in RouterInfo.Flags) then
+        begin
+          if GeoIpDic.TryGetValue(RouterInfo.IPv4, GeoIpInfo) then
+            SetPortsValue(RouterInfo.IPv4, IntToStr(RouterInfo.Port), 0);
+          RoutersDic.Remove(Item.Key);
+        end;
+      end
+    end;
+    BridgesDic.Clear;
+    CompBridgesDic.Clear;
+  end
   else
   begin
     IpList := TDictionary<string, Byte>.Create;
@@ -17967,9 +18048,9 @@ begin
       IpList.Free;
     end;
   end;
-  DescriptorsUpdated := True;
-  LoadConsensus;
-  SaveBridgesData;
+  ConsensusUpdated := True;
+  ApplyOptions(True);
+  SaveNetworkCache(False);
 end;
 
 procedure TTcp.ClearAvailableCache(Sender: TObject);
