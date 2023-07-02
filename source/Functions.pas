@@ -8,7 +8,7 @@ uses
   System.Variants, System.Masks, System.DateUtils, System.Generics.Collections, System.Math,
   System.Win.ComObj, System.Win.Registry, Vcl.Graphics, Vcl.Forms, Vcl.Controls, Vcl.Grids,
   Vcl.Menus, Vcl.Imaging.pngimage, Vcl.ComCtrls, Vcl.StdCtrls, Vcl.Clipbrd, Vcl.Dialogs,
-  Vcl.Themes, synacode, blcksock, synautil, ConstData, Addons;
+  Vcl.Buttons, Vcl.Themes, synacode, blcksock, synautil, ConstData, Addons;
 
 const
   JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = $00002000;
@@ -217,8 +217,10 @@ var
   procedure GetSettings(Section: string; MenuControl: TMenuItem; ini: TMemIniFile; Default: Boolean = True); overload;
   procedure GetSettings(Section: string; ComboBoxControl: TComboBox; ini: TMemIniFile; Default: Integer = 0); overload;
   procedure GetSettings(Section: string; EditControl: TEdit; ini: TMemIniFile; RemoveSquareBrackets: Boolean = False); overload;
+  procedure GetSettings(Section: string; SpeedButtonControl: TSpeedButton; ini: TMemIniFile); overload;
   procedure GetSettings(UpDownControl: TUpDown; Flags: TConfigFlags = []); overload;
   procedure GetSettings(CheckBoxControl: TCheckBox; Flags: TConfigFlags = []); overload;
+  procedure GetSettings(SpeedButtonControl: TSpeedButton; Flags: TConfigFlags = []); overload;
   procedure GetSettings(MenuControl: TMenuItem; Flags: TConfigFlags = []; Default: Boolean = True); overload;
   procedure SetSettings(Section: string; UpDownControl: TUpDown; ini: TMemIniFile); overload;
   procedure SetSettings(Section: string; CheckBoxControl: TCheckBox; ini: TMemIniFile); overload;
@@ -1432,6 +1434,20 @@ begin
   if FirstLoad then
     CheckBoxControl.ResetValue := CheckBoxControl.Checked;
   CheckBoxControl.Checked := StrToBool(GetTorConfig(StringReplace(CheckBoxControl.Name, 'cb', '', [rfIgnoreCase]), BoolToStrDef(CheckBoxControl.ResetValue), Flags, ptBoolean));
+end;
+
+procedure GetSettings(SpeedButtonControl: TSpeedButton; Flags: TConfigFlags = []); overload;
+begin
+  if FirstLoad then
+    SpeedButtonControl.ResetValue := SpeedButtonControl.Down;
+  SpeedButtonControl.Down := StrToBool(GetTorConfig(StringReplace(SpeedButtonControl.Name, 'sb', '', [rfIgnoreCase]), BoolToStrDef(SpeedButtonControl.ResetValue), Flags, ptBoolean));
+end;
+
+procedure GetSettings(Section: string; SpeedButtonControl: TSpeedButton; ini: TMemIniFile);
+begin
+  if FirstLoad then
+    SpeedButtonControl.ResetValue := SpeedButtonControl.Down;
+  SpeedButtonControl.Down := ini.ReadBool(Section, StringReplace(SpeedButtonControl.Name, 'sb', '', [rfIgnoreCase]), SpeedButtonControl.ResetValue)
 end;
 
 procedure GetSettings(Section: string; MenuControl: TMenuItem; ini: TMemIniFile; Default: Boolean = True);

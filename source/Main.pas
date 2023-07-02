@@ -195,25 +195,16 @@ type
     miSwitchTor: TMenuItem;
     mnLog: TPopupMenu;
     miLogClear: TMenuItem;
-    miAutoScroll: TMenuItem;
     miShowOptions: TMenuItem;
     miShowLog: TMenuItem;
     miDelimiter1: TMenuItem;
     miDelimiter2: TMenuItem;
     miWriteLogFile: TMenuItem;
-    miSafeLogging: TMenuItem;
     miLogOptions: TMenuItem;
     miLogSelectAll: TMenuItem;
     miLogCopy: TMenuItem;
     miDelimiter3: TMenuItem;
     miDelimiter4: TMenuItem;
-    miLogLevel: TMenuItem;
-    miDebug: TMenuItem;
-    miInfo: TMenuItem;
-    miNotice: TMenuItem;
-    miWarn: TMenuItem;
-    miErr: TMenuItem;
-    miWordWrap: TMenuItem;
     miScrollBars: TMenuItem;
     miSbVertical: TMenuItem;
     miSbHorizontal: TMenuItem;
@@ -590,7 +581,6 @@ type
     sbShowLog: TSpeedButton;
     sbShowOptions: TSpeedButton;
     paLog: TPanel;
-    meLog: TMemo;
     sbShowStatus: TSpeedButton;
     sbShowCircuits: TSpeedButton;
     sbShowRouters: TSpeedButton;
@@ -914,16 +904,6 @@ type
     miTotalsCounter: TMenuItem;
     miDelimiter68: TMenuItem;
     miDelimiter69: TMenuItem;
-    miDisplayedLinesCount: TMenuItem;
-    miDelimiter70: TMenuItem;
-    miDisplayedLinesNoLimit: TMenuItem;
-    miDisplayedLines65k: TMenuItem;
-    miDisplayedLines32k: TMenuItem;
-    miDisplayedLines16k: TMenuItem;
-    miDisplayedLines8k: TMenuItem;
-    miDisplayedLines4k: TMenuItem;
-    miDisplayedLines2k: TMenuItem;
-    miDisplayedLines1k: TMenuItem;
     lbTheme: TLabel;
     lbLanguage: TLabel;
     cbxThemes: TComboBox;
@@ -1038,7 +1018,7 @@ type
     miDelimiter76: TMenuItem;
     miExtractIpv4Bridges: TMenuItem;
     miExtractIpv6Bridges: TMenuItem;
-    miDelimiter77: TMenuItem;
+    miDelimiter70: TMenuItem;
     miExtractFallbackDirs: TMenuItem;
     miDelimiter65: TMenuItem;
     miFormatIPv6OnExtract: TMenuItem;
@@ -1067,6 +1047,16 @@ type
     udAutoSelMaxPing: TUpDown;
     edAutoSelMinWeight: TEdit;
     udAutoSelMinWeight: TUpDown;
+    meLog: TMemo;
+    sbAutoScroll: TSpeedButton;
+    sbWordWrap: TSpeedButton;
+    edLinesLimit: TEdit;
+    udLinesLimit: TUpDown;
+    sbUseLinesLimit: TSpeedButton;
+    lbLogLevel: TLabel;
+    cbxLogLevel: TComboBox;
+    sbSafeLogging: TSpeedButton;
+    bvLog: TBevel;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1125,6 +1115,7 @@ type
     procedure SetDesktopPosition(ALeft, ATop: Integer; AutoUpdate: Boolean = True);
     procedure LoadOptions(FirstStart: Boolean);
     function GetTorVersion(FirstStart: Boolean): Boolean;
+    procedure CheckLinesLimitControls;
     procedure CheckAuthMetodContols;
     procedure CheckAutoSelControls;
     procedure CheckFilterMode;
@@ -1168,6 +1159,7 @@ type
     function GetScanTypeStr: string;
     procedure LoadConsensus;
     procedure LoadDescriptors;
+    procedure SaveLinesLimitData;
     procedure CheckCountryIndexInList;
     procedure CheckNodesListControls;
     procedure CheckFavoritesState(FavoritesID: Integer = -1);
@@ -1177,7 +1169,6 @@ type
     procedure LoadRoutersCountries;
     procedure OpenMetricsUrl(Page, Query: string);
     procedure ProxyParamCheck;
-    procedure ReloadTorConfig;
     function CheckRequiredFiles(AutoSave: Boolean = False): Boolean;
     function ReachablePortsExists: Boolean;
     procedure SetIconsColor;
@@ -1224,7 +1215,7 @@ type
     procedure ShowStreamsInfo(CircID, TargetStr: string);
     procedure ShowCircuitInfo(CircID: string);
     procedure ShowRouters;
-    function FindSelectedBridge(Router: TRouterInfo): Boolean;
+    function FindSelectedBridge(RouterID: string; Router: TRouterInfo): Boolean;
     procedure CheckNodesListState(NodeTypeID: Integer);
     procedure CheckCircuitExists(CircID: string; UpdateStreamsCount: Boolean = False);
     procedure CheckCircuitStreams(CircID: string; TargetStreams: Integer);
@@ -1262,7 +1253,6 @@ type
     procedure GridSort(aSg: TStringGrid);
     procedure ServerControlsChange(Sender: TObject);
     procedure SelectLogAutoDelInterval(Sender: TObject);
-    procedure SelectLogLinesLimit(Sender: TObject);
     procedure SelectLogSeparater(Sender: TObject);
     procedure SelectLogScrollbar(Sender: TObject);
     procedure StartScannerManual(Sender: TObject);
@@ -1272,7 +1262,6 @@ type
     procedure SelectStreamsInfoSort(Sender: TObject);
     procedure ClearScannerCacheClick(Sender: TObject);
     procedure lbStatusProxyAddrClick(Sender: TObject);
-    procedure SetLogLevel(Sender: TObject);
     procedure EditMenuClick(Sender: TObject);
     procedure ConnectOnStartupTimer(Sender: TObject);
     procedure CursorStopTimer(Sender: TObject);
@@ -1332,7 +1321,6 @@ type
     procedure meTrackHostExitsChange(Sender: TObject);
     procedure MetricsInfo(Sender: TObject);
     procedure miAutoClearClick(Sender: TObject);
-    procedure miAutoScrollClick(Sender: TObject);
     procedure miChangeCircuitClick(Sender: TObject);
     procedure miClearDNSCacheClick(Sender: TObject);
     procedure miExitClick(Sender: TObject);
@@ -1340,14 +1328,12 @@ type
     procedure miHsInsertClick(Sender: TObject);
     procedure miOpenFileLogClick(Sender: TObject);
     procedure miDetailsRelayInfoClick(Sender: TObject);
-    procedure miSafeLoggingClick(Sender: TObject);
     procedure miSaveTemplateClick(Sender: TObject);
     procedure miServerInfoClick(Sender: TObject);
     procedure miShowLogClick(Sender: TObject);
     procedure miShowOptionsClick(Sender: TObject);
     procedure miShowStatusClick(Sender: TObject);
     procedure miSwitchTorClick(Sender: TObject);
-    procedure miWordWrapClick(Sender: TObject);
     procedure miWriteLogFileClick(Sender: TObject);
     procedure mnDetailsPopup(Sender: TObject);
     procedure mnFilterPopup(Sender: TObject);
@@ -1619,6 +1605,16 @@ type
     procedure miFormatIPv6OnExtractClick(Sender: TObject);
     procedure miRemoveDuplicateOnExtractClick(Sender: TObject);
     procedure miSortOnExtractClick(Sender: TObject);
+    procedure sbAutoScrollClick(Sender: TObject);
+    procedure sbWordWrapClick(Sender: TObject);
+    procedure sbSafeLoggingClick(Sender: TObject);
+    procedure cbxLogLevelChange(Sender: TObject);
+    procedure sbUseLinesLimitClick(Sender: TObject);
+    procedure udLinesLimitClick(Sender: TObject; Button: TUDBtnType);
+    procedure edLinesLimitKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
+    procedure edLinesLimitMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
     procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -1661,7 +1657,7 @@ var
   jLimit: TJobObjectExtendedLimitInformation;
   TorVersionProcess, TorMainProcess: TProcessInfo;
   hJob: THandle;
-  DLSpeed, ULSpeed, MaxDLSpeed, MaxULSpeed, CurrentTrafficPeriod, DisplayedLinesCount, LogAutoDelHours: Integer;
+  DLSpeed, ULSpeed, MaxDLSpeed, MaxULSpeed, CurrentTrafficPeriod, LogAutoDelHours: Integer;
   SessionDL, SessionUL, TotalDL, TotalUL: Int64;
   ConnectState, StopCode, FormSize, LastPlace, InfoStage, GetIpStage, NodesListStage, NewBridgesStage: Byte;
   EncodingNoBom: TUTF8EncodingNoBOM;
@@ -1794,8 +1790,8 @@ var
   ls: TStringList;
   Caret: TPoint;
 begin
-  if DisplayedLinesCount <> 0 then
-    MaxLines := DisplayedLinesCount
+  if Tcp.sbUseLinesLimit.Down then
+    MaxLines := Tcp.udLinesLimit.Position
   else
     MaxLines := $40000000;
   LinesCount := Tcp.meLog.Lines.Count;
@@ -1827,7 +1823,7 @@ begin
         Tcp.meLog.Tag := 0;
     end;
 
-    if Tcp.miAutoScroll.Checked and (Tcp.meLog.Tag = 0) then
+    if Tcp.sbAutoScroll.Down and (Tcp.meLog.Tag = 0) then
       Tcp.meLog.Lines.Add(Data)
     else
     begin
@@ -4325,7 +4321,7 @@ begin
           end
           else
           begin
-            if (SelData = FAVERR_CHAR) and ((not CheckRouterFlags(Integer(NodeTypeID), RouterInfo)) or FindSelectedBridge(RouterInfo)) then
+            if (SelData = FAVERR_CHAR) and ((not CheckRouterFlags(Integer(NodeTypeID), RouterInfo)) or FindSelectedBridge(Key, RouterInfo)) then
               sgRouters.Cells[sgRouters.SelCol, sgRouters.SelRow] := NONE_CHAR
             else
               sgRouters.Cells[sgRouters.SelCol, sgRouters.SelRow] := '';
@@ -4375,7 +4371,7 @@ begin
     begin
       if NodeTypeID = ntExclude then
       begin
-        if FindSelectedBridge(RouterInfo) then
+        if FindSelectedBridge(Key, RouterInfo) then
         begin
           SaveBridgesData;
           if SelData <> ''  then
@@ -5470,15 +5466,6 @@ begin
   end
 end;
 
-procedure TTcp.ReloadTorConfig;
-begin
-  if ConnectState <> 0 then
-  begin
-    SendCommand('SIGNAL RELOAD');
-    SendDataThroughProxy;
-  end;
-end;
-
 procedure TTcp.imBridgesFileClick(Sender: TObject);
 begin
   if OpenDialog.Execute then
@@ -5584,11 +5571,15 @@ begin
 
   SetButtonGlyph(lsButtons, 4, sbShowOptions);
   SetButtonGlyph(lsButtons, 5, sbShowLog);
-
   SetButtonGlyph(lsButtons, 7, sbShowStatus);
   SetButtonGlyph(lsButtons, 8, sbShowCircuits);
   SetButtonGlyph(lsButtons, 6, sbShowRouters);
   SetButtonGlyph(lsButtons, 9, sbDecreaseForm);
+
+  SetButtonGlyph(lsMain, 22, sbWordWrap);
+  SetButtonGlyph(lsMain, 23, sbAutoScroll);
+  SetButtonGlyph(lsMain, 24, sbSafeLogging);
+  SetButtonGlyph(lsMain, 25, sbUseLinesLimit);
 
   btnSwitchTor.ImageIndex := ConnectState;
   btnSwitchTor.Refresh;
@@ -5849,6 +5840,16 @@ begin
         DeleteSettings('Routers', 'ShowFlagsHint', ini);
         DeleteSettings('Circuits', 'SelectExitCircuitWhetItChanges', ini);
         ConfigVersion := 6;
+      end;
+      if ConfigVersion = 6 then
+      begin
+        i := GetIntDef(GetSettings('Log', 'DisplayedLinesType', 2, ini), 2, 0, 7);
+        SetSettings('Log', 'UseLinesLimit', i <> 0, ini);
+        if i = 0 then
+          i := 2;
+        SetSettings('Log', 'LinesLimit', Round(Power(2, (17 - i))), ini);
+        DeleteSettings('Log', 'DisplayedLinesType', ini);
+        ConfigVersion := 7;
       end;
     end
     else
@@ -7194,7 +7195,7 @@ procedure TTcp.ResetOptions;
 var
   i, LogID, AutoSelNodesType: Integer;
   ini, inidef: TMemIniFile;
-  ScrollBars, SeparateType, DisplayedLinesType, LogAutoDelType: Byte;
+  ScrollBars, SeparateType, LogAutoDelType: Byte;
   ParseStr: ArrOfStr;
   Transports: TStringList;
   FilterEntry, FilterMiddle, FilterExit, Temp: string;
@@ -7269,9 +7270,9 @@ begin
     end;
 
     GetSettings('Log', miWriteLogFile, ini);
-    GetSettings('Log', miAutoScroll, ini);
-    GetSettings('Log', miWordWrap, ini, False);
     GetSettings('Log', miAutoClear, ini);
+    GetSettings('Log', sbAutoScroll, ini);
+    GetSettings('Log', sbWordWrap, ini);
 
     GetSettings('Network', miPreferWebTelegram, ini);
     GetSettings('Network', miRequestIPv6Bridges, ini, False);
@@ -7427,7 +7428,7 @@ begin
     GetSettings('Network', cbUseReachableAddresses, ini);
     SaveReachableAddresses(ini);
 
-    meLog.WordWrap := miWordWrap.Checked;
+    meLog.WordWrap := sbWordWrap.Down;
     SeparateType := GetIntDef(GetSettings('Log', 'SeparateType', 1, ini), 1, 0, 3);
     miLogSeparate.items[SeparateType].Checked := True;
     TorLogFile := GetLogFileName(SeparateType);
@@ -7436,9 +7437,9 @@ begin
     miScrollBars.items[ScrollBars].Checked := True;
     SetLogScrollBar(ScrollBars);
 
-    DisplayedLinesType := GetIntDef(GetSettings('Log', 'DisplayedLinesType', 2, ini), 2, 0, 7);
-    miDisplayedLinesCount.Items[DisplayedLinesType].Checked := True;
-    DisplayedLinesCount := miDisplayedLinesCount.Items[DisplayedLinesType].Tag;
+    GetSettings('Log', sbUseLinesLimit, ini);
+    GetSettings('Log', udLinesLimit, ini);
+    CheckLinesLimitControls;
 
     LogAutoDelType := GetIntDef(GetSettings('Log', 'LogAutoDelType', 0, ini), 0, 0, 10);
     if LogAutoDelType in [2, 3] then
@@ -7446,12 +7447,14 @@ begin
     miLogAutoDelType.Items[LogAutoDelType].Checked := True;
     LogAutoDelHours := miLogAutoDelType.Items[LogAutoDelType].Tag;
 
+    if FirstLoad then
+      cbxLogLevel.ResetValue := 2;
     LogID := GetArrayIndex(LogLevels, AnsiLowerCase(SeparateLeft(GetTorConfig('Log', 'notice stdout', [cfAutoAppend]), ' ')));
     if LogID <> -1 then
-      miLogLevel.items[LogID].Checked := True
+      cbxLogLevel.ItemIndex := LogID
     else
     begin
-      miNotice.Checked := True;
+      cbxLogLevel.ItemIndex := 2;
       SetTorConfig('Log', 'notice stdout');
     end;
 
@@ -7481,7 +7484,7 @@ begin
     end;
     CheckAuthMetodContols;
 
-    GetSettings(miSafeLogging);
+    GetSettings(sbSafeLogging);
     GetSettings(cbLearnCircuitBuildTimeout);
     GetSettings(cbAvoidDiskWrites);
     GetSettings(cbStrictNodes, [cfBoolInvert]);
@@ -8392,7 +8395,7 @@ end;
 procedure TTcp.ApplyOptions(AutoResolveErrors: Boolean = False);
 var
   ini, inidef: TMemIniFile;
-  i, AutoSelNodesType: Integer;
+  AutoSelNodesType: Integer;
   Item: TPair<string, TFilterInfo>;
   NodeItem: TPair<string, TNodeTypes>;
   Temp: string;
@@ -8536,16 +8539,9 @@ begin
     SetSettings('Main', 'ControlPassword', ControlPassword, ini);
     CheckAuthMetodContols;
 
-    for i := 0 to miLogLevel.Count - 1 do
-    begin
-      if miLogLevel.items[i].Checked then
-      begin
-        SetTorConfig('Log', AnsiLowerCase(copy(miLogLevel.items[i].Name, 3, Length(miLogLevel.items[i].Name) - 2)) + ' stdout');
-        Break;
-      end;
-    end;
+    SetTorConfig('Log', LogLevels[cbxLogLevel.ItemIndex] + ' stdout');
 
-    SetTorConfig('SafeLogging', IntToStr(Integer(miSafeLogging.Checked)));
+    SetTorConfig('SafeLogging', IntToStr(Integer(sbSafeLogging.Down)));
     SetTorConfig('MaxCircuitDirtiness', IntToStr(udMaxCircuitDirtiness.Position));
     SetTorConfig('SocksTimeout', IntToStr(udSocksTimeout.Position));
     SetTorConfig('CircuitBuildTimeout', IntToStr(udCircuitBuildTimeout.Position));
@@ -8701,7 +8697,11 @@ begin
     UpdateOptionsAfterRoutersUpdate;
 
     SaveTorConfig;
-    ReloadTorConfig;
+    if ConnectState <> 0 then
+    begin
+      SendCommand('SIGNAL RELOAD');
+      SendDataThroughProxy;
+    end;
     if OpenDNSUpdated then
     begin
       OpenDNSUpdated := False;
@@ -9892,12 +9892,7 @@ begin
 end;
 
 procedure TTcp.mnLogPopup(Sender: TObject);
-var
-  State: Boolean;
 begin
-  State := ConnectState <> 1;
-  miLogLevel.Enabled := State;
-  miSafeLogging.Enabled := State;
   miOpenFileLog.Enabled := FileExists(TorLogFile);
   miOpenLogsFolder.Enabled := DirectoryExists(LogsDir);
   miLogSeparate.Enabled := miWriteLogFile.Checked;
@@ -9932,7 +9927,7 @@ begin
         Menu.Visible := False;
         Exit;
       end;
-      IpStr := BridgeInfo.Source;
+      IpStr := FormatHost(BridgeInfo.Source);
     end;
     BridgeStr := Trim(BridgeInfo.Transport + ' ' + IpStr + ':' + IntToStr(BridgeInfo.Router.Port) + ' ' + RouterID + ' ' + BridgeInfo.Params)
   end
@@ -10421,7 +10416,7 @@ begin
           begin
             for i := 0 to ls.Count - 1 do
             begin
-              if TryParseBridge(Trim(ls[i]), Bridge, OptionsChanged, miFormatIPv6OnExtract.Checked) then
+              if TryParseBridge(Trim(ls[i]), Bridge, OptionsChanged or (CurrentMemo.SelLength > 0), miFormatIPv6OnExtract.Checked) then
               begin
                 FormatData(PortStr, PortCount, IntToStr(Bridge.Port), EXTRACT_PORT);
                 if Bridge.Hash <> '' then
@@ -10441,7 +10436,7 @@ begin
           begin
             for i := 0 to ls.Count - 1 do
             begin
-              if TryParseFallbackDir(Trim(ls[i]), FallbackDir, OptionsChanged, miFormatIPv6OnExtract.Checked) then
+              if TryParseFallbackDir(Trim(ls[i]), FallbackDir, OptionsChanged or (CurrentMemo.SelLength > 0), miFormatIPv6OnExtract.Checked) then
               begin
                 FormatData(PortStr, PortCount, IntToStr(FallbackDir.OrPort), EXTRACT_PORT);
                 FormatData(HashStr, HashCount, FallbackDir.Hash, EXTRACT_HASH);
@@ -11811,8 +11806,11 @@ begin
   end;
 end;
 
-function TTcp.FindSelectedBridge(Router: TRouterInfo): Boolean;
+function TTcp.FindSelectedBridge(RouterID: string; Router: TRouterInfo): Boolean;
+var
+  BridgeInfo: TBridgeInfo;
 begin
+  Result := False;
   if UsedBridgesList.ContainsKey(Router.IPv4 + '|' + IntToStr(Router.Port)) then
     Result := True
   else
@@ -11820,7 +11818,13 @@ begin
     if Router.IPv6 <> '' then
       Result := UsedBridgesList.ContainsKey(RemoveBrackets(Router.IPv6, True) + '|' + IntToStr(Router.Port))
     else
-      Result := False;
+    begin
+      if BridgesDic.TryGetValue(RouterID, BridgeInfo) then
+      begin
+        if BridgeInfo.Source <> '' then
+          Result := UsedBridgesList.ContainsKey(RemoveBrackets(BridgeInfo.Source) + '|' + IntToStr(Router.Port)); 
+      end;
+    end;
   end;
 end;
 
@@ -12113,7 +12117,7 @@ begin
             end;
           end;
         end;
-        BRIDGES_ID: cdFavorites := cbUseBridges.Checked and FindSelectedBridge(Item.Value);
+        BRIDGES_ID: cdFavorites := cbUseBridges.Checked and FindSelectedBridge(Item.Key, Item.Value);
         FALLBACK_DIR_ID: cdFavorites := cbUseFallbackDirs.Checked and (UsedFallbackDirs.ContainsKey(Item.Value.IPv4 + '|' + IntToStr(Item.Value.Port)));
         else
           cdFavorites := True;
@@ -12151,7 +12155,7 @@ begin
           sgRouters.Cells[ROUTER_FLAGS, RoutersCount] := NONE_CHAR;
 
         IsNativeBridge := (rfBridge in Item.Value.Flags) and not (rfRelay in Item.Value.Flags);
-        IsSelectedBridge := cbUseBridges.Checked and FindSelectedBridge(Item.Value);
+        IsSelectedBridge := cbUseBridges.Checked and FindSelectedBridge(Item.Key, Item.Value);
 
         if not (rfGuard in Item.Value.Flags) or IsNativeBridge then
           sgRouters.Cells[ROUTER_ENTRY_NODES, RoutersCount] := NONE_CHAR;
@@ -13819,6 +13823,21 @@ begin
   EnableOptionButtons;
 end;
 
+procedure TTcp.cbxLogLevelChange(Sender: TObject);
+var
+  DataStr: string;
+begin
+  if not cbxLogLevel.Focused then
+    Exit;
+  if cbxLogLevel.ItemIndex in [0..Length(LogLevels) - 1] then
+  begin
+    DataStr := LogLevels[cbxLogLevel.ItemIndex];
+    ResetFocus;
+    SendCommand('SETCONF Log=' + DataStr);
+    SetTorConfig('Log', DataStr + ' stdout', [cfAutoSave]);
+  end;
+end;
+
 procedure TTcp.MyFamilyEnable(State: Boolean);
 begin
   meMyFamily.Enabled := State;
@@ -14312,6 +14331,16 @@ begin
   ChangeHsTable(TUpDown(Sender).Tag);
 end;
 
+procedure TTcp.SaveLinesLimitData;
+begin
+  SetConfigInteger('Log', 'LinesLimit', udLinesLimit.Position);
+end;
+
+procedure TTcp.udLinesLimitClick(Sender: TObject; Button: TUDBtnType);
+begin
+  SaveLinesLimitData;
+end;
+
 procedure TTcp.udRoutersWeightClick(Sender: TObject; Button: TUDBtnType);
 begin
   ShowRouters;
@@ -14377,10 +14406,47 @@ begin
   ResetFocus;
 end;
 
+procedure TTcp.CheckLinesLimitControls;
+var
+  State: Boolean;
+begin
+  State := sbUseLinesLimit.Down;
+  edLinesLimit.Enabled := State;
+  udLinesLimit.Enabled := State;
+end;
+
+procedure TTcp.sbUseLinesLimitClick(Sender: TObject);
+begin
+  CheckLinesLimitControls;
+  SetConfigBoolean('Log', 'UseLinesLimit', sbUseLinesLimit.Down);
+end;
+
+procedure TTcp.sbWordWrapClick(Sender: TObject);
+begin
+  meLog.WordWrap := sbWordWrap.Down;
+  CheckLogAutoScroll(True);
+  SetConfigBoolean('Log', 'WordWrap', sbWordWrap.Down);
+end;
+
 procedure TTcp.sbDecreaseFormClick(Sender: TObject);
 begin
   CheckOptionsChanged;
   DecreaseFormSize;
+end;
+
+procedure TTcp.sbAutoScrollClick(Sender: TObject);
+begin
+  CheckLogAutoScroll;
+  SetConfigBoolean('Log', 'AutoScroll', sbAutoScroll.Down);
+end;
+
+procedure TTcp.sbSafeLoggingClick(Sender: TObject);
+var
+  DataStr: string;
+begin
+  DataStr := IntToStr(Integer(sbSafeLogging.Down));
+  SetTorConfig('SafeLogging', DataStr, [cfAutoSave]);
+  SendCommand('SETCONF SafeLogging=' + DataStr);
 end;
 
 procedure TTcp.sbShowCircuitsClick(Sender: TObject);
@@ -14402,7 +14468,7 @@ end;
 
 procedure TTcp.CheckLogAutoScroll(AlwaysUpdate: Boolean = False);
 begin
-  if AlwaysUpdate or (miAutoScroll.Checked and (meLog.Tag = 0)) then
+  if AlwaysUpdate or (sbAutoScroll.Down and (meLog.Tag = 0)) then
     meLog.Perform(WM_VSCROLL, SB_BOTTOM, 0);
 end;
 
@@ -14416,6 +14482,20 @@ end;
 procedure TTcp.SpinChanging(Sender: TObject; var AllowChange: Boolean);
 begin
   EnableOptionButtons;
+end;
+
+procedure TTcp.edLinesLimitKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if Key = VK_RETURN then
+    SaveLinesLimitData;
+end;
+
+procedure TTcp.edLinesLimitMouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+begin
+  if Button = mbMiddle then
+    SaveLinesLimitData;
 end;
 
 procedure TTcp.edPreferredBridgeChange(Sender: TObject);
@@ -14495,8 +14575,11 @@ end;
 procedure TTcp.edRoutersWeightMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
-  ShowRouters;
-  SaveRoutersFilterdata;
+  if Button = mbMiddle then
+  begin
+    ShowRouters;
+    SaveRoutersFilterdata;
+  end;
 end;
 
 procedure TTcp.edRoutersQueryChange(Sender: TObject);
@@ -16669,12 +16752,6 @@ begin
   SetConfigBoolean('Log', 'AutoClear', miAutoClear.Checked);
 end;
 
-procedure TTcp.miAutoScrollClick(Sender: TObject);
-begin
-  SetConfigBoolean('Log', 'AutoScroll', miAutoScroll.Checked);
-  CheckLogAutoScroll;
-end;
-
 procedure TTcp.miAvoidAddingIncorrectNodesClick(Sender: TObject);
 begin
   SetConfigBoolean('Routers', 'AvoidAddingIncorrectNodes', miAvoidAddingIncorrectNodes.Checked);
@@ -17501,6 +17578,7 @@ var
   procedure UpdateOptions;
   begin
     OptionsLocked := True;
+    BridgesUpdated := True;
     ApplyOptions(True);
   end;
 
@@ -17576,12 +17654,6 @@ end;
 procedure TTcp.tmUpdateIpTimer(Sender: TObject);
 begin
   SendDataThroughProxy;
-end;
-
-procedure TTcp.miSafeLoggingClick(Sender: TObject);
-begin
-  SetTorConfig('SafeLogging', IntToStr(Integer(miSafeLogging.Checked)), [cfAutoSave]);
-  ReloadTorConfig;
 end;
 
 procedure TTcp.miSaveTemplateClick(Sender: TObject);
@@ -17676,13 +17748,6 @@ begin
   SetConfigInteger('Log', 'SeparateType', SeparateType);
 end;
 
-procedure TTcp.SelectLogLinesLimit(Sender: TObject);
-begin
-  TMenuItem(Sender).Checked := True;
-  DisplayedLinesCount := TMenuItem(Sender).Tag;
-  SetConfigInteger('Log', 'DisplayedLinesType', TMenuItem(Sender).MenuIndex);
-end;
-
 procedure TTcp.SelectLogAutoDelInterval(Sender: TObject);
 begin
   TMenuItem(Sender).Checked := True;
@@ -17704,9 +17769,9 @@ begin
     3: meLog.ScrollBars := ssNone;
   end;
   if ScrollType in [1,2] then
-    miWordWrap.Enabled := False
+    sbWordWrap.Enabled := False
   else
-    miWordWrap.Enabled := True;
+    sbWordWrap.Enabled := True;
 
   if Menu <> nil then
   begin
@@ -17719,15 +17784,6 @@ end;
 procedure TTcp.miServerInfoClick(Sender: TObject);
 begin
   OpenMetricsUrl('#details', lbFingerprint.Caption);
-end;
-
-procedure TTcp.SetLogLevel(Sender: TObject);
-begin
-  if TMenuItem(Sender).Checked then
-    Exit;
-  TMenuItem(Sender).Checked := True;
-  SetTorConfig('Log', AnsiLowerCase(copy(TMenuItem(Sender).Name, 3, Length(TMenuItem(Sender).Name) - 2)) + ' stdout', [cfAutoSave]);
-  ReloadTorConfig;
 end;
 
 procedure TTcp.miOpenFileLogClick(Sender: TObject);
@@ -18272,13 +18328,6 @@ end;
 procedure TTcp.miDestroyStreamsClick(Sender: TObject);
 begin
   CloseStreams(sgCircuits.Cells[CIRC_ID, sgCircuits.SelRow]);
-end;
-
-procedure TTcp.miWordWrapClick(Sender: TObject);
-begin
-  SetConfigBoolean('Log', 'WordWrap', miWordWrap.Checked);
-  meLog.WordWrap := miWordWrap.Checked;
-  CheckLogAutoScroll(True);  
 end;
 
 procedure TTcp.miHsOpenDirClick(Sender: TObject);

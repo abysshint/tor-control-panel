@@ -5,10 +5,15 @@ interface
 uses
   Winapi.Windows, Vcl.Graphics, Winapi.Messages, System.Classes, System.SysUtils,
   Vcl.Controls, Vcl.Forms, Vcl.Grids, Vcl.StdCtrls, Vcl.Themes, Vcl.ComCtrls, Vcl.Menus,
-  Vcl.Clipbrd;
+  Vcl.Buttons, Vcl.Clipbrd;
 
 type
   TColsDataType = (dtInteger, dtText, dtSize, dtParams, dtFlags);
+
+  TSpeedButton = class(Vcl.Buttons.TSpeedButton)
+  public
+    ResetValue: Boolean;
+  end;
 
   TUpDown = class (Vcl.ComCtrls.TUpDown)
   public

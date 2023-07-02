@@ -480,6 +480,7 @@ begin
     Tcp.sbShowCircuits.Caption := TransStr('327');
     Tcp.sbShowRouters.Caption := TransStr('323');
     Tcp.sbDecreaseForm.Hint := TransStr('328');
+    Tcp.pbScanProgress.Hint := TransStr('495');
 
     Tcp.lbExitIpCaption.Caption := TransStr('113') + ':';
     Tcp.lbExitCountryCaption.Caption := TransStr('114') + ':';
@@ -792,6 +793,13 @@ begin
     Tcp.imFavoritesBridges.Hint := Load('644', 'Используемые мосты');
     Tcp.imFavoritesFallbackDirs.Hint := Load('649', 'Используемые резервные каталоги');
 
+    Tcp.sbAutoScroll.Hint := Load('294', 'Автоматическая прокрутка');
+    Tcp.sbWordWrap.Hint := Load('300', 'Перенос строк');
+    Tcp.sbSafeLogging.Hint := Load('301', 'Скрывать сетевые адреса');
+    Tcp.lbLogLevel.Caption := Load('302', 'Уровень');
+    LoadList(Tcp.cbxLogLevel, '303', '"Отладка","Информация","Уведомления","Предупреждения","Ошибки"');
+    Tcp.sbUseLinesLimit.Hint := Load('304', 'Ограничить количество строк');
+
     Tcp.miHsOpenDir.Caption := Load('273', 'Каталог сервиса');
     Tcp.miHsCopy.Caption := TransStr('274');
     Tcp.miHsInsert.Caption := TransStr('279');
@@ -867,20 +875,11 @@ begin
     Tcp.miLogOptions.Caption := TransStr('107');
     Tcp.miWriteLogFile.Caption := Load('292', 'Записывать в файл');
     Tcp.miAutoClear.Caption := Load('293', 'Очищать при каждом запуске');
-    Tcp.miAutoScroll.Caption := Load('294', 'Автоматическая прокрутка');
     Tcp.miScrollBars.Caption := Load('295', 'Полоса прокрутки');
     Tcp.miSbVertical.Caption := Load('296', 'Вертикальная');
     Tcp.miSbHorizontal.Caption := Load('297', 'Горизонтальная');
     Tcp.miSbBoth.Caption := Load('298', 'Все');
     Tcp.miSbNone.Caption := Load('299', 'Нет');
-    Tcp.miWordWrap.Caption := Load('300', 'Перенос строк');
-    Tcp.miSafeLogging.Caption := Load('301', 'Скрывать сетевые адреса');
-    Tcp.miLogLevel.Caption := Load('302', 'Уровень журналирования');
-    Tcp.miDebug.Caption := Load('303', 'Отладка');
-    Tcp.miInfo.Caption := Load('304', 'Информация');
-    Tcp.miNotice.Caption := Load('305', 'Уведомления');
-    Tcp.miWarn.Caption := Load('306', 'Предупреждения');
-    Tcp.miErr.Caption := Load('307', 'Ошибки');
     Tcp.miOpenFileLog.Caption := Load('308', 'Открыть файл журнала');
     Tcp.miLogCopy.Caption := TransStr('274');
     Tcp.miLogSelectAll.Caption := TransStr('277');
@@ -892,8 +891,6 @@ begin
     Tcp.miLogSeparateWeek.Caption := Load('630', 'По неделям');
     Tcp.miLogSeparateDay.Caption := Load('514', 'По дням');
     Tcp.miOpenLogsFolder.Caption := Load('601', 'Перейти в каталог журналов');
-    Tcp.miDisplayedLinesCount.Caption := Load('616', 'Количество отображаемых строк');
-    Tcp.miDisplayedLinesNoLimit.Caption := Load('617', 'Без ограничений');
     Tcp.miLogAutoDelType.Caption := Load('622', 'Автоматическое удаление журналов');
     Tcp.miLogDelNever.Caption := Load('623', 'Никогда');
     Tcp.miLogDelEvery.Caption := Load('624', 'При каждом запуске');
