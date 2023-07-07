@@ -4042,7 +4042,7 @@ object Tcp: TTcp
       object cbxFallbackDirsType: TComboBox
         Left = 44
         Top = 213
-        Width = 118
+        Width = 119
         Height = 21
         AutoDropDown = True
         Style = csDropDownList
@@ -4053,6 +4053,7 @@ object Tcp: TTcp
         TabOrder = 5
         Text = #1042#1089#1090#1088#1086#1077#1085#1085#1099#1077
         OnChange = cbxFallbackDirsTypeChange
+        OnKeyDown = cbxFallbackDirsTypeKeyDown
         Items.Strings = (
           #1042#1089#1090#1088#1086#1077#1085#1085#1099#1077
           #1055#1086#1083#1100#1079#1086#1074#1072#1090#1077#1083#1100#1089#1082#1080#1077)
@@ -4107,7 +4108,7 @@ object Tcp: TTcp
         OnChanging = SpinChanging
       end
       object cbExcludeUnsuitableFallbackDirs: TCheckBox
-        Left = 168
+        Left = 169
         Top = 215
         Width = 152
         Height = 17
@@ -4740,33 +4741,36 @@ object Tcp: TTcp
           OnSelectCell = sgTransportsSelectCell
         end
         object edTransports: TEdit
-          Tag = 1
           Left = 87
           Top = 130
           Width = 292
           Height = 21
+          HelpType = htKeyword
+          HelpContext = 1
           Enabled = False
           PopupMenu = EditMenu
           TabOrder = 1
           OnChange = edTransportsChange
         end
         object edTransportsHandler: TEdit
-          Tag = 2
           Left = 87
           Top = 154
           Width = 157
           Height = 21
+          HelpType = htKeyword
+          HelpContext = 2
           Enabled = False
           PopupMenu = EditMenu
           TabOrder = 2
           OnChange = edTransportsChange
         end
         object meHandlerParams: TMemo
-          Tag = 3
           Left = 87
           Top = 178
           Width = 292
           Height = 46
+          HelpType = htKeyword
+          HelpContext = 3
           Enabled = False
           PopupMenu = EditMenu
           ScrollBars = ssVertical
@@ -6100,6 +6104,30 @@ object Tcp: TTcp
           OnClick = ExtractDelimiterSelect
         end
       end
+    end
+    object miSortData: TMenuItem
+      Caption = #1057#1086#1088#1090#1080#1088#1086#1074#1082#1072
+      ImageIndex = 9
+      object miSortDataAsc: TMenuItem
+        Tag = 1
+        Caption = #1055#1086' '#1074#1086#1079#1088#1072#1089#1090#1072#1085#1080#1102
+        RadioItem = True
+        OnClick = SortDataList
+      end
+      object miSortDataDesc: TMenuItem
+        Tag = 2
+        Caption = #1055#1086' '#1091#1073#1099#1074#1072#1085#1080#1102
+        RadioItem = True
+        OnClick = SortDataList
+      end
+      object miSortDataNone: TMenuItem
+        Caption = #1054#1090#1082#1083#1102#1095#1077#1085#1072
+        RadioItem = True
+        OnClick = SortDataList
+      end
+    end
+    object miDelimiter77: TMenuItem
+      Caption = '-'
     end
     object miClear: TMenuItem
       Tag = 5

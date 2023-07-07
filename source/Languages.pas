@@ -871,6 +871,10 @@ begin
     Tcp.miExtractDelimiterAuto.Caption := Load('674', 'Автовыбор');
     Tcp.miExtractDelimiterLineBreak.Caption := Load('675', 'Новая строка');
     Tcp.miExtractDelimiterComma.Caption := Load('676', 'Запятая');
+    Tcp.miSortData.Caption := TransStr('525');
+    Tcp.miSortDataAsc.Caption := Load('305', 'По возрастанию');
+    Tcp.miSortDataDesc.Caption := Load('306', 'По убыванию');
+    Tcp.miSortDataNone.Caption := Load('307', 'Отключена');
 
     Tcp.miLogOptions.Caption := TransStr('107');
     Tcp.miWriteLogFile.Caption := Load('292', 'Записывать в файл');

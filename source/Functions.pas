@@ -129,6 +129,7 @@ var
   function IntToIp(Ip: Cardinal): string;
   function CidrToRange(CidrStr: string): TIPv4Range;
   function IpInRanges(const IpStr: string; RangesData: array of string): Integer;
+  function CompDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
   function CompIntObjectAsc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
   function CompIntObjectDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
   function CompIntDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
@@ -145,8 +146,8 @@ var
   function RemoveBrackets(Str: string; Square: Boolean = False): string;
   function SearchEdit(EditControl: TCustomEdit; const SearchString: String; Options: TFindOptions; FindFirst: Boolean = False): Boolean;
   function ShowMsg(Msg: string; Caption: string = ''; MsgType: TMsgType = mtInfo; Question: Boolean = False): Boolean;
-  function MemoToLine(Memo: TMemo; ListType: TListType; Sorted: Boolean = False; Separator: string = ','): string;
-  procedure MemoToList(Memo: TMemo; ListType: TListType; Sorted: Boolean; out ls: TStringList);
+  function MemoToLine(Memo: TMemo; SortType: Byte = SORT_NONE; Separator: string = ','): string;
+  procedure MemoToList(Memo: TMemo; SortType: Byte; out ls: TStringList);
   function MenuToInt(Menu: TMenuItem): Integer;
   function GetTransportID(TypeStr: string): Byte;
   function GetTransportChar(TransportID: Byte): string;
@@ -160,7 +161,7 @@ var
   procedure SetPortsValue(IpStr, PortStr: string; Value: Integer);
   procedure DeleteFiles(const FileMask: string; TimeOffset: Integer = 0);
   procedure DeleteDir(const DirName: string);
-  procedure LineToMemo(Line: string; Memo: TMemo; ListType: TListType; Sorted: Boolean = False; Separator: string = ',');
+  procedure LineToMemo(Line: string; Memo: TMemo; SortType: Byte = SORT_NONE; Separator: string = ',');
   procedure IntToMenu(Menu: TMenuItem; Mask: Integer; DisableUnchecked: Boolean = False);
   procedure GetNodes(var Nodeslist: string; NodeType: TNodeType; Favorites: Boolean; ini: TMemIniFile = nil);
   procedure SetTorConfig(const Param, Value: string; Flags: TConfigFlags = []); overload;
@@ -197,8 +198,9 @@ var
   procedure GridKeyDown(aSg: TStringGrid; Shift: TShiftState; var Key: Word);
   procedure GridCheckAutoPopup(aSg: TStringGrid; ARow: Integer; AllowEmptyRows: Boolean = False);
   procedure GoToInvalidOption(PageID: TTabSheet; Msg: string = ''; edComponent: TCustomEdit = nil);
-  procedure DeleteDuplicatesFromList(List: TStringList; ListType: TListType = ltNoCheck);
-  procedure SortNodesList(ls: TStringList; DescSort: Boolean = False);
+  procedure DeleteDuplicatesFromList(var List: TStringList; ListType: TListType = ltNoCheck);
+  procedure SortList(var ls: TStringList; ListType: TListType; SortType: Byte);
+  procedure SortNodesList(var ls: TStringList; SortType: Byte = SORT_ASC);
   procedure ControlsDisable(Control: TWinControl);
   procedure ControlsEnable(Control: TWinControl);
   procedure LoadTorConfig;
@@ -1787,7 +1789,7 @@ begin
   end;
 end;
 
-procedure DeleteDuplicatesFromList(List: TStringList; ListType: TListType = ltNoCheck);
+procedure DeleteDuplicatesFromList(var List: TStringList; ListType: TListType = ltNoCheck);
 var
   ls: TDictionary<string, Byte>;
   SocketStr: string;
@@ -1824,11 +1826,13 @@ begin
   end;
 end;
 
-procedure SortNodesList(ls: TStringList; DescSort: Boolean = False);
+procedure SortNodesList(var ls: TStringList; SortType: Byte = SORT_ASC);
 var
   i: Integer;
   Hashes, Addresses, CountryCodes: TStringList;
 begin
+  if SortType = SORT_NONE then
+    Exit;
   Addresses := TStringList.Create;
   CountryCodes := TStringList.Create;
   Hashes := TStringList.Create;
@@ -1845,28 +1849,26 @@ begin
           Addresses.Append(ls[i])
       end;
     end;
-    Addresses.CustomSort(CompTextAsc);
-    CountryCodes.Sort;
-    Hashes.Sort;
     ls.Clear;
-    if DescSort then
-    begin
-      ls.AddStrings(Hashes);
-      ls.BeginUpdate;
-      try
-        for i := Addresses.Count - 1 downto 0 do
-          ls.AddObject(Addresses[i], Addresses.Objects[i]);
-        for i := CountryCodes.Count - 1 downto 0 do
-          ls.AddObject(CountryCodes[i], CountryCodes.Objects[i]);
-      finally
-        ls.EndUpdate;
+    case SortType of
+      SORT_ASC:
+      begin
+        Addresses.CustomSort(CompTextAsc);
+        CountryCodes.Sort;
+        Hashes.Sort;
+        ls.AddStrings(CountryCodes);
+        ls.AddStrings(Addresses);
+        ls.AddStrings(Hashes);
       end;
-    end
-    else
-    begin
-      ls.AddStrings(CountryCodes);
-      ls.AddStrings(Addresses);
-      ls.AddStrings(Hashes);
+      SORT_DESC:
+      begin
+        Addresses.CustomSort(CompTextDesc);
+        CountryCodes.CustomSort(CompDesc);
+        Hashes.CustomSort(CompDesc);
+        ls.AddStrings(Hashes);
+        ls.AddStrings(Addresses);
+        ls.AddStrings(CountryCodes);
+      end;
     end;
   finally
     Hashes.Free;
@@ -1915,24 +1917,51 @@ begin
   end;
 end;
 
-procedure LineToMemo(Line: string; Memo: TMemo; ListType: TListType; Sorted: Boolean = False; Separator: string = ',');
+procedure SortList(var ls: TStringList; ListType: TListType; SortType: Byte);
+begin
+  if SortType = SORT_NONE then
+    Exit;
+  case ListType of
+    ltNode: SortNodesList(ls, SortType);
+    ltHash:
+    begin
+      case SortType of
+        SORT_ASC: ls.Sort;
+        SORT_DESC: ls.CustomSort(CompDesc);
+      end;
+    end
+    else
+    begin
+      case SortType of
+        SORT_ASC: ls.CustomSort(CompTextAsc);
+        SORT_DESC: ls.CustomSort(CompTextDesc);
+      end;
+    end;
+  end;
+end;
+
+procedure LineToMemo(Line: string; Memo: TMemo; SortType: Byte = SORT_NONE; Separator: string = ',');
 var
   ParseStr: ArrOfStr;
-  i: Integer;
+  ListType: TListType;
+  i, DataCount: Integer;
   ls: TStringList;
   Str: string;
 begin
+  ListType := Memo.ListType;
   ParseStr := Explode(Separator, Line);
-  Memo.Tag := Length(ParseStr);
-  if (Memo.Tag = 1) and (Trim(ParseStr[0]) = '') then
-    Memo.Tag := 0;
+  DataCount := Length(ParseStr);
+  if (DataCount = 1) and (Trim(ParseStr[0]) = '') then
+    DataCount := 0;
   ls := TStringList.Create;
   try
     if ListType = ltNoCheck then
     begin
-      if Memo.Tag <> 0 then
+      if DataCount <> 0 then
+      begin
         for i := 0 to Length(ParseStr) - 1 do
           ls.Append(ParseStr[i]);
+      end;
     end
     else
     begin
@@ -1953,13 +1982,7 @@ begin
         end;
       end;
       DeleteDuplicatesFromList(ls, ListType);
-      if Sorted then
-      begin
-        if ListType = ltNode then
-          SortNodesList(ls)
-        else
-          ls.CustomSort(CompTextAsc);
-      end;
+      SortList(ls, ListType, SortType);
     end;
     Memo.Text := ls.Text;
   finally
@@ -1967,14 +1990,14 @@ begin
   end;
 end;
 
-function MemoToLine(Memo: TMemo; ListType: TListType; Sorted: Boolean = False; Separator: string = ','): string;
+function MemoToLine(Memo: TMemo; SortType: Byte = SORT_NONE; Separator: string = ','): string;
 var
   ls: TStringList;
   i: Integer;
 begin
   ls := TStringList.Create;
   try
-    MemoToList(Memo, ListType, Sorted, ls);
+    MemoToList(Memo, SortType, ls);
     Result := '';
     if ls.Count > 0 then
     begin
@@ -1987,11 +2010,13 @@ begin
   end;
 end;
 
-procedure MemoToList(Memo: TMemo; ListType: TListType; Sorted: Boolean; out ls: TStringList);
+procedure MemoToList(Memo: TMemo; SortType: Byte; out ls: TStringList);
 var
   i: Integer;
+  ListType: TListType;
   Str: string;
 begin
+  ListType := Memo.ListType;
   if ListType = ltNoCheck then
     ls.Text := Memo.Text
   else
@@ -2027,13 +2052,7 @@ begin
       end;
     end;
     DeleteDuplicatesFromList(ls, ListType);
-    if Sorted then
-    begin
-      if ListType = ltNode then
-        SortNodesList(ls)
-      else
-        ls.CustomSort(CompTextAsc);
-    end;
+    SortList(ls, ListType, SortType);
     Memo.Text := ls.Text;
   end;
 end;
@@ -2422,6 +2441,11 @@ end;
 function CompIntObjectDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
 begin
   Result := CompareValue(Integer(aSl.Objects[aIndex2]), Integer(aSl.Objects[aIndex1]));
+end;
+
+function CompDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
+begin
+  Result := AnsiCompareText(aSl[aIndex2], aSl[aIndex1]);
 end;
 
 function CompIntAsc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;

@@ -5,7 +5,7 @@ interface
 uses
   Winapi.Windows, Vcl.Graphics, Winapi.Messages, System.Classes, System.SysUtils,
   Vcl.Controls, Vcl.Forms, Vcl.Grids, Vcl.StdCtrls, Vcl.Themes, Vcl.ComCtrls, Vcl.Menus,
-  Vcl.Buttons, Vcl.Clipbrd;
+  Vcl.Buttons, Vcl.Clipbrd, ConstData;
 
 type
   TColsDataType = (dtInteger, dtText, dtSize, dtParams, dtFlags);
@@ -53,8 +53,9 @@ type
     procedure CMExit(var Message: TCMExit); message CM_EXIT;
     procedure WMPaint(var Message: TWMPaint); message WM_PAINT;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
-
   public
+    SortType: Byte;
+    ListType: TListType;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
@@ -387,6 +388,8 @@ end;
 constructor TMemo.Create(AOwner: TComponent);
 begin
   inherited;
+  ListType := ltNoCheck;
+  SortType := SORT_NONE;
   FTextHint := TStringList.Create;
   FCanvas := TControlCanvas.Create;
   FTextHintFont := TFont.Create;

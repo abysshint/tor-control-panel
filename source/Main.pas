@@ -1057,6 +1057,11 @@ type
     cbxLogLevel: TComboBox;
     sbSafeLogging: TSpeedButton;
     bvLog: TBevel;
+    miSortData: TMenuItem;
+    miSortDataAsc: TMenuItem;
+    miSortDataDesc: TMenuItem;
+    miDelimiter77: TMenuItem;
+    miSortDataNone: TMenuItem;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1252,6 +1257,7 @@ type
     procedure SortPrepare(aSg: TStringGrid; ACol: Integer; ManualSort: Boolean = False);
     procedure GridSort(aSg: TStringGrid);
     procedure ServerControlsChange(Sender: TObject);
+    procedure SortDataList(Sender: TObject);
     procedure SelectLogAutoDelInterval(Sender: TObject);
     procedure SelectLogSeparater(Sender: TObject);
     procedure SelectLogScrollbar(Sender: TObject);
@@ -1615,6 +1621,8 @@ type
       Shift: TShiftState);
     procedure edLinesLimitMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
+    procedure cbxFallbackDirsTypeKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
     procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -1670,7 +1678,7 @@ var
   Consensus: TConsensusThread;
   Descriptors: TDescriptorsThread;
   Logger, VersionChecker: TReadPipeThread;
-  OptionsLocked, OptionsChanged, ShowNodesChanged, Connected, AlreadyStarted, SearchFirst, StopScan: Boolean;
+  OptionsLocked, OptionsChanged, ShowNodesChanged, Connected, AlreadyStarted, SearchFirst, StopScan, LogHasSel: Boolean;
   ConsensusUpdated, FilterUpdated, RoutersUpdated, ExcludeUpdated, OpenDNSUpdated, LanguageUpdated,
   BridgesUpdated, BridgesRecalculate, BridgesFileUpdated, BridgesFileNeedSave: Boolean;
   SelectExitCircuit, TotalsNeedSave: Boolean;
@@ -1683,7 +1691,7 @@ var
   LastFullScanDate, LastPartialScanDate, TotalStartDate, LastSaveStats: Int64;
   LastPartialScansCounts: Integer;
   LockCircuits, LockCircuitInfo, LockStreams, LockStreamsInfo, UpdateTraffic: Boolean;
-  CircuitsUpdated: Boolean;
+  CircuitsUpdated, SortUpdated: Boolean;
   FindObject: TMemo;
   ScanStage, AutoScanStage: Byte;
   CurrentScanType, InitScanType: TScanType;
@@ -1820,10 +1828,10 @@ begin
         Tcp.meLog.SelLength := SelLength;
       end
       else
-        Tcp.meLog.Tag := 0;
+        LogHasSel := False;
     end;
 
-    if Tcp.sbAutoScroll.Down and (Tcp.meLog.Tag = 0) then
+    if Tcp.sbAutoScroll.Down and not LogHasSel then
       Tcp.meLog.Lines.Add(Data)
     else
     begin
@@ -2117,7 +2125,7 @@ begin
     begin
       Data := TStringList.Create;
       try
-        MemoToList(Tcp.meBridges, ltBridge, False, Data);
+        MemoToList(Tcp.meBridges, SORT_NONE, Data);
         for i := 0 to Data.Count - 1 do
         begin
           if TryParseBridge(Data[i], Bridge, False) then
@@ -2151,7 +2159,7 @@ begin
       begin
         Data := TStringList.Create;
         try
-          MemoToList(Tcp.meFallbackDirs, ltFallbackDir, False, Data);
+          MemoToList(Tcp.meFallbackDirs, SORT_NONE, Data);
           for i := 0 to Data.Count - 1 do
           begin
             if TryParseFallbackDir(Data[i], FallbackDir, False) then
@@ -4249,7 +4257,7 @@ var
       ParseStr := Explode(',', FindCidr);
       for i := 0 to Length(ParseStr) - 1 do
         FindNode(ParseStr[i], NodeType);
-      SortNodesList(NodesList, True);
+      SortNodesList(NodesList, SORT_DESC);
     end;
     FindNode(CountryCode, NodeType, True);
   end;
@@ -5195,7 +5203,7 @@ begin
           Exit;
       end;
     end;
-    CheckOptionsChanged;
+//    CheckOptionsChanged;
     PortStr := '';
     OptionsLocked := True;
     ForceDirectories(LogsDir);
@@ -5246,7 +5254,7 @@ begin
         if miAutoClear.Checked then
         begin
           meLog.Clear;
-          meLog.Tag := 0;
+          LogHasSel := False;
         end;
         StreamsDic.Clear;
         CircuitsDic.Clear;
@@ -6431,6 +6439,7 @@ begin
           if not ValidBridge(Bridges[i]) then
             Bridges.Delete(i);
         end;
+        SortList(Bridges, ltBridge, meBridges.SortType);
         meBridges.Text := Bridges.Text;
         NeedUpdate := False;
       end;
@@ -6463,6 +6472,7 @@ begin
           if not ValidBridge(Bridges[i]) then
             Bridges.Delete(i);
         end;
+        SortList(Bridges, ltBridge, meBridges.SortType);
         meBridges.Text := Bridges.Text;
         NeedUpdate := False;
       end;
@@ -6499,6 +6509,7 @@ begin
           if not ValidFallbackDir(ls[i]) then
             ls.Delete(i);
         end;
+        SortList(ls, ltFallbackDir, meFallbackDirs.SortType);
         meFallbackDirs.Text := ls.Text;
         NeedUpdate := False;
       end;
@@ -6566,7 +6577,7 @@ begin
           if UpdateBridges then
           begin
             if Bridges.TryGetValue(cbxBridgesList.Text, Str) then
-              LineToMemo(Str, meBridges, ltBridge, False, Delimiter);
+              LineToMemo(Str, meBridges, meBridges.SortType, Delimiter);
           end;
         end;
       end
@@ -6902,7 +6913,7 @@ begin
     end;
     edPreferredBridge.Text := PreferredBridge;
 
-    MemoToList(meBridges, ltBridge, False, ls);
+    MemoToList(meBridges, SORT_NONE, ls);
     if cbExcludeUnsuitableBridges.Checked then
       ExcludeUnSuitableBridges(ls, not AutoSave);
 
@@ -7416,6 +7427,22 @@ begin
       end;
     end;
 
+    ParseStr := Explode(',', GetSettings('Main', 'SortListData',
+      Format('%d,%d,%d,%d,%d', [
+        SORT_NONE, SORT_ASC, SORT_ASC, SORT_ASC, SORT_ASC
+      ]),
+    ini));
+    for i := 0 to Length(ParseStr) - 1 do
+    begin
+      case i of
+        0: meBridges.SortType := StrToIntDef(ParseStr[i], SORT_NONE);
+        1: meMyFamily.SortType := StrToIntDef(ParseStr[i], SORT_ASC);
+        2: meTrackHostExits.SortType := StrToIntDef(ParseStr[i], SORT_ASC);
+        3: meNodesList.SortType := StrToIntDef(ParseStr[i], SORT_ASC);
+        4: meFallbackDirs.SortType := StrToIntDef(ParseStr[i], SORT_ASC);
+      end;
+    end;
+
     GetSettings('Network', cbUseProxy, ini);
     GetSettings('Network', cbxProxyType, ini, PROXY_TYPE_SOCKS5);
     GetSettings('Network', edProxyAddress, ini);
@@ -7623,8 +7650,8 @@ begin
     GetSettings('Server', cbUseMyFamily, ini);
     GetSettings('Server', cbxBridgeDistribution, ini);
     GetSettings('Server', cbxExitPolicyType, ini);
-    LineToMemo(GetSettings('Server', 'CustomExitPolicy', DEFAULT_CUSTOM_EXIT_POLICY, ini), meExitPolicy, ltPolicy);
-    LineToMemo(GetSettings('Server', 'MyFamily', '', ini), meMyFamily, ltHash, True);
+    LineToMemo(GetSettings('Server', 'CustomExitPolicy', DEFAULT_CUSTOM_EXIT_POLICY, ini), meExitPolicy);
+    LineToMemo(GetSettings('Server', 'MyFamily', '', ini), meMyFamily, meMyFamily.SortType);
     SaveServerOptions(ini);
     SaveTransportsData(ini, True);
 
@@ -7635,7 +7662,7 @@ begin
 
     GetSettings('Lists', cbUseTrackHostExits, ini);
     GetSettings('Lists', udTrackHostExitsExpire, ini);
-    LineToMemo(GetSettings('Lists', 'TrackHostExits', '', ini), meTrackHostExits, ltHost, True);
+    LineToMemo(GetSettings('Lists', 'TrackHostExits', '', ini), meTrackHostExits, meTrackHostExits.SortType);
     SaveTrackHostExits(ini);
 
     CheckScannerControls;
@@ -8502,7 +8529,13 @@ begin
 
     SetDesktopPosition(Tcp.Left, Tcp.Top);
     SetSettings('Main', 'FormPosition', GetFormPositionStr, ini);
-
+    SetSettings('Main', 'SortListData',
+      IntToStr(meBridges.SortType) + ',' +
+      IntToStr(meMyFamily.SortType) + ',' +
+      IntToStr(meTrackHostExits.SortType) + ',' +
+      IntToStr(meNodesList.SortType) + ',' +
+      IntToStr(meFallbackDirs.SortType), ini
+    );
     edControlPassword.Hint := GetSettings('Main', 'HashedControlPassword', '', ini);
     if cbxAuthMetod.ItemIndex = 1 then
     begin
@@ -9418,6 +9451,13 @@ begin
   UpdateFallbackDirControls;
 end;
 
+procedure TTcp.cbxFallbackDirsTypeKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if (Key = VK_RETURN) and (meFallbackDirs.Lines.Count > 0) and meFallbackDirs.CanFocus then
+    meFallbackDirs.SetFocus;
+end;
+
 procedure TTcp.miWriteLogFileClick(Sender: TObject);
 begin
   SetConfigBoolean('Log', 'WriteLogFile', miWriteLogFile.Checked);
@@ -10232,15 +10272,21 @@ end;
 
 procedure TTcp.EditMenuPopup(Sender: TObject);
 var
+  Control: TMemo;
   IsBridgeEdit, IsUserBridges, IsFallbackDirEdit, IsUserFallbackDirs, BridgesState, FallbackState: Boolean;
-  BridgesCount, FallbackDirCount, MemoID: Integer;
+  BridgesCount, FallbackDirCount, MemoID, i: Integer;
 begin
+  if Screen.ActiveControl is TMemo then
+    Control := TMemo(Screen.ActiveControl)
+  else
+    Control := nil;
+
   BridgesCount := meBridges.Lines.Count;
-  IsBridgeEdit := Screen.ActiveControl = meBridges;
+  IsBridgeEdit := Control = meBridges;
   IsUserBridges := IsBridgeEdit and (cbxBridgesType.ItemIndex <> BRIDGES_TYPE_BUILTIN) and (BridgesCount > 0);
 
   FallbackDirCount := meFallbackDirs.Lines.Count;
-  IsFallbackDirEdit := Screen.ActiveControl = meFallbackDirs;
+  IsFallbackDirEdit := Control = meFallbackDirs;
   IsUserFallbackDirs := IsFallbackDirEdit and (cbxFallbackDirsType.ItemIndex <> FALLBACK_TYPE_BUILTIN) and (FallbackDirCount > 0);
 
   BridgesState := IsUserBridges and not tmScanner.Enabled;
@@ -10298,6 +10344,65 @@ begin
   end
   else
     miExtractData.Visible := False;
+
+  if Control <> nil then
+  begin
+    miSortData.Visible := Control.Tag in [LIST_BRIDGES..LIST_NODES_LIST];
+    if miSortData.Visible then
+    begin
+      if not (Control.SortType in [SORT_NONE..SORT_DESC]) then
+        Control.SortType := SORT_NONE;
+      for i := 0 to miSortData.Count - 1 do
+      begin
+        if miSortData[i].Tag = Control.SortType then
+        begin
+          miSortData[i].Checked := True;
+          Break;
+        end;
+      end;
+    end;
+  end
+  else
+    miSortData.Visible := False;
+end;
+
+procedure TTcp.SortDataList(Sender: TObject);
+var
+  Control: TMemo;
+  ls: TStringList;
+  State: Byte;
+begin
+  if Screen.ActiveControl is TMemo then
+  begin
+    SortUpdated := True;
+    Control := TMemo(Screen.ActiveControl);
+    State := TMenuItem(Sender).Tag;
+    case State of
+      SORT_NONE: Control.SortType := SORT_NONE;
+      SORT_DESC: Control.SortType := SORT_DESC;
+      else
+        Control.SortType := SORT_ASC;
+    end;
+    if (State = SORT_NONE) and (Control.Tag in [LIST_BRIDGES, LIST_FALLBACK_DIRS, LIST_NODES_LIST]) then
+    begin
+      case Control.Tag of
+        LIST_BRIDGES: UpdateBridgesControls(True, True);
+        LIST_FALLBACK_DIRS: UpdateFallbackDirControls;
+        LIST_NODES_LIST: LoadNodesList;
+      end;
+    end
+    else
+    begin
+      ls := TStringList.Create;
+      try
+        MemoToList(Control, Control.SortType, ls);
+      finally
+        ls.Free;
+      end;
+    end;
+    SortUpdated := False;
+    EnableOptionButtons;
+  end;
 end;
 
 procedure TTcp.ExtractMemoData(MemoID: Integer; ExtractType: Integer);
@@ -11011,7 +11116,7 @@ begin
     try
       for Item in TrackHostDic do
         ls.Append(Item.Key);
-      ls.CustomSort(CompTextAsc);
+      SortList(ls, ltHost, meTrackHostExits.SortType);
       TrackHostExits := '';
       for i := 0 to ls.Count - 1 do
         TrackHostExits := TrackHostExits + ',' + ls[i];
@@ -11023,7 +11128,7 @@ begin
   end
   else
   begin
-    TrackHostExits := MemoToLine(meTrackHostExits, ltHost, True);
+    TrackHostExits := MemoToLine(meTrackHostExits, meTrackHostExits.SortType);
     TrackHostDic.Clear;
     if TrackHostExits <> '' then
       for i := 0 to meTrackHostExits.Lines.Count - 1 do
@@ -11081,8 +11186,8 @@ begin
   DeleteTorConfig('ReducedExitPolicy');
   DeleteTorConfig('MyFamily');
 
-  MyFamily := MemoToLine(meMyFamily, ltHash, True);
-  ExitPolicy := MemoToLine(meExitPolicy, ltPolicy);
+  MyFamily := MemoToLine(meMyFamily, meMyFamily.SortType);
+  ExitPolicy := MemoToLine(meExitPolicy);
   if ExitPolicy = '' then
   begin
     if cbxExitPolicyType.ItemIndex <> 1 then
@@ -13099,7 +13204,7 @@ begin
   if cbxBridgesType.ItemIndex = BRIDGES_TYPE_FILE then
     BridgesFileNeedSave := True;
   if not CtrlKeyPressed(AnsiChar(VK_RETURN)) then
-    CountTotalBridges(False);
+    CountTotalBridges(SortUpdated);
   EnableOptionButtons;
 end;
 
@@ -13126,7 +13231,7 @@ begin
   FallbackDirsUpdated := True;
   FallbackDirsRecalculate := True;
   if not CtrlKeyPressed(AnsiChar(VK_RETURN)) then
-    CountTotalFallbackDirs(False);
+    CountTotalFallbackDirs(SortUpdated);
   EnableOptionButtons;
 end;
 
@@ -13150,7 +13255,7 @@ procedure TTcp.meLogMouseUp(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
   if Button = mbLeft then
-    meLog.Tag := Integer(meLog.SelLength <> 0);
+    LogHasSel := meLog.SelLength <> 0;
 end;
 
 procedure TTcp.SaveSortData;
@@ -13985,7 +14090,7 @@ begin
   NodeTypes := [];
   Include(NodeTypes, TNodeType(FavoritesID));
   ClearRouters(NodeTypes);
-  NodesList := MemoToLine(meNodesList, ltNode, True);
+  NodesList := MemoToLine(meNodesList, meNodesList.SortType);
   GetNodes(NodesList, TNodeType(FavoritesID), True);
   CalculateTotalNodes;
   if NodesListStage > 0 then
@@ -14017,7 +14122,7 @@ begin
     Delete(NodesStr, 1, 1);
   end;
 
-  LineToMemo(RemoveBrackets(NodesStr), meNodesList, ltNode, True);
+  LineToMemo(RemoveBrackets(NodesStr), meNodesList, meNodesList.SortType);
   if UseDic then
     CheckFavoritesState(FavoritesID);
 end;
@@ -14300,7 +14405,7 @@ begin
   if CtrlKeyPressed('A') then
     Exit;
   if TCustomEdit(Sender).Focused then
-    ChangeTransportTable(TEdit(Sender).Tag)
+    ChangeTransportTable(TEdit(Sender).HelpContext)
 end;
 
 procedure TTcp.edHsChange(Sender: TObject);
@@ -14468,7 +14573,7 @@ end;
 
 procedure TTcp.CheckLogAutoScroll(AlwaysUpdate: Boolean = False);
 begin
-  if AlwaysUpdate or (sbAutoScroll.Down and (meLog.Tag = 0)) then
+  if AlwaysUpdate or (sbAutoScroll.Down and not LogHasSel) then
     meLog.Perform(WM_VSCROLL, SB_BOTTOM, 0);
 end;
 
@@ -15758,7 +15863,7 @@ begin
         for i := 0 to Length(ParseStr) - 1 do
           ls.Add(ParseStr[i]);
       end;
-      SortNodesList(ls, True);
+      SortNodesList(ls, SORT_DESC);
       ls.Add(AnsiUpperCase(CountryCode) + ' (' + TransStr(CountryCode) + ')');
 
       DeleteList := '';
@@ -15867,7 +15972,7 @@ begin
           for i := 0 to Length(ParseStr) - 1 do
             if ls.IndexOf(ParseStr[i]) < 0 then
               lr.Add(ParseStr[i]);
-          SortNodesList(lr, True);
+          SortNodesList(lr, SORT_DESC);
           ls.AddStrings(lr);
         finally
           lr.Free;
@@ -16643,10 +16748,10 @@ begin
     begin
       for Item in UsedFallbackDirs do
         ls.Append(Item.Value);
-      ls.CustomSort(CompTextAsc);
+      SortList(ls, ltFallbackDir, meFallbackDirs.SortType);
     end
     else
-      MemoToList(meFallbackDirs, ltFallbackDir, True, ls);
+      MemoToList(meFallbackDirs, meFallbackDirs.SortType, ls);
     meFallbackDirs.Text := ls.Text;
     if cbExcludeUnsuitableFallbackDirs.Checked then
     begin
@@ -17161,6 +17266,20 @@ begin
   sgCircuitInfo.Tag := GRID_CIRC_INFO;
   sgStreamsInfo.Tag := GRID_STREAM_INFO;
   sgTransports.Tag := GRID_TRANSPORTS;
+
+  meBridges.Tag := LIST_BRIDGES;
+  meMyFamily.Tag := LIST_MY_FAMILY;
+  meTrackHostExits.Tag := LIST_TRACK_HOST_EXITS;
+  meFallbackDirs.Tag := LIST_FALLBACK_DIRS;
+  meNodesList.Tag := LIST_NODES_LIST;
+  meExitPolicy.Tag := LIST_EXIT_POLICY;
+
+  meBridges.ListType := ltBridge;
+  meMyFamily.ListType := ltHash;
+  meTrackHostExits.ListType := ltHost;
+  meFallbackDirs.ListType := ltFallbackDir;
+  meNodesList.ListType := ltNode;
+  meExitPolicy.ListType := ltPolicy;
 
   miClearFilterEntry.Tag := ENTRY_ID;
   miClearFilterMiddle.Tag := MIDDLE_ID;
