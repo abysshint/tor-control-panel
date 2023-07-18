@@ -388,7 +388,7 @@ end;
 constructor TMemo.Create(AOwner: TComponent);
 begin
   inherited;
-  ListType := ltNoCheck;
+  ListType := ltNone;
   SortType := SORT_NONE;
   FTextHint := TStringList.Create;
   FCanvas := TControlCanvas.Create;

@@ -356,10 +356,12 @@ type
     ntFallbackDir = FALLBACK_DIR_ID
   );
   TNodeTypes = set of TNodeType;
-
-  TAddressType = (atNone, atNormal, atExit, atOnion);
+  TAddressType = (atNone, atIPv4, atIPv6, atIPv4Cidr, atIPv6Cidr);
+  TSocketType = (soNone, soIPv4, soIPv6, soHost);
+  TTargetType = (ttNone, ttNormal, ttExit, ttOnion);
   TEditMenuType = (emCopy, emCut, emPaste, emSelectAll, emClear, emDelete, emFind);
-  TListType = (ltNoCheck, ltHost, ltHash, ltPolicy, ltBridge, ltNode, ltSocket, ltTransport, ltIp, ltCidr, ltCode, ltFallbackDir);
+  TNodeDataType = (dtNone, dtHash, dtIPv4, dtIPv4Cidr, dtCode);
+  TListType = (ltNone, ltHost, ltHash, ltPolicy, ltBridge, ltNode, ltSocket, ltTransport, ltFallbackDir);
   TGuardType = (gtNone, gtBridges, gtRestricted, gtDefault, gtAll);
   TMsgType = (mtInfo, mtWarning, mtError, mtQuestion);
   TParamType = (ptString, ptInteger, ptBoolean, ptSocket, ptHost, ptBridge);
@@ -383,20 +385,16 @@ type
     Value: Integer;
   end;
 
-  TIPv4Range = record
-    IpStart: Cardinal;
-    IpEnd: Cardinal;
-  end;
-
-  TSocket = record
-    Ip: string;
-    Port: Word;
+  TCidrInfo = record
+    CidrType: TAddressType;
+    Prefix: Byte;
+    Bits: string
   end;
 
   TNodeData = record
     NodeStr: string;
-    NodeID: TListType;
-    RangeData: TIPv4Range;
+    NodeDataType: TNodeDataType;
+    CidrInfo: TCidrInfo;
   end;
   ArrOfNodes = array of TNodeData;
 var
@@ -446,8 +444,9 @@ var
     '169.254.0.0/16',
     '10.0.0.0/8'
   );
-  DocRanges: array [0..0] of string = (
-    '192.0.2.0/24'
+  DocRanges: array [0..1] of string = (
+    '192.0.2.0/24',
+    '2001:db8::/32'
   );
 
   GeoIpDirs: array [0..2] of string = (

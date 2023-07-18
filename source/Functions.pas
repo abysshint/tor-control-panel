@@ -33,7 +33,7 @@ type
   end;
 
   TTarget = record
-    AddrType: TAddressType;
+    TargetType: TTargetType;
     Hostname: string;
     Port: string;
     Hash: string;
@@ -107,17 +107,17 @@ var
   function HasBrackets(Str: string): Boolean;
   function IsIPv4(IpStr: string): Boolean;
   function IsIPv6(IpStr: string): Boolean;
-  function GetNodeType(NodeStr: string): TListType;
   function ValidData(Str: string; ListType: TListType): Boolean;
   function ValidInt(IntStr: string; Min, Max: Integer): Boolean; overload;
   function ValidInt(IntStr: string; Min, Max: Int64): Boolean; overload;
   function ValidFloat(FloatStr: string; Min, Max: Double): Boolean;
   function ValidHash(HashStr: string): Boolean;
-  function ValidAddress(AddrStr: string; AllowCidr: Boolean = False; ReqBrackets: Boolean = False): Byte;
+  function ValidNode(const NodeStr: string): TNodeDataType;
+  function ValidAddress(AddrStr: string; AllowCidr: Boolean = False; ReqBrackets: Boolean = False): TAddressType;
   function ValidHost(HostStr: string; AllowRootDomain: Boolean = False; AllowIp: Boolean = True; ReqBrackets: Boolean = False): Boolean;
   function ValidBridge(BridgeStr: string): Boolean;
   function ValidTransport(TransportStr: string): Boolean;
-  function ValidSocket(SocketStr: string; AllowHostNames: Boolean = False): Byte;
+  function ValidSocket(SocketStr: string; AllowHostNames: Boolean = False): TSocketType;
   function ValidPolicy(PolicyStr: string): Boolean;
   function ValidFallbackDir(FallbackStr: string): Boolean;
   function GetMsgCaption(Caption: string; MsgType: TMsgType): string;
@@ -125,10 +125,6 @@ var
   function TryParseBridge(BridgeStr: string; out Bridge: TBridge; Validate: Boolean = True; UseFormatHost: Boolean = False): Boolean;
   function TryParseFallbackDir(FallbackStr: string; out FallbackDir: TFallbackDir; Validate: Boolean = True; UseFormatHost: Boolean = False): Boolean;
   function TryParseTarget(TargetStr: string; out Target: TTarget): Boolean;
-  function IpToInt(IpStr: string): Cardinal;
-  function IntToIp(Ip: Cardinal): string;
-  function CidrToRange(CidrStr: string): TIPv4Range;
-  function IpInRanges(const IpStr: string; RangesData: array of string): Integer;
   function CompDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
   function CompIntObjectAsc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
   function CompIntObjectDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
@@ -198,7 +194,7 @@ var
   procedure GridKeyDown(aSg: TStringGrid; Shift: TShiftState; var Key: Word);
   procedure GridCheckAutoPopup(aSg: TStringGrid; ARow: Integer; AllowEmptyRows: Boolean = False);
   procedure GoToInvalidOption(PageID: TTabSheet; Msg: string = ''; edComponent: TCustomEdit = nil);
-  procedure DeleteDuplicatesFromList(var List: TStringList; ListType: TListType = ltNoCheck);
+  procedure DeleteDuplicatesFromList(var List: TStringList; ListType: TListType = ltNone);
   procedure SortList(var ls: TStringList; ListType: TListType; SortType: Byte);
   procedure SortNodesList(var ls: TStringList; SortType: Byte = SORT_ASC);
   procedure ControlsDisable(Control: TWinControl);
@@ -239,11 +235,138 @@ var
   function GetSettings(Section, Ident: string; Default: Int64; ini: TMemIniFile): Int64; overload;
   function GetSettings(Section, Ident: string; Default: Boolean; ini: TMemIniFile): Boolean; overload;
   procedure EnableComposited(WinControl: TWinControl);
+  function ExpandIPv6(IpStr: string): string;
+  function IntToBin(Value: Integer; Digits: Byte): string;
+  function IpStrToBin(const IpStr: string; Delimiter: Char; Digits: Byte): string;
+  function BinIpInCidr(const BinIpStr: string; CidrInfo: TCidrInfo; AddressType: TAddressType): Boolean;
+  function GetCidrType(const IpStr: string): TAddressType;
+  function CidrStrToInfo(const CidrStr: string; AddressType: TAddressType): TCidrInfo;
+  function IpInCidr(const IpStr: string; CidrInfo: TCidrInfo; AddressType: TAddressType): Boolean;
+  function IpInRanges(const IpStr: string; RangesData: array of string): Integer;
 
 implementation
 
 uses
   Main, Languages;
+
+function ExpandIPv6(IpStr: string): string;
+var
+  Count: Integer;
+begin
+  Result := '';
+  if IpStr = '' then
+    Exit;
+  Count := CountOfChar(IpStr, ':');
+  if Count > 7 then
+    Exit;
+  if IpStr[1] = ':' then
+    IpStr := '0' + IpStr;
+  if IpStr[Length(IpStr)] = ':' then
+    IpStr := IpStr + '0';
+  Result := StringReplace(IpStr, '::', DupeString(':0', 8 - Count) + ':', []);
+end;
+
+function IntToBin(Value: Integer; Digits: Byte): string;
+begin
+  SetLength(Result, Digits);
+  while Digits > 0 do
+  begin
+    if Odd(Value) then
+      Result[Digits] := '1'
+    else
+      Result[Digits] := '0';
+    Value := Value shr 1;
+    Dec(Digits);
+  end;
+end;
+
+function IpStrToBin(const IpStr: string; Delimiter: Char; Digits: Byte): string;
+var
+  i, j: Integer;
+  Str: string;
+begin
+  Result := '';
+  if Delimiter = ':' then
+    Str := '$'
+  else
+    Str := '';
+  j := 1;
+  for i := 1 to Length(IpStr) do
+  begin
+    if IpStr[i] = Delimiter then
+    begin
+      Result := Result + IntToBin(StrToIntDef(Str + Copy(IpStr, j, i - j), 0), Digits);
+      j := i + 1;
+    end;
+  end;
+  Result := Result + IntToBin(StrToIntDef(Str + Copy(IpStr, j), 0), Digits);
+end;
+
+function GetCidrType(const IpStr: string): TAddressType;
+begin
+ if Pos(':', IpStr) = 0 then
+   Result := atIPv4Cidr
+ else
+   Result := atIPv6Cidr
+end;
+
+function IpInCidr(const IpStr: string; CidrInfo: TCidrInfo; AddressType: TAddressType): Boolean;
+begin
+  Result := False;
+  if IpStr = '' then
+    Exit;
+  if AddressType <> CidrInfo.CidrType then
+    Exit;
+  if AddressType = atIPv4Cidr then
+    Result := Copy(IpStrToBin(IpStr, '.', 8), 1, CidrInfo.Prefix) = Copy(CidrInfo.Bits, 1, CidrInfo.Prefix)
+  else
+    Result := Copy(IpStrToBin(ExpandIPv6(RemoveBrackets(IpStr, True)), ':', 16), 1, CidrInfo.Prefix) = Copy(CidrInfo.Bits, 1, CidrInfo.Prefix);
+end;
+
+function BinIpInCidr(const BinIpStr: string; CidrInfo: TCidrInfo; AddressType: TAddressType): Boolean;
+begin
+  if AddressType <> CidrInfo.CidrType then
+  begin
+    Result := False;
+    Exit;
+  end;
+  Result := Copy(BinIpStr, 1, CidrInfo.Prefix) = Copy(CidrInfo.Bits, 1, CidrInfo.Prefix)
+end;
+
+function IpInRanges(const IpStr: string; RangesData: array of string): Integer;
+var
+  i: Integer;
+  IpBits: string;
+  AddressType: TAddressType;
+begin
+  AddressType := GetCidrType(IpStr);
+  if AddressType = atIPv4Cidr then
+    IpBits := IpStrToBin(IpStr, '.', 8)
+  else
+    IpBits := IpStrToBin(ExpandIPv6(IpStr), ':', 16);
+  for i := 0 to Length(RangesData) - 1 do
+  begin
+    if BinIpInCidr(IpBits, CidrStrToInfo(RangesData[i], AddressType), AddressType) then
+    begin
+      Result := 1;
+      Exit;
+    end;
+  end;
+  Result := 0;
+end;
+
+function CidrStrToInfo(const CidrStr: string; AddressType: TAddressType): TCidrInfo;
+var
+  Subnet: string;
+begin
+  Result.CidrType := AddressType;
+  Result.Prefix := StrToIntDef(Copy(CidrStr, Pos('/', CidrStr) + 1), 0);
+  Subnet := Copy(CidrStr, 1, Pos('/', CidrStr) - 1);
+  if AddressType = atIPv4Cidr then
+    Result.Bits := IpStrToBin(Subnet, '.', 8)
+  else
+    Result.Bits := IpStrToBin(ExpandIPv6(RemoveBrackets(Subnet, True)), ':', 16);
+end;
 
 procedure SetMaskData(var Mask: Integer; CheckBoxControl: TCheckBox);
 begin
@@ -496,8 +619,12 @@ procedure GridKeyDown(aSg: TStringGrid; Shift: TShiftState; var Key: Word);
 var
   i: Integer;
 begin
-  if (ssCtrl in Shift) and (Key = 67) then
-    Clipboard.AsText := aSg.Cells[aSg.SelCol, aSg.SelRow];
+  if ssCtrl in Shift then
+  begin
+    case Key of
+      67: Clipboard.AsText := aSg.Cells[aSg.SelCol, aSg.SelRow];
+    end;
+  end;
 
   if Key in [VK_PRIOR, VK_NEXT, VK_END, VK_HOME, VK_LEFT, VK_UP, VK_RIGHT, VK_DOWN] then
     aSg.ScrollKeyDown := True
@@ -694,19 +821,22 @@ end;
 
 procedure FindInGridColumn(aSg: TStringGrid; ACol: Integer; Key: Char);
 var
-  i: Integer;
+  i, StrLength: Integer;
 begin
   if GetTickCount > SearchTimer + 1000 then
     SearchStr := '';
   SearchStr := SearchStr + Key;
+  StrLength := Length(SearchStr);
   for i := 1 to aSg.RowCount - 1 do
-    if AnsiLowerCase(copy(aSg.Cells[ACol, i], 1, Length(SearchStr))) = SearchStr then
+  begin
+    if AnsiLowerCase(Copy(aSg.Cells[ACol, i], 1, StrLength)) = SearchStr then
     begin
       aSg.Row := i;
       aSg.Col := ACol;
       SearchTimer := GetTickCount;
       break;
     end;
+  end;
 end;
 
 procedure GoToInvalidOption(PageID: TTabSheet; Msg: string = ''; edComponent: TCustomEdit = nil);
@@ -913,6 +1043,27 @@ begin
   end;
 end;
 
+function ValidNode(const NodeStr: string): TNodeDataType;
+begin
+  Result := dtNone;
+  if Length(NodeStr) < 2 then
+    Exit;
+  if ValidHash(NodeStr) then
+    Result := dtHash
+  else
+  begin
+    case ValidAddress(NodeStr, True, True) of
+      atIPv4: Result := dtIPv4;
+      atIPv4Cidr: Result := dtIPv4Cidr;
+      else
+      begin
+        if FilterDic.ContainsKey(LowerCase(NodeStr)) then
+          Result := dtCode
+      end;
+    end;
+  end;
+end;
+
 procedure GetNodes(var Nodeslist: string; NodeType: TNodeType; Favorites: Boolean; ini: TMemIniFile = nil);
 var
   Count, i: Integer;
@@ -927,22 +1078,22 @@ begin
   begin
     if Favorites then
     begin
-      Nodes := Explode(',', AnsiUpperCase(StringReplace(RemoveBrackets(Nodeslist), '$', '', [rfReplaceAll])));
+      Nodes := Explode(',', UpperCase(RemoveBrackets(Nodeslist)));
       for i := 0 to Length(Nodes) - 1 do
       begin
-        if ValidData(Nodes[i], ltNode) then
+        case ValidNode(Nodes[i]) of
+          dtNone: Nodes[i] := '';
+          dtCode: Nodes[i] := LowerCase(Nodes[i]);
+          dtIPv4Cidr: CidrsDic.AddOrSetValue(Nodes[i], CidrStrToInfo(Nodes[i], atIPv4Cidr));
+        end;
+
+        if Nodes[i] <> '' then
         begin
-          if Length(Nodes[i]) = 2 then
-            Nodes[i] := AnsiLowerCase(Nodes[i]);
-          if Pos('/', Nodes[i]) <> 0 then
-            RangesDic.AddOrSetValue(Nodes[i], CidrToRange(Nodes[i]));
           NodesDic.TryGetValue(Nodes[i], FNodeType);
           Include(FNodeType, NodeType);
           NodesDic.AddOrSetValue(Nodes[i], FNodeType);
           Inc(Count);
-        end
-        else
-          Nodes[i] := '';
+        end;
       end;
       lbComponent := Tcp.GetFavoritesLabel(Byte(NodeType));
       if (lbComponent.Tag = 0) and (lbComponent.HelpContext = 0) and (Count > 0) then
@@ -951,7 +1102,7 @@ begin
     end
     else
     begin
-      Nodes := Explode(',', AnsiLowerCase(RemoveBrackets(Nodeslist)));
+      Nodes := Explode(',', LowerCase(RemoveBrackets(Nodeslist)));
       for i := 0 to Length(Nodes) - 1 do
       begin
         if FilterDic.TryGetValue(Nodes[i], FilterInfo) then
@@ -964,18 +1115,22 @@ begin
           Nodes[i] := '';
       end;
     end;
+
+    Nodeslist := '';
+    for i := 0 to Length(Nodes) - 1 do
+    begin
+      if Nodes[i] <> '' then
+      begin
+        if Length(Nodes[i]) = 2 then
+          Nodes[i] := '{' + Nodes[i] + '}';
+        Nodeslist := Nodeslist + ',' + Nodes[i];
+      end;
+    end;
+    Delete(Nodeslist, 1, 1);
+
     if (ini <> nil) and (Length(Nodes) <> Count) then
     begin
-      Nodeslist := '';
       NodeStr := '';
-      for i := 0 to Length(Nodes) - 1 do
-        if Nodes[i] <> '' then
-        begin
-          if Length(Nodes[i]) = 2 then
-            Nodes[i] := '{' + Nodes[i] + '}';
-          Nodeslist := Nodeslist + ',' + Nodes[i];
-        end;
-      Delete(Nodeslist, 1, 1);
       case NodeType of
         ntEntry: NodeStr := 'EntryNodes';
         ntMiddle: NodeStr := 'MiddleNodes';
@@ -1610,7 +1765,7 @@ begin
           end;
         end;
         ptSocket:
-          if ValidSocket(Result, Boolean(MinValue)) = 0 then
+          if ValidSocket(Result, Boolean(MinValue)) = soNone then
             Reset;
         ptHost:
           if not ValidHost(Result, False, True, Boolean(MinValue)) then
@@ -1789,7 +1944,7 @@ begin
   end;
 end;
 
-procedure DeleteDuplicatesFromList(var List: TStringList; ListType: TListType = ltNoCheck);
+procedure DeleteDuplicatesFromList(var List: TStringList; ListType: TListType = ltNone);
 var
   ls: TDictionary<string, Byte>;
   SocketStr: string;
@@ -1843,7 +1998,7 @@ begin
         Hashes.Append(ls[i])
       else
       begin
-        if FilterDic.ContainsKey(AnsiLowerCase(ls[i])) then
+        if FilterDic.ContainsKey(LowerCase(ls[i])) then
           CountryCodes.Append(ls[i])
         else
           Addresses.Append(ls[i])
@@ -1877,30 +2032,6 @@ begin
   end;
 end;
 
-function GetNodeType(NodeStr: string): TListType;
-begin
-  Result := ltNoCheck;
-  if Length(NodeStr) < 2 then
-    Exit;
-  if ValidHash(NodeStr) then
-    Result := ltHash
-  else
-  begin
-    if ValidAddress(NodeStr, True) = 1 then
-    begin
-      if Pos('/', NodeStr) <> 0 then
-        Result := ltCidr
-      else
-        Result := ltIp;
-    end
-    else
-    begin
-      if FilterDic.ContainsKey(AnsiLowerCase(NodeStr)) then
-        Result := ltCode
-    end;
-  end;
-end;
-
 function ValidData(Str: string; ListType: TListType): Boolean;
 begin
   case ListType of
@@ -1908,8 +2039,8 @@ begin
     ltHash: Result := ValidHash(Str);
     ltPolicy: Result := ValidPolicy(Str);
     ltBridge: Result := ValidBridge(Str);
-    ltNode: Result := ValidHash(Str) or (ValidAddress(Str, True, True) = 1) or FilterDic.ContainsKey(AnsiLowerCase(Str));
-    ltSocket: Result := ValidSocket(Str) <> 0;
+    ltNode: Result := ValidNode(Str) <> dtNone;
+    ltSocket: Result := ValidSocket(Str) <> soNone;
     ltTransport: Result := ValidTransport(Str);
     ltFallbackDir: Result := ValidFallbackDir(Str);
     else
@@ -1955,7 +2086,7 @@ begin
     DataCount := 0;
   ls := TStringList.Create;
   try
-    if ListType = ltNoCheck then
+    if ListType = ltNone then
     begin
       if DataCount <> 0 then
       begin
@@ -1970,15 +2101,10 @@ begin
         Str := Trim(ParseStr[i]);
         if Str <> '' then
         begin
+          if ListType = ltNode then
+            Str := UpperCase(Str);
           if ValidData(Str, ListType) then
-          begin
-            if ListType = ltNode then
-            begin
-              if Length(Str) = 2 then
-                Str := AnsiUpperCase(Str);
-            end;
             ls.Append(Str);
-          end;
         end;
       end;
       DeleteDuplicatesFromList(ls, ListType);
@@ -2017,7 +2143,7 @@ var
   Str: string;
 begin
   ListType := Memo.ListType;
-  if ListType = ltNoCheck then
+  if ListType = ltNone then
     ls.Text := Memo.Text
   else
   begin
@@ -2027,7 +2153,7 @@ begin
     begin
       ls.Text := StringReplace(Memo.Text, ',', BR, [rfReplaceAll]);
       if ListType = ltNode then
-        ls.Text := RemoveBrackets(ls.Text);
+        ls.Text := UpperCase(RemoveBrackets(ls.Text));
     end;
     for i := ls.Count - 1 downto 0 do
     begin
@@ -2038,17 +2164,16 @@ begin
       begin
         case ListType of
           ltHost: Str := ExtractDomain(Str);
-          ltHash: Str := AnsiUpperCase(Str);
-          ltPolicy: Str := AnsiLowerCase(Str);
-          ltNode: Str := AnsiUpperCase(Str);
+          ltHash: Str := UpperCase(Str);
+          ltPolicy: Str := LowerCase(Str);
           ltBridge:
             if InsensPosEx('Bridge ', Str) = 1 then
               Str := Copy(Str, 8);
         end;
-        if not ValidData(Str, ListType) then
-          ls.Delete(i)
+        if ValidData(Str, ListType) then
+          ls[i] := Str
         else
-          ls[i] := Str;
+          ls.Delete(i);
       end;
     end;
     DeleteDuplicatesFromList(ls, ListType);
@@ -2732,7 +2857,7 @@ function ExtractDomain(Url: string; HasPort: Boolean = False): string;
 var
   Search: Integer;
 begin
-  Result := AnsiLowerCase(Url);
+  Result := LowerCase(Url);
   Search := Pos('@', Result);
   if Search > 0  then
     Delete(Result, 1, Search)
@@ -2797,29 +2922,29 @@ end;
 function GetRouterBySocket(SocketStr: string): string;
 var
   Item: TPair<string, TRouterInfo>;
-  SocketID: Byte;
+  SocketType: TSocketType;
   IpStr: string;
   Port: Word;
 begin
   Result := '';
-  SocketID := ValidSocket(SocketStr);
-  if SocketID <> 0 then
+  SocketType := ValidSocket(SocketStr);
+  if SocketType <> soNone then
   begin
     Port := GetPortFromSocket(SocketStr);
     IpStr := GetAddressFromSocket(SocketStr);
-    if SocketID = 2 then
+    if SocketType = soIPv6 then
       IpStr := FormatHost(IpStr);
 
     for Item in RoutersDic do
     begin
-      case SocketID of
-        1:
+      case SocketType of
+        soIPv4:
         if (Item.Value.IPv4 = IpStr) and (Item.Value.Port = Port) then
         begin
           Result := Item.Key;
           Break;
         end;
-        2:
+        soIPv6:
         if (Item.Value.IPv6 = IpStr) and (Item.Value.Port = Port) then
         begin
           Result := Item.Key;
@@ -2953,13 +3078,11 @@ end;
 function IsIPv6(IpStr: string): Boolean;
 var
   Parts, Words: ArrOfStr;
-  Flag: Boolean;
   i, j, n, WordCount, PartsCount, Totals: Integer;
 begin
   Result := IpStr = '::';
   if Result then
     Exit;
-  Flag := False;
   IpStr := StringReplace(IpStr, '::', '|', [rfReplaceAll]);
   Parts := Explode('|', IpStr);
   PartsCount := Length(Parts);
@@ -2980,19 +3103,12 @@ begin
           Exit;
       end
       else
-      begin
-        if (j = WordCount - 1) and (i = PartsCount - 1) and IsIPv4(Words[j]) then
-          Flag := True
-        else
-          Exit;
-      end;
+        Exit;
     end;
     Inc(Totals, WordCount);
   end;
   if not Assigned(Words) then
     Exit;
-  if Flag then
-    Inc(Totals);
   case PartsCount of
     1: if Totals <> 8 then Exit;
     2: if (Totals + 1) > 8 then Exit;
@@ -3000,18 +3116,18 @@ begin
   Result := True;
 end;
 
-function ValidAddress(AddrStr: string; AllowCidr: Boolean = False; ReqBrackets: Boolean = False): Byte;
+function ValidAddress(AddrStr: string; AllowCidr: Boolean = False; ReqBrackets: Boolean = False): TAddressType;
 var
   Search: Integer;
   Mask: Byte;
   IpStr: string;
 begin
-  Result := 0;
+  Result := atNone;
   Search := Pos('/', AddrStr);
   if Search = 0 then
   begin
     if IsIPv4(AddrStr) then
-      Result := 1
+      Result := atIPv4
     else
     begin
       if ReqBrackets then
@@ -3019,11 +3135,11 @@ begin
         if not HasBrackets(AddrStr) then
           Exit;
         if IsIPv6(Copy(AddrStr, 2, Length(AddrStr) - 2)) then
-          Result := 2;
+          Result := atIPv6;
       end
       else
         if IsIPv6(AddrStr) then
-          Result := 2;
+          Result := atIPv6;
     end;
   end
   else
@@ -3046,11 +3162,11 @@ begin
         else
           Exit;
       end;
-      if ValidInt(Copy(AddrStr, Search + 1), 1, Mask) then
+      if ValidInt(Copy(AddrStr, Search + 1), 0, Mask) then
       begin
         case Mask of
-          32: Result := 1;
-         128: Result := 2;
+          32: Result := atIPv4Cidr;
+         128: Result := atIPv6Cidr;
         end;
       end;
     end;
@@ -3068,7 +3184,7 @@ begin
     Result := True;
     Exit;
   end;
-  if ValidAddress(HostStr, False, ReqBrackets) <> 0 then
+  if ValidAddress(HostStr, False, ReqBrackets) <> atNone then
   begin
     if AllowIp then
     begin
@@ -3112,24 +3228,31 @@ begin
   Result := True;
 end;
 
-function ValidSocket(SocketStr: string; AllowHostNames: Boolean = False): Byte;
+function ValidSocket(SocketStr: string; AllowHostNames: Boolean = False): TSocketType;
 var
   Search: Integer;
 begin
-  Result := 0;
+  Result := soNone;
   Search := RPos(':', SocketStr);
   if Search = 0 then
     Exit;
   if AllowHostNames then
   begin
     if ValidHost(Copy(SocketStr, 1, Search - 1), False, True, True) then
-      Result := 3;
+      Result := soHost;
   end
   else
-    Result := ValidAddress(Copy(SocketStr, 1, Search - 1), False, True);
-  if Result <> 0 then
+  begin
+    case ValidAddress(Copy(SocketStr, 1, Search - 1), False, True) of
+      atIPv4: Result := soIPv4;
+      atIPv6: Result := soIPv6;
+    end;
+  end;
+  if Result <> soNone then
+  begin
     if not ValidInt(Copy(SocketStr, Search + 1), 1, 65535) then
-      Result := 0;
+      Result := soNone;
+  end;
 end;
 
 function TryParseFallbackDir(FallbackStr: string; out FallbackDir: TFallbackDir; Validate: Boolean = True; UseFormatHost: Boolean = False): Boolean;
@@ -3250,7 +3373,7 @@ begin
         begin
           if FindIPv6 and (Key = 'ipv6') then
           begin
-            if ValidSocket(Data) <> 2 then
+            if ValidSocket(Data) <> soIPv6 then
               Exit;
             FindIPv6 := False;
           end
@@ -3275,7 +3398,7 @@ begin
         Data := ParseStr[i];
         if not IsIPv4(Data) then
         begin
-          if ValidSocket(Data) <> 1 then
+          if ValidSocket(Data) <> soIPv4 then
             Exit;
         end;
         FindIPv4 := False;
@@ -3292,7 +3415,7 @@ var
   ParseStr, Ports: ArrOfStr;
   Search, i: Integer;
   Address, Port: string;
-  PolicyType, AddressType, MaskType: Integer;
+  PolicyType, MaskType: Integer;
 begin
   Result := False;
   ParseStr := Explode(' ', PolicyStr);
@@ -3321,10 +3444,9 @@ begin
     case MaskType of
       -1:
       begin
-        AddressType := ValidAddress(Address, True, True);
-        case AddressType of
-          0: Exit;
-          1: if PolicyType > 1 then Exit;
+        case ValidAddress(Address, True, True) of
+          atNone: Exit;
+          atIPv4: if PolicyType > 1 then Exit;
         end;
       end;
       1,3: if PolicyType > 1 then Exit;
@@ -3367,7 +3489,7 @@ begin
     ExitIndex := RPos('.exit:', TargetStr);
     if ExitIndex <> 0 then
     begin
-      Target.AddrType := atExit;
+      Target.TargetType := ttExit;
       HashIndex := Pos('.$', TargetStr);
       Result := HashIndex <> 0;
       if Result then
@@ -3381,14 +3503,14 @@ begin
       TargetLength := Length(TargetStr);
       Target.Hostname := Copy(TargetStr, 1, TargetLength - (TargetLength - PortIndex + 1));
       if RPos('.onion:', TargetStr) <> 0 then
-        Target.AddrType := atOnion
+        Target.TargetType := ttOnion
       else
-        Target.AddrType := atNormal;
+        Target.TargetType := ttNormal;
     end;
     if Result then
       Exit;
   end;
-  Target.AddrType := atNone;
+  Target.TargetType := ttNone;
   Target.Hostname := '';
   Target.Port := '0';
   Target.Hash := '';
@@ -3456,7 +3578,7 @@ begin
         Bridge.Transport := ParseStr[i];
         Continue;
       end;
-      if ValidSocket(ParseStr[i]) <> 0 then
+      if ValidSocket(ParseStr[i]) <> soNone then
       begin
         Bridge.Ip := GetAddressFromSocket(ParseStr[i], UseFormatHost);
         Bridge.Port := GetPortFromSocket(ParseStr[i]);
@@ -3496,76 +3618,14 @@ begin
   begin
     if TransportsDic.TryGetValue(ParseStr[0], T) then
     begin
-      if (T.TransportID <> TRANSPORT_SERVER) and (ValidSocket(ParseStr[1]) <> 0) then
+      if (T.TransportID <> TRANSPORT_SERVER) and (ValidSocket(ParseStr[1]) <> soNone) then
         Result := True;
     end
     else
-      Result := ValidHash(ParseStr[1]) and (ValidSocket(ParseStr[0]) <> 0);
+      Result := ValidHash(ParseStr[1]) and (ValidSocket(ParseStr[0]) <> soNone);
   end
   else
-    Result := ValidSocket(ParseStr[0]) <> 0;
-end;
-
-function CidrToRange(CidrStr: string): TIPv4Range;
-var
-  Search: Integer;
-  Prefix: Byte;
-  Ip, Mask: Cardinal;
-  ParseStr: ArrOfStr;
-begin
-  Search := Pos('/', CidrStr);
-  Prefix := StrToInt(Copy(CidrStr, Search + 1));
-  ParseStr := Explode('.', Copy(CidrStr, 1, Search - 1));
-
-  Ip := StrToInt(ParseStr[0]) shl 24 or StrToInt(ParseStr[1]) shl 16 or
-        StrToInt(ParseStr[2]) shl 8 or StrToInt(ParseStr[3]);
-  Mask := $FFFFFFFF shl (32 - Prefix);
-  Result.IpStart := Ip and Mask;
-  Result.IpEnd := Ip or (Mask xor $FFFFFFFF);
-end;
-
-function IpInRanges(const IpStr: string; RangesData: array of string): Integer;
-var
-  i: Integer;
-  Range: TIPv4Range;
-  Ip: Cardinal;
-begin
-  if Pos(':', IpStr) <> 0 then
-  begin
-    Result := -1;
-    Exit;
-  end;
-  Ip := IpToInt(IpStr);
-  for i := 0 to Length(RangesData) - 1 do
-  begin
-    Range := CidrToRange(RangesData[i]);
-    if InRange(Ip, Range.IpStart, Range.IpEnd) then
-    begin
-      Result := 1;
-      Exit;
-    end;
-  end;
-  Result := 0;
-end;
-
-function IpToInt(IpStr: string): Cardinal;
-var
-  i, x, Index: Byte;
-begin
-  Result := 0;
-  for i := 0 to 3 do
-  begin
-    Index := Pos('.', IpStr);
-    x := StrToIntDef(copy(IpStr, 0, Index - 1), 0);
-    Result := (256 * Result) + x;
-    Delete(IpStr, 1, Index);
-  end;
-  Result := Result + Cardinal(StrToIntDef(IpStr, 0));
-end;
-
-function IntToIp(Ip: Cardinal): string;
-begin
-  Result := Format('%d.%d.%d.%d', [Ip shr 24, (Ip shr 16) and 255, (Ip shr 8) and 255, Ip and 255]);
+    Result := ValidSocket(ParseStr[0]) <> soNone;
 end;
 
 procedure GridScrollCheck(aSg: TStringGrid; ACol, ColWidth: Integer);

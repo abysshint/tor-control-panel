@@ -166,7 +166,8 @@ type
     Ip, Temp, CircuitID, StreamID: string;
     ParseStr: ArrOfStr;
     SearchPos, InfoCount: Integer;
-    CountryCode, IpID: Byte;
+    CountryCode: Byte;
+    AddressType: TAddressType;
     UpdateCountry: Boolean;
     function AuthStageReady(AuthMethod: Integer): Boolean;
     function GetCircuitFlags(Circuit: TCircuitInfo): Word;
@@ -1075,8 +1076,8 @@ type
     function GetFilterLabel(FilterID: Integer): TLabel;
     function GetFormPositionStr: string;
     function FindTrackHost(Host: string): Boolean;
-    function FindInRanges(IpStr: string): string;
-    function RouterInNodesList(RouterID: string; IpStr: string; NodeType: TNodeType; SkipCodes: Boolean = False; CodeStr: string = ''): Boolean;
+    function FindInRanges(IpStr: string; AddressType: TAddressType): string;
+    function RouterInNodesList(RouterID: string; IpStr: string; NodeType: TNodeType; SkipCodes: Boolean = False; CodeStr: string = ''; AddressType: TAddressType = atNone): Boolean;
     function GetTrackHostDomains(Host: string; OnlyExists: Boolean): string;
     function GetControlEvents: string;
     function GetTorHs: Integer;
@@ -1647,7 +1648,7 @@ var
   TransportsDic: TDictionary<string, TTransportInfo>;
   TransportsList: TDictionary<string, Byte>;
   BridgesDic: TDictionary<string, TBridgeInfo>;
-  RangesDic: TDictionary<string, TIPv4Range>;
+  CidrsDic: TDictionary<string, TCidrInfo>;
   PortsDic: TDictionary<Word, Byte>;
   ConstDic: TDictionary<string, Integer>;
   DefaultsDic: TDictionary<string, string>;
@@ -1773,10 +1774,10 @@ var
   ParseStr: ArrOfStr;
   ini: TMemIniFile;
 begin
-  ParseStr := Explode(' ', Data);
-  if Length(ParseStr) > 1 then
+  ParseStr := Explode(BR, Data);
+  TorVersion := SeparateLeft(SeparateRight(ParseStr[0], 'Tor version ').Trim(['.']), ' ');
+  if ValidAddress(SeparateLeft(TorVersion, '-')) = atIPv4 then
   begin
-    TorVersion := ParseStr[2];
     ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
     try
       TorFileID := GetFileID(TorExeFile, True, TorVersion);
@@ -2600,8 +2601,8 @@ var
     end;
     DifferSource := False;
     case ValidAddress(SourceAddr) of
-      1: DifferSource := SourceAddr <> RouterInfo.IPv4;
-      2: DifferSource := SourceAddr <> RemoveBrackets(RouterInfo.IPv6, True);
+      atIPv4: DifferSource := SourceAddr <> RouterInfo.IPv4;
+      atIPv6: DifferSource := SourceAddr <> RemoveBrackets(RouterInfo.IPv6, True);
     end;
     if DifferSource then
     begin
@@ -2688,7 +2689,7 @@ begin
         if Pos('or-address ', ls[i]) = 1 then
         begin
           Temp := Copy(ls[i], 12, RPos(':', ls[i]) - 12);
-          if ValidAddress(Temp, False, True) = 2 then
+          if ValidAddress(Temp, False, True) = atIPv6 then
           begin
             DescRouter.IPv6 := Temp;
             Inc(DescRouter.Params, ROUTER_REACHABLE_IPV6);
@@ -2902,7 +2903,7 @@ begin
   begin
     if TryParseTarget(StreamInfo.Target, Target) then
     begin
-      if Target.AddrType = atExit then
+      if Target.TargetType = ttExit then
       begin
         BridgeKey := Target.Hostname + '|' + Target.Port;
         if DirFetches.TryGetValue(BridgeKey, FetchInfo) then
@@ -3196,17 +3197,14 @@ begin
     begin
       ConnectProgress := StrToIntDef(copy(Data, SearchPos + 19, Pos('TAG', Data) - (SearchPos + 20)), 0);
       Tcp.UpdateConnectProgress(ConnectProgress);
-      case ConnectProgress of
-         75: Tcp.LoadConsensus;
-        100:
-        begin
-          ConnectState := 2;
-          AlreadyStarted := True;
-          Tcp.UpdateConnectControls(ConnectState);
-          Tcp.SetOptionsEnable(True);
-          Tcp.GetServerInfo;
-          Tcp.SendDataThroughProxy;        
-        end
+      if ConnectProgress = 100 then
+      begin
+        ConnectState := 2;
+        AlreadyStarted := True;
+        Tcp.UpdateConnectControls(ConnectState);
+        Tcp.SetOptionsEnable(True);
+        Tcp.GetServerInfo;
+        Tcp.SendDataThroughProxy;
       end;
       Exit;
     end;
@@ -3470,12 +3468,12 @@ begin
         if Pos('ADDRESS=', ParseStr[i]) = 1 then
         begin
           Temp := SeparateRight(ParseStr[i], '=');
-          IpID := ValidAddress(Temp);
-          case IpID of
-            1: if Temp <> ServerIPv4 then ServerIPv4 := Temp;
-            2: if Temp <> ServerIPv6 then ServerIPv6 := Temp;
+          AddressType := ValidAddress(Temp);
+          case AddressType of
+            atIPv4: if Temp <> ServerIPv4 then ServerIPv4 := Temp;
+            atIPv6: if Temp <> ServerIPv6 then ServerIPv6 := Temp;
           end;
-          if IpID <> 0 then
+          if AddressType <> atNone then
             Tcp.UpdateServerInfo;
         end;
       end;
@@ -3690,7 +3688,7 @@ begin
   if ARow > 0 then
   begin
     if (ACol = FILTER_FLAG) and (sgFilter.Cells[FILTER_ID, ARow] <> '') then
-      GridDrawIcon(sgFilter, Rect, lsFlags, FilterDic.Items[AnsiLowerCase(sgFilter.Cells[FILTER_ID, ARow])].cc, 20, 13);
+      GridDrawIcon(sgFilter, Rect, lsFlags, FilterDic.Items[LowerCase(sgFilter.Cells[FILTER_ID, ARow])].cc, 20, 13);
   end;
 end;
 
@@ -3789,7 +3787,7 @@ var
   end;
 
 begin
-  Key := AnsiLowerCase(sgFilter.Cells[FILTER_ID, sgFilter.SelRow]);
+  Key := LowerCase(sgFilter.Cells[FILTER_ID, sgFilter.SelRow]);
   if not FilterDic.ContainsKey(Key) then
     Exit;
   case sgFilter.SelCol of
@@ -3905,7 +3903,7 @@ begin
             IntToMenu(mnShowNodes.Items, 2048);
         end;
       end;
-      CountryIndex := FilterDic.Items[AnsiLowerCase(sgFilter.Cells[FILTER_ID, sgFilter.MovRow])].cc;
+      CountryIndex := FilterDic.Items[LowerCase(sgFilter.Cells[FILTER_ID, sgFilter.MovRow])].cc;
       cbxRoutersCountry.ItemIndex := cbxRoutersCountry.Items.IndexOf(TransStr(CountryCodes[CountryIndex]));
       cbxRoutersCountry.Tag := CountryIndex;
       CheckShowRouters;
@@ -4172,7 +4170,6 @@ procedure TTcp.sgRoutersMouseDown(Sender: TObject; Button: TMouseButton;
 begin
   if Button = mbRight then
     sgRouters.MouseToCell(X, Y, sgRouters.MovCol, sgRouters.MovRow);
-
   if (sgRouters.SelCol > ROUTER_FLAGS) and (sgRouters.MovRow > 0) and (Button = mbLeft) then
     ChangeRouters;
 end;
@@ -4213,7 +4210,7 @@ var
   RouterInfo: TRouterInfo;
   NodesList: TStringList;
   HashMode, FindCountry, ConvertNodes: Boolean;
-  ItemID: TListType;
+  NodeDataType: TNodeDataType;
   Nodes: ArrOfNodes;
 
   function IsHashMode: Boolean;
@@ -4234,7 +4231,7 @@ var
       begin
         if IsCountry then
         begin
-          NodesList.Append(AnsiUpperCase(NodeStr) + ' (' + TransStr(NodeStr) + ')');
+          NodesList.Append(UpperCase(NodeStr) + ' (' + TransStr(NodeStr) + ')');
           FindCountry := True;
         end
         else
@@ -4251,7 +4248,7 @@ var
     NodesList.Clear;
     FindNode(Key, NodeType);
     FindNode(RouterInfo.IPv4, NodeType);
-    FindCidr := FindInRanges(RouterInfo.IPv4);
+    FindCidr := FindInRanges(RouterInfo.IPv4, atIPv4Cidr);
     if FindCidr <> '' then
     begin
       ParseStr := Explode(',', FindCidr);
@@ -4353,9 +4350,9 @@ begin
             for i := 0 to NodesList.Count - 1 do
             begin
               NodeStr := SeparateLeft(NodesList[i], ' ');
-              ItemID := GetNodeType(NodeStr);
-              if ItemID = ltCode then
-                NodeStr := AnsiLowerCase(NodeStr);
+              NodeDataType := ValidNode(NodeStr);
+              if NodeDataType = dtCode then
+                NodeStr := LowerCase(NodeStr);
               if NodesDic.TryGetValue(NodeStr, FNodeTypes) then
               begin
                 Exclude(FNodeTypes, NodeTypeID);
@@ -4590,7 +4587,7 @@ end;
 procedure TTcp.sgRoutersSelectCell(Sender: TObject; ACol, ARow: Integer;
   var CanSelect: Boolean);
 begin
-  GridSelectCell(sgRouters, ACol, ARow);
+  GridSelectCell(sgRouters, ACol, ARow)
 end;
 
 procedure TTcp.sgStreamsInfoDrawCell(Sender: TObject; ACol, ARow: Integer;
@@ -4894,7 +4891,7 @@ var
 begin
   if not UpdateExternalIp then
   begin
-    if ValidAddress(ServerIPv4) = 1 then
+    if ValidAddress(ServerIPv4) = atIPv4 then
     begin
       GetIpStage := 0;
       UpdateServerInfo;
@@ -4952,8 +4949,8 @@ begin
   miServerCopyFingerprint.Caption := Fingerprint;
   miServerCopyFingerprint.Visible := IsFingerprint;
 
-  IsIPv4 := ValidAddress(ServerIPv4) = 1;
-  IsIPv6 := (ValidAddress(ServerIPv6) = 2) and cbListenIPv6.Checked;
+  IsIPv4 := ValidAddress(ServerIPv4) = atIPv4;
+  IsIPv6 := (ValidAddress(ServerIPv6) = atIPv6) and cbListenIPv6.Checked;
   ServerIsBridge := cbxServerMode.ItemIndex = SERVER_MODE_BRIDGE;
 
   miServerCopyIPv4.Caption := ServerIPv4;
@@ -5203,7 +5200,7 @@ begin
           Exit;
       end;
     end;
-//    CheckOptionsChanged;
+    CheckOptionsChanged;
     PortStr := '';
     OptionsLocked := True;
     ForceDirectories(LogsDir);
@@ -5952,7 +5949,7 @@ begin
       end;
       if Length(ParseStr) > 1 then
       begin
-        if ValidSocket(ParseStr[1]) <> 0 then
+        if ValidSocket(ParseStr[1]) <> soNone then
         begin
           Address := GetAddressFromSocket(ParseStr[1]);
           RealPort := IntToStr(GetPortFromSocket(ParseStr[1]));
@@ -5967,7 +5964,7 @@ begin
         else
         begin
           Address := RemoveBrackets(ParseStr[1], True);
-          if ValidAddress(Address) <> 0 then
+          if ValidAddress(Address) <> atNone then
           begin
             RealPort := VirtualPort;
             if Tcp.cbxHsAddress.Items.IndexOf(Address) = -1 then
@@ -6087,7 +6084,7 @@ begin
               Address := PortsStr[0];
               RealPort := PortsStr[1];
               VirtualPort := PortsStr[2];
-              if (ValidAddress(Address) = 0) or (cbxHsAddress.Items.IndexOf(Address) = -1) then
+              if (ValidAddress(Address) = atNone) or (cbxHsAddress.Items.IndexOf(Address) = -1) then
                 Address := LOOPBACK_ADDRESS;
               if not ValidInt(RealPort, 1, 65535) then
                 RealPort := DEFAULT_PORT;
@@ -7090,7 +7087,7 @@ begin
   ParamStr := StringReplace(PortControl.Name, 'ud', '', [rfIgnoreCase]);
   Port := GetIntDef(GetSettings('Network', ParamStr, PortControl.ResetValue, ini), PortControl.ResetValue, PortControl.Min, PortControl.Max);
   Host := RemoveBrackets(GetSettings('Network', StringReplace(HostControl.Name, 'cbx', '', [rfIgnoreCase]), LOOPBACK_ADDRESS, ini), True);
-  if (ValidAddress(Host) = 0) or (HostControl.Items.IndexOf(Host) = -1) then
+  if (ValidAddress(Host) = atNone) or (HostControl.Items.IndexOf(Host) = -1) then
     Host := LOOPBACK_ADDRESS;
 
   Params := '';
@@ -7106,7 +7103,7 @@ begin
   end;
   HostControl.Hint := Params;
 
-  if ValidSocket(ParseStr[0]) <> 0 then
+  if ValidSocket(ParseStr[0]) <> soNone then
   begin
     EnabledControl.Checked := True;
     Port := GetPortFromSocket(ParseStr[0]);
@@ -7476,7 +7473,7 @@ begin
 
     if FirstLoad then
       cbxLogLevel.ResetValue := 2;
-    LogID := GetArrayIndex(LogLevels, AnsiLowerCase(SeparateLeft(GetTorConfig('Log', 'notice stdout', [cfAutoAppend]), ' ')));
+    LogID := GetArrayIndex(LogLevels, LowerCase(SeparateLeft(GetTorConfig('Log', 'notice stdout', [cfAutoAppend]), ' ')));
     if LogID <> -1 then
       cbxLogLevel.ItemIndex := LogID
     else
@@ -7579,6 +7576,7 @@ begin
     FavoritesMiddle := GetSettings('Routers', 'MiddleNodes', '', ini);
     FavoritesExit := GetSettings('Routers', 'ExitNodes', '', ini);
     ExcludeNodes := GetSettings('Routers', 'ExcludeNodes', '', ini);
+
     if not FirstLoad then
       ClearRouters;
     GetNodes(FavoritesEntry, ntEntry, True, ini);
@@ -7770,7 +7768,7 @@ begin
         begin
           if FilterDic.TryGetValue(ParseStr[1], FilterInfo) then
           begin
-            if ValidAddress(ParseStr[0]) <> 0 then
+            if ValidAddress(ParseStr[0]) <> atNone then
             begin
               GeoIpInfo.cc := FilterInfo.cc;
               if DataLength > 2 then
@@ -7865,8 +7863,8 @@ begin
           for j := 0 to Length(IpStr) - 1 do
           begin
             case ValidAddress(IpStr[j], False, True) of
-              1: BridgeInfo.Router.IPv4 := IpStr[j];   
-              2: BridgeInfo.Router.IPv6 := IpStr[j];      
+              atIPv4: BridgeInfo.Router.IPv4 := IpStr[j];
+              atIPv6: BridgeInfo.Router.IPv6 := IpStr[j];
             end;  
           end;
           if BridgeInfo.Router.IPv6 <> '' then
@@ -8223,7 +8221,7 @@ begin
     Result := True;
 end;
 
-function TTcp.RouterInNodesList(RouterID: string; IpStr: string; NodeType: TNodeType; SkipCodes: Boolean = False; CodeStr: string = ''): Boolean;
+function TTcp.RouterInNodesList(RouterID: string; IpStr: string; NodeType: TNodeType; SkipCodes: Boolean = False; CodeStr: string = ''; AddressType: TAddressType = atNone): Boolean;
 var
   ParseStr: ArrOfStr;
   KeyStr: string;
@@ -8252,7 +8250,7 @@ begin
     end
     else
     begin
-      KeyStr := FindInRanges(IpStr);
+      KeyStr := FindInRanges(IpStr, AddressType);
       if KeyStr <> '' then
       begin
         ParseStr := Explode(',', KeyStr);
@@ -8804,7 +8802,7 @@ begin
   if NodeTypes = [] then
   begin
     NodesDic.Clear;
-    RangesDic.Clear;
+    CidrsDic.Clear;
   end
   else
   begin
@@ -8832,12 +8830,13 @@ end;
 
 procedure TTcp.miClearRoutersAbsentClick(Sender: TObject);
 var
-  IpList: TDictionary<string, Byte>;
+  IpList: TDictionary<string, TAddressType>;
   NodeItem: TPair<string, TNodeTypes>;
   RouterItem: TPair<string, TRouterInfo>;
-  ListItem: TPair<string, Byte>;
+  ListItem: TPair<string, TAddressType>;
   DeleteExcludeNodes, Search: Boolean;
-  Cidr: TIPv4Range;
+  CidrInfo: TCidrInfo;
+  AddressType: TAddressType;
 
   procedure SetNodesData;
   begin
@@ -8851,11 +8850,10 @@ begin
   if (InfoStage > 0) or Assigned(Consensus) or Assigned(Descriptors) or (RoutersDic.Count = 0) then
     Exit;
   DeleteExcludeNodes := not ShowMsg(TransStr('358'), '', mtQuestion, True);
-  IpList := TDictionary<string, Byte>.Create;
+  IpList := TDictionary<string, TAddressType>.Create;
   try
     for RouterItem in RoutersDic do
-      IpList.AddOrSetValue(RouterItem.Value.IPv4, 0);
-
+      IpList.AddOrSetValue(RouterItem.Value.IPv4, atIPv4Cidr);
     for NodeItem in NodesDic do
     begin
       if ValidHash(NodeItem.Key) then
@@ -8865,9 +8863,10 @@ begin
       end
       else
       begin
-        if ValidAddress(NodeItem.Key, True, True) = 1 then
+        AddressType := ValidAddress(NodeItem.Key, True, True);
+        if AddressType <> atNone then
         begin
-          if Pos('/', NodeItem.Key) = 0 then
+          if AddressType = atIPv4 then
           begin
             if not IpList.ContainsKey(NodeItem.Key) then
               SetNodesData;
@@ -8875,16 +8874,18 @@ begin
           else
           begin
             Search := False;
-            Cidr := CidrToRange(NodeItem.Key);
+            CidrInfo := CidrStrToInfo(NodeItem.Key, AddressType);
             for ListItem in IpList do
-              if InRange(IpToInt(ListItem.Key), Cidr.IpStart, Cidr.IpEnd) then
+            begin
+              if IpInCidr(ListItem.Key, CidrInfo, ListItem.Value) then
               begin
                 Search := True;
                 Break;
               end;
+            end;
             if not Search then
             begin
-              RangesDic.Remove(NodeItem.Key);
+              CidrsDic.Remove(NodeItem.Key);
               SetNodesData;
             end;
           end;
@@ -8974,29 +8975,29 @@ var
 
   procedure CheckRanges(NodeIp: string; NodeTypes: TNodeTypes; HashID: string = '');
   var
-    RangeItem: TPair<string, TIpv4Range>;
-    RangeInfo: TNodeTypes;
+    CidrItem: TPair<string, TCidrInfo>;
+    NodeInfo: TNodeTypes;
     NodeID: string;
   begin
-    if RangesDic.Count > 0 then
+    if CidrsDic.Count > 0 then
     begin
       if HashID = '' then
         NodeID := NodeIp
       else
         NodeID := HashID;
-      for RangeItem in RangesDic do
+      for CidrItem in CidrsDic do
       begin
-        if InRange(IpToInt(NodeIp), RangeItem.Value.IpStart, RangeItem.Value.IpEnd) then
+        if IpInCidr(NodeIp, CidrItem.Value, atIPv4Cidr) then
         begin
-          if NodesDic.TryGetValue(RangeItem.Key, RangeInfo) then
+          if NodesDic.TryGetValue(CidrItem.Key, NodeInfo) then
           begin
             if NodeTypes = [ntNone] then
-              CheckNode(RangeItem.Key, RangeInfo, HashID)
+              CheckNode(CidrItem.Key, NodeInfo, HashID)
             else
             begin
               if NodesDic.ContainsKey(NodeID) then
               begin
-                if (ntExclude in RangeInfo) then
+                if (ntExclude in NodeInfo) then
                 begin
                   if NodeTypes <> [ntExclude] then
                     NodesDic.AddOrSetValue(NodeID, [])
@@ -9004,7 +9005,7 @@ var
                 else
                 begin
                   if ntExclude in NodesDic.Items[NodeID] then
-                    NodesDic.AddOrSetValue(RangeItem.Key, [])
+                    NodesDic.AddOrSetValue(CidrItem.Key, [])
                 end;
               end;
             end;
@@ -9091,25 +9092,27 @@ var
 
   procedure CheckRangesNesting(RangeID: string; NodeTypes: TNodeTypes);
   var
-    RangeItem: TPair<string, TIpv4Range>;
-    Range: TIpv4Range;
+    CidrItem: TPair<string, TCidrInfo>;
+    CidrInfo: TCidrInfo;
+    MinBits: Byte;
   begin
-    if RangesDic.Count > 1 then
+    if CidrsDic.Count > 1 then
     begin
-      if RangesDic.ContainsKey(RangeID) then
-        Range := RangesDic.Items[RangeID]
+      if CidrsDic.ContainsKey(RangeID) then
+        CidrInfo := CidrsDic.Items[RangeID]
       else
-        Range := CidrToRange(RangeID);
-      for RangeItem in RangesDic do
+        CidrInfo := CidrStrToInfo(RangeID, atIPv4Cidr);
+      for CidrItem in CidrsDic do
       begin
-        if RangeID <> RangeItem.Key then
+        if RangeID <> CidrItem.Key then
         begin
-          if InRange(Range.IpStart, RangeItem.Value.IpStart, RangeItem.Value.IpEnd) and
-            InRange(Range.IpEnd, RangeItem.Value.IpStart, RangeItem.Value.IpEnd) then
+          MinBits := Min(CidrInfo.Prefix, CidrItem.Value.Prefix);
+          if (Copy(CidrInfo.Bits, 1, MinBits) = Copy(CidrItem.Value.Bits, 1, MinBits)) and
+            (CidrInfo.Prefix > CidrItem.Value.Prefix) then
           begin
-            if NodesDic.ContainsKey(RangeItem.Key) then
+            if NodesDic.ContainsKey(CidrItem.Key) then
             begin
-              if (ntExclude in NodesDic.Items[RangeItem.Key]) then
+              if (ntExclude in NodesDic.Items[CidrItem.Key]) then
               begin
                 if NodesDic.ContainsKey(RangeID) then
                   NodesDic.AddOrSetValue(RangeID, []);
@@ -9117,13 +9120,15 @@ var
               else
               begin
                 if (ntExclude in NodeTypes) then
-                  NodesDic.AddOrSetValue(RangeItem.Key, [])
+                  NodesDic.AddOrSetValue(CidrItem.Key, [])
                 else
-                  if NodesDic.Items[RangeItem.Key] = NodeTypes then
+                begin
+                  if NodesDic.Items[CidrItem.Key] = NodeTypes then
                   begin
                     if NodesDic.ContainsKey(RangeID) then
                       NodesDic.AddOrSetValue(RangeID, []);
                   end;
+                end;
               end;
             end;
           end;
@@ -9132,9 +9137,10 @@ var
     end;
   end;
 
+
   procedure ConvertNodesToHash(NodeIp, HashID: string);
   var
-    RangeItem: TPair<string, TIpv4Range>;
+    CidrItem: TPair<string, TCidrInfo>;
     CountryCode: string;
     IgnoreExclude: Boolean;
 
@@ -9171,15 +9177,14 @@ var
 
     if miConvertIpNodes.Checked then
       UpdateNodes(NodeIp);
-
     if miConvertCidrNodes.Checked then
     begin
-      if RangesDic.Count > 0 then
+      if CidrsDic.Count > 0 then
       begin
-        for RangeItem in RangesDic do
+        for CidrItem in CidrsDic do
         begin
-          if InRange(IpToInt(NodeIp), RangeItem.Value.IpStart, RangeItem.Value.IpEnd) then
-            UpdateNodes(RangeItem.Key);
+          if IpInCidr(NodeIp, CidrItem.Value, atIPv4Cidr) then
+            UpdateNodes(CidrItem.Key);
         end;
       end;
     end
@@ -9239,7 +9244,7 @@ begin
         begin
           NodesDic.AddOrSetValue(UpdateItem.Key, []);
           if Pos('/', UpdateItem.Key) <> 0 then
-            RangesDic.Remove(UpdateItem.Key);
+            CidrsDic.Remove(UpdateItem.Key);
         end;
       end;
     end;
@@ -9258,7 +9263,7 @@ begin
         end
         else
         begin
-          if ValidAddress(NodeItem.Key) = 1 then
+          if ValidAddress(NodeItem.Key) = atIPv4 then
             CheckIp(NodeItem.Key, NodeItem.Value)
         end;
       end;
@@ -9279,8 +9284,7 @@ procedure TTcp.miClearServerCacheClick(Sender: TObject);
 begin
   if not CheckCacheOpConfirmation(TMenuItem(Sender).Caption) then
     Exit;
-  if FileExists(UserDir + 'cached-consensus') or
-    FileExists(UserDir + 'cached-consensus.tmp') then
+  if TMenuItem(Sender).Enabled then
   begin
     DeleteFile(UserDir + 'cached-consensus');
     DeleteFile(UserDir + 'cached-descriptors');
@@ -9798,7 +9802,7 @@ begin
   if State then
   begin
     miStatCountry.Caption := sgFilter.Cells[FILTER_NAME, sgFilter.SelRow];
-    miStatCountry.ImageIndex := FilterDic.Items[AnsiLowerCase(sgFilter.Cells[FILTER_ID, sgFilter.SelRow])].cc;
+    miStatCountry.ImageIndex := FilterDic.Items[LowerCase(sgFilter.Cells[FILTER_ID, sgFilter.SelRow])].cc;
   end
   else
   begin
@@ -10243,7 +10247,7 @@ begin
   miUpdateIpToCountryCache.Enabled := ClearNetworkState and GeoIpExists and (ConnectState = 2);
   miClearDNSCache.Enabled := ConnectState = 2;
   miClearServerCache.Enabled := (ConnectState = 0) and
-    (FileExists(UserDir + 'cached-consensus') or FileExists(UserDir + 'cached-consensus.tmp'));
+    (DirectoryExists(UserDir + 'diff-cache') or FileExists(UserDir + 'cached-consensus') or FileExists(UserDir + 'cached-consensus.tmp'));
   miClearPingCache.Enabled := ClearNetworkState;
   miClearAliveCache.Enabled := ClearNetworkState;
   miClearUnusedNetworkCache.Enabled := ClearNetworkState;
@@ -10636,7 +10640,7 @@ end;
 procedure TTcp.lbStatusProxyAddrMouseMove(Sender: TObject; Shift: TShiftState;
   X, Y: Integer);
 begin
-  if ValidSocket(TLabel(Sender).Caption, False) <> 0 then
+  if ValidSocket(TLabel(Sender).Caption, False) <> soNone then
     TLabel(Sender).Cursor := crHandPoint
   else
     TLabel(Sender).Cursor := crDefault;
@@ -11084,7 +11088,7 @@ var
   cc: string;
 begin
   if sgFilter.Cells[FILTER_ID, sgFilter.SelRow] <> '??' then
-    cc := AnsiLowerCase(sgFilter.Cells[FILTER_ID, sgFilter.SelRow])
+    cc := LowerCase(sgFilter.Cells[FILTER_ID, sgFilter.SelRow])
   else
     cc := 'xz';
   OpenMetricsUrl('#search', 'country:' + cc + TMenuItem(Sender).Hint);
@@ -11895,18 +11899,20 @@ begin
   lbFilterCount.Caption := Format(TransStr('321'), [FilterCount, FilterDic.Count]);
 end;
 
-function TTcp.FindInRanges(IpStr: string): string;
+function TTcp.FindInRanges(IpStr: string; AddressType: TAddressType): string;
 var
-  RangeItem: TPair<string, TIPv4Range>;
+  CidrItem: TPair<string, TCidrInfo>;
 begin
   Result := '';
   if IpStr = '' then
     Exit;
-  if RangesDic.Count > 0 then
+  if CidrsDic.Count > 0 then
   begin
-    for RangeItem in RangesDic do
-      if InRange(IpToInt(IpStr), RangeItem.Value.IpStart, RangeItem.Value.IpEnd) then
-        Result := Result + ',' + RangeItem.Key;
+    for CidrItem in CidrsDic do
+    begin
+      if IpInCidr(IpStr, CidrItem.Value, AddressType) then
+        Result := Result + ',' + CidrItem.Key;
+    end;
     Delete(Result, 1, 1);
   end;
 end;
@@ -11942,8 +11948,8 @@ var
   Transport: TPair<string, TTransportInfo>;
   CountryCode: string;
   CountryID: Byte;
-  FindCountry, FindHash, FindIp, IsExclude, IsNativeBridge, IsSelectedBridge, WrongQuery, SelectedBridgeFound: Boolean;
-  FindCidr, Query, Temp: string;
+  FindCountry, FindHash, FindIPv4, IsExclude, IsNativeBridge, IsSelectedBridge, WrongQuery, SelectedBridgeFound: Boolean;
+  FindIPv4Cidr, Query, Temp: string;
   ParseStr, RangeStr: ArrOfStr;
   GeoIpInfo: TGeoIpInfo;
   BridgeInfo: TBridgeInfo;
@@ -12104,7 +12110,7 @@ begin
     for Item in RoutersDic do
     begin
       SelectedBridgeFound := False;
-      FindCidr := '';
+      FindIPv4Cidr := '';
       CountryID := GetCountryValue(Item.Value.IPv4);
       CountryCode := CountryCodes[CountryID];
       if miRtFiltersCountry.Checked then
@@ -12203,11 +12209,11 @@ begin
                 cdFavorites := True
               else
               begin
-                FindCidr := FindInRanges(Item.Value.IPv4);
-                if FindCidr <> '' then
+                FindIPv4Cidr := FindInRanges(Item.Value.IPv4, atIPv4Cidr);
+                if FindIPv4Cidr <> '' then
                 begin
                   cdFavorites := False;
-                  ParseStr := Explode(',', FindCidr);
+                  ParseStr := Explode(',', FindIPv4Cidr);
                   for i := 0 to Length(ParseStr) - 1 do
                   begin
                     if not cdFavorites then
@@ -12270,10 +12276,9 @@ begin
           sgRouters.Cells[ROUTER_MIDDLE_NODES, RoutersCount] := NONE_CHAR;
 
         FindHash := NodesDic.ContainsKey(Item.Key);
-        FindIp := NodesDic.ContainsKey(Item.Value.IPv4);
         FindCountry := NodesDic.ContainsKey(CountryCode);
-        FindCidr := FindInRanges(Item.Value.IPv4);
-
+        FindIPv4 := NodesDic.ContainsKey(Item.Value.IPv4);
+        FindIPv4Cidr := FindInRanges(Item.Value.IPv4, atIPv4Cidr);
         IsExclude := False;
 
         if FindHash then
@@ -12282,12 +12287,12 @@ begin
         if FindCountry then
           if ntExclude in NodesDic.Items[CountryCode] then
             IsExclude := True;
-        if FindIp then
+        if FindIPv4 then
           if ntExclude in NodesDic.Items[Item.Value.IPv4] then
             IsExclude := True;
-        if FindCidr <> '' then
+        if FindIPv4Cidr <> '' then
         begin
-          ParseStr := Explode(',', FindCidr);
+          ParseStr := Explode(',', FindIPv4Cidr);
           for i := 0 to Length(ParseStr) - 1 do
           begin
             if NodesDic.ContainsKey(ParseStr[i]) then
@@ -12315,9 +12320,9 @@ begin
           SelectNodes(Item.Key, IsExclude);
         if FindCountry then
           SelectNodes(CountryCode, IsExclude);
-        if FindIp then
+        if FindIPv4 then
           SelectNodes(Item.Value.IPv4, IsExclude);
-        if FindCidr <> '' then
+        if FindIPv4Cidr <> '' then
         begin
           for i := 0 to Length(ParseStr) - 1 do
           begin
@@ -12818,9 +12823,9 @@ begin
           begin
             if TryParseTarget(TargetStr, Target) then
             begin
-              case Target.AddrType of
-                atExit: sgStreamsInfo.Cells[STREAMS_INFO_DEST_ADDR, StreamsCount] := Target.Hostname + ':' + Target.Port;
-                atOnion: sgStreamsInfo.Cells[STREAMS_INFO_DEST_ADDR, StreamsCount] := TransStr('122');
+              case Target.TargetType of
+                ttExit: sgStreamsInfo.Cells[STREAMS_INFO_DEST_ADDR, StreamsCount] := Target.Hostname + ':' + Target.Port;
+                ttOnion: sgStreamsInfo.Cells[STREAMS_INFO_DEST_ADDR, StreamsCount] := TransStr('122');
                 else
                   sgStreamsInfo.Cells[STREAMS_INFO_DEST_ADDR, StreamsCount] := TransStr('401');
               end;
@@ -13755,7 +13760,7 @@ begin
   udAutoSelMinWeight.Enabled := State;
   udAutoSelMaxPing.Enabled := State;
   cbxAutoSelPriority.Enabled := State;
-  cbxAutoSelRoutersAfterScanType.Enabled := State;
+  cbxAutoSelRoutersAfterScanType.Enabled := State and cbAutoScanNewNodes.Checked;
   cbAutoSelFallbackDirNoLimit.Enabled := FallbackDirState;
   cbAutoSelMiddleNodesWithoutDir.Enabled := MiddleState;
   cbAutoSelFilterCountriesOnly.Enabled := State;
@@ -13771,7 +13776,7 @@ begin
   lbMiliseconds5.Enabled := State;
   lbAutoSelMinWeight.Enabled := State;
   lbAutoSelMaxPing.Enabled := State;
-  lbAutoSelRoutersAfterScanType.Enabled := State;
+  lbAutoSelRoutersAfterScanType.Enabled := State and cbAutoScanNewNodes.Checked;
 end;
 
 procedure TTcp.cbxBridgesListChange(Sender: TObject);
@@ -14035,7 +14040,7 @@ begin
     begin
       if NodeItem.Value = [] then
       begin
-        RangesDic.Remove(NodeItem.Key);
+        CidrsDic.Remove(NodeItem.Key);
         ls.Add(NodeItem.Key);
       end;
     end;
@@ -14690,7 +14695,7 @@ end;
 procedure TTcp.edRoutersQueryChange(Sender: TObject);
 var
   Query: string;
-  Data: Integer;
+  Data: TAddressType;
   procedure SetIndex(Index: Integer);
   begin
     if (cbxRoutersQuery.ItemIndex <> Index) and
@@ -14704,9 +14709,9 @@ begin
   else
   begin
     Data := ValidAddress(RemoveBrackets(Query, True));
-    if Data <> 0 then
+    if Data <> atNone then
     begin
-      if Data = 1 then
+      if Data = atIPv4 then
       begin
         if SeparateLeft(Query, '.') <> '0' then
           SetIndex(2)
@@ -15506,7 +15511,7 @@ var
   Index: Integer;
   GeoIpInfo: TGeoIpInfo;
 begin
-  if ValidAddress(IpAddr) <> 0 then
+  if ValidAddress(IpAddr) <> atNone then
   begin
     pcOptions.ActivePage := tsFilter;
     sbShowOptions.Click;
@@ -15844,7 +15849,7 @@ var
   Router: TRouterInfo;
   ls: TStringList;
   i: Integer;
-  ItemID: TListType;
+  NodeDataType: TNodeDataType;
   RangesStr, NodeStr, DeleteList, CountryCode: string;
   ParseStr: ArrOfStr;
   SubMenu: TMenuItem;
@@ -15856,7 +15861,7 @@ begin
     try
       ls.Add(NodeID);
       ls.Add(Router.IPv4);
-      RangesStr := FindInRanges(Router.IPv4);
+      RangesStr := FindInRanges(Router.IPv4, atIPv4Cidr);
       if RangesStr <> '' then
       begin
         ParseStr := Explode(',', RangesStr);
@@ -15864,15 +15869,15 @@ begin
           ls.Add(ParseStr[i]);
       end;
       SortNodesList(ls, SORT_DESC);
-      ls.Add(AnsiUpperCase(CountryCode) + ' (' + TransStr(CountryCode) + ')');
+      ls.Add(UpperCase(CountryCode) + ' (' + TransStr(CountryCode) + ')');
 
       DeleteList := '';
       for i := 0 to ls.Count - 1 do
       begin
         NodeStr := SeparateLeft(ls[i], ' ');
-        ItemID := GetNodeType(NodeStr);
-        if ItemID = ltCode then
-          NodeStr := AnsiLowerCase(NodeStr);
+        NodeDataType := ValidNode(NodeStr);
+        if NodeDataType = dtCode then
+          NodeStr := LowerCase(NodeStr);
 
         if NodesDic.ContainsKey(NodeStr) then
         begin
@@ -15880,11 +15885,11 @@ begin
           begin
             SubMenu := TMenuItem.Create(self);
             SubMenu.Tag := Integer(AutoSave);
-            case ItemID of
-              ltHash: SubMenu.ImageIndex := 23;
-              ltIp: SubMenu.ImageIndex := 33;
-              ltCidr: SubMenu.ImageIndex := 48;
-              ltCode: SubMenu.ImageIndex := 57;
+            case NodeDataType of
+              dtHash: SubMenu.ImageIndex := 23;
+              dtIPv4: SubMenu.ImageIndex := 33;
+              dtIPv4Cidr: SubMenu.ImageIndex := 48;
+              dtCode: SubMenu.ImageIndex := 57;
             end;
             SubMenu.Caption := ls[i];
             SubMenu.Hint := '';
@@ -15930,7 +15935,7 @@ var
   Router: TRouterInfo;
   RangesStr, NodeStr: string;
   ParseStr: ArrOfStr;
-  ItemID: TListType;
+  NodeDataType: TNodeDataType;
   FindRouter: Boolean;
 
   function IpToMask(IpStr: string; Mask: Byte): string;
@@ -15962,7 +15967,7 @@ begin
       ls.Add(IpToMask(Router.IPv4, 24));
       ls.Add(IpToMask(Router.IPv4, 16));
       ls.Add(IpToMask(Router.IPv4, 8));
-      RangesStr := FindInRanges(Router.IPv4);
+      RangesStr := FindInRanges(Router.IPv4, atIPv4Cidr);
       if RangesStr <> '' then
       begin
         lr := TStringList.Create;
@@ -15979,7 +15984,7 @@ begin
         end;
       end;
       ls.Add('-');
-      ls.Add(AnsiUpperCase(CountryCodes[CountryID]) + ' (' + TransStr(CountryCodes[CountryID]) + ')');
+      ls.Add(UpperCase(CountryCodes[CountryID]) + ' (' + TransStr(CountryCodes[CountryID]) + ')');
     end
     else
       FindRouter := False;
@@ -15987,9 +15992,9 @@ begin
     for i := 0 to ls.Count - 1 do
     begin
       NodeStr := SeparateLeft(ls[i], ' ');
-      ItemID := GetNodeType(NodeStr);
-      if ItemID = ltCode then
-        NodeStr := AnsiLowerCase(NodeStr);
+      NodeDataType := ValidNode(NodeStr);
+      if NodeDataType = dtCode then
+        NodeStr := LowerCase(NodeStr);
 
       SubMenu := TMenuItem.Create(self);
       SubMenu.Hint := BoolToStr(AutoSave);
@@ -16002,19 +16007,19 @@ begin
           SubMenu.Enabled := False;
       end;
 
-      if SubMenu.Enabled and (ItemID in [ltHash]) and FindRouter then
+      if SubMenu.Enabled and (NodeDataType in [dtHash]) and FindRouter then
       begin
         if (not CheckRouterFlags(NodeTypeID, Router) or (NodeStr = LastPreferBridgeID)) and (NodeTypeID <> EXCLUDE_ID)  then
           SubMenu.Visible := False;
       end;
 
-      if ItemID <> ltNoCheck then
+      if NodeDataType <> dtNone then
       begin
-        case ItemID of
-          ltHash: SubMenu.ImageIndex := 23;
-          ltIp: SubMenu.ImageIndex := 33;
-          ltCidr: SubMenu.ImageIndex := 48;
-          ltCode: SubMenu.ImageIndex := 57;
+        case NodeDataType of
+          dtHash: SubMenu.ImageIndex := 23;
+          dtIPv4: SubMenu.ImageIndex := 33;
+          dtIPv4Cidr: SubMenu.ImageIndex := 48;
+          dtCode: SubMenu.ImageIndex := 57;
         end;
         if SubMenu.Enabled then
           SubMenu.OnClick := Tcp.AddToNodesListClick;
@@ -16062,9 +16067,9 @@ var
   NodeTypeID: Integer;
   FNodeTypes: TNodeTypes;
   FilterInfo: TFilterInfo;
-  ItemID: TListType;
+  NodeDataType: TNodeDataType;
   Router: TPair<string, TRouterInfo>;
-  Range: TIPv4Range;
+  CidrInfo: TCidrInfo;
 
   procedure AddRouterToNodesList(RouterID: string; RouterInfo: TRouterInfo);
   begin
@@ -16074,7 +16079,7 @@ var
       begin
         if not CheckRouterFlags(NodeTypeID, RouterInfo) then
           Exit;
-        if RouterInNodesList(RouterID, RouterInfo.IPv4, ntExclude) then
+        if RouterInNodesList(RouterID, RouterInfo.IPv4, ntExclude, False, '', atIPv4Cidr) then
           Exit;
       end;
     end;
@@ -16091,15 +16096,15 @@ begin
   NodeCap := TMenuItem(Sender).Caption;
   NodeStr := SeparateLeft(NodeCap, ' ');
   NodeTypeID := TMenuItem(Sender).Tag;
-  ItemID := GetNodeType(NodeStr);
-  case ItemID of
-    ltCode: NodeStr := AnsiLowerCase(NodeStr);
-    ltCidr: Range := CidrToRange(NodeStr);
+  NodeDataType := ValidNode(NodeStr);
+  case NodeDataType of
+    dtCode: NodeStr := LowerCase(NodeStr);
+    dtIPv4Cidr: CidrInfo := CidrStrToInfo(NodeStr, atIPv4Cidr);
   end;
   ConvertNodes := miEnableConvertNodesOnAddToNodesList.Checked and
-      (((ItemID = ltIp) and miConvertIpNodes.Checked) or
-       ((ItemID = ltCidr) and miConvertCidrNodes.Checked) or
-       ((ItemID = ltCode) and miConvertCountryNodes.Checked)) and
+      (((NodeDataType = dtIPv4) and miConvertIpNodes.Checked) or
+       ((NodeDataType = dtIPv4Cidr) and miConvertCidrNodes.Checked) or
+       ((NodeDataType = dtCode) and miConvertCountryNodes.Checked)) and
         (((NodeTypeID = EXCLUDE_ID) and not miIgnoreConvertExcludeNodes.Checked) or
          (NodeTypeID <> EXCLUDE_ID));
 
@@ -16113,18 +16118,18 @@ begin
     begin
       for Router in RoutersDic do
       begin
-        case ItemID of
-          ltIp:
+        case NodeDataType of
+          dtIPv4:
           begin
             if Router.Value.IPv4 = NodeStr then
               AddRouterToNodesList(Router.Key, Router.Value);
           end;
-          ltCidr:
+          dtIPv4Cidr:
           begin
-            if InRange(IpToInt(Router.Value.IPv4), Range.IpStart, Range.IpEnd) then
+            if IpInCidr(Router.Value.IPv4, CidrInfo, atIPv4Cidr) then
               AddRouterToNodesList(Router.Key, Router.Value);
           end;
-          ltCode:
+          dtCode:
           begin
             if CountryCodes[GetCountryValue(Router.Value.IPv4)] = NodeStr then
               AddRouterToNodesList(Router.Key, Router.Value);
@@ -16148,9 +16153,8 @@ begin
           FilterDic.AddOrSetValue(NodeStr, FilterInfo);
         end;
       end;
-
-      if ItemID = ltCidr then
-        RangesDic.AddOrSetValue(NodeStr, CidrToRange(NodeStr));
+      if NodeDataType = dtIPv4Cidr then
+        CidrsDic.AddOrSetValue(NodeStr, CidrStrToInfo(NodeStr, atIPv4Cidr));
     end;
     CheckNodesListState(NodeTypeID);
     CalculateTotalNodes;
@@ -16177,7 +16181,7 @@ var
   ConvertNodes: Boolean;
   NodesList, NodeStr, ConvertMsg: string;
   ParseStr: ArrOfStr;
-  ItemID: TListType;
+  NodeDataType: TNodeDataType;
   i: Integer;
   Nodes: ArrOfNodes;
 
@@ -16199,13 +16203,13 @@ begin
     for i := 0 to Length(ParseStr) - 1 do
     begin
       NodeStr := SeparateLeft(ParseStr[i], ' ');
-      ItemID := GetNodeType(NodeStr);
-      if ItemID = ltCode then
-        NodeStr := AnsiLowerCase(NodeStr);
+      NodeDataType := ValidNode(NodeStr);
+      if NodeDataType = dtCode then
+        NodeStr := LowerCase(NodeStr);
 
       NodesDic.Remove(NodeStr);
-      if ItemID = ltCidr then
-        RangesDic.Remove(NodeStr);
+      if NodeDataType = dtIPv4Cidr then
+        CidrsDic.Remove(NodeStr);
     end;
     if ConvertNodes then
       RemoveFromNodesListWithConvert(Nodes, ntNone);
@@ -16231,7 +16235,7 @@ var
   ParseStr: ArrOfStr;
   i, j: Integer;
   NodeStr: string;
-  NodeID: TListType;
+  NodeDataType: TNodeDataType;
   CtrlPressed, ConvertNodes: Boolean;
 begin
   Result := False;
@@ -16244,23 +16248,23 @@ begin
   for i := 0 to Length(ParseStr) - 1 do
   begin
     NodeStr := SeparateLeft(ParseStr[i], ' ');
-    NodeID := GetNodeType(NodeStr);
+    NodeDataType := ValidNode(NodeStr);
 
     ConvertNodes := miEnableConvertNodesOnRemoveFromNodesList.Checked and
-      (((NodeID = ltIp) and miConvertIpNodes.Checked) or
-       ((NodeID = ltCidr) and miConvertCidrNodes.Checked) or
-       ((NodeID = ltCode) and miConvertCountryNodes.Checked));
+      (((NodeDataType = dtIPv4) and miConvertIpNodes.Checked) or
+       ((NodeDataType = dtIPv4Cidr) and miConvertCidrNodes.Checked) or
+       ((NodeDataType = dtCode) and miConvertCountryNodes.Checked));
 
     if (ConvertNodes and not CtrlPressed) or
-       (not ConvertNodes and CtrlPressed and (NodeID <> ltHash)) then
+       (not ConvertNodes and CtrlPressed and (NodeDataType <> dtHash)) then
     begin
       SetLength(Nodes, j + 1);
-      case NodeID of
-        ltCode: NodeStr := AnsiLowerCase(NodeStr);
-        ltCidr: Nodes[j].RangeData := CidrToRange(NodeStr);
+      case NodeDataType of
+        dtCode: NodeStr := LowerCase(NodeStr);
+        dtIPv4Cidr: Nodes[j].CidrInfo := CidrStrToInfo(NodeStr, atIPv4Cidr);
       end;
       Nodes[j].NodeStr := NodeStr;
-      Nodes[j].NodeID := NodeID;
+      Nodes[j].NodeDataType := NodeDataType;
       Inc(j);
     end;
   end;
@@ -16297,18 +16301,18 @@ begin
   begin
     for i := 0 to NodesCount - 1 do
     begin
-      case Nodes[i].NodeID of
-        ltIp:
+      case Nodes[i].NodeDataType of
+        dtIPv4:
         begin
           if Router.Value.IPv4 = Nodes[i].NodeStr then
             RemoveRouterFromNodesList(Router.Key);
         end;
-        ltCidr:
+        dtIPv4Cidr:
         begin
-          if InRange(IpToInt(Router.Value.IPv4), Nodes[i].RangeData.IpStart, Nodes[i].RangeData.IpEnd) then
+          if IpInCidr(Router.Value.IPv4, Nodes[i].CidrInfo, atIPv4Cidr) then
             RemoveRouterFromNodesList(Router.Key);
         end;
-        ltCode:
+        dtCode:
         begin
           if CountryCodes[GetCountryValue(Router.Value.IPv4)] = Nodes[i].NodeStr then
             RemoveRouterFromNodesList(Router.Key);
@@ -17133,7 +17137,7 @@ begin
   NodesDic := TDictionary<string, TNodeTypes>.Create;
   TrackHostDic := TDictionary<string, Byte>.Create;
   VersionsDic := TDictionary<string, Byte>.Create;
-  RangesDic := TDictionary<string, TIPv4Range>.Create;
+  CidrsDic := TDictionary<string, TCidrInfo>.Create;
   PortsDic := TDictionary<Word, Byte>.Create;
   ConstDic := TDictionary<string, Integer>.Create;
   TransportsDic := TDictionary<string, TTransportInfo>.Create;
@@ -17628,7 +17632,7 @@ begin
   CompBridgesDic.Free;
   RandomBridges.Free;
   UsedFallbackDirs.Free;
-  RangesDic.Free;
+  CidrsDic.Free;
   DirFetches.Free;
   PortsDic.Free;
   ConstDic.Free;

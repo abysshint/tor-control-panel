@@ -2153,7 +2153,7 @@ object Tcp: TTcp
       object edProxyAddress: TEdit
         Left = 153
         Top = 78
-        Width = 218
+        Width = 214
         Height = 21
         Enabled = False
         MaxLength = 255
@@ -2164,7 +2164,7 @@ object Tcp: TTcp
       object edProxyUser: TEdit
         Left = 507
         Top = 78
-        Width = 97
+        Width = 96
         Height = 21
         Enabled = False
         MaxLength = 255
@@ -2175,7 +2175,7 @@ object Tcp: TTcp
       object edProxyPassword: TEdit
         Left = 656
         Top = 78
-        Width = 97
+        Width = 96
         Height = 21
         Enabled = False
         MaxLength = 255
@@ -2295,7 +2295,7 @@ object Tcp: TTcp
       object cbxBridgesType: TComboBox
         Left = 49
         Top = 124
-        Width = 124
+        Width = 126
         Height = 21
         AutoDropDown = True
         Style = csDropDownList
@@ -2588,7 +2588,7 @@ object Tcp: TTcp
       object cbxBridgesList: TComboBox
         Left = 240
         Top = 124
-        Width = 120
+        Width = 126
         Height = 21
         AutoDropDown = True
         Style = csDropDownList
