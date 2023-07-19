@@ -412,6 +412,7 @@ begin
     LoadStr('608', 'Вы действительно хотите: "%s"?');
     LoadStr('609', 'Прокси');
     LoadLns('614', '\n\n\n  Примечание:\n\n           Мосты переопределяют настройки входных узлов');
+    LoadStr('615', 'Текстовые файлы|*.txt|Все файлы|*.*');
     LoadStr('626', 'д.|день|дня|дней');
     LoadStr('627', 'нед.|неделя|недели|недель');
     LoadStr('628', 'мес.|месяц|месяца|месяцев');
@@ -438,6 +439,7 @@ begin
     LoadStr('665', 'Авангард');
     LoadStr('666', 'Точка входа');
     LoadStr('667', 'Место встречи');
+    LoadStr('678', 'Набор значков (80x20)|*.png');
 
     TranslateArray(HsHeader, TransStr('230'));
     TranslateArray(HsPortsHeader, TransStr('231'));
@@ -528,8 +530,8 @@ begin
     Tcp.gbInterface.Caption := Load('411', 'Интерфейс');
     Tcp.cbConnectOnStartup.Caption := Load('139', 'Подключаться при запуске программы');
     Tcp.cbRestartOnControlFail.Caption := Load('140', 'Перезапуск при обрыве связи с клиентом');
-    Tcp.cbMinimizeOnStartup.Caption := Load('141', 'Сворачивать в трей при запуске');
-    Tcp.cbMinimizeOnClose.Caption := Load('142', 'Сворачивать в трей при закрытии');
+    Tcp.lbMinimizeOnEvent.Caption := Load('141', 'Сворачивать в трей при событии');
+    LoadList(Tcp.cbxMinimizeOnEvent, '142', '"Отключено","Все события","Закрытие окна","Запуск программы"');
     Tcp.cbShowBalloonHint.Caption := Load('143', 'Показывать всплывающие сообщения');
     Tcp.cbShowBalloonOnlyWhenHide.Caption := Load('144', 'Только когда программа свёрнута');
     Tcp.cbStayOnTop.Caption := Load('145', 'Оставаться поверх всех окон');
@@ -541,6 +543,8 @@ begin
     Tcp.cbMinimizeToTray.Caption := Load('610', 'Сворачивать в трей вместо панели задач');
     Tcp.lbTheme.Caption := Load('413', 'Тема');
     Tcp.lbLanguage.Caption := Load('132', 'Язык');
+    Tcp.lbTrayIconType.Caption := Load('616', 'Тип иконки в трее');
+    LoadList(Tcp.cbxTrayIconType, '617', '"Встроенная","Из файла"');
 
     Tcp.gbProfile.Caption := Load('134', 'Профиль');
     Tcp.btnCreateProfile.Caption := Load('117', 'Создать..');
@@ -1098,7 +1102,7 @@ begin
     Tcp.miTotalsCounter.Caption := Load('612', 'Счётчик трафика');
     Tcp.miEnableTotalsCounter.Caption := Load('613', 'Включить подсчёт');
 
-    Tcp.OpenDialog.Filter := Load('615', 'Текстовые файлы|*.txt|Все файлы|*.*');
+
 
     if ValidInt(TransStr('Locale'), 0, 65535) then
       CurrentLanguage := StrToInt(TransStr('Locale'))

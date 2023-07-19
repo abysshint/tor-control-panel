@@ -201,7 +201,7 @@ var
   procedure ControlsEnable(Control: TWinControl);
   procedure LoadTorConfig;
   procedure SaveTorConfig;
-  procedure LoadIconsFromResource(ImageList: TImageList; ResourceName: string);
+  function LoadIconsFromResource(ImageList: TImageList; ResourceName: string; UseFile: Boolean = False): Boolean;
   procedure LoadThemesList(ThemesList: TComboBox; LastStyle: string);
   procedure LoadStyle(ThemesList: TCombobox);
   procedure EditMenuHandle(MenuType: TEditMenuType);
@@ -3684,18 +3684,34 @@ begin
   end;
 end;
 
-procedure LoadIconsFromResource(ImageList: TImageList; ResourceName: string);
+function LoadIconsFromResource(ImageList: TImageList; ResourceName: string; UseFile: Boolean = False): Boolean;
 var
   Bmp: TBitmap;
   Png: TPngImage;
 begin
+  Result := False;
   Png := TPngImage.Create;
   Bmp := TBitmap.Create;
   try
-    Png.LoadFromResourceName(HInstance, ResourceName);
+    if UseFile then
+    begin
+      if FileExists(ResourceName) then
+      begin
+        try
+          Png.LoadFromFile(ResourceName)
+        except
+          on E:Exception do Exit;
+        end;
+      end
+      else
+        Exit;
+    end
+    else
+      Png.LoadFromResourceName(HInstance, ResourceName);
     Bmp.Assign(Png);
     ImageList.Clear;
     ImageList.Add(Bmp, nil);
+    Result := True;
   finally
     Png.Free;
     Bmp.Free;

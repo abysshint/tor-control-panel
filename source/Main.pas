@@ -559,8 +559,6 @@ type
     cbStayOnTop: TCheckBox;
     cbShowBalloonOnlyWhenHide: TCheckBox;
     cbShowBalloonHint: TCheckBox;
-    cbMinimizeOnClose: TCheckBox;
-    cbMinimizeOnStartup: TCheckBox;
     cbConnectOnStartup: TCheckBox;
     cbRestartOnControlFail: TCheckBox;
     cbNoDesktopBorders: TCheckBox;
@@ -898,7 +896,6 @@ type
     miShowConsensus: TMenuItem;
     miExcludeBridgesWhenCounting: TMenuItem;
     miDelimiter67: TMenuItem;
-    cbMinimizeToTray: TCheckBox;
     miShowPortAlongWithIp: TMenuItem;
     miResetTotalsCounter: TMenuItem;
     miEnableTotalsCounter: TMenuItem;
@@ -1063,6 +1060,11 @@ type
     miSortDataDesc: TMenuItem;
     miDelimiter77: TMenuItem;
     miSortDataNone: TMenuItem;
+    cbMinimizeToTray: TCheckBox;
+    lbMinimizeOnEvent: TLabel;
+    cbxMinimizeOnEvent: TComboBox;
+    lbTrayIconType: TLabel;
+    cbxTrayIconType: TComboBox;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1229,10 +1231,12 @@ type
     procedure SaveTrackHostExits(ini: TMemIniFile; UseDic: Boolean = False);
     procedure SaveServerOptions(ini: TMemIniFile);
     procedure SetOptionsEnable(State: Boolean);
+    procedure PrepareOpenDialog(FileName, Filter: string);    
     procedure StartTor(AutoResolveErrors: Boolean = False);
     procedure StopTor;
+    procedure UpdateTrayIcon;
     procedure UpdateConnectProgress(Value: Integer);
-    procedure UpdateConnectControls(State: Byte);
+    procedure UpdateConnectControls;
     procedure SetSortMenuData(aSg: TStringGrid);
     procedure SetCustomFilterStyle(CustomFilterID: Integer);
     procedure ResetGuards(GuardType: TGuardType);
@@ -1624,6 +1628,7 @@ type
       Shift: TShiftState; X, Y: Integer);
     procedure cbxFallbackDirsTypeKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
+    procedure cbxTrayIconTypeChange(Sender: TObject);
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
     procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -1660,7 +1665,7 @@ var
   ProgramDir, UserDir, HsDir, ThemesDir, TransportsDir, OnionAuthDir, LogsDir: string;
   DefaultsFile, UserConfigFile, UserBackupFile, TorConfigFile, TorStateFile, TorLogFile,
   TorExeFile, GeoIpFile, GeoIpv6File, NetworkCacheFile, BridgesCacheFile, BridgesFileName,
-  UserProfile, LangFile, ConsensusFile, DescriptorsFile, NewDescriptorsFile: string;
+  UserProfile, LangFile, ConsensusFile, DescriptorsFile, NewDescriptorsFile, TrayIconFile: string;
   ControlPassword, SelectedNode, SearchStr, UPnPMsg, GeoFileID, TorFileID, BridgeFileID, TorrcFileID, DefaultsFileID: string;
   Circuit, LastRoutersFilter, LastPreferBridgeID, ExitNodeID, ServerIPv4, ServerIPv6, TorVersion: string;
   jLimit: TJobObjectExtendedLimitInformation;
@@ -1702,7 +1707,7 @@ var
   SuitableFallbackDirsCount, UsedFallbackDirsCount, UnknownFallbackDirCountriesCount, MissingFallbackDirCount: Integer;
   Scanner: TScanThread;
   UsedProxyType: TProxyType;
-  LastUserStreamProtocol: Integer;
+  LastUserStreamProtocol, LastTrayIconType: Integer;
   FindBridgesCountries, FindFallbackDirCountries, ScanNewBridges, UpdateFallbackDirs: Boolean;
 
 implementation
@@ -3144,6 +3149,11 @@ begin
           if Tcp.cbAutoScanNewNodes.Checked and
             (Tcp.cbEnablePingMeasure.Checked or Tcp.cbEnableDetectAliveNodes.Checked) then
               AutoScanStage := 1;
+        end
+        else
+        begin
+          if AutoScanStage = 3 then
+            AutoScanStage := 0;
         end;
         Tcp.SaveNetworkCache;
       end;
@@ -3201,7 +3211,7 @@ begin
       begin
         ConnectState := 2;
         AlreadyStarted := True;
-        Tcp.UpdateConnectControls(ConnectState);
+        Tcp.UpdateConnectControls;
         Tcp.SetOptionsEnable(True);
         Tcp.GetServerInfo;
         Tcp.SendDataThroughProxy;
@@ -5277,7 +5287,7 @@ begin
         tmTraffic.Enabled := True;
         tmCircuits.Enabled := True;
         tmConsensus.Enabled := True;
-        UpdateConnectControls(ConnectState);
+        UpdateConnectControls;
         if UsedProxyType <> ptNone then
         begin
           lbExitIp.Caption := TransStr('111');
@@ -5298,7 +5308,7 @@ begin
         end;
         CheckStatusControls;
         if(cbShowBalloonHint.Checked and not cbShowBalloonOnlyWhenHide.Checked)
-          or (not cbConnectOnStartup.Checked or (cbConnectOnStartup.Checked and cbMinimizeOnStartup.Checked)) then
+          or (not cbConnectOnStartup.Checked or (cbConnectOnStartup.Checked and (cbxMinimizeOnEvent.ItemIndex in [MINIMIZE_ON_ALL, MINIMIZE_ON_STARTUP]))) then
             if not Restarting then
               ShowBalloon(TransStr('240'));
         ControlPortConnect;
@@ -5350,22 +5360,22 @@ begin
     btnChangeCircuit.Caption := Str;
 end;
 
-procedure TTcp.UpdateConnectControls(State: Byte);
+procedure TTcp.UpdateConnectControls;
 var
   Value: Integer;
 begin
-  case State of
+  case ConnectState of
     1: Value := 0;
     2: Value := 100;
     else
       Value := -1;       
   end;
   UpdateConnectProgress(Value);
-  btnSwitchTor.Caption := TransStr('10' + IntToStr(State)); 
-  btnSwitchTor.ImageIndex := State;
+  btnSwitchTor.Caption := TransStr('10' + IntToStr(ConnectState));
+  btnSwitchTor.ImageIndex := ConnectState;
   miSwitchTor.Caption := btnSwitchTor.Caption;
-  miSwitchTor.ImageIndex := State;
-  tiTray.IconIndex := State;
+  miSwitchTor.ImageIndex := ConnectState;
+  UpdateTrayIcon;
 end;
 
 procedure TTcp.StopTor;
@@ -5405,7 +5415,7 @@ begin
   lbExitIp.Caption := TransStr('109');
   lbExitIp.Cursor := crDefault;
   DirFetches.Clear;
-  UpdateConnectControls(ConnectState);
+  UpdateConnectControls;
   UpdateTrayHint;
   if not Restarting then
   begin
@@ -5473,9 +5483,10 @@ end;
 
 procedure TTcp.imBridgesFileClick(Sender: TObject);
 begin
+  PrepareOpenDialog(BridgesFileName, TransStr('615'));
   if OpenDialog.Execute then
   begin
-    BridgesFileName := OpenDialog.FileName;
+    BridgesFileName := StringReplace(OpenDialog.FileName, GetFullFileName(ProgramDir) + '\', '', [rfIgnoreCase]);;
     BridgesUpdated := True;      
     LoadBridgesFromFile;
     SaveBridgesData;  
@@ -5855,6 +5866,24 @@ begin
         SetSettings('Log', 'LinesLimit', Round(Power(2, (17 - i))), ini);
         DeleteSettings('Log', 'DisplayedLinesType', ini);
         ConfigVersion := 7;
+      end;
+      if ConfigVersion = 7 then
+      begin
+        i := 0;
+        if GetSettings('Main', 'MinimizeOnClose', True, ini) then
+          Inc(i, 1);
+        if GetSettings('Main', 'MinimizeOnStartup', False, ini) then
+          Inc(i, 2);
+        case i of
+          0: i := MINIMIZE_ON_NONE;
+          1: i := MINIMIZE_ON_CLOSE;
+          2: i := MINIMIZE_ON_STARTUP;
+          3: i := MINIMIZE_ON_ALL;
+        end;
+        SetSettings('Main', 'MinimizeOnEvent', i, ini);
+        DeleteSettings('Main', 'MinimizeOnClose', ini);
+        DeleteSettings('Main', 'MinimizeOnStartup', ini);
+        ConfigVersion := 8;
       end;
     end
     else
@@ -6946,7 +6975,6 @@ begin
         for i := 0 to meBridges.Lines.Count - 1 do
           SetSettings('Bridges', IntToStr(i), meBridges.Lines[i], ini);
       end;
-
       SetSettings('Network', cbUseBridges, ini);
       SetSettings('Network', cbUsePreferredBridge, ini);
       SetSettings('Network', cbxBridgesList, ini, False);
@@ -6962,13 +6990,14 @@ begin
       SetSettings('Network', udBridgesQueueSize, ini);
       SetSettings('Network', edPreferredBridge, ini);
       SetSettings('Network', 'BridgesFileName', BridgesFileName, ini);
-
+      
       if cbxBridgesType.ItemIndex = BRIDGES_TYPE_FILE then
       begin
         if BridgesFileNeedSave then
         begin
           try
-            meBridges.Lines.SaveToFile(BridgesFileName);
+            if ForceDirectories(ExtractFileDir(ExpandFileName(BridgesFileName))) then
+              meBridges.Lines.SaveToFile(BridgesFileName);
           except
           end;
           BridgesFileNeedSave := False;
@@ -7223,11 +7252,12 @@ begin
     cbxLanguage.Tag := cbxLanguage.ItemIndex;
     if FirstLoad then
       Translate(cbxLanguage.Text);
-
+    GetSettings('Main', cbxTrayIconType, ini);
+    TrayIconFile := GetSettings('Main', 'TrayIconFile', '', ini);
+    UpdateTrayIcon;
     LoadThemesList(cbxThemes, GetSettings('Main', 'Theme', 'Windows', ini));
     LoadStyle(cbxThemes);
     SetIconsColor;
-
     if TorConfig.Count = 0 then
     begin
       TorConfig.Append('# ' + TransStr('271'));
@@ -7235,12 +7265,10 @@ begin
     end;
     CheckRequiredFiles(True);
     LoadUserOverrides(inidef);
-
     GetSettings('Main', cbConnectOnStartup, ini);
     GetSettings('Main', cbRestartOnControlFail, ini);
     GetSettings('Main', cbMinimizeToTray, ini);
-    GetSettings('Main', cbMinimizeOnClose, ini);
-    GetSettings('Main', cbMinimizeOnStartup, ini);
+    GetSettings('Main', cbxMinimizeOnEvent, ini, MINIMIZE_ON_CLOSE);
     GetSettings('Main', cbShowBalloonHint, ini);
     GetSettings('Main', cbShowBalloonOnlyWhenHide, ini);
     GetSettings('Main', cbStayOnTop, ini);
@@ -8473,8 +8501,7 @@ begin
     SetSettings('Main', cbConnectOnStartup, ini);
     SetSettings('Main', cbRestartOnControlFail, ini);
     SetSettings('Main', cbMinimizeToTray, ini);
-    SetSettings('Main', cbMinimizeOnClose, ini);
-    SetSettings('Main', cbMinimizeOnStartup, ini);
+    SetSettings('Main', cbxMinimizeOnEvent, ini);
     SetSettings('Main', cbShowBalloonHint, ini);
     SetSettings('Main', cbShowBalloonOnlyWhenHide, ini);
     SetSettings('Main', cbStayOnTop, ini);
@@ -8486,6 +8513,8 @@ begin
     SetSettings('Main', cbRememberEnlargedPosition, ini);
     SetSettings('Main', cbClearPreviousSearchQuery, ini);
     SetSettings('Main', cbUseNetworkCache, ini);
+    SetSettings('Main', cbxTrayIconType, ini);
+    SetSettings('Main', 'TrayIconFile', TrayIconFile, ini);
 
     SetSettings('Scanner', cbEnablePingMeasure, ini);
     SetSettings('Scanner', cbEnableDetectAliveNodes, ini);
@@ -9712,7 +9741,7 @@ begin
     aSg.SortCol := 0;
     Fail := True;
   end;
-  if not aSg.SortType in [SORT_ASC..SORT_DESC] then
+  if not (aSg.SortType in [SORT_ASC..SORT_DESC]) then
   begin
     aSg.SortType := SORT_DESC;
     Fail := True;
@@ -11444,6 +11473,7 @@ begin
   lbScanType.Visible := State;
   lbScanProgress.Visible := State;
   pbScanProgress.Visible := State;
+  UpdateTrayIcon;
 end;
 
 procedure TTcp.ScanNetwork(ScanType: TScanType; ScanPurpose: TScanPurpose);
@@ -11657,6 +11687,13 @@ begin
 
       if (TotalScans > 0) or (CurrentScanPurpose = spNewBridges) then
       begin
+        if AutoScanStage = 2 then
+        begin
+          if ConnectState <> 0 then
+            AutoScanStage := 3
+          else
+            AutoScanStage := 0;
+        end;
         LoadConsensus;
         case CurrentScanPurpose of
           spNewBridges:
@@ -11688,8 +11725,6 @@ begin
         if ConnectState = 0 then
           SaveNetworkCache;
       end;
-      if AutoScanStage = 2 then
-        AutoScanStage := 0;
       ScanStage := 0;
       UpdateScannerControls;
       CurrentScanPurpose := spNone;
@@ -13526,7 +13561,7 @@ begin
   QueueState := UnsuitableState and NewState and cbCacheNewBridges.Checked;
   BuiltinState := State and BridgeIsBuiltin and (cbxBridgesList.Items.Count > 0);
   FileState := State and BridgeIsFile;
-
+  
   edBridgesLimit.Enabled := LimitState;
   edBridgesQueueSize.Enabled := QueueState;
   edMaxDirFails.Enabled := UnsuitableState;
@@ -14289,6 +14324,84 @@ procedure TTcp.cbxTransportTypeChange(Sender: TObject);
 begin
   sgTransports.Cells[PT_TYPE, sgTransports.SelRow] := GetTransportChar(cbxTransportType.ItemIndex);
   EnableOptionButtons;
+end;
+
+procedure TTcp.UpdateTrayIcon;
+var
+  DefaultState: Boolean;
+  Index: Integer;
+begin
+  DefaultState := True;
+  if LastTrayIconType <> cbxTrayIconType.ItemIndex then
+  begin
+    if cbxTrayIconType.ItemIndex > 0 then
+    begin
+      if LoadIconsFromResource(lsTray, TrayIconFile, True) then
+      begin
+        if lsTray.Count > 3 then
+          DefaultState := False
+      end
+      else
+        TrayIconFile := '';
+    end;
+    if DefaultState then
+    begin
+      cbxTrayIconType.ItemIndex := 0;  
+      LoadIconsFromResource(lsTray, 'ICON_TRAY_NORMAL');
+    end;
+    LastTrayIconType := cbxTrayIconType.ItemIndex;
+  end;
+  if ScanStage > 0 then
+    Index := 3
+  else
+    Index := ConnectState;
+  if tiTray.IconIndex = Index then
+    tiTray.IconIndex := -1;    
+  tiTray.IconIndex := Index;
+  tiTray.Visible := True;
+end;
+
+procedure TTcp.PrepareOpenDialog(FileName, Filter: string);
+var
+  Str: string;
+begin
+  OpenDialog.Filter := Filter;
+  if FileExists(FileName) then
+  begin
+    Str := ExpandFileName(FileName); 
+    OpenDialog.InitialDir := ExtractFilePath(Str); 
+    OpenDialog.FileName := ExtractFileName(Str); 
+  end
+  else
+  begin
+    OpenDialog.InitialDir := '';
+    OpenDialog.FileName := '';  
+  end;
+end;
+
+procedure TTcp.cbxTrayIconTypeChange(Sender: TObject);
+var
+  UpdateState: Boolean;
+begin
+  UpdateState := True;
+  if cbxTrayIconType.ItemIndex > 0 then
+  begin
+    PrepareOpenDialog(TrayIconFile, TransStr('678'));
+    if OpenDialog.Execute then
+    begin
+      TrayIconFile := StringReplace(OpenDialog.FileName, GetFullFileName(ProgramDir) + '\', '', [rfIgnoreCase]);;
+      LastTrayIconType := MAXWORD;
+    end
+    else
+      UpdateState := False;
+  end;
+  if UpdateState then
+  begin
+    UpdateTrayIcon;
+    EnableOptionButtons;
+  end
+  else
+    cbxTrayIconType.ItemIndex := LastTrayIconType;
 end;
 
 procedure TTcp.ChangeTransportTable(Param: Integer);
@@ -16922,7 +17035,8 @@ end;
 
 procedure TTcp.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 begin
-  if (cbMinimizeOnClose.Checked) and not Closing and not WindowsShutdown then
+  if (cbxMinimizeOnEvent.ItemIndex in [MINIMIZE_ON_ALL, MINIMIZE_ON_CLOSE])
+    and not Closing and not WindowsShutdown then
   begin
     CanClose := WindowsShutdown;
     WindowState := wsMinimized;
@@ -17078,6 +17192,7 @@ var
   i: Integer;
   Filter: TFilterInfo;
 begin
+  LastTrayIconType := MAXWORD;
   WindowsShutdown := False;
   FirstLoad := True;
   FormSize := 1;
@@ -17326,7 +17441,7 @@ begin
     end
     else
     begin
-      if not cbMinimizeOnStartup.Checked then
+      if not (cbxMinimizeOnEvent.ItemIndex in [MINIMIZE_ON_ALL, MINIMIZE_ON_STARTUP]) then
         RestoreForm;
       FreeAndNil(ShowTimer);
     end;

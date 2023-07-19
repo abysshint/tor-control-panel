@@ -151,7 +151,6 @@ object Tcp: TTcp
       Top = 11
       Width = 170
       Height = 13
-      Alignment = taRightJustify
       Caption = #1054#1087#1088#1077#1076#1077#1083#1077#1085#1080#1077' '#1078#1080#1074#1099#1093' '#1082#1072#1090#1072#1083#1086#1075#1086#1074'..'
       Transparent = True
       Visible = False
@@ -1354,8 +1353,8 @@ object Tcp: TTcp
         Caption = #1048#1085#1090#1077#1088#1092#1077#1081#1089
         TabOrder = 2
         object lbTheme: TLabel
-          Left = 31
-          Top = 319
+          Left = 193
+          Top = 320
           Width = 24
           Height = 13
           Alignment = taRightJustify
@@ -1363,64 +1362,62 @@ object Tcp: TTcp
           Transparent = True
         end
         object lbLanguage: TLabel
-          Left = 220
-          Top = 319
+          Left = 32
+          Top = 320
           Width = 26
           Height = 13
           Alignment = taRightJustify
           Caption = #1071#1079#1099#1082
           Transparent = True
         end
+        object lbMinimizeOnEvent: TLabel
+          Left = 47
+          Top = 272
+          Width = 170
+          Height = 13
+          Alignment = taRightJustify
+          Caption = #1057#1074#1086#1088#1072#1095#1080#1074#1072#1090#1100' '#1074' '#1090#1088#1077#1081' '#1087#1088#1080' '#1089#1086#1073#1099#1090#1080#1080
+          Transparent = True
+        end
+        object lbTrayIconType: TLabel
+          Left = 124
+          Top = 295
+          Width = 93
+          Height = 13
+          Alignment = taRightJustify
+          Caption = #1058#1080#1087' '#1080#1082#1086#1085#1082#1080' '#1074' '#1090#1088#1077#1077
+          Transparent = True
+        end
         object cbStayOnTop: TCheckBox
           Left = 13
-          Top = 177
+          Top = 108
           Width = 336
           Height = 17
           Caption = #1054#1089#1090#1072#1074#1072#1090#1100#1089#1103' '#1087#1086#1074#1077#1088#1093' '#1074#1089#1077#1093' '#1086#1082#1086#1085
-          TabOrder = 7
+          TabOrder = 4
           OnClick = cbStayOnTopClick
         end
         object cbShowBalloonOnlyWhenHide: TCheckBox
           Left = 29
-          Top = 154
+          Top = 85
           Width = 320
           Height = 17
           Caption = #1058#1086#1083#1100#1082#1086' '#1082#1086#1075#1076#1072' '#1087#1088#1086#1075#1088#1072#1084#1084#1072' '#1089#1074#1105#1088#1085#1091#1090#1072
           Checked = True
           State = cbChecked
-          TabOrder = 6
+          TabOrder = 3
           OnClick = OptionsChange
         end
         object cbShowBalloonHint: TCheckBox
           Left = 13
-          Top = 131
+          Top = 62
           Width = 336
           Height = 17
           Caption = #1055#1086#1082#1072#1079#1099#1074#1072#1090#1100' '#1074#1089#1087#1083#1099#1074#1072#1102#1097#1080#1077' '#1089#1086#1086#1073#1097#1077#1085#1080#1103
           Checked = True
           State = cbChecked
-          TabOrder = 5
+          TabOrder = 2
           OnClick = cbShowBalloonHintClick
-        end
-        object cbMinimizeOnClose: TCheckBox
-          Left = 13
-          Top = 108
-          Width = 336
-          Height = 17
-          Caption = #1057#1074#1086#1088#1072#1095#1080#1074#1072#1090#1100' '#1074' '#1090#1088#1077#1081' '#1087#1088#1080' '#1079#1072#1082#1088#1099#1090#1080#1080
-          Checked = True
-          State = cbChecked
-          TabOrder = 4
-          OnClick = OptionsChange
-        end
-        object cbMinimizeOnStartup: TCheckBox
-          Left = 13
-          Top = 85
-          Width = 336
-          Height = 17
-          Caption = #1057#1074#1086#1088#1072#1095#1080#1074#1072#1090#1100' '#1074' '#1090#1088#1077#1081' '#1087#1088#1080' '#1079#1072#1087#1091#1089#1082#1077
-          TabOrder = 3
-          OnClick = OptionsChange
         end
         object cbConnectOnStartup: TCheckBox
           Left = 13
@@ -1444,67 +1441,58 @@ object Tcp: TTcp
         end
         object cbNoDesktopBorders: TCheckBox
           Left = 13
-          Top = 200
+          Top = 131
           Width = 336
           Height = 17
           Caption = #1056#1072#1079#1088#1077#1096#1080#1090#1100' '#1086#1082#1085#1091' '#1074#1099#1093#1086#1076#1080#1090#1100' '#1079#1072' '#1075#1088#1072#1085#1080#1094#1099' '#1101#1082#1088#1072#1085#1072
           Checked = True
           State = cbChecked
-          TabOrder = 8
+          TabOrder = 5
           OnClick = cbNoDesktopBordersClick
         end
         object cbRememberEnlargedPosition: TCheckBox
           Left = 13
-          Top = 246
+          Top = 177
           Width = 336
           Height = 17
           Caption = #1047#1072#1087#1086#1084#1080#1085#1072#1090#1100' '#1087#1086#1079#1080#1094#1080#1102' '#1091#1074#1077#1083#1080#1095#1077#1085#1085#1086#1075#1086' '#1086#1082#1085#1072
-          TabOrder = 10
+          TabOrder = 7
           OnClick = OptionsChange
         end
         object cbHideIPv6Addreses: TCheckBox
           Left = 13
-          Top = 269
+          Top = 200
           Width = 336
           Height = 17
           Caption = #1057#1082#1088#1099#1074#1072#1090#1100' IPv6-'#1072#1076#1088#1077#1089#1072' '#1074' '#1089#1087#1080#1089#1082#1072#1093' '#1080#1085#1090#1077#1088#1092#1077#1081#1089#1086#1074
           Checked = True
           State = cbChecked
-          TabOrder = 11
+          TabOrder = 8
           OnClick = OptionsChange
         end
         object cbNoDesktopBordersOnlyEnlarged: TCheckBox
           Left = 29
-          Top = 223
+          Top = 154
           Width = 320
           Height = 17
           Caption = #1058#1086#1083#1100#1082#1086' '#1087#1088#1080' '#1091#1074#1077#1083#1080#1095#1077#1085#1085#1086#1084' '#1086#1082#1085#1077' '#1087#1088#1086#1075#1088#1072#1084#1084#1099
           Checked = True
           State = cbChecked
-          TabOrder = 9
+          TabOrder = 6
           OnClick = OptionsChange
         end
         object cbClearPreviousSearchQuery: TCheckBox
           Left = 13
-          Top = 290
+          Top = 223
           Width = 336
           Height = 17
           Caption = #1054#1095#1080#1097#1072#1090#1100' '#1087#1088#1077#1076#1099#1076#1091#1097#1080#1081' '#1087#1086#1080#1089#1082#1086#1074#1099#1081' '#1079#1072#1087#1088#1086#1089' '#1074' '#1089#1087#1080#1089#1082#1072#1093
-          TabOrder = 12
-          OnClick = OptionsChange
-        end
-        object cbMinimizeToTray: TCheckBox
-          Left = 13
-          Top = 62
-          Width = 336
-          Height = 17
-          Caption = #1057#1074#1086#1088#1072#1095#1080#1074#1072#1090#1100' '#1074' '#1090#1088#1077#1081' '#1074#1084#1077#1089#1090#1086' '#1087#1072#1085#1077#1083#1080' '#1079#1072#1076#1072#1095
-          TabOrder = 2
+          TabOrder = 9
           OnClick = OptionsChange
         end
         object cbxThemes: TComboBox
-          Left = 58
-          Top = 316
+          Left = 220
+          Top = 317
           Width = 130
           Height = 21
           AutoDropDown = True
@@ -1520,8 +1508,8 @@ object Tcp: TTcp
             #1055#1086' '#1091#1084#1086#1083#1095#1072#1085#1080#1102)
         end
         object cbxLanguage: TComboBox
-          Left = 249
-          Top = 316
+          Left = 61
+          Top = 317
           Width = 100
           Height = 21
           AutoDropDown = True
@@ -1535,6 +1523,51 @@ object Tcp: TTcp
           OnChange = OptionsChange
           Items.Strings = (
             #1056#1091#1089#1089#1082#1080#1081)
+        end
+        object cbMinimizeToTray: TCheckBox
+          Left = 13
+          Top = 246
+          Width = 336
+          Height = 17
+          Caption = #1057#1074#1086#1088#1072#1095#1080#1074#1072#1090#1100' '#1074' '#1090#1088#1077#1081' '#1074#1084#1077#1089#1090#1086' '#1087#1072#1085#1077#1083#1080' '#1079#1072#1076#1072#1095
+          TabOrder = 10
+          OnClick = OptionsChange
+        end
+        object cbxMinimizeOnEvent: TComboBox
+          Left = 220
+          Top = 269
+          Width = 130
+          Height = 21
+          AutoDropDown = True
+          Style = csDropDownList
+          DoubleBuffered = False
+          ItemIndex = 2
+          ParentDoubleBuffered = False
+          TabOrder = 11
+          Text = #1047#1072#1082#1088#1099#1090#1080#1077' '#1086#1082#1085#1072
+          OnChange = OptionsChange
+          Items.Strings = (
+            #1054#1090#1082#1083#1102#1095#1077#1085#1086
+            #1042#1089#1077' '#1089#1086#1073#1099#1090#1080#1103
+            #1047#1072#1082#1088#1099#1090#1080#1077' '#1086#1082#1085#1072
+            #1047#1072#1087#1091#1089#1082' '#1087#1088#1086#1075#1088#1072#1084#1084#1099)
+        end
+        object cbxTrayIconType: TComboBox
+          Left = 220
+          Top = 293
+          Width = 130
+          Height = 21
+          AutoDropDown = True
+          Style = csDropDownList
+          DoubleBuffered = False
+          ItemIndex = 0
+          ParentDoubleBuffered = False
+          TabOrder = 12
+          Text = #1042#1089#1090#1088#1086#1077#1085#1085#1072#1103
+          OnChange = cbxTrayIconTypeChange
+          Items.Strings = (
+            #1042#1089#1090#1088#1086#1077#1085#1085#1072#1103
+            #1048#1079' '#1092#1072#1081#1083#1072)
         end
       end
       object gbOptions: TGroupBox
@@ -5240,7 +5273,6 @@ object Tcp: TTcp
   object tiTray: TTrayIcon
     Icons = lsTray
     PopupMenu = mnTray
-    Visible = True
     OnClick = tiTrayClick
     Left = 721
     Top = 336
@@ -7156,53 +7188,11 @@ object Tcp: TTcp
     end
   end
   object lsTray: TImageList
-    ColorDepth = cd4Bit
-    GrayscaleFactor = 255
+    ColorDepth = cd32Bit
     Height = 20
     Width = 20
     Left = 721
     Top = 291
-    Bitmap = {
-      494C010103000800040014001400FFFFFFFF0510FFFFFFFFFFFFFFFF424D7600
-      0000000000007600000028000000500000001400000001000400000000002003
-      0000000000000000000000000000000000000000000000008000008000000080
-      8000800000008000800080800000C0C0C000808080000000FF0000FF000000FF
-      FF00FF000000FF00FF00FFFF0000FFFFFF000000000000000000000000000000
-      00000000000000000000000000000000000000000000000000000FFFFFFFFFFF
-      FFFFFFF00BBBBBBBBBBBBBBBBBB00AAAAAAAAAAAAAAAAAA00000000000000000
-      00000F0000000000000000F00B0000000000000000B00A0000000000000000A0
-      000000000000000000000F0000000000000000F00B0000000000000000B00A00
-      00000000000000A0000000000000000000000F0000000000000000F00B000000
-      0000000000B00A0000000000000000A0000000000000000000000F0000000000
-      000000F00B0000000000000000B00A0000000000000000A00000000000000000
-      00000F0000F0000FFFFF00F00B0000B0000BBBBB00B00A0000A0000AAAAA00A0
-      000000000000000000000F0000F0000F000F00F00B0000B0000B000B00B00A00
-      00A0000A000A00A0000000000000000000000F0000F0000F000000F00B0000B0
-      000B000000B00A0000A0000A000000A0000000000000000000000F0000F0000F
-      000000F00B0000B0000B000000B00A0000A0000A000000A00000000000000000
-      00000F0000F0000F000000F00B0000B0000B000000B00A0000A0000A000000A0
-      000000000000000000000F0000F0000F000000F00B0000B0000B000000B00A00
-      00A0000A000000A0000000000000000000000F0000F0000F000F00F00B0000B0
-      000B000B00B00A0000A0000A000A00A0000000000000000000000F00FFFFF00F
-      FFFF00F00B00BBBBB00BBBBB00B00A00AAAAA00AAAAA00A00000000000000000
-      00000F0000000000000000F00B0000000000000000B00A0000000000000000A0
-      000000000000000000000F0000000000000000F00B0000000000000000B00A00
-      00000000000000A0000000000000000000000F0000000000000000F00B000000
-      0000000000B00A0000000000000000A0000000000000000000000F0000000000
-      000000F00B0000000000000000B00A0000000000000000A00000000000000000
-      00000FFFFFFFFFFFFFFFFFF00BBBBBBBBBBBBBBBBBB00AAAAAAAAAAAAAAAAAA0
-      0000000000000000000000000000000000000000000000000000000000000000
-      000000000000000000000000000000000000424D3E000000000000003E000000
-      2800000050000000140000000100010000000000F00000000000000000000000
-      000000000000000000000000FFFFFF0000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      0000000000000000000000000000000000000000000000000000000000000000
-      00000000000000000000000000000000000000000000}
   end
   object lsMain: TImageList
     ColorDepth = cd32Bit
@@ -7420,7 +7410,6 @@ object Tcp: TTcp
     Top = 247
   end
   object OpenDialog: TOpenDialog
-    Filter = #1058#1077#1082#1089#1090#1086#1074#1099#1077' '#1092#1072#1081#1083#1099'|*.txt|'#1042#1089#1077' '#1092#1072#1081#1083#1099'|*.*'
     Left = 677
     Top = 377
   end
