@@ -115,7 +115,7 @@ type
   public
     SelCol, SelRow, MovCol, MovRow: Integer;
     SortType, SortCol: Byte;
-    ScrollKeyDown: Boolean;
+    ScrollKeyDown, SelectAllState: Boolean;
     RowID: string;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;

@@ -243,12 +243,8 @@ type
     btnApplyOptions: TButton;
     mnDetails: TPopupMenu;
     miDetailsUpdateIp: TMenuItem;
-    miDetailsCopy: TMenuItem;
-    miDetailsCopyFingerprint: TMenuItem;
-    miDetailsCopyIPv4: TMenuItem;
     miDetailsSelectTemplate: TMenuItem;
     miDelimiter8: TMenuItem;
-    miDetailsCopyNickname: TMenuItem;
     paStatus: TPanel;
     gbSpeedGraph: TGroupBox;
     miDetailsRelayInfo: TMenuItem;
@@ -439,10 +435,6 @@ type
     miFilterHideUnused: TMenuItem;
     miFilterScrollTop: TMenuItem;
     mnRouters: TPopupMenu;
-    miRtCopy: TMenuItem;
-    miRtCopyNickname: TMenuItem;
-    miRtCopyIPv4: TMenuItem;
-    miRtCopyFingerprint: TMenuItem;
     miRtRelayInfo: TMenuItem;
     lbFilterCount: TLabel;
     lbFilterEntry: TLabel;
@@ -464,8 +456,6 @@ type
     miClearRoutersExclude: TMenuItem;
     lbNodesListType: TLabel;
     cbxNodesListType: TComboBox;
-    miRtCopyIPv6: TMenuItem;
-    miDetailsCopyIPv6: TMenuItem;
     paCircuits: TPanel;
     tmCircuits: TTimer;
     mnCircuits: TPopupMenu;
@@ -677,10 +667,6 @@ type
     miFind: TMenuItem;
     miLogFind: TMenuItem;
     FindDialog: TFindDialog;
-    miRtCopyBridgeIPv4: TMenuItem;
-    miDetailsCopyBridgeIPv4: TMenuItem;
-    miDelimiter44: TMenuItem;
-    miDelimiter45: TMenuItem;
     gbNetworkScanner: TGroupBox;
     tmScanner: TTimer;
     miClearServerCache: TMenuItem;
@@ -745,8 +731,6 @@ type
     miRtSelectAsBridge: TMenuItem;
     miServerCopyIPv6: TMenuItem;
     miServerCopyBridgeIPv6: TMenuItem;
-    miRtCopyBridgeIpv6: TMenuItem;
-    miDetailsCopyBridgeIPv6: TMenuItem;
     miDisableSelectionUnSuitableAsBridge: TMenuItem;
     miRtSelectAsBridgeIPv4: TMenuItem;
     miRtSelectAsBridgeIPv6: TMenuItem;
@@ -985,10 +969,6 @@ type
     meFallbackDirs: TMemo;
     lbFallbackDirsType: TLabel;
     cbxFallbackDirsType: TComboBox;
-    miDelimiter74: TMenuItem;
-    miRtCopyFallbackDir: TMenuItem;
-    miDelimiter75: TMenuItem;
-    miDetailsCopyFallbackDir: TMenuItem;
     lbCount6: TLabel;
     edAutoSelFallbackDirCount: TEdit;
     udAutoSelFallbackDirCount: TUpDown;
@@ -1010,23 +990,6 @@ type
     miCircuitsSortParams: TMenuItem;
     miCircuitsShowFlagsHint: TMenuItem;
     miExtractData: TMenuItem;
-    miExtractIpv4: TMenuItem;
-    miExtractFingerprints: TMenuItem;
-    miExtractIpv6: TMenuItem;
-    miDelimiter76: TMenuItem;
-    miExtractIpv4Bridges: TMenuItem;
-    miExtractIpv6Bridges: TMenuItem;
-    miDelimiter70: TMenuItem;
-    miExtractFallbackDirs: TMenuItem;
-    miDelimiter65: TMenuItem;
-    miFormatIPv6OnExtract: TMenuItem;
-    miExtractPorts: TMenuItem;
-    miRemoveDuplicateOnExtract: TMenuItem;
-    miSortOnExtract: TMenuItem;
-    miExtractDelimiterType: TMenuItem;
-    miExtractDelimiterAuto: TMenuItem;
-    miExtractDelimiterLineBreak: TMenuItem;
-    miExtractDelimiterComma: TMenuItem;
     lbAutoSelRoutersAfterScanType: TLabel;
     cbxAutoSelRoutersAfterScanType: TComboBox;
     cbAutoSelEntryEnabled: TCheckBox;
@@ -1058,13 +1021,17 @@ type
     miSortData: TMenuItem;
     miSortDataAsc: TMenuItem;
     miSortDataDesc: TMenuItem;
-    miDelimiter77: TMenuItem;
+    miDelimiter65: TMenuItem;
     miSortDataNone: TMenuItem;
     cbMinimizeToTray: TCheckBox;
     lbMinimizeOnEvent: TLabel;
     cbxMinimizeOnEvent: TComboBox;
     lbTrayIconType: TLabel;
     cbxTrayIconType: TComboBox;
+    miRtExtractData: TMenuItem;
+    miDetailsExtractData: TMenuItem;
+    imSelectedRouters: TImage;
+    lbSelectedRouters: TLabel;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1085,10 +1052,12 @@ type
     function GetTorHs: Integer;
     function LoadHiddenServices(ini: TMemIniFile): Integer;
     function PreferredBridgeFound: Boolean;
-    function GetFallbackStr(RouterID: string; RouterInfo: TRouterInfo): string;
+    function GetRouterStrFlags(Flags: TRouterFlags): string;
+    function GetRouterCsvData(RouterID: string; RouterInfo: TRouterInfo; Preview: Boolean = False): string;
+    function GetBridgeStr(RouterID: string; RouterInfo: TRouterInfo; UseIPv6: Boolean; Preview: Boolean = False): string;
+    function GetFallbackStr(RouterID: string; RouterInfo: TRouterInfo; Preview: Boolean = False): string;
     function CheckRouterFlags(NodeTypeID: Integer; RouterInfo: TRouterInfo): Boolean;
     procedure SaveScanData;
-    procedure SetFallbackDirMenu(Menu: TMenuItem; RouterID: string; RouterInfo: TRouterInfo);
     procedure UpdateBridgesControls(UpdateList: Boolean; UpdateUserBridges: Boolean);
     procedure UpdateFallbackDirControls;
     procedure ShowRoutersParamsHint;
@@ -1107,6 +1076,7 @@ type
     procedure SetNodes(FilterEntry, FilterMiddle, FilterExit, FavoritesEntry, FavoritesMiddle, FavoritesExit, ExcludeNodes: string);
     procedure ShowFilter;
     procedure ApplyOptions(AutoResolveErrors: Boolean = False);
+    function InsertExtractMenu(ParentMenu: TMenuItem; ControlType, ControlID, ExtractType: Integer): Boolean;
     procedure InsertNodesMenu(ParentMenu: TMenuItem; NodeID: string; AutoSave: Boolean = True);
     procedure InsertNodesListMenu(ParentMenu: TmenuItem; NodeID: string; NodeTypeID: Integer; AutoSave: Boolean = True);
     procedure InsertNodesToDeleteMenu(ParentMenu: TmenuItem; NodeID: string; AutoSave: Boolean = True);
@@ -1158,7 +1128,6 @@ type
     procedure IncreaseFormSize;
     procedure SetDownState;
     procedure InitPortForwarding(Test: Boolean);
-    procedure ExtractMemoData(MemoID: Integer; ExtractType: Integer);
     procedure ResetFocus;
     procedure ScanStart(ScanType: TScanType; ScanPurpose: TScanPurpose);
     procedure ScanNetwork(ScanType: TScanType; ScanPurpose: TScanPurpose);
@@ -1244,7 +1213,6 @@ type
     procedure FastAndStableEnable(State: Boolean; AutoCheck: Boolean = True);
     procedure HsControlsEnable(State: Boolean);
     procedure CheckLogAutoScroll(AlwaysUpdate: Boolean = False);
-    procedure UpdateBridgeCopyMenu(Menu: TMenuItem; RouterID: string; Router: TRouterInfo; UseIPv6: Boolean);
     procedure UpdateHs;
     procedure UpdateHsPorts;
     procedure UpdateUsedProxyTypes(ini: TMemIniFile);
@@ -1254,14 +1222,19 @@ type
     procedure UpdateScaleFactor;
     function RoutersAutoSelect: Boolean;
     procedure CheckTorAutoStart;
-    procedure UpdateTrayHint;    
+    procedure UpdateSelectedRouter;
+    procedure UpdateTrayHint;
+    function ShowRelayInfo(aSg: TStringGrid; Handle: Boolean = False): Boolean;
     procedure CountTotalBridges(ShowSuitableCount: Boolean = True);
     procedure CountTotalFallbackDirs(ShowSuitableCount: Boolean = True);
     function PrepareNodesToRemove(Data: string; NodeType: TNodeType; out Nodes: ArrOfNodes): Boolean;
     procedure RemoveFromNodesListWithConvert(Nodes: ArrOfNodes; NodeType: TNodeType);
     procedure SortPrepare(aSg: TStringGrid; ACol: Integer; ManualSort: Boolean = False);
     procedure GridSort(aSg: TStringGrid);
+    procedure SetExtractOptions(Sender: TObject);
+    procedure SetExtractDelimiter(Sender: TObject);
     procedure ServerControlsChange(Sender: TObject);
+    procedure ExtractDataClick(Sender: TObject);
     procedure SortDataList(Sender: TObject);
     procedure SelectLogAutoDelInterval(Sender: TObject);
     procedure SelectLogSeparater(Sender: TObject);
@@ -1426,8 +1399,6 @@ type
     procedure sgHsEnter(Sender: TObject);
     procedure meBridgesChange(Sender: TObject);
     procedure OptionsChange(Sender: TObject);
-    procedure ExtractDelimiterSelect(Sender: TObject);
-    procedure ExtractMemoDataClick(Sender: TObject);
     procedure SetResetGuards(Sender: TObject);
     procedure cbxHsAddressDropDown(Sender: TObject);
     procedure miRtSaveDefaultClick(Sender: TObject);
@@ -1613,9 +1584,6 @@ type
     procedure meNodesListKeyPress(Sender: TObject; var Key: Char);
     procedure cbExcludeUnsuitableFallbackDirsClick(Sender: TObject);
     procedure miCircuitsShowFlagsHintClick(Sender: TObject);
-    procedure miFormatIPv6OnExtractClick(Sender: TObject);
-    procedure miRemoveDuplicateOnExtractClick(Sender: TObject);
-    procedure miSortOnExtractClick(Sender: TObject);
     procedure sbAutoScrollClick(Sender: TObject);
     procedure sbWordWrapClick(Sender: TObject);
     procedure sbSafeLoggingClick(Sender: TObject);
@@ -1629,6 +1597,10 @@ type
     procedure cbxFallbackDirsTypeKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
     procedure cbxTrayIconTypeChange(Sender: TObject);
+    procedure lbSelectedRoutersMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+    procedure sbShowLogMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
     procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -1697,7 +1669,7 @@ var
   LastFullScanDate, LastPartialScanDate, TotalStartDate, LastSaveStats: Int64;
   LastPartialScansCounts: Integer;
   LockCircuits, LockCircuitInfo, LockStreams, LockStreamsInfo, UpdateTraffic: Boolean;
-  CircuitsUpdated, SortUpdated: Boolean;
+  CircuitsUpdated, SortUpdated, SelNodeState: Boolean;
   FindObject: TMemo;
   ScanStage, AutoScanStage: Byte;
   CurrentScanType, InitScanType: TScanType;
@@ -1707,8 +1679,9 @@ var
   SuitableFallbackDirsCount, UsedFallbackDirsCount, UnknownFallbackDirCountriesCount, MissingFallbackDirCount: Integer;
   Scanner: TScanThread;
   UsedProxyType: TProxyType;
-  LastUserStreamProtocol, LastTrayIconType: Integer;
+  LastUserStreamProtocol, LastTrayIconType, ExtractDelimiterType: Integer;
   FindBridgesCountries, FindFallbackDirCountries, ScanNewBridges, UpdateFallbackDirs: Boolean;
+  FormatIPv6OnExtract, RemoveDuplicateOnExtract, SortOnExtract, FormatCodesOnExtract: Boolean;
 
 implementation
 
@@ -2532,7 +2505,6 @@ var
   UserBridges: TDictionary<string, TBridge>;
   Bridge, PrevBridge: TBridge;
   RouterID, Temp, BridgeKey, SourceAddr: string;
-  BridgeData: TBridgeInfo;
   BridgeRelay, UpdateFromDesc, DifferSource: Boolean;
   GeoIpInfo: TGeoIpInfo;
 
@@ -2617,6 +2589,35 @@ var
     else
       BridgeInfo.Source := '';
     BridgeInfo.Router := RouterInfo;
+
+    if ConnectState <> 0 then
+    begin
+      SetPortsValue(BridgeInfo.Router.IPv4, IntToStr(BridgeInfo.Router.Port), 1);
+      BridgeKey := BridgeInfo.Router.IPv4 + '|' + IntToStr(BridgeInfo.Router.Port);
+      DirFetches.Remove(BridgeKey);
+      if (NewBridgesStage = 1) and (NewBridgesCount > 0) then
+      begin
+        if NewBridgesList.ContainsKey(BridgeKey) then
+        begin
+          NewBridgesList.Remove(BridgeKey);
+          Dec(NewBridgesCount);
+        end;
+      end;
+      if GeoIpDic.ContainsKey(BridgeInfo.Router.IPv6) then
+      begin
+        SetPortsValue(BridgeInfo.Router.IPv6, IntToStr(BridgeInfo.Router.Port), 1);
+        BridgeKey := BridgeInfo.Router.IPv6 + '|' + IntToStr(BridgeInfo.Router.Port);
+        DirFetches.Remove(BridgeKey);
+        if (NewBridgesStage = 1) and (NewBridgesCount > 0) then
+        begin
+          if NewBridgesList.ContainsKey(BridgeKey) then
+          begin
+            NewBridgesList.Remove(BridgeKey);
+            Dec(NewBridgesCount);
+          end;
+        end;
+      end;
+    end;
     BridgesDic.AddOrSetValue(RouterID, BridgeInfo);
   end;
 
@@ -2751,37 +2752,6 @@ begin
             UpdateBridges(DescRouter);
             RoutersDic.AddOrSetValue(RouterID, DescRouter);
             UpdateFromDesc := False;
-          end;
-          if ConnectState <> 0 then
-          begin
-            if BridgesDic.TryGetValue(RouterID, BridgeData) then
-            begin
-              SetPortsValue(BridgeData.Router.IPv4, IntToStr(BridgeData.Router.Port), 1);
-              BridgeKey := BridgeData.Router.IPv4 + '|' + IntToStr(BridgeData.Router.Port);
-              DirFetches.Remove(BridgeKey);
-              if (NewBridgesStage = 1) and (NewBridgesCount > 0) then
-              begin
-                if NewBridgesList.ContainsKey(BridgeKey) then
-                begin
-                  NewBridgesList.Remove(BridgeKey);
-                  Dec(NewBridgesCount);
-                end;
-              end;
-              if GeoIpDic.ContainsKey(BridgeData.Router.IPv6) then
-              begin
-                SetPortsValue(BridgeData.Router.IPv6, IntToStr(BridgeData.Router.Port), 1);
-                BridgeKey := BridgeData.Router.IPv6 + '|' + IntToStr(BridgeData.Router.Port);
-                DirFetches.Remove(BridgeKey);
-                if (NewBridgesStage = 1) and (NewBridgesCount > 0) then
-                begin
-                  if NewBridgesList.ContainsKey(BridgeKey) then
-                  begin
-                    NewBridgesList.Remove(BridgeKey);
-                    Dec(NewBridgesCount);
-                  end;
-                end;
-              end;
-            end;
           end;
           BridgeRelay := False;
           Continue;
@@ -3020,7 +2990,6 @@ var
 begin
   if InfoStage > 0 then
   begin
-
     if InfoStage = 1 then
     begin
       Temp := '';
@@ -3103,6 +3072,7 @@ begin
           GeoIpInfo.ports := '';
         end;
         GeoIpDic.AddOrSetValue(ParseStr[0], GeoIpInfo);
+        GeoIpModified := True;
 
         Dec(InfoCount);
 
@@ -3155,7 +3125,7 @@ begin
           if AutoScanStage = 3 then
             AutoScanStage := 0;
         end;
-        Tcp.SaveNetworkCache;
+        Tcp.SaveNetworkCache(False);
       end;
     end;
   end;
@@ -3565,7 +3535,7 @@ end;
 procedure TTcp.sgCircuitInfoMouseMove(Sender: TObject; Shift: TShiftState; X,
   Y: Integer);
 begin
-  lbExitIp.Tag := 0;
+  SelNodeState := False;
   sgCircuitInfo.MouseToCell(X, Y, sgCircuitInfo.MovCol, sgCircuitInfo.MovRow);
   GridSetFocus(sgCircuitInfo);
   GridShowHints(sgCircuitInfo);
@@ -4152,6 +4122,15 @@ begin
       end;
     end;
   end;
+  if ACol = sgRouters.SelCol then
+    UpdateSelectedRouter;
+end;
+
+procedure TTcp.UpdateSelectedRouter;
+begin
+  if sgRouters.SelectAllState then
+    Exit;
+  lbSelectedRouters.Caption := IntToStr(sgRouters.Selection.Bottom - sgRouters.Selection.Top + 1);
 end;
 
 procedure TTcp.sgRoutersFixedCellClick(Sender: TObject; ACol, ARow: Integer);
@@ -4164,7 +4143,7 @@ end;
 procedure TTcp.sgRoutersKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
-  if (Key = VK_RETURN) and (sgRouters.SelCol > ROUTER_FLAGS) then
+  if (Key = VK_RETURN) and (sgRouters.SelCol > ROUTER_FLAGS) and not (ssShift in Shift) then
     ChangeRouters;
   GridKeyDown(sgRouters, Shift, Key);
 end;
@@ -4180,7 +4159,7 @@ procedure TTcp.sgRoutersMouseDown(Sender: TObject; Button: TMouseButton;
 begin
   if Button = mbRight then
     sgRouters.MouseToCell(X, Y, sgRouters.MovCol, sgRouters.MovRow);
-  if (sgRouters.SelCol > ROUTER_FLAGS) and (sgRouters.MovRow > 0) and (Button = mbLeft) then
+  if (sgRouters.SelCol > ROUTER_FLAGS) and (sgRouters.MovRow > 0) and (Button = mbLeft) and not (ssShift in Shift) then
     ChangeRouters;
 end;
 
@@ -4597,7 +4576,7 @@ end;
 procedure TTcp.sgRoutersSelectCell(Sender: TObject; ACol, ARow: Integer;
   var CanSelect: Boolean);
 begin
-  GridSelectCell(sgRouters, ACol, ARow)
+  GridSelectCell(sgRouters, ACol, ARow);
 end;
 
 procedure TTcp.sgStreamsInfoDrawCell(Sender: TObject; ACol, ARow: Integer;
@@ -5021,7 +5000,7 @@ begin
   begin
     for i := 0 to cbxSOCKSHost.items.Count - 1 do
     begin
-      if IpInRanges(cbxSOCKSHost.Items[i], PrivateRanges) <> 1 then
+      if not IpInRanges(cbxSOCKSHost.Items[i], PrivateRanges) then
         Continue;
       AddUPnPEntry(udORPort.Position, 'ORPort', cbxSOCKSHost.Items[i], Test, UPnPMsg);
       udORPort.Tag := udORPort.Position;
@@ -5583,6 +5562,8 @@ begin
   lsMenus.GetIcon(46, imFavoritesTotal.Picture.Icon);
   lsMenus.GetIcon(28, imFavoritesBridges.Picture.Icon);
   lsMenus.GetIcon(54, imFavoritesFallbackDirs.Picture.Icon);
+  lsMenus.GetIcon(16, imSelectedRouters.Picture.Icon);
+
   lsMenus.GetIcon(15, imBridgesFile.Picture.Icon);
 
   SetButtonGlyph(lsButtons, 4, sbShowOptions);
@@ -6637,15 +6618,17 @@ end;
 
 procedure TTcp.ExcludeUnsuitableBridges(var Data: TStringList; DeleteUnsuitable: Boolean = False);
 var
-  cdPorts, cdAlive: Boolean;
+  cdPorts, cdAlive, cdRelay: Boolean;
   CheckEntryPorts, NeedCountry, NeedAlive, Cached, SpecialAddr, FindCountry: Boolean;
-  BridgesCount: Integer;
+  BridgesCount, RoutersCount: Integer;
   Bridge: TBridge;
+  RouterInfo: TRouterInfo;
   GeoIpInfo: TGeoIpInfo;
   CountryStr, IpStr: string;
   i, CountryID, PortData: Integer;
 begin
   SuitableBridgesCount := 0;
+  RoutersCount := RoutersDic.Count;
   BridgesCount := Data.Count;
   if BridgesCount = 0 then
     Exit;
@@ -6694,7 +6677,24 @@ begin
       Cached := BridgesDic.ContainsKey(Bridge.Hash);
       CountryStr := CountryCodes[CountryID];
 
-      if cdPorts and (cdAlive or NeedAlive) and not RouterInNodesList(Bridge.Hash, IpStr, ntExclude, NeedCountry and NeedAlive, CountryStr) then
+      cdRelay := True;
+      if RoutersCount > 0 then
+      begin
+        if RoutersDic.TryGetValue(Bridge.Hash, RouterInfo) then
+        begin
+          if rfRelay in RouterInfo.Flags then
+          begin
+            case GetAddressType(Bridge.Ip) of
+              atIPv4: cdRelay := ((RouterInfo.IPv4 = Bridge.Ip) and (RouterInfo.Port = Bridge.Port));
+              atIPv6: cdRelay := ((RouterInfo.IPv6 = Bridge.Ip) and (RouterInfo.Port = Bridge.Port));
+            end;
+            if not cdRelay then
+              SetPortsValue(IpStr, IntToStr(Bridge.Port), -1);
+          end;
+        end;
+      end;
+
+      if cdPorts and (cdAlive or NeedAlive) and cdRelay and not RouterInNodesList(Bridge.Hash, IpStr, ntExclude, NeedCountry and NeedAlive, CountryStr) then
       begin
         if cbUseBridges.Checked and not DeleteUnsuitable then
         begin
@@ -6962,6 +6962,7 @@ begin
         if (UnknownBridgesCountriesCount > 0) or ScanNewBridges then
           SetTorConfig('DisableNetwork', '1');
       end;
+
       SetTorConfig('UseBridges', IntToStr(Integer(cbUseBridges.Checked)));
       if cbUseBridges.Checked then
         SetTorConfig('Bridge', ls);
@@ -7242,6 +7243,11 @@ begin
   ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
   inidef := TMemIniFile.Create(DefaultsFile, TEncoding.UTF8);
   try
+    GetSettings('Main', cbxTrayIconType, ini);
+    TrayIconFile := GetSettings('Main', 'TrayIconFile', '', ini);
+    if (TrayIconFile <> '') and not FileExists(TrayIconFile) then
+      SetSettings('Main', 'TrayIconFile', '', ini);
+    UpdateTrayIcon;
     cbxLanguage.ItemIndex := cbxLanguage.Items.IndexOfObject(TObject(Integer(GetSettings('Main', 'Language', GetLangList, ini))));
     cbxLanguage.ResetValue := cbxLanguage.Items.IndexOf('Русский');
     if cbxLanguage.ItemIndex = -1 then
@@ -7252,9 +7258,6 @@ begin
     cbxLanguage.Tag := cbxLanguage.ItemIndex;
     if FirstLoad then
       Translate(cbxLanguage.Text);
-    GetSettings('Main', cbxTrayIconType, ini);
-    TrayIconFile := GetSettings('Main', 'TrayIconFile', '', ini);
-    UpdateTrayIcon;
     LoadThemesList(cbxThemes, GetSettings('Main', 'Theme', 'Windows', ini));
     LoadStyle(cbxThemes);
     SetIconsColor;
@@ -7281,10 +7284,11 @@ begin
     GetSettings('Main', cbRememberEnlargedPosition, ini);
     GetSettings('Main', cbClearPreviousSearchQuery, ini);
 
-    GetSettings('Extractor', miFormatIPv6OnExtract, ini);
-    GetSettings('Extractor', miRemoveDuplicateOnExtract, ini);
-    GetSettings('Extractor', miSortOnExtract, ini);
-    miExtractDelimiterType.Items[GetIntDef(GetSettings('Extractor', 'ExtractDelimiterType', 0, ini), 0, 0, 2)].Checked := True;
+    FormatCodesOnExtract := GetSettings('Extractor', 'FormatCodesOnExtract', True, ini);
+    FormatIPv6OnExtract := GetSettings('Extractor', 'FormatIPv6OnExtract', True, ini);
+    RemoveDuplicateOnExtract := GetSettings('Extractor', 'RemoveDuplicateOnExtract', True, ini);
+    SortOnExtract := GetSettings('Extractor', 'SortOnExtract', True, ini);
+    ExtractDelimiterType := GetIntDef(GetSettings('Extractor', 'ExtractDelimiterType', 0, ini), 0, 0, 2);
 
     if FirstLoad then
     begin
@@ -7321,7 +7325,7 @@ begin
     GetSettings('Filter', miFilterScrollTop, ini);
     GetSettings('Filter', miFilterSelectRow, ini);
     GetSettings('Filter', miIgnoreTplLoadParamsOutsideTheFilter, ini);
-    GetSettings('Filter', miNotLoadEmptyTplData, ini, False);
+    GetSettings('Filter', miNotLoadEmptyTplData, ini);
     GetSettings('Filter', miReplaceDisabledFavoritesWithCountries, ini);
     GetSettings('Filter', miExcludeBridgesWhenCounting, ini, False);
 
@@ -7826,7 +7830,7 @@ var
 begin
   if cbUseNetworkCache.Checked then
   begin
-    if not (AutoSave or GeoIpModified) then
+    if not (AutoSave or GeoIpModified) and not (Closing or ScanNewBridges) then
       Exit;
     GeoIpCache := TStringList.Create;
     try
@@ -8015,14 +8019,14 @@ var
   FMode: Integer;
 begin
   FMode := cbxFilterMode.ItemIndex;
-  if (FMode = 2) and (lbFavoritesTotal.Tag = 0) then
-    FMode := 1;
-  if (FMode = 2) and (lbFavoritesEntry.HelpContext = 0) and (lbFavoritesMiddle.HelpContext = 0) and (lbFavoritesExit.HelpContext = 0) then
-    FMode := 1;
-  if (FMode = 1) and (lbFilterEntry.Tag = 0) and (lbFilterMiddle.Tag = 0) and (lbFilterExit.Tag = 0) then
-    FMode := 0;
-  if (FMode = 1) and not GeoIpExists then
-    FMode := 0;
+  if (FMode = FILTER_MODE_FAVORITES) and (lbFavoritesTotal.Tag = 0) then
+    FMode := FILTER_MODE_COUNTRIES;
+  if (FMode = FILTER_MODE_FAVORITES) and (lbFavoritesEntry.HelpContext = 0) and (lbFavoritesMiddle.HelpContext = 0) and (lbFavoritesExit.HelpContext = 0) then
+    FMode := FILTER_MODE_COUNTRIES;
+  if (FMode = FILTER_MODE_COUNTRIES) and (lbFilterEntry.Tag = 0) and (lbFilterMiddle.Tag = 0) and (lbFilterExit.Tag = 0) then
+    FMode := FILTER_MODE_NONE;
+  if (FMode = FILTER_MODE_COUNTRIES) and not GeoIpExists then
+    FMode := FILTER_MODE_NONE;
   cbxFilterMode.ItemIndex := FMode;
 end;
 
@@ -8403,13 +8407,13 @@ begin
   end;
 
   case cbxFilterMode.ItemIndex of
-    0:
+    FILTER_MODE_NONE:
     begin
       DeleteTorConfig('EntryNodes');
       DeleteTorConfig('MiddleNodes');
       DeleteTorConfig('ExitNodes');
     end;
-    1:
+    FILTER_MODE_COUNTRIES:
     begin
       if cbUseBridges.Checked then
         DeleteTorConfig('EntryNodes')
@@ -8418,7 +8422,7 @@ begin
       SetTorConfig('MiddleNodes', FilterMiddle);
       SetTorConfig('ExitNodes', FilterExit);
     end;
-    2:
+    FILTER_MODE_FAVORITES:
     begin
       if miReplaceDisabledFavoritesWithCountries.Checked and
         ((FavoritesEntry = '') or (lbFavoritesEntry.HelpContext = 0)) then
@@ -9531,14 +9535,19 @@ var
   ini: TMemIniFile;
   n: Integer;
 begin
-
+  ImmediateApplyOptions := TMenuItem(Sender).Hint = 'ApplyOptions';
+  if ImmediateApplyOptions then
+  begin
+    if not CheckCacheOpConfirmation(TransStr('286') + ': ' + TMenuItem(Sender).Caption) then
+      Exit;
+  end;
   ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
   try
     ParseStr := Explode(';', GetSettings('Templates', IntToStr(TMenuItem(Sender).Tag), '', ini));
     n := Length(ParseStr);
     if n in [5,9] then
     begin
-      if ValidInt(ParseStr[1], 0, 2) then
+      if ValidInt(ParseStr[1], FILTER_MODE_NONE, FILTER_MODE_FAVORITES) then
         cbxFilterMode.ItemIndex := StrToInt(ParseStr[1])
       else
       begin
@@ -9548,7 +9557,6 @@ begin
 
       FUpdated := False;
       RUpdated := False;
-      ImmediateApplyOptions := TMenuItem(Sender).Hint = 'ApplyOptions';
       IgnoreSettings := miIgnoreTplLoadParamsOutsideTheFilter.Checked and ImmediateApplyOptions;
       EmptyCountries := ((ParseStr[2] = '') and (ParseStr[3] = '') and (ParseStr[4] = '')) and miNotLoadEmptyTplData.Checked;
       LoadCountries := (miTplLoadCountries.Checked or IgnoreSettings) and not EmptyCountries;
@@ -9646,49 +9654,38 @@ var
   i, TimeStampIndex, TemplateNameIndex: Integer;
   TimeStamp: Int64;
   TemplateList: TStringList;
-  TemplateName, TimeStampStr: string;
-  Router: TRouterInfo;
-  Search, IsIPv6: Boolean;
+  TemplateName, TimeStampStr, RouterID: string;
+  Search, SingleRow: Boolean;
 begin
-  if lbExitIp.Tag = 1 then
-    SelectedNode := ExitNodeID
+  if SelNodeState then
+  begin
+    RouterID := ExitNodeID;
+    SelectedNode := ExitNodeID;
+    SingleRow := True;
+  end
   else
   begin
     SelectRowPopup(sgCircuitInfo, mnDetails);
     SelectedNode := sgCircuitInfo.Cells[CIRC_INFO_ID, sgCircuitInfo.SelRow];
+    SingleRow := sgCircuitInfo.Selection.Top = sgCircuitInfo.Selection.Bottom;
+    if RoutersDic.ContainsKey(SelectedNode) then
+      RouterID := ''
+    else
+      RouterID := SelectedNode;
   end;
-  miDetailsCopyFingerprint.Caption := SelectedNode;
+  miDetailsExtractData.Hint := RouterID;
 
-  Search := False;
-  IsIPv6 := False;
-  if RoutersDic.TryGetValue(SelectedNode, Router) then
-  begin
-    Search := True;
-    IsIPv6 := Router.IPv6 <> '';
-    miDetailsCopyNickname.Caption := Router.Name;
-    miDetailsCopyIPv4.Caption := Router.IPv4;
-    miDetailsCopyIPv6.Caption := Router.IPv6;
-    SetFallbackDirMenu(miDetailsCopyFallbackDir, SelectedNode, Router);
-    UpdateBridgeCopyMenu(miDetailsCopyBridgeIPv4, SelectedNode, Router, False);
-    UpdateBridgeCopyMenu(miDetailsCopyBridgeIPv6, SelectedNode, Router, True);
-  end;
-
-  miDetailsCopyNickname.Visible := Search;
-  miDetailsCopyIPv4.Visible := Search;
-  miDetailsCopyIPv6.Visible := IsIPv6;
-  miDetailsCopyBridgeIPv4.Visible := Search;
-  miDetailsCopyBridgeIPv6.Visible := IsIPv6;
-
+  Search := InsertExtractMenu(miDetailsExtractData, CONTROL_TYPE_GRID, GRID_CIRC_INFO, EXTRACT_PREVIEW);
   miDetailsUpdateIp.Enabled := ConnectState = 2;
-  miDetailsAddToNodesList.Enabled := Search and (ConnectState <> 1);
+  miDetailsExtractData.Enabled := Search;
+  miDetailsAddToNodesList.Visible := Search and SingleRow and (ConnectState <> 1);
+  miDetailsRelayInfo.Visible := Search and ShowRelayInfo(sgCircuitInfo);
+
+  InsertNodesMenu(miDetailsAddToNodesList, SelectedNode);
+
   miDetailsSelectTemplate.Enabled := False;
-
-  if miDetailsAddToNodesList.Enabled then
-    InsertNodesMenu(miDetailsAddToNodesList, SelectedNode);
-
   if ConnectState = 1 then
     Exit;
-
   miDetailsSelectTemplate.Clear;
   ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
   try
@@ -9717,7 +9714,7 @@ begin
           SelectMenu.Caption := TemplateName;
           SelectMenu.Tag := TimeStamp;
           SelectMenu.Hint := 'ApplyOptions';
-          SelectMenu.OnClick := Tcp.FilterLoadClick;
+          SelectMenu.OnClick := FilterLoadClick;
           miDetailsSelectTemplate.Add(SelectMenu);
         end;
       end;
@@ -9812,7 +9809,8 @@ begin
     aSg.SelCol := 0;
   if aSg.SelCol >= aSg.ColCount then
     aSg.SelCol := aSg.ColCount - 1;
-  TUserGrid(aSg).MoveColRow(aSg.SelCol, aSg.SelRow, True, True);
+  if aSg.Selection.Top = aSg.Selection.Bottom then
+    TUserGrid(aSg).MoveColRow(aSg.SelCol, aSg.SelRow, True, True);
 end;
 
 procedure TTcp.mnFilterPopup(Sender: TObject);
@@ -9879,7 +9877,7 @@ begin
           LoadMenu := TMenuItem.Create(self);
           LoadMenu.Caption := TemplateName;
           LoadMenu.Tag := TimeStamp;
-          LoadMenu.OnClick := Tcp.FilterLoadClick;
+          LoadMenu.OnClick := FilterLoadClick;
           miLoadTemplate.Add(LoadMenu);
 
           DeleteMenu := TMenuItem.Create(self);
@@ -9888,7 +9886,7 @@ begin
             DeleteMenu.Tag := TimeStamp
           else
             DeleteMenu.Tag := 0;
-          DeleteMenu.OnClick := Tcp.FilterDeleteClick;
+          DeleteMenu.OnClick := FilterDeleteClick;
           miDeleteTemplate.Add(DeleteMenu);
         end;
         DeleteMenu := TMenuItem.Create(self);
@@ -9898,7 +9896,7 @@ begin
         DeleteMenu := TMenuItem.Create(self);
         DeleteMenu.Caption := TransStr('264');
         DeleteMenu.Tag := 0;
-        DeleteMenu.OnClick := Tcp.FilterDeleteClick;
+        DeleteMenu.OnClick := FilterDeleteClick;
         miDeleteTemplate.Add(DeleteMenu);
       end
       else
@@ -9976,106 +9974,170 @@ begin
   EditMenuEnableCheck(miLogFind, emFind);
 end;
 
-procedure TTcp.UpdateBridgeCopyMenu(Menu: TMenuItem; RouterID: string; Router: TRouterInfo; UseIPv6: Boolean);
+function TTcp.GetBridgeStr(RouterID: string; RouterInfo: TRouterInfo; UseIPv6: Boolean; Preview: Boolean = False): string;
 var
-  Data, BridgeStr, Transport, IpStr: string;
+  IpStr, HashStr: string;
   BridgeInfo: TBridgeInfo;
 begin
+  Result := '';
   if UseIPv6 then
-    IpStr := Router.IPv6
+    IpStr := RouterInfo.IPv6
   else
-    IpStr := Router.IPv4;
-  Menu.Hint := '';
-  Menu.Caption := '';
-  Menu.Visible := IpStr <> '';
-  if not Menu.Visible then
+    IpStr := RouterInfo.IPv4;
+  if IpStr = '' then
     Exit;
-
+  if Preview then
+    HashStr := Copy(RouterID, 1, 30) + '..'
+  else
+    HashStr := RouterID;
   if BridgesDic.TryGetValue(RouterID, BridgeInfo) then
   begin
     if BridgeInfo.Source <> '' then
     begin
+      IpStr := BridgeInfo.Source;
       if UseIPv6 then
       begin
-        Menu.Visible := False;
-        Exit;
+        if IpInRanges(IpStr, DocRanges) then
+          Exit;
+        IpStr := FormatHost(IpStr, False);
       end;
-      IpStr := FormatHost(BridgeInfo.Source);
     end;
-    BridgeStr := Trim(BridgeInfo.Transport + ' ' + IpStr + ':' + IntToStr(BridgeInfo.Router.Port) + ' ' + RouterID + ' ' + BridgeInfo.Params)
+    Result := Trim(BridgeInfo.Transport + ' ' + IpStr + ':' + IntToStr(BridgeInfo.Router.Port) + ' ' + HashStr + ' ' + BridgeInfo.Params);
+    if Preview and (BridgeInfo.Params <> '') then
+      Result := Copy(Result, 1, Pos(HashStr, Result) + 29) + '...';
   end
   else
-    BridgeStr := '';
-
-  Data := IpStr + ':' + IntToStr(Router.Port) + ' ' + RouterID;
-
-  if TryGetDataFromStr(BridgeStr, ltTransport, Transport) then
-  begin
-    Data := Transport + ' ' + Data;
-    if BridgesDic.ContainsKey(RouterID) then
-      Menu.Hint := BridgeStr
-    else
-      Menu.Hint := Data + Copy(BridgeStr, Pos(RouterID, BridgeStr) + Length(RouterID));
-    Data := Data + '...';
-  end;
-  Menu.Caption := Data;
+    Result := IpStr + ':' + IntToStr(RouterInfo.Port) + ' ' + HashStr;
 end;
 
-function TTcp.GetFallbackStr(RouterID: string; RouterInfo: TRouterInfo): string;
+function TTcp.GetRouterStrFlags(Flags: TRouterFlags): string;
 begin
+  if rfAuthority in Flags then Result := Result + 'Authority';
+  if rfBadExit in Flags then Result := Result + ' BadExit';
+  if rfExit in Flags then Result := Result + ' Exit';
+  if rfFast in Flags then Result := Result + ' Fast';
+  if rfGuard in Flags then Result := Result + ' Guard';
+  if rfHSDir in Flags then Result := Result + ' HSDir';
+  if rfMiddleOnly in Flags then Result := Result + ' MiddleOnly';
+  if rfStable in Flags then Result := Result + ' Stable';
+  if rfV2Dir in Flags then Result := Result + ' V2Dir';
+  Result := Trim(Result);
+end;
+
+function TTcp.GetRouterCsvData(RouterID: string; RouterInfo: TRouterInfo; Preview: Boolean = False): string;
+var
+  HashStr, IPv6Str, CountryStr, PingStr, FlagsStr, TypeStr, AliveStr: string;
+  GeoIpInfo: TGeoIpInfo;
+  PingData: Integer;
+begin
+  if GeoIpDic.TryGetValue(RouterInfo.IPv4, GeoIpInfo) then
+  begin
+    PingData := GeoIpInfo.ping;
+    CountryStr := CountryCodes[GeoIpInfo.cc]
+  end
+  else
+  begin
+    PingData := 0;
+    CountryStr := CountryCodes[DEFAULT_COUNTRY_ID];
+  end;
+  if PingData > 0 then
+    PingStr := IntToStr(PingData)
+  else
+    PingStr := NONE_CHAR;
+  if Preview then
+  begin
+    HashStr := Copy(RouterID, 1, 10) + '..';
+    IPv6Str := '';
+    PingStr := PingStr + '..';
+    TypeStr := '';
+    AliveStr := '';
+    FlagsStr := '';
+  end
+  else
+  begin
+    HashStr := RouterID;
+    if FormatIPv6OnExtract then
+      IPv6Str := RouterInfo.IPv6 + ','
+    else
+      IPv6Str := RemoveBrackets(RouterInfo.IPv6, True) + ',';
+    PingStr := PingStr + ',';
+    if rfRelay in RouterInfo.Flags then
+      TypeStr := 'Relay,'
+    else
+      TypeStr := 'Bridge,';
+    if RouterInfo.Params and ROUTER_ALIVE <> 0 then
+      AliveStr := 'Alive,'
+    else
+      AliveStr := NONE_CHAR + ',';
+    FlagsStr := GetRouterStrFlags(RouterInfo.Flags);
+  end;
+  Result := HashStr + ',' +
+    RouterInfo.Name + ',' +
+    RouterInfo.IPv4 + ',' + IPv6Str +
+    CountryStr + ',' + TransStr(CountryStr) + ',' +
+    IntToStr(RouterInfo.Bandwidth) + ',' +
+    IntToStr(RouterInfo.Port) + ',' +
+    RouterInfo.Version + ',' +
+    PingStr + TypeStr + AliveStr + FlagsStr;
+end;
+
+function TTcp.GetFallbackStr(RouterID: string; RouterInfo: TRouterInfo; Preview: Boolean = False): string;
+begin
+  if Preview then
+    RouterID := Copy(RouterID, 1, 30) + '..';
   Result := RouterInfo.IPv4;
   if RouterInfo.DirPort <> 0 then
     Result := Result + ':' + IntToStr(RouterInfo.DirPort);
   Result := Result + ' orport=' + IntToStr(RouterInfo.Port) + ' id=' + RouterID;
   if RouterInfo.IPv6 <> '' then
-    Result := Result + ' ipv6=' + RouterInfo.IPv6 + ':' + IntToStr(RouterInfo.Port);
+  begin
+    if Preview then
+      Result := Result + ' ipv6=..'
+    else
+      Result := Result + ' ipv6=' + RouterInfo.IPv6 + ':' + IntToStr(RouterInfo.Port);
+  end;
 end;
 
-procedure TTcp.SetFallbackDirMenu(Menu: TMenuItem; RouterID: string; RouterInfo: TRouterInfo);
-const
-  LIMIT = 85;
+function TTcp.ShowRelayInfo(aSg: TStringGrid; Handle: Boolean = False): Boolean;
 var
-  Str: string;
-  DataLength: Integer;
-  BridgeInfo: TBridgeInfo;
-  ShowData: Boolean;
+  SelCount, i: Integer;
 begin
-  if rfRelay in RouterInfo.Flags then
-    ShowData := True
+  Result := False;
+  if (aSg.Tag = GRID_CIRC_INFO) and SelNodeState then
+  begin
+    if Handle then
+      OpenMetricsUrl('#details', SelectedNode);
+  end
   else
   begin
-    if BridgesDic.TryGetValue(RouterID, BridgeInfo) then
-      ShowData := BridgeInfo.Transport = ''
-    else
-      ShowData := False;
+    SelCount := aSg.Selection.Bottom - aSg.Selection.Top + 1;
+    if SelCount > 5 then
+      Exit;
+    if Handle then
+    begin
+      for i := aSg.Selection.Top to aSg.Selection.Bottom do
+        OpenMetricsUrl('#details', aSg.Cells[0, i]);
+    end;
   end;
-  Menu.Visible := ShowData;
-  if ShowData then
-  begin
-    Str := GetFallbackStr(RouterID, RouterInfo);
-    Menu.Hint := Str;
-    DataLength := Length(Str);
-    if DataLength > LIMIT then
-      Str := Copy(Str, 1, LIMIT) + '...';
-    Menu.Caption := Str;
-  end;
+  Result := True;
 end;
 
 procedure TTcp.mnRoutersPopup(Sender: TObject);
 var
-  State, ClearState, ActionState, TypeState, NotStarting, FindPorts: Boolean;
+  State, ClearState, ActionState, TypeState, NotStarting, FindPorts, SingleRow: Boolean;
   Router: TRouterInfo;
   RouterID: string;
 begin
   SelectRowPopup(sgRouters, mnRouters);
+  SingleRow := sgRouters.Selection.Top = sgRouters.Selection.Bottom;
   NotStarting := ConnectState <> 1;
   State := not IsEmptyRow(sgRouters, sgRouters.SelRow);
 
-  miRtCopy.Visible := State;
-  miRtRelayInfo.Visible := State;
-  miRtAddToNodesList.Visible := State;
+  miRtExtractData.Visible := State;
+  miRtRelayInfo.Visible := State and ShowRelayInfo(sgRouters);
+  miRtAddToNodesList.Visible := State and SingleRow;
   miRtAddToNodesList.Enabled := NotStarting;
-  miRtSelectAsBridge.Visible := State;
+  miRtSelectAsBridge.Visible := State and SingleRow;
   miRtSelectAsBridge.Enabled := NotStarting;
 
   miClearRouters.Enabled := NotStarting;
@@ -10100,42 +10162,39 @@ begin
   miConvertCountryNodes.Enabled := ActionState;
   miIgnoreConvertExcludeNodes.Enabled := ActionState and TypeState;
   miAvoidAddingIncorrectNodes.Enabled := ActionState and TypeState;
-
   MenuSelectPrepare(miRtFilterSA, miRtFilterUA);
 
   if State then
   begin
     RouterID := sgRouters.Cells[ROUTER_ID, sgRouters.SelRow];
-    if RoutersDic.TryGetValue(RouterID, Router) then
+    if SingleRow then
     begin
-      miRtCopyNickname.Caption := Router.Name;
-      miRtCopyFingerprint.Caption := RouterID;
-      miRtCopyIPv4.Caption := Router.IPv4;
-      miRtCopyIPv6.Caption := Router.IPv6;
-      miRtCopyIPv6.Visible := Router.IPv6 <> '';
-      SetFallbackDirMenu(miRtCopyFallbackDir, RouterID, Router);
-      UpdateBridgeCopyMenu(miRtCopyBridgeIPv4, RouterID, Router, False);
-      UpdateBridgeCopyMenu(miRtCopyBridgeIPv6, RouterID, Router, True);
-      miRtSelectAsBridgeIPv4.Caption := miRtCopyBridgeIPv4.Caption;
-      miRtSelectAsBridgeIPv4.Hint := miRtCopyBridgeIPv4.Hint;
-      miRtSelectAsBridgeIPv4.Visible := miRtCopyBridgeIPv4.Caption <> '';
-      miRtSelectAsBridgeIPv6.Caption := miRtCopyBridgeIPv6.Caption;
-      miRtSelectAsBridgeIPv6.Hint := miRtCopyBridgeIPv6.Hint;
-      miRtSelectAsBridgeIPv6.Visible := miRtCopyBridgeIPv6.Caption <> '';
-
-      if ReachablePortsExists then
+      if RoutersDic.TryGetValue(RouterID, Router) then
       begin
-        FindPorts := PortsDic.ContainsKey(Router.Port);
-        PortsDic.Clear;
-      end
-      else
-        FindPorts := True;
-      miRtSelectAsBridge.Visible := (cbxServerMode.ItemIndex = SERVER_MODE_NONE) and
-        (((sgRouters.Cells[ROUTER_EXCLUDE_NODES, sgRouters.SelRow] <> EXCLUDE_CHAR) and
-        (Router.Params and ROUTER_ALIVE <> 0) and FindPorts) or not miDisableSelectionUnSuitableAsBridge.Checked);
-      miRtDisableBridges.Visible := cbUseBridges.Checked;
+        if ReachablePortsExists then
+        begin
+          FindPorts := PortsDic.ContainsKey(Router.Port);
+          PortsDic.Clear;
+        end
+        else
+          FindPorts := True;
+        miRtSelectAsBridge.Visible := (cbxServerMode.ItemIndex = SERVER_MODE_NONE) and
+          (((sgRouters.Cells[ROUTER_EXCLUDE_NODES, sgRouters.SelRow] <> EXCLUDE_CHAR) and
+          (Router.Params and ROUTER_ALIVE <> 0) and FindPorts) or not miDisableSelectionUnSuitableAsBridge.Checked);
+        if miRtSelectAsBridge.Visible then
+        begin
+          miRtSelectAsBridgeIPv4.Caption := GetBridgeStr(RouterID, Router, False, True);
+          miRtSelectAsBridgeIPv4.Hint := RouterID;
+          miRtSelectAsBridgeIPv4.Visible := miRtSelectAsBridgeIPv4.Caption <> '';
+          miRtSelectAsBridgeIPv6.Caption := GetBridgeStr(RouterID, Router, True, True);
+          miRtSelectAsBridgeIPv6.Hint := RouterID;
+          miRtSelectAsBridgeIPv6.Visible := miRtSelectAsBridgeIPv6.Caption <> '';
+          miRtDisableBridges.Visible := cbUseBridges.Checked;
+        end;
+      end;
+      InsertNodesMenu(miRtAddToNodesList, RouterID, False);
     end;
-    InsertNodesMenu(miRtAddToNodesList, RouterID, False);
+    InsertExtractMenu(miRtExtractData, CONTROL_TYPE_GRID, GRID_ROUTERS, EXTRACT_PREVIEW);
   end;
 end;
 
@@ -10228,7 +10287,7 @@ begin
         HostMenu := TMenuItem.Create(self);
         HostMenu.Caption := ParseStr[i];
         HostMenu.Tag := Integer(Search);
-        HostMenu.OnClick := Tcp.BindToExitNodeClick;
+        HostMenu.OnClick := BindToExitNodeClick;
         miStreamsBindToExitNode.Add(HostMenu);
       end;
       miStreamsBindToExitNode.Enabled := True;
@@ -10347,7 +10406,6 @@ begin
     MemoID := MEMO_FALLBACK_DIRS;
 
   miClearMenu.Tag := MemoID;
-  miExtractData.Tag := MemoID;
 
   if IsUserBridges then
   begin
@@ -10369,18 +10427,13 @@ begin
   EditMenuEnableCheck(miFind, emFind);
 
   if IsBridgeEdit or IsFallbackDirEdit then
-  begin
-    ExtractMemoData(MemoID, EXTRACT_PREVIEW);
-    miExtractData.Visible := miExtractPorts.Visible or miExtractIpv4.Visible or
-      miExtractIpv6.Visible or miExtractFingerprints.Visible or miExtractIpv4Bridges.Visible or
-      miExtractIpv6Bridges.Visible or miExtractFallbackDirs.Visible;
-  end
+    miExtractData.Visible := InsertExtractMenu(miExtractData, CONTROL_TYPE_MEMO, MemoID, EXTRACT_PREVIEW)
   else
     miExtractData.Visible := False;
 
   if Control <> nil then
   begin
-    miSortData.Visible := Control.Tag in [LIST_BRIDGES..LIST_NODES_LIST];
+    miSortData.Visible := Control.Tag in [MEMO_BRIDGES..MEMO_NODES_LIST];
     if miSortData.Visible then
     begin
       if not (Control.SortType in [SORT_NONE..SORT_DESC]) then
@@ -10416,12 +10469,12 @@ begin
       else
         Control.SortType := SORT_ASC;
     end;
-    if (State = SORT_NONE) and (Control.Tag in [LIST_BRIDGES, LIST_FALLBACK_DIRS, LIST_NODES_LIST]) then
+    if (State = SORT_NONE) and (Control.Tag in [MEMO_BRIDGES, MEMO_FALLBACK_DIRS, MEMO_NODES_LIST]) then
     begin
       case Control.Tag of
-        LIST_BRIDGES: UpdateBridgesControls(True, True);
-        LIST_FALLBACK_DIRS: UpdateFallbackDirControls;
-        LIST_NODES_LIST: LoadNodesList;
+        MEMO_BRIDGES: UpdateBridgesControls(True, True);
+        MEMO_FALLBACK_DIRS: UpdateFallbackDirControls;
+        MEMO_NODES_LIST: LoadNodesList;
       end;
     end
     else
@@ -10438,18 +10491,64 @@ begin
   end;
 end;
 
-procedure TTcp.ExtractMemoData(MemoID: Integer; ExtractType: Integer);
+procedure TTcp.SetExtractOptions(Sender: TObject);
+begin
+  case TMenuItem(Sender).Tag of
+    OPTION_FORMAT_IPV6:
+    begin
+      FormatIPv6OnExtract := TMenuItem(Sender).Checked;
+      SetConfigBoolean('Extractor', 'FormatIPv6OnExtract', FormatIPv6OnExtract);
+    end;
+    OPTION_SORT:
+    begin
+      SortOnExtract := TMenuItem(Sender).Checked;
+      SetConfigBoolean('Extractor', 'SortOnExtract', SortOnExtract);
+    end;
+    OPTION_REMOVE_DUPLICATES:
+    begin
+      RemoveDuplicateOnExtract := TMenuItem(Sender).Checked;
+      SetConfigBoolean('Extractor', 'RemoveDuplicateOnExtract', RemoveDuplicateOnExtract);
+    end;
+    OPTION_FORMAT_CODES:
+    begin
+      FormatCodesOnExtract := TMenuItem(Sender).Checked;
+      SetConfigBoolean('Extractor', 'FormatCodesOnExtract', FormatCodesOnExtract);
+    end;
+ end;
+end;
+
+procedure TTcp.SetExtractDelimiter(Sender: TObject);
+begin
+  ExtractDelimiterType := TMenuItem(Sender).Tag;
+  SetConfigInteger('Extractor', 'ExtractDelimiterType', ExtractDelimiterType);
+end;
+
+procedure TTcp.ExtractDataClick(Sender: TObject);
 var
+  ExtractMenu: TMenuItem;
+begin
+  ExtractMenu := TMenuItem(Sender).Parent;
+  InsertExtractMenu(ExtractMenu, ExtractMenu.HelpContext, ExtractMenu.Tag, TMenuItem(Sender).Tag);
+end;
+
+function TTcp.InsertExtractMenu(ParentMenu: TMenuItem; ControlType, ControlID, ExtractType: Integer): Boolean;
+var
+  ControlMemo: TMemo;
+  ControlGrid: TStringGrid;
+  DelimiterMenu, OptionsMenu: TMenuItem;
   lr, ls: TStringList;
   i: Integer;
-  PreviewState: Boolean;
-  CurrentMemo: TMemo;
+  PreviewState, ValidateData: Boolean;
   FallbackDir: TFallbackDir;
+  Router: TRouterInfo;
   Bridge: TBridge;
+  BridgeInfo: TBridgeInfo;
   DataStr, Delimiter: string;
-  PortStr, IPv4Str, IPv6Str, HashStr, IPv4BridgesStr, IPv6BridgesStr, FallbackDirsStr: string;
-  PortCount, IPv4Count, IPv6Count, HashCount, IPv4BridgesCount, IPv6BridgesCount, FallbackDirsCount: Integer;
   UniqueList: TDictionary<string, Byte>;
+  PortStr, IPv4Str, IPv6Str, HashStr, IPv4BridgesStr, IPv6BridgesStr,
+  FallbackDirsStr, NicknameStr, CountryCodeStr, CsvStr: string;
+  PortCount, IPv4Count, IPv6Count, HashCount, IPv4BridgesCount, IPv6BridgesCount,
+  FallbackDirsCount, NicknameCount, CountryCodeCount, CsvCount: Integer;
 
   procedure UpdateMenu(Menu: TMenuItem; DataStr: string; Count: Integer);
   var
@@ -10459,19 +10558,26 @@ var
       0: Str := '';
       1: Str := DataStr;
       else
-        Str := DataStr + '.. (' + IntToStr(Count) + ')';
+      begin
+        Str := (DataStr).Trim(['.']) + '.. (' + IntToStr(Count) + ')';
+      end;
     end;
     Menu.Visible := Count > 0;
     Menu.Caption := Str;
+    Result := Result or Menu.Visible;
   end;
 
   procedure FormatData(var Str: string; var Count: Integer; Data: string; CurrentType: Integer);
   begin
+    case CurrentType of
+      EXTRACT_COUNTRY_CODE: if FormatCodesOnExtract then Data := '{' + Data + '}';
+      EXTRACT_IPV6: if not FormatIPv6OnExtract then Data := RemoveBrackets(Data, True);
+    end;
     if PreviewState then
     begin
       if Count = 0 then
         Str := Data;
-      if miRemoveDuplicateOnExtract.Checked then
+      if RemoveDuplicateOnExtract then
       begin
         if UniqueList.ContainsKey(Data) then
           Exit
@@ -10488,7 +10594,7 @@ var
     begin
       if ExtractType = CurrentType then
       begin
-        if miRemoveDuplicateOnExtract.Checked then
+        if RemoveDuplicateOnExtract then
         begin
           if UniqueList.ContainsKey(Data) then
             Exit
@@ -10509,6 +10615,7 @@ var
   end;
 
 begin
+  Result := False;
   PortCount := 0;
   IPv4Count := 0;
   IPv6Count := 0;
@@ -10516,6 +10623,9 @@ begin
   IPv4BridgesCount := 0;
   IPv6BridgesCount := 0;
   FallbackDirsCount := 0;
+  NicknameCount := 0;
+  CountryCodeCount := 0;
+  CsvCount := 0;
   PortStr := '';
   IPv4Str := '';
   IPv6Str := '';
@@ -10523,86 +10633,207 @@ begin
   IPv4BridgesStr := '';
   IPv6BridgesStr := '';
   FallbackDirsStr := '';
+  NicknameStr := '';
+  CountryCodeStr := '';
+  CsvStr := '';
+  ParentMenu.Clear;
+  ParentMenu.Tag := ControlID;
+  ParentMenu.HelpContext := ControlType;
+  InsertMenuItem(ParentMenu, EXTRACT_COUNTRY_CODE, 57, '', ExtractDataClick);
+  InsertMenuItem(ParentMenu, EXTRACT_PORT, 72, '', ExtractDataClick);
+  InsertMenuItem(ParentMenu, EXTRACT_NICKNAME, 32, '', ExtractDataClick);
+  InsertMenuItem(ParentMenu, EXTRACT_IPV4, 33, '', ExtractDataClick);
+  InsertMenuItem(ParentMenu, EXTRACT_IPV6, 34, '', ExtractDataClick);
+  InsertMenuItem(ParentMenu, EXTRACT_HASH, 23, '', ExtractDataClick);
+  InsertMenuItem(ParentMenu, 0, -1, '-');
+  InsertMenuItem(ParentMenu, EXTRACT_IPV4_BRIDGE, 59, '', ExtractDataClick);
+  InsertMenuItem(ParentMenu, EXTRACT_IPV6_BRIDGE, 60, '', ExtractDataClick);
+  InsertMenuItem(ParentMenu, 0, -1, '-');
+  InsertMenuItem(ParentMenu, EXTRACT_FALLBACK_DIR, 54, '', ExtractDataClick);
+  InsertMenuItem(ParentMenu, 0, -1, '-');
+  InsertMenuItem(ParentMenu, EXTRACT_CSV, 73, '', ExtractDataClick);
+  InsertMenuItem(ParentMenu, 0, -1, '-');
+  OptionsMenu := InsertMenuItem(ParentMenu, 0, 11, TransStr('107'));
+  InsertMenuItem(OptionsMenu, OPTION_FORMAT_IPV6, -1, TransStr('670'), SetExtractOptions, FormatIPv6OnExtract, True);
+  InsertMenuItem(OptionsMenu, OPTION_FORMAT_CODES, -1, TransStr('679'), SetExtractOptions, FormatCodesOnExtract, True);
+  InsertMenuItem(OptionsMenu, OPTION_SORT, -1, TransStr('672'), SetExtractOptions, SortOnExtract, True);
+  InsertMenuItem(OptionsMenu, OPTION_REMOVE_DUPLICATES, -1, TransStr('671'), SetExtractOptions, RemoveDuplicateOnExtract, True);
+  DelimiterMenu := InsertMenuItem(OptionsMenu, 0, -1, TransStr('673'));
+  InsertMenuItem(DelimiterMenu, DELIM_AUTO, -1, TransStr('674'), SetExtractDelimiter, ExtractDelimiterType = DELIM_AUTO, False, True);
+  InsertMenuItem(DelimiterMenu, DELIM_NEW_LINE, -1, TransStr('675'), SetExtractDelimiter, ExtractDelimiterType = DELIM_NEW_LINE , False, True);
+  InsertMenuItem(DelimiterMenu, DELIM_COMMA, -1, TransStr('676'), SetExtractDelimiter, ExtractDelimiterType = DELIM_COMMA, False, True);
 
-  if (miExtractDelimiterAuto.Checked and (ExtractType <> EXTRACT_PORT)) or miExtractDelimiterLineBreak.Checked then
-    Delimiter := BR
+  if ((ExtractDelimiterType = DELIM_AUTO) and not (ExtractType in [EXTRACT_PORT, EXTRACT_COUNTRY_CODE]))
+    or (ExtractDelimiterType = DELIM_NEW_LINE) or (ExtractType = EXTRACT_CSV) then
+      Delimiter := BR
   else
     Delimiter := ',';
 
   PreviewState := ExtractType = EXTRACT_PREVIEW;
-  case MemoID of
-    MEMO_BRIDGES: CurrentMemo := meBridges;
-    MEMO_FALLBACK_DIRS: CurrentMemo := meFallbackDirs;
-    else
-      CurrentMemo := nil;
-  end;
+  ControlMemo := nil;
+  ControlGrid := nil;
 
-  if CurrentMemo <> nil then
+  case ControlType of
+    CONTROL_TYPE_MEMO:
+    begin
+      case ControlID of
+        MEMO_BRIDGES: ControlMemo := meBridges;
+        MEMO_FALLBACK_DIRS: ControlMemo := meFallbackDirs;
+      end;
+    end;
+    CONTROL_TYPE_GRID:
+    begin
+      case ControlID of
+        GRID_ROUTERS: ControlGrid := sgRouters;
+        GRID_CIRC_INFO: ControlGrid := sgCircuitInfo;
+      end;
+    end;
+  end;
+  if Assigned(ControlMemo) or Assigned(ControlGrid) then
   begin
     UniqueList := TDictionary<string, Byte>.Create;
     ls := TStringList.Create;
     lr := TStringList.Create;
     try
-      if CurrentMemo.SelLength > 0 then
-        ls.Text := Trim(CurrentMemo.SelText)
-      else
-        ls.Text := Trim(CurrentMemo.Text);
-      if ls.Text <> '' then
-      begin
-        case MemoID of
-          MEMO_BRIDGES:
+      case ControlType of
+        CONTROL_TYPE_MEMO:
+        begin
+          if ControlMemo.SelLength > 0 then
+            ls.Text := Trim(ControlMemo.SelText)
+          else
+            ls.Text := Trim(ControlMemo.Text);
+          if ls.Text <> '' then
           begin
-            for i := 0 to ls.Count - 1 do
-            begin
-              if TryParseBridge(Trim(ls[i]), Bridge, OptionsChanged or (CurrentMemo.SelLength > 0), miFormatIPv6OnExtract.Checked) then
+            ValidateData := OptionsChanged or (ControlMemo.SelLength > 0);
+            case ControlID of
+              MEMO_BRIDGES:
               begin
-                FormatData(PortStr, PortCount, IntToStr(Bridge.Port), EXTRACT_PORT);
-                if Bridge.Hash <> '' then
-                  FormatData(HashStr, HashCount, Bridge.Hash, EXTRACT_HASH);
-                if IsIpv4(Bridge.Ip) then
+                for i := 0 to ls.Count - 1 do
                 begin
-                  FormatData(IPv4Str, IPv4Count, Bridge.Ip, EXTRACT_IPV4);
-                  if (Bridge.Transport = '') and (Bridge.Hash <> '') then
-                    FormatData(FallbackDirsStr, FallbackDirsCount, Bridge.Ip + ' orport=' + IntToStr(Bridge.Port) + ' id=' + Bridge.Hash, EXTRACT_FALLBACK_DIR);
-                end
-                else
-                  FormatData(IPv6Str, IPv6Count, Bridge.Ip, EXTRACT_IPV6);
+                  if TryParseBridge(Trim(ls[i]), Bridge, ValidateData, FormatIPv6OnExtract) then
+                  begin
+                    FormatData(PortStr, PortCount, IntToStr(Bridge.Port), EXTRACT_PORT);
+                    if Bridge.Hash <> '' then
+                      FormatData(HashStr, HashCount, Bridge.Hash, EXTRACT_HASH);
+                    if GetAddressType(Bridge.Ip) = atIPv4 then
+                    begin
+                      FormatData(CountryCodeStr, CountryCodeCount, CountryCodes[GetCountryValue(Bridge.Ip)], EXTRACT_COUNTRY_CODE);
+                      FormatData(IPv4Str, IPv4Count, Bridge.Ip, EXTRACT_IPV4);
+                      if (Bridge.Transport = '') and (Bridge.Hash <> '') then
+                        FormatData(FallbackDirsStr, FallbackDirsCount, Bridge.Ip + ' orport=' + IntToStr(Bridge.Port) + ' id=' + Bridge.Hash, EXTRACT_FALLBACK_DIR);
+                    end
+                    else
+                    begin
+                      if RoutersDic.TryGetValue(Bridge.Hash, Router) then
+                        FormatData(CountryCodeStr, CountryCodeCount, CountryCodes[GetCountryValue(Router.IPv4)], EXTRACT_COUNTRY_CODE);
+                      FormatData(IPv6Str, IPv6Count, Bridge.Ip, EXTRACT_IPV6);
+                    end;
+                  end;
+                end;
+              end;
+              MEMO_FALLBACK_DIRS:
+              begin
+                for i := 0 to ls.Count - 1 do
+                begin
+                  if TryParseFallbackDir(Trim(ls[i]), FallbackDir, ValidateData, FormatIPv6OnExtract) then
+                  begin
+                    FormatData(CountryCodeStr, CountryCodeCount, CountryCodes[GetCountryValue(FallbackDir.IPv4)], EXTRACT_COUNTRY_CODE);
+                    FormatData(PortStr, PortCount, IntToStr(FallbackDir.OrPort), EXTRACT_PORT);
+                    FormatData(HashStr, HashCount, FallbackDir.Hash, EXTRACT_HASH);
+                    FormatData(IPv4Str, IPv4Count, FallbackDir.IPv4, EXTRACT_IPV4);
+                    FormatData(IPv4BridgesStr, IPv4BridgesCount, FallbackDir.IPv4 + ':' + IntToStr(FallbackDir.OrPort) + ' ' + FallbackDir.Hash, EXTRACT_IPV4_BRIDGE);
+                    if FallbackDir.IPv6 <> '' then
+                    begin
+                      FormatData(IPv6Str, IPv6Count, FallbackDir.IPv6, EXTRACT_IPV6);
+                      FormatData(IPv6BridgesStr, IPv6BridgesCount, FormatHost(FallbackDir.IPv6, False) + ':' + IntToStr(FallbackDir.OrPort) + ' ' + FallbackDir.Hash, EXTRACT_IPV6_BRIDGE);
+                    end;
+                  end;
+                end;
               end;
             end;
           end;
-          MEMO_FALLBACK_DIRS:
+        end;
+        CONTROL_TYPE_GRID:
+        begin
+          if ParentMenu.Hint = '' then
           begin
-            for i := 0 to ls.Count - 1 do
-            begin
-              if TryParseFallbackDir(Trim(ls[i]), FallbackDir, OptionsChanged or (CurrentMemo.SelLength > 0), miFormatIPv6OnExtract.Checked) then
+            for i := ControlGrid.Selection.Top to ControlGrid.Selection.Bottom do
+              ls.Append(ControlGrid.Cells[0, i]);
+          end
+          else
+            ls.Text := ParentMenu.Hint;
+          if ls.Text <> '' then
+          begin
+            case ControlID of
+              GRID_ROUTERS, GRID_CIRC_INFO:
               begin
-                FormatData(PortStr, PortCount, IntToStr(FallbackDir.OrPort), EXTRACT_PORT);
-                FormatData(HashStr, HashCount, FallbackDir.Hash, EXTRACT_HASH);
-                FormatData(IPv4Str, IPv4Count, FallbackDir.IPv4, EXTRACT_IPV4);
-                FormatData(IPv4BridgesStr, IPv4BridgesCount, FallbackDir.IPv4 + ':' + IntToStr(FallbackDir.OrPort) + ' ' + FallbackDir.Hash, EXTRACT_IPV4_BRIDGE);
-                if FallbackDir.IPv6 <> '' then
+                for i := 0 to ls.Count - 1 do
                 begin
-                  FormatData(IPv6Str, IPv6Count, FallbackDir.IPv6, EXTRACT_IPV6);
-                  FormatData(IPv6BridgesStr, IPv6BridgesCount, FormatHost(FallbackDir.IPv6) + ':' + IntToStr(FallbackDir.OrPort) + ' ' + FallbackDir.Hash, EXTRACT_IPV6_BRIDGE);
+                  if RoutersDic.TryGetValue(ls[i], Router) then
+                  begin
+                    FormatData(CountryCodeStr, CountryCodeCount, CountryCodes[GetCountryValue(Router.IPv4)], EXTRACT_COUNTRY_CODE);
+                    FormatData(PortStr, PortCount, IntToStr(Router.Port), EXTRACT_PORT);
+                    FormatData(NicknameStr, NicknameCount, Router.Name, EXTRACT_NICKNAME);
+                    FormatData(HashStr, HashCount, ls[i], EXTRACT_HASH);
+                    FormatData(IPv4Str, IPv4Count, Router.IPv4, EXTRACT_IPV4);
+                    FormatData(IPv4BridgesStr, IPv4BridgesCount, GetBridgeStr(ls[i], Router, False, PreviewState), EXTRACT_IPV4_BRIDGE);
+                    if Router.IPv6 <> '' then
+                    begin
+                      FormatData(IPv6Str, IPv6Count, Router.IPv6, EXTRACT_IPV6);
+                      DataStr := GetBridgeStr(ls[i], Router, True, PreviewState);
+                      if DataStr <> ''then
+                        FormatData(IPv6BridgesStr, IPv6BridgesCount, DataStr, EXTRACT_IPV6_BRIDGE);
+                    end;
+                    if rfRelay in Router.Flags then
+                      FormatData(FallbackDirsStr, FallbackDirsCount, GetFallbackStr(ls[i], Router, PreviewState), EXTRACT_FALLBACK_DIR)
+                    else
+                    begin
+                      if BridgesDic.TryGetValue(ls[i], BridgeInfo) then
+                      begin
+                        if BridgeInfo.Transport = '' then
+                          FormatData(FallbackDirsStr, FallbackDirsCount, GetFallbackStr(ls[i], Router, PreviewState), EXTRACT_FALLBACK_DIR)
+                      end;
+                    end;
+                    FormatData(CsvStr, CsvCount, GetRouterCsvData(ls[i], Router, PreviewState), EXTRACT_CSV);
+                  end
+                  else
+                  begin
+                    if ParentMenu.Hint <> '' then
+                      FormatData(HashStr, HashCount, ls[i], EXTRACT_HASH);
+                  end;
                 end;
               end;
             end;
           end;
         end;
       end;
+
       if ExtractType = EXTRACT_PREVIEW then
       begin
-        UpdateMenu(miExtractPorts, PortStr, PortCount);
-        UpdateMenu(miExtractIpv4, IPv4Str, IPv4Count);
-        UpdateMenu(miExtractIpv6, IPv6Str, IPv6Count);
-        UpdateMenu(miExtractFingerprints, HashStr, HashCount);
-        UpdateMenu(miExtractIpv4Bridges, IPv4BridgesStr, IPv4BridgesCount);
-        UpdateMenu(miExtractIpv6Bridges, IPv6BridgesStr, IPv6BridgesCount);
-        UpdateMenu(miExtractFallbackDirs, FallbackDirsStr, FallbackDirsCount);
+        for i := 0 to ParentMenu.Count - 1 do
+        begin
+          if ParentMenu.Items[i].ImageIndex <> -1 then
+          begin
+            case ParentMenu.Items[i].Tag of
+              EXTRACT_PORT: UpdateMenu(ParentMenu.Items[i], PortStr, PortCount);
+              EXTRACT_IPV4: UpdateMenu(ParentMenu.Items[i], IPv4Str, IPv4Count);
+              EXTRACT_IPV6: UpdateMenu(ParentMenu.Items[i], IPv6Str, IPv6Count);
+              EXTRACT_HASH: UpdateMenu(ParentMenu.Items[i], HashStr, HashCount);
+              EXTRACT_IPV4_BRIDGE: UpdateMenu(ParentMenu.Items[i], IPv4BridgesStr, IPv4BridgesCount);
+              EXTRACT_IPV6_BRIDGE: UpdateMenu(ParentMenu.Items[i], IPv6BridgesStr, IPv6BridgesCount);
+              EXTRACT_FALLBACK_DIR: UpdateMenu(ParentMenu.Items[i], FallbackDirsStr, FallbackDirsCount);
+              EXTRACT_NICKNAME: UpdateMenu(ParentMenu.Items[i], NicknameStr, NicknameCount);
+              EXTRACT_COUNTRY_CODE: UpdateMenu(ParentMenu.Items[i], CountryCodeStr, CountryCodeCount);
+              EXTRACT_CSV: UpdateMenu(ParentMenu.Items[i], CsvStr, CsvCount);
+            end;
+          end;
+        end;
+        if not Result then
+          ParentMenu.Clear;
       end
       else
       begin
-        if miSortOnExtract.Checked then
+        if SortOnExtract then
         begin
           if ExtractType = EXTRACT_HASH then
             lr.Sort
@@ -10641,6 +10872,13 @@ begin
   end
   else
     if paButtons.CanFocus then paButtons.SetFocus;
+end;
+
+procedure TTcp.lbSelectedRoutersMouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+begin
+  if (Button = mbLeft) and (ssDouble in Shift) then
+    GridSelectAll(sgRouters);
 end;
 
 procedure TTcp.lbServerInfoMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
@@ -11558,6 +11796,7 @@ var
   Bridge: TBridge;
   FallbackDir: TFallbackDir;
   CurrentMemo: TMemo;
+  NeedUpdate: Boolean;
 
   procedure DeleteListData(IpStr, PortStr: string);
   begin
@@ -11684,16 +11923,16 @@ begin
           end;
         end;
       end;
-
-      if (TotalScans > 0) or (CurrentScanPurpose = spNewBridges) then
+      NeedUpdate := (TotalScans > 0) or (CurrentScanPurpose = spNewBridges);
+      if AutoScanStage = 2 then
       begin
-        if AutoScanStage = 2 then
-        begin
-          if ConnectState <> 0 then
-            AutoScanStage := 3
-          else
-            AutoScanStage := 0;
-        end;
+        if (ConnectState <> 0) and NeedUpdate then
+          AutoScanStage := 3
+        else
+          AutoScanStage := 0;
+      end;
+      if NeedUpdate then
+      begin
         LoadConsensus;
         case CurrentScanPurpose of
           spNewBridges:
@@ -14346,7 +14585,7 @@ begin
     end;
     if DefaultState then
     begin
-      cbxTrayIconType.ItemIndex := 0;  
+      cbxTrayIconType.ItemIndex := 0;
       LoadIconsFromResource(lsTray, 'ICON_TRAY_NORMAL');
     end;
     LastTrayIconType := cbxTrayIconType.ItemIndex;
@@ -14356,7 +14595,7 @@ begin
   else
     Index := ConnectState;
   if tiTray.IconIndex = Index then
-    tiTray.IconIndex := -1;    
+    tiTray.IconIndex := -1;
   tiTray.IconIndex := Index;
   tiTray.Visible := True;
 end;
@@ -14702,6 +14941,13 @@ begin
   ResetFocus;
 end;
 
+procedure TTcp.sbShowLogMouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+begin
+  if (ssDouble in Shift) and (Button = mbLeft) then
+    CheckLogAutoScroll(True);
+end;
+
 procedure TTcp.SpinChanging(Sender: TObject; var AllowChange: Boolean);
 begin
   EnableOptionButtons;
@@ -14894,11 +15140,6 @@ procedure TTcp.miShowStreamsInfoClick(Sender: TObject);
 begin
   CheckStreamsControls;
   SetConfigBoolean('Circuits', 'ShowStreamsInfo', miShowStreamsInfo.Checked);
-end;
-
-procedure TTcp.miSortOnExtractClick(Sender: TObject);
-begin
-  SetConfigBoolean('Extractor', 'SortOnExtract', miSortOnExtract.Checked);
 end;
 
 procedure TTcp.miShowCircuitsClick(Sender: TObject);
@@ -15456,22 +15697,6 @@ begin
   Tcp.Close;
 end;
 
-procedure TTcp.ExtractDelimiterSelect(Sender: TObject);
-begin
-  TMenuItem(Sender).Checked := True;
-  SetConfigInteger('Extractor', 'ExtractDelimiterType', TMenuItem(Sender).Tag);
-end;
-
-procedure TTcp.ExtractMemoDataClick(Sender: TObject);
-begin
-  ExtractMemoData(miExtractData.Tag, TMenuItem(Sender).Tag);
-end;
-
-procedure TTcp.miFormatIPv6OnExtractClick(Sender: TObject);
-begin
-  SetConfigBoolean('Extractor', 'FormatIPv6OnExtract', miFormatIPv6OnExtract.Checked);
-end;
-
 procedure TTcp.miFilterHideUnusedClick(Sender: TObject);
 begin
   ShowFilter;
@@ -15524,11 +15749,6 @@ begin
       Param := 'get vanilla';
   end;
   ShellOpen('mailto:' + GetDefaultsValue('BridgesEmail', BRIDGES_EMAIL) + '?Body=' + string(EncodeURL(Param)));
-end;
-
-procedure TTcp.miRemoveDuplicateOnExtractClick(Sender: TObject);
-begin
-  SetConfigBoolean('Extractor', 'RemoveDuplicateOnExtract', miRemoveDuplicateOnExtract.Checked);
 end;
 
 procedure TTcp.miRequestIPv6BridgesClick(Sender: TObject);
@@ -15897,146 +16117,23 @@ begin
 end;
 
 procedure TTcp.InsertNodesMenu(ParentMenu: TMenuItem; NodeID: string; AutoSave: Boolean = True);
-var
-  SubMenu: TMenuItem;
-  i: Integer;
 begin
   ParentMenu.Clear;
+  if not ParentMenu.Enabled then
+    Exit;
   if ConnectState = 1 then
     Exit;
-  for i := ENTRY_ID to EXCLUDE_ID do
-  begin
-    SubMenu := TMenuItem.Create(self);
-    SubMenu.Tag := i;
-    case i of
-      ENTRY_ID:
-      begin
-        SubMenu.Caption := TransStr('288'); SubMenu.ImageIndex := 40;
-      end;
-      MIDDLE_ID:
-      begin
-        SubMenu.Caption := TransStr('289'); SubMenu.ImageIndex := 41;
-      end;
-      EXIT_ID:
-      begin
-        SubMenu.Caption := TransStr('290'); SubMenu.ImageIndex := 42;
-      end;
-      EXCLUDE_ID:
-      begin
-        SubMenu.Caption := TransStr('287'); SubMenu.ImageIndex := 43;
-      end;
-    end;
-    InsertNodesListMenu(SubMenu, NodeID, i, AutoSave);
-    ParentMenu.Add(SubMenu);
-  end;
-
-  for i := 1 to 4 do
-  begin
-    SubMenu := TMenuItem.Create(self);
-    SubMenu.Tag := i;
-    case i of
-      1,3: SubMenu.Caption := '-';
-      2:
-      begin
-        SubMenu.Caption := TransStr('359');
-        SubMenu.ImageIndex := 17;
-        InsertNodesToDeleteMenu(SubMenu, NodeID, AutoSave);
-      end;
-      4:
-      begin
-        SubMenu.Caption := TransStr('360');
-        SubMenu.ImageIndex := 50;
-        SubMenu.OnClick := RoutersAutoSelectClick;
-        Submenu.Enabled := (RoutersDic.Count > 0) and (InfoStage = 0) and
-          (cbAutoSelEntryEnabled.Checked or cbAutoSelMiddleEnabled.Checked or cbAutoSelExitEnabled.Checked or cbAutoSelFallbackDirEnabled.Checked) and
-          not (Assigned(Consensus) or Assigned(Descriptors) or tmScanner.Enabled);
-        Submenu.Visible := not AutoSave;
-      end;
-    end;
-    ParentMenu.Add(SubMenu);
-  end;
-end;
-
-procedure TTcp.InsertNodesToDeleteMenu(ParentMenu: TmenuItem; NodeID: string; AutoSave: Boolean = True);
-var
-  Router: TRouterInfo;
-  ls: TStringList;
-  i: Integer;
-  NodeDataType: TNodeDataType;
-  RangesStr, NodeStr, DeleteList, CountryCode: string;
-  ParseStr: ArrOfStr;
-  SubMenu: TMenuItem;
-begin
-  if RoutersDic.TryGetValue(NodeID, Router) then
-  begin
-    CountryCode := CountryCodes[GetCountryValue(Router.IPv4)];
-    ls := TStringList.Create;
-    try
-      ls.Add(NodeID);
-      ls.Add(Router.IPv4);
-      RangesStr := FindInRanges(Router.IPv4, atIPv4Cidr);
-      if RangesStr <> '' then
-      begin
-        ParseStr := Explode(',', RangesStr);
-        for i := 0 to Length(ParseStr) - 1 do
-          ls.Add(ParseStr[i]);
-      end;
-      SortNodesList(ls, SORT_DESC);
-      ls.Add(UpperCase(CountryCode) + ' (' + TransStr(CountryCode) + ')');
-
-      DeleteList := '';
-      for i := 0 to ls.Count - 1 do
-      begin
-        NodeStr := SeparateLeft(ls[i], ' ');
-        NodeDataType := ValidNode(NodeStr);
-        if NodeDataType = dtCode then
-          NodeStr := LowerCase(NodeStr);
-
-        if NodesDic.ContainsKey(NodeStr) then
-        begin
-          if NodesDic.Items[NodeStr] <> [] then
-          begin
-            SubMenu := TMenuItem.Create(self);
-            SubMenu.Tag := Integer(AutoSave);
-            case NodeDataType of
-              dtHash: SubMenu.ImageIndex := 23;
-              dtIPv4: SubMenu.ImageIndex := 33;
-              dtIPv4Cidr: SubMenu.ImageIndex := 48;
-              dtCode: SubMenu.ImageIndex := 57;
-            end;
-            SubMenu.Caption := ls[i];
-            SubMenu.Hint := '';
-            SubMenu.OnClick := RemoveFromNodeListClick;
-            ParentMenu.Add(SubMenu);
-            DeleteList := DeleteList + ',' + ls[i];
-          end;
-        end;
-      end;
-      Delete(DeleteList, 1, 1);
-      if ParentMenu.Count > 1 then
-      begin
-        ls.Clear;
-        ls.Add('-');
-        ls.Add(TransStr('406'));
-        for i := 0 to ls.Count - 1 do
-        begin
-          SubMenu := TMenuItem.Create(self);
-          SubMenu.Tag := Integer(AutoSave);
-          SubMenu.Caption := ls[i];
-          if SubMenu.Caption <> '-' then
-          begin
-            SubMenu.ImageIndex := 17;
-            SubMenu.Hint := DeleteList;
-            SubMenu.OnClick := RemoveFromNodeListClick;
-          end;
-          ParentMenu.Add(SubMenu);
-        end;
-      end;
-      ParentMenu.Visible := ParentMenu.Count > 0;
-    finally
-      ls.Free;
-    end;
-  end;
+  InsertNodesListMenu(InsertMenuItem(ParentMenu, ENTRY_ID, 40, TransStr('288')), NodeID, ENTRY_ID, AutoSave);
+  InsertNodesListMenu(InsertMenuItem(ParentMenu, MIDDLE_ID, 41, TransStr('289')), NodeID, MIDDLE_ID, AutoSave);
+  InsertNodesListMenu(InsertMenuItem(ParentMenu, EXIT_ID, 42, TransStr('290')), NodeID, EXIT_ID, AutoSave);
+  InsertNodesListMenu(InsertMenuItem(ParentMenu, EXCLUDE_ID, 43, TransStr('287')), NodeID, EXCLUDE_ID, AutoSave);
+  InsertMenuItem(ParentMenu, 0, -1, '-');
+  InsertNodesToDeleteMenu(InsertMenuItem(ParentMenu, 0, 17, TransStr('359')), NodeID, AutoSave);
+  InsertMenuItem(ParentMenu, 0, -1, '-');
+  InsertMenuItem(ParentMenu, 0, 50, TransStr('360'), RoutersAutoSelectClick,
+    False, False, False, (RoutersDic.Count > 0) and (InfoStage = 0) and
+    (cbAutoSelEntryEnabled.Checked or cbAutoSelMiddleEnabled.Checked or cbAutoSelExitEnabled.Checked or cbAutoSelFallbackDirEnabled.Checked) and not
+    (Assigned(Consensus) or Assigned(Descriptors) or tmScanner.Enabled), not AutoSave);
 end;
 
 procedure TTcp.InsertNodesListMenu(ParentMenu: TmenuItem; NodeID: string; NodeTypeID: Integer; AutoSave: Boolean = True);
@@ -16135,12 +16232,94 @@ begin
           dtCode: SubMenu.ImageIndex := 57;
         end;
         if SubMenu.Enabled then
-          SubMenu.OnClick := Tcp.AddToNodesListClick;
+          SubMenu.OnClick := AddToNodesListClick;
       end;
       ParentMenu.Add(SubMenu);
     end;
   finally
     ls.Free;
+  end;
+end;
+
+procedure TTcp.InsertNodesToDeleteMenu(ParentMenu: TmenuItem; NodeID: string; AutoSave: Boolean = True);
+var
+  Router: TRouterInfo;
+  ls: TStringList;
+  i: Integer;
+  NodeDataType: TNodeDataType;
+  RangesStr, NodeStr, DeleteList, CountryCode: string;
+  ParseStr: ArrOfStr;
+  SubMenu: TMenuItem;
+begin
+  if RoutersDic.TryGetValue(NodeID, Router) then
+  begin
+    CountryCode := CountryCodes[GetCountryValue(Router.IPv4)];
+    ls := TStringList.Create;
+    try
+      ls.Add(NodeID);
+      ls.Add(Router.IPv4);
+      RangesStr := FindInRanges(Router.IPv4, atIPv4Cidr);
+      if RangesStr <> '' then
+      begin
+        ParseStr := Explode(',', RangesStr);
+        for i := 0 to Length(ParseStr) - 1 do
+          ls.Add(ParseStr[i]);
+      end;
+      SortNodesList(ls, SORT_DESC);
+      ls.Add(UpperCase(CountryCode) + ' (' + TransStr(CountryCode) + ')');
+
+      DeleteList := '';
+      for i := 0 to ls.Count - 1 do
+      begin
+        NodeStr := SeparateLeft(ls[i], ' ');
+        NodeDataType := ValidNode(NodeStr);
+        if NodeDataType = dtCode then
+          NodeStr := LowerCase(NodeStr);
+
+        if NodesDic.ContainsKey(NodeStr) then
+        begin
+          if NodesDic.Items[NodeStr] <> [] then
+          begin
+            SubMenu := TMenuItem.Create(self);
+            SubMenu.Tag := Integer(AutoSave);
+            case NodeDataType of
+              dtHash: SubMenu.ImageIndex := 23;
+              dtIPv4: SubMenu.ImageIndex := 33;
+              dtIPv4Cidr: SubMenu.ImageIndex := 48;
+              dtCode: SubMenu.ImageIndex := 57;
+            end;
+            SubMenu.Caption := ls[i];
+            SubMenu.Hint := '';
+            SubMenu.OnClick := RemoveFromNodeListClick;
+            ParentMenu.Add(SubMenu);
+            DeleteList := DeleteList + ',' + ls[i];
+          end;
+        end;
+      end;
+      Delete(DeleteList, 1, 1);
+      if ParentMenu.Count > 1 then
+      begin
+        ls.Clear;
+        ls.Add('-');
+        ls.Add(TransStr('406'));
+        for i := 0 to ls.Count - 1 do
+        begin
+          SubMenu := TMenuItem.Create(self);
+          SubMenu.Tag := Integer(AutoSave);
+          SubMenu.Caption := ls[i];
+          if SubMenu.Caption <> '-' then
+          begin
+            SubMenu.ImageIndex := 17;
+            SubMenu.Hint := DeleteList;
+            SubMenu.OnClick := RemoveFromNodeListClick;
+          end;
+          ParentMenu.Add(SubMenu);
+        end;
+      end;
+      ParentMenu.Visible := ParentMenu.Count > 0;
+    finally
+      ls.Free;
+    end;
   end;
 end;
 
@@ -16156,8 +16335,8 @@ begin
   end;
   if NodeTypeID <> EXCLUDE_ID then
   begin
-    if (lbFavoritesTotal.Tag = 0) and (cbxFilterMode.ItemIndex <> 2) then
-      cbxFilterMode.ItemIndex := 2;
+    if (lbFavoritesTotal.Tag = 0) and (cbxFilterMode.ItemIndex <> FILTER_MODE_FAVORITES) then
+      cbxFilterMode.ItemIndex := FILTER_MODE_FAVORITES;
   end;
 end;
 
@@ -17386,12 +17565,12 @@ begin
   sgStreamsInfo.Tag := GRID_STREAM_INFO;
   sgTransports.Tag := GRID_TRANSPORTS;
 
-  meBridges.Tag := LIST_BRIDGES;
-  meMyFamily.Tag := LIST_MY_FAMILY;
-  meTrackHostExits.Tag := LIST_TRACK_HOST_EXITS;
-  meFallbackDirs.Tag := LIST_FALLBACK_DIRS;
-  meNodesList.Tag := LIST_NODES_LIST;
-  meExitPolicy.Tag := LIST_EXIT_POLICY;
+  meBridges.Tag := MEMO_BRIDGES;
+  meMyFamily.Tag := MEMO_MY_FAMILY;
+  meTrackHostExits.Tag := MEMO_TRACK_HOST_EXITS;
+  meFallbackDirs.Tag := MEMO_FALLBACK_DIRS;
+  meNodesList.Tag := MEMO_NODES_LIST;
+  meExitPolicy.Tag := MEMO_EXIT_POLICY;
 
   meBridges.ListType := ltBridge;
   meMyFamily.ListType := ltHash;
@@ -17633,7 +17812,7 @@ begin
   State := (UsedProxyType <> ptNone) and (ConnectState = 2);
   if State then
   begin
-    lbExitIp.Tag := 1;
+    SelNodeState := True;
     if (TLabel(Sender) = lbExitCountry) and (lbExitCountry.Hint <> '') then
       Application.ActivateHint(Mouse.CursorPos)
     else
@@ -18116,7 +18295,7 @@ end;
 
 procedure TTcp.miRtRelayInfoClick(Sender: TObject);
 begin
-  OpenMetricsUrl('#details', miRtCopyFingerprint.Caption);
+  ShowRelayInfo(sgRouters, True);
 end;
 
 procedure TTcp.miRtResetFilterClick(Sender: TObject);
@@ -18158,19 +18337,26 @@ end;
 
 procedure TTcp.SelectNodeAsBridge(Sender: TObject);
 var
+  UseIPv6: Boolean;
   BridgeStr, BridgeID: string;
+  Router: TRouterInfo;
 begin
-  cbUseBridges.Checked := True;
-  cbUsePreferredBridge.Checked := True;
-  BridgeStr := TMenuItem(Sender).Hint;
-  if BridgeStr = '' then
-    BridgeStr := TMenuItem(Sender).Caption;
-  edPreferredBridge.Text := BridgeStr;
-  if TryGetDataFromStr(BridgeStr, ltHash, BridgeID) then
-    LastPreferBridgeID := BridgeID;
-  SaveBridgesData;
-  ShowRouters;
-  EnableOptionButtons;
+  BridgeID := TMenuItem(Sender).Hint;
+  UseIPv6 := TMenuItem(Sender).Tag = 1;
+  if RoutersDic.TryGetValue(BridgeID, Router) then
+  begin
+    BridgeStr := GetBridgeStr(BridgeID, Router, UseIPv6);
+    if BridgeStr <> '' then
+    begin
+      cbUseBridges.Checked := True;
+      cbUsePreferredBridge.Checked := True;
+      edPreferredBridge.Text := BridgeStr;
+      LastPreferBridgeID := BridgeID;
+      SaveBridgesData;
+      ShowRouters;
+      EnableOptionButtons;
+    end;
+  end;
 end;
 
 procedure TTcp.miRoutersSelectRowClick(Sender: TObject);
@@ -18192,7 +18378,7 @@ end;
 
 procedure TTcp.miDetailsRelayInfoClick(Sender: TObject);
 begin
-  OpenMetricsUrl('#details', SelectedNode);
+  ShowRelayInfo(sgCircuitInfo, True);
 end;
 
 procedure TTcp.miDetailsUpdateIpClick(Sender: TObject);

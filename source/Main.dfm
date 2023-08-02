@@ -41,6 +41,7 @@ object Tcp: TTcp
       Caption = #1046#1091#1088#1085#1072#1083
       Spacing = 8
       OnClick = sbShowLogClick
+      OnMouseDown = sbShowLogMouseDown
     end
     object sbShowOptions: TSpeedButton
       Left = 124
@@ -209,295 +210,6 @@ object Tcp: TTcp
       TabOrder = 2
       Visible = False
       OnMouseDown = pbScanProgressMouseDown
-    end
-  end
-  object paRouters: TPanel
-    Left = 3
-    Top = 92
-    Width = 765
-    Height = 460
-    BevelInner = bvLowered
-    Color = clWindow
-    DoubleBuffered = True
-    ParentBackground = False
-    ParentDoubleBuffered = False
-    ShowCaption = False
-    TabOrder = 5
-    Visible = False
-    OnClick = paRoutersClick
-    object lbRoutersCount: TLabel
-      Left = 674
-      Top = 10
-      Width = 84
-      Height = 13
-      Alignment = taRightJustify
-      Caption = #1055#1086#1082#1072#1079#1072#1085#1086': 0 '#1080#1079' 0'
-      Transparent = True
-    end
-    object lbSpeed3: TLabel
-      Left = 293
-      Top = 10
-      Width = 23
-      Height = 13
-      Caption = #1052#1041'/c'
-      Transparent = True
-    end
-    object lbFavoritesEntry: TLabel
-      Left = 145
-      Top = 438
-      Width = 6
-      Height = 13
-      Cursor = crHandPoint
-      Hint = '288'
-      Caption = '0'
-      Transparent = True
-      OnMouseDown = ShowFavoritesRouters
-    end
-    object lbFavoritesMiddle: TLabel
-      Left = 206
-      Top = 438
-      Width = 6
-      Height = 13
-      Cursor = crHandPoint
-      Hint = '289'
-      Caption = '0'
-      Transparent = True
-      OnMouseDown = ShowFavoritesRouters
-    end
-    object lbFavoritesExit: TLabel
-      Left = 264
-      Top = 438
-      Width = 6
-      Height = 13
-      Cursor = crHandPoint
-      Hint = '290'
-      Caption = '0'
-      Transparent = True
-      OnMouseDown = ShowFavoritesRouters
-    end
-    object lbExcludeNodes: TLabel
-      Left = 378
-      Top = 438
-      Width = 6
-      Height = 13
-      Cursor = crHandPoint
-      Hint = '287'
-      Caption = '0'
-      Transparent = True
-      OnMouseDown = ShowFavoritesRouters
-    end
-    object lbFavoritesTotal: TLabel
-      Left = 322
-      Top = 438
-      Width = 6
-      Height = 13
-      Cursor = crHandPoint
-      Caption = '0'
-      Transparent = True
-      OnMouseDown = ShowFavoritesRouters
-    end
-    object lbFavoritesTotalSelected: TLabel
-      Left = 33
-      Top = 438
-      Width = 79
-      Height = 13
-      Alignment = taRightJustify
-      Caption = #1042#1089#1077#1075#1086' '#1074#1099#1073#1088#1072#1085#1086':'
-      Transparent = True
-    end
-    object imFavoritesEntry: TImage
-      Left = 125
-      Top = 437
-      Width = 16
-      Height = 16
-      ParentShowHint = False
-      ShowHint = True
-    end
-    object imFavoritesMiddle: TImage
-      Left = 186
-      Top = 437
-      Width = 16
-      Height = 16
-      ParentShowHint = False
-      ShowHint = True
-    end
-    object imFavoritesExit: TImage
-      Left = 245
-      Top = 437
-      Width = 16
-      Height = 16
-      ParentShowHint = False
-      ShowHint = True
-    end
-    object imFavoritesTotal: TImage
-      Left = 302
-      Top = 437
-      Width = 16
-      Height = 16
-      ParentShowHint = False
-      ShowHint = True
-    end
-    object imExcludeNodes: TImage
-      Left = 358
-      Top = 437
-      Width = 16
-      Height = 16
-      ParentShowHint = False
-      ShowHint = True
-    end
-    object imFavoritesBridges: TImage
-      Left = 411
-      Top = 437
-      Width = 16
-      Height = 16
-      ParentShowHint = False
-      ShowHint = True
-    end
-    object lbFavoritesBridges: TLabel
-      Left = 431
-      Top = 438
-      Width = 6
-      Height = 13
-      Cursor = crHandPoint
-      Caption = '0'
-      Transparent = True
-      OnMouseDown = ShowFavoritesRouters
-    end
-    object imFavoritesFallbackDirs: TImage
-      Left = 464
-      Top = 436
-      Width = 16
-      Height = 16
-      ParentShowHint = False
-      ShowHint = True
-    end
-    object lbFavoritesFallbackDirs: TLabel
-      Left = 484
-      Top = 438
-      Width = 6
-      Height = 13
-      Cursor = crHandPoint
-      Caption = '0'
-      Transparent = True
-      OnMouseDown = ShowFavoritesRouters
-    end
-    object sgRouters: TStringGrid
-      Tag = 2
-      Left = 1
-      Top = 33
-      Width = 764
-      Height = 399
-      ColCount = 14
-      DefaultRowHeight = 16
-      FixedCols = 0
-      RowCount = 2
-      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goDrawFocusSelected, goRowSelect, goThumbTracking, goFixedRowClick]
-      ParentShowHint = False
-      PopupMenu = mnRouters
-      ScrollBars = ssVertical
-      ShowHint = True
-      TabOrder = 0
-      OnDblClick = sgRoutersDblClick
-      OnDrawCell = sgRoutersDrawCell
-      OnFixedCellClick = sgRoutersFixedCellClick
-      OnKeyDown = sgRoutersKeyDown
-      OnKeyPress = sgRoutersKeyPress
-      OnMouseDown = sgRoutersMouseDown
-      OnMouseMove = sgRoutersMouseMove
-      OnSelectCell = sgRoutersSelectCell
-    end
-    object btnShowNodes: TButton
-      Left = 6
-      Top = 7
-      Width = 78
-      Height = 21
-      Caption = #1058#1080#1087' '#1091#1079#1083#1072
-      DropDownMenu = mnShowNodes
-      Style = bsSplitButton
-      TabOrder = 1
-      OnClick = btnShowNodesClick
-    end
-    object cbxRoutersCountry: TComboBox
-      Tag = -1
-      Left = 87
-      Top = 7
-      Width = 152
-      Height = 21
-      AutoDropDown = True
-      Style = csDropDownList
-      DoubleBuffered = False
-      ParentDoubleBuffered = False
-      Sorted = True
-      TabOrder = 2
-      OnChange = cbxRoutersCountryChange
-      OnEnter = cbxRoutersCountryEnter
-    end
-    object edRoutersWeight: TEdit
-      Left = 243
-      Top = 7
-      Width = 35
-      Height = 21
-      Alignment = taCenter
-      MaxLength = 5
-      NumbersOnly = True
-      PopupMenu = EditMenu
-      TabOrder = 3
-      Text = '10'
-      OnKeyDown = edRoutersWeightKeyDown
-      OnMouseDown = edRoutersWeightMouseDown
-    end
-    object udRoutersWeight: TUpDown
-      Left = 278
-      Top = 7
-      Width = 13
-      Height = 21
-      HelpContext = 10
-      Associate = edRoutersWeight
-      ArrowKeys = False
-      DoubleBuffered = True
-      Max = 65535
-      Increment = 5
-      ParentDoubleBuffered = False
-      Position = 10
-      TabOrder = 4
-      Thousands = False
-      OnClick = udRoutersWeightClick
-    end
-    object cbxRoutersQuery: TComboBox
-      Tag = -1
-      Left = 320
-      Top = 7
-      Width = 75
-      Height = 21
-      AutoDropDown = True
-      Style = csDropDownList
-      DoubleBuffered = False
-      DropDownCount = 9
-      ItemIndex = 0
-      ParentDoubleBuffered = False
-      TabOrder = 5
-      Text = #1061#1077#1096
-      OnChange = cbxRoutersQueryChange
-      Items.Strings = (
-        #1061#1077#1096
-        #1053#1080#1082
-        'IPv4'
-        'IPv6'
-        'OR-'#1087#1086#1088#1090
-        'DIR-'#1087#1086#1088#1090
-        #1042#1077#1088#1089#1080#1103
-        #1055#1080#1085#1075
-        #1058#1088#1072#1085#1089#1087#1086#1088#1090)
-    end
-    object edRoutersQuery: TEdit
-      Left = 399
-      Top = 7
-      Width = 203
-      Height = 21
-      PopupMenu = EditMenu
-      TabOrder = 6
-      OnChange = edRoutersQueryChange
-      OnKeyDown = edRoutersQueryKeyDown
     end
   end
   object paStatus: TPanel
@@ -1016,7 +728,7 @@ object Tcp: TTcp
       DefaultRowHeight = 16
       FixedCols = 0
       RowCount = 2
-      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goDrawFocusSelected, goRowSelect, goThumbTracking]
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goDrawFocusSelected, goRowSelect, goThumbTracking]
       ParentShowHint = False
       PopupMenu = mnDetails
       ScrollBars = ssNone
@@ -1201,6 +913,313 @@ object Tcp: TTcp
         #1059#1074#1077#1076#1086#1084#1083#1077#1085#1080#1103
         #1055#1088#1077#1076#1091#1087#1088#1077#1078#1076#1077#1085#1080#1103
         #1054#1096#1080#1073#1082#1080)
+    end
+  end
+  object paRouters: TPanel
+    Left = 3
+    Top = 92
+    Width = 765
+    Height = 460
+    BevelInner = bvLowered
+    Color = clWindow
+    DoubleBuffered = True
+    ParentBackground = False
+    ParentDoubleBuffered = False
+    ShowCaption = False
+    TabOrder = 5
+    Visible = False
+    OnClick = paRoutersClick
+    object lbRoutersCount: TLabel
+      Left = 674
+      Top = 10
+      Width = 84
+      Height = 13
+      Alignment = taRightJustify
+      Caption = #1055#1086#1082#1072#1079#1072#1085#1086': 0 '#1080#1079' 0'
+      Transparent = True
+    end
+    object lbSpeed3: TLabel
+      Left = 293
+      Top = 10
+      Width = 23
+      Height = 13
+      Caption = #1052#1041'/c'
+      Transparent = True
+    end
+    object lbFavoritesEntry: TLabel
+      Left = 145
+      Top = 438
+      Width = 6
+      Height = 13
+      Cursor = crHandPoint
+      Hint = '288'
+      Caption = '0'
+      Transparent = True
+      OnMouseDown = ShowFavoritesRouters
+    end
+    object lbFavoritesMiddle: TLabel
+      Left = 206
+      Top = 438
+      Width = 6
+      Height = 13
+      Cursor = crHandPoint
+      Hint = '289'
+      Caption = '0'
+      Transparent = True
+      OnMouseDown = ShowFavoritesRouters
+    end
+    object lbFavoritesExit: TLabel
+      Left = 264
+      Top = 438
+      Width = 6
+      Height = 13
+      Cursor = crHandPoint
+      Hint = '290'
+      Caption = '0'
+      Transparent = True
+      OnMouseDown = ShowFavoritesRouters
+    end
+    object lbExcludeNodes: TLabel
+      Left = 378
+      Top = 438
+      Width = 6
+      Height = 13
+      Cursor = crHandPoint
+      Hint = '287'
+      Caption = '0'
+      Transparent = True
+      OnMouseDown = ShowFavoritesRouters
+    end
+    object lbFavoritesTotal: TLabel
+      Left = 322
+      Top = 438
+      Width = 6
+      Height = 13
+      Cursor = crHandPoint
+      Caption = '0'
+      Transparent = True
+      OnMouseDown = ShowFavoritesRouters
+    end
+    object lbFavoritesTotalSelected: TLabel
+      Left = 33
+      Top = 438
+      Width = 79
+      Height = 13
+      Alignment = taRightJustify
+      Caption = #1042#1089#1077#1075#1086' '#1074#1099#1073#1088#1072#1085#1086':'
+      Transparent = True
+    end
+    object imFavoritesEntry: TImage
+      Left = 125
+      Top = 437
+      Width = 16
+      Height = 16
+      ParentShowHint = False
+      ShowHint = True
+    end
+    object imFavoritesMiddle: TImage
+      Left = 186
+      Top = 437
+      Width = 16
+      Height = 16
+      ParentShowHint = False
+      ShowHint = True
+    end
+    object imFavoritesExit: TImage
+      Left = 245
+      Top = 437
+      Width = 16
+      Height = 16
+      ParentShowHint = False
+      ShowHint = True
+    end
+    object imFavoritesTotal: TImage
+      Left = 302
+      Top = 437
+      Width = 16
+      Height = 16
+      ParentShowHint = False
+      ShowHint = True
+    end
+    object imExcludeNodes: TImage
+      Left = 358
+      Top = 437
+      Width = 16
+      Height = 16
+      ParentShowHint = False
+      ShowHint = True
+    end
+    object imFavoritesBridges: TImage
+      Left = 411
+      Top = 437
+      Width = 16
+      Height = 16
+      ParentShowHint = False
+      ShowHint = True
+    end
+    object lbFavoritesBridges: TLabel
+      Left = 431
+      Top = 438
+      Width = 6
+      Height = 13
+      Cursor = crHandPoint
+      Caption = '0'
+      Transparent = True
+      OnMouseDown = ShowFavoritesRouters
+    end
+    object imFavoritesFallbackDirs: TImage
+      Left = 464
+      Top = 436
+      Width = 16
+      Height = 16
+      ParentShowHint = False
+      ShowHint = True
+    end
+    object lbFavoritesFallbackDirs: TLabel
+      Left = 484
+      Top = 438
+      Width = 6
+      Height = 13
+      Cursor = crHandPoint
+      Caption = '0'
+      Transparent = True
+      OnMouseDown = ShowFavoritesRouters
+    end
+    object imSelectedRouters: TImage
+      Left = 517
+      Top = 437
+      Width = 16
+      Height = 16
+      ParentShowHint = False
+      ShowHint = True
+    end
+    object lbSelectedRouters: TLabel
+      Left = 537
+      Top = 439
+      Width = 6
+      Height = 13
+      Cursor = crHandPoint
+      Caption = '0'
+      Transparent = True
+      OnMouseDown = lbSelectedRoutersMouseDown
+    end
+    object sgRouters: TStringGrid
+      Tag = 2
+      Left = 1
+      Top = 33
+      Width = 764
+      Height = 399
+      ColCount = 14
+      DefaultRowHeight = 16
+      FixedCols = 0
+      RowCount = 2
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goDrawFocusSelected, goRowSelect, goThumbTracking, goFixedRowClick]
+      ParentShowHint = False
+      PopupMenu = mnRouters
+      ScrollBars = ssVertical
+      ShowHint = True
+      TabOrder = 0
+      OnDblClick = sgRoutersDblClick
+      OnDrawCell = sgRoutersDrawCell
+      OnFixedCellClick = sgRoutersFixedCellClick
+      OnKeyDown = sgRoutersKeyDown
+      OnKeyPress = sgRoutersKeyPress
+      OnMouseDown = sgRoutersMouseDown
+      OnMouseMove = sgRoutersMouseMove
+      OnSelectCell = sgRoutersSelectCell
+    end
+    object btnShowNodes: TButton
+      Left = 6
+      Top = 7
+      Width = 78
+      Height = 21
+      Caption = #1058#1080#1087' '#1091#1079#1083#1072
+      DropDownMenu = mnShowNodes
+      Style = bsSplitButton
+      TabOrder = 1
+      OnClick = btnShowNodesClick
+    end
+    object cbxRoutersCountry: TComboBox
+      Tag = -1
+      Left = 87
+      Top = 7
+      Width = 152
+      Height = 21
+      AutoDropDown = True
+      Style = csDropDownList
+      DoubleBuffered = False
+      ParentDoubleBuffered = False
+      Sorted = True
+      TabOrder = 2
+      OnChange = cbxRoutersCountryChange
+      OnEnter = cbxRoutersCountryEnter
+    end
+    object edRoutersWeight: TEdit
+      Left = 243
+      Top = 7
+      Width = 35
+      Height = 21
+      Alignment = taCenter
+      MaxLength = 5
+      NumbersOnly = True
+      PopupMenu = EditMenu
+      TabOrder = 3
+      Text = '10'
+      OnKeyDown = edRoutersWeightKeyDown
+      OnMouseDown = edRoutersWeightMouseDown
+    end
+    object udRoutersWeight: TUpDown
+      Left = 278
+      Top = 7
+      Width = 13
+      Height = 21
+      HelpContext = 10
+      Associate = edRoutersWeight
+      ArrowKeys = False
+      DoubleBuffered = True
+      Max = 65535
+      Increment = 5
+      ParentDoubleBuffered = False
+      Position = 10
+      TabOrder = 4
+      Thousands = False
+      OnClick = udRoutersWeightClick
+    end
+    object cbxRoutersQuery: TComboBox
+      Tag = -1
+      Left = 320
+      Top = 7
+      Width = 75
+      Height = 21
+      AutoDropDown = True
+      Style = csDropDownList
+      DoubleBuffered = False
+      DropDownCount = 9
+      ItemIndex = 0
+      ParentDoubleBuffered = False
+      TabOrder = 5
+      Text = #1061#1077#1096
+      OnChange = cbxRoutersQueryChange
+      Items.Strings = (
+        #1061#1077#1096
+        #1053#1080#1082
+        'IPv4'
+        'IPv6'
+        'OR-'#1087#1086#1088#1090
+        'DIR-'#1087#1086#1088#1090
+        #1042#1077#1088#1089#1080#1103
+        #1055#1080#1085#1075
+        #1058#1088#1072#1085#1089#1087#1086#1088#1090)
+    end
+    object edRoutersQuery: TEdit
+      Left = 399
+      Top = 7
+      Width = 203
+      Height = 21
+      PopupMenu = EditMenu
+      TabOrder = 6
+      OnChange = edRoutersQueryChange
+      OnKeyDown = edRoutersQueryKeyDown
     end
   end
   object pcOptions: TPageControl
@@ -5564,6 +5583,7 @@ object Tcp: TTcp
   end
   object mnChangeCircuit: TPopupMenu
     AutoHotkeys = maManual
+    AutoPopup = False
     Images = lsMenus
     OnPopup = mnChangeCircuitPopup
     Left = 435
@@ -5818,6 +5838,7 @@ object Tcp: TTcp
       object miNotLoadEmptyTplData: TMenuItem
         AutoCheck = True
         Caption = #1053#1077' '#1079#1072#1075#1088#1091#1078#1072#1090#1100' '#1087#1091#1089#1090#1099#1077' '#1076#1072#1085#1085#1099#1077' '#1096#1072#1073#1083#1086#1085#1072
+        Checked = True
         OnClick = miNotLoadEmptyTplDataClick
       end
       object miIgnoreTplLoadParamsOutsideTheFilter: TMenuItem
@@ -6046,96 +6067,6 @@ object Tcp: TTcp
     object miExtractData: TMenuItem
       Caption = #1048#1079#1074#1083#1077#1095#1100' '#1076#1072#1085#1085#1099#1077
       ImageIndex = 71
-      object miExtractPorts: TMenuItem
-        Tag = 1
-        Caption = #1055#1086#1088#1090#1099
-        ImageIndex = 72
-        OnClick = ExtractMemoDataClick
-      end
-      object miExtractIpv4: TMenuItem
-        Tag = 2
-        Caption = 'IPv4-'#1072#1076#1088#1077#1089#1072
-        ImageIndex = 33
-        OnClick = ExtractMemoDataClick
-      end
-      object miExtractIpv6: TMenuItem
-        Tag = 3
-        Caption = 'IPv6-'#1072#1076#1088#1077#1089#1072
-        ImageIndex = 34
-        OnClick = ExtractMemoDataClick
-      end
-      object miExtractFingerprints: TMenuItem
-        Tag = 4
-        Caption = #1048#1076#1077#1085#1090#1080#1092#1080#1082#1072#1090#1086#1088#1099
-        ImageIndex = 23
-        OnClick = ExtractMemoDataClick
-      end
-      object miDelimiter76: TMenuItem
-        Caption = '-'
-      end
-      object miExtractIpv4Bridges: TMenuItem
-        Tag = 5
-        Caption = 'IPv4-'#1084#1086#1089#1090#1099
-        ImageIndex = 59
-        OnClick = ExtractMemoDataClick
-      end
-      object miExtractIpv6Bridges: TMenuItem
-        Tag = 6
-        Caption = 'IPv6-'#1084#1086#1089#1090#1099
-        ImageIndex = 60
-        OnClick = ExtractMemoDataClick
-      end
-      object miDelimiter70: TMenuItem
-        Caption = '-'
-      end
-      object miExtractFallbackDirs: TMenuItem
-        Tag = 7
-        Caption = #1056#1077#1079#1077#1088#1074#1085#1099#1077' '#1082#1072#1090#1072#1083#1086#1075#1080
-        ImageIndex = 54
-        OnClick = ExtractMemoDataClick
-      end
-      object miDelimiter65: TMenuItem
-        Caption = '-'
-      end
-      object miFormatIPv6OnExtract: TMenuItem
-        AutoCheck = True
-        Caption = #1060#1086#1088#1084#1072#1090#1080#1088#1086#1074#1072#1090#1100' IPv6-'#1072#1076#1088#1077#1089#1072
-        Checked = True
-        OnClick = miFormatIPv6OnExtractClick
-      end
-      object miSortOnExtract: TMenuItem
-        AutoCheck = True
-        Caption = #1057#1086#1088#1090#1080#1088#1086#1074#1072#1090#1100' '#1089#1087#1080#1089#1086#1082
-        Checked = True
-        OnClick = miSortOnExtractClick
-      end
-      object miRemoveDuplicateOnExtract: TMenuItem
-        AutoCheck = True
-        Caption = #1059#1076#1072#1083#1103#1090#1100' '#1076#1091#1073#1083#1080#1082#1072#1090#1099
-        Checked = True
-        OnClick = miRemoveDuplicateOnExtractClick
-      end
-      object miExtractDelimiterType: TMenuItem
-        Caption = #1056#1072#1079#1076#1077#1083#1080#1090#1077#1083#1100
-        object miExtractDelimiterAuto: TMenuItem
-          Caption = #1040#1074#1090#1086#1074#1099#1073#1086#1088
-          Checked = True
-          RadioItem = True
-          OnClick = ExtractDelimiterSelect
-        end
-        object miExtractDelimiterLineBreak: TMenuItem
-          Tag = 1
-          Caption = #1053#1086#1074#1072#1103' '#1089#1090#1088#1086#1082#1072
-          RadioItem = True
-          OnClick = ExtractDelimiterSelect
-        end
-        object miExtractDelimiterComma: TMenuItem
-          Tag = 2
-          Caption = #1047#1072#1087#1103#1090#1072#1103
-          RadioItem = True
-          OnClick = ExtractDelimiterSelect
-        end
-      end
     end
     object miSortData: TMenuItem
       Caption = #1057#1086#1088#1090#1080#1088#1086#1074#1082#1072
@@ -6158,7 +6089,7 @@ object Tcp: TTcp
         OnClick = SortDataList
       end
     end
-    object miDelimiter77: TMenuItem
+    object miDelimiter65: TMenuItem
       Caption = '-'
     end
     object miClear: TMenuItem
@@ -6207,7 +6138,6 @@ object Tcp: TTcp
   end
   object mnDetails: TPopupMenu
     AutoHotkeys = maManual
-    AutoPopup = False
     Images = lsMenus
     OnPopup = mnDetailsPopup
     Left = 498
@@ -6220,50 +6150,9 @@ object Tcp: TTcp
     object miDelimiter55: TMenuItem
       Caption = '-'
     end
-    object miDetailsCopy: TMenuItem
-      Caption = #1050#1086#1087#1080#1088#1086#1074#1072#1090#1100
-      ImageIndex = 12
-      object miDetailsCopyNickname: TMenuItem
-        Caption = #1053#1080#1082
-        ImageIndex = 32
-        OnClick = CopyCaptionToClipboard
-      end
-      object miDetailsCopyIPv4: TMenuItem
-        Caption = 'IPv4-'#1072#1076#1088#1077#1089
-        ImageIndex = 33
-        OnClick = CopyCaptionToClipboard
-      end
-      object miDetailsCopyIPv6: TMenuItem
-        Caption = 'IPv6-'#1072#1076#1088#1077#1089
-        ImageIndex = 34
-        OnClick = CopyCaptionToClipboard
-      end
-      object miDetailsCopyFingerprint: TMenuItem
-        Caption = #1048#1076#1077#1085#1090#1080#1092#1080#1082#1072#1090#1086#1088
-        ImageIndex = 23
-        OnClick = CopyCaptionToClipboard
-      end
-      object miDelimiter45: TMenuItem
-        Caption = '-'
-      end
-      object miDetailsCopyBridgeIPv4: TMenuItem
-        Caption = #1052#1086#1089#1090' IPv4'
-        ImageIndex = 59
-        OnClick = CopyCaptionToClipboard
-      end
-      object miDetailsCopyBridgeIPv6: TMenuItem
-        Caption = #1052#1086#1089#1090' IPv4'
-        ImageIndex = 60
-        OnClick = CopyCaptionToClipboard
-      end
-      object miDelimiter75: TMenuItem
-        Caption = '-'
-      end
-      object miDetailsCopyFallbackDir: TMenuItem
-        Caption = #1056#1077#1079#1077#1088#1074#1085#1099#1081' '#1082#1072#1090#1072#1083#1086#1075
-        ImageIndex = 54
-        OnClick = CopyCaptionToClipboard
-      end
+    object miDetailsExtractData: TMenuItem
+      Caption = #1048#1079#1074#1083#1077#1095#1100' '#1076#1072#1085#1085#1099#1077
+      ImageIndex = 71
     end
     object miDetailsAddToNodesList: TMenuItem
       Caption = #1048#1079#1084#1077#1085#1080#1090#1100' '#1089#1087#1080#1089#1086#1082' '#1091#1079#1083#1086#1074
@@ -6513,50 +6402,9 @@ object Tcp: TTcp
     object miDelimiter25: TMenuItem
       Caption = '-'
     end
-    object miRtCopy: TMenuItem
-      Caption = #1050#1086#1087#1080#1088#1086#1074#1072#1090#1100
-      ImageIndex = 12
-      object miRtCopyNickname: TMenuItem
-        Caption = #1053#1080#1082
-        ImageIndex = 32
-        OnClick = CopyCaptionToClipboard
-      end
-      object miRtCopyIPv4: TMenuItem
-        Caption = 'IPv4-'#1072#1076#1088#1077#1089
-        ImageIndex = 33
-        OnClick = CopyCaptionToClipboard
-      end
-      object miRtCopyIPv6: TMenuItem
-        Caption = 'IPv6-'#1072#1076#1088#1077#1089
-        ImageIndex = 34
-        OnClick = CopyCaptionToClipboard
-      end
-      object miRtCopyFingerprint: TMenuItem
-        Caption = #1048#1076#1077#1085#1090#1080#1092#1080#1082#1072#1090#1086#1088
-        ImageIndex = 23
-        OnClick = CopyCaptionToClipboard
-      end
-      object miDelimiter44: TMenuItem
-        Caption = '-'
-      end
-      object miRtCopyBridgeIPv4: TMenuItem
-        Caption = #1052#1086#1089#1090' IPv4'
-        ImageIndex = 59
-        OnClick = CopyCaptionToClipboard
-      end
-      object miRtCopyBridgeIpv6: TMenuItem
-        Caption = #1052#1086#1089#1090' IPv6'
-        ImageIndex = 60
-        OnClick = CopyCaptionToClipboard
-      end
-      object miDelimiter74: TMenuItem
-        Caption = '-'
-      end
-      object miRtCopyFallbackDir: TMenuItem
-        Caption = #1056#1077#1079#1077#1088#1074#1085#1099#1081' '#1082#1072#1090#1072#1083#1086#1075
-        ImageIndex = 54
-        OnClick = CopyCaptionToClipboard
-      end
+    object miRtExtractData: TMenuItem
+      Caption = #1048#1079#1074#1083#1077#1095#1100' '#1076#1072#1085#1085#1099#1077
+      ImageIndex = 71
     end
     object miRtAddToNodesList: TMenuItem
       Caption = #1048#1079#1084#1077#1085#1080#1090#1100' '#1089#1087#1080#1089#1086#1082' '#1091#1079#1083#1086#1074
@@ -6571,6 +6419,7 @@ object Tcp: TTcp
         OnClick = SelectNodeAsBridge
       end
       object miRtSelectAsBridgeIPv6: TMenuItem
+        Tag = 1
         Caption = #1052#1086#1089#1090' IPv6'
         ImageIndex = 60
         OnClick = SelectNodeAsBridge

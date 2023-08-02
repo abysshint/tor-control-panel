@@ -121,7 +121,6 @@ var
   function ValidPolicy(PolicyStr: string): Boolean;
   function ValidFallbackDir(FallbackStr: string): Boolean;
   function GetMsgCaption(Caption: string; MsgType: TMsgType): string;
-  function GetBridgeStrFromDic(HashStr: string): string;
   function TryParseBridge(BridgeStr: string; out Bridge: TBridge; Validate: Boolean = True; UseFormatHost: Boolean = False): Boolean;
   function TryParseFallbackDir(FallbackStr: string; out FallbackDir: TFallbackDir; Validate: Boolean = True; UseFormatHost: Boolean = False): Boolean;
   function TryParseTarget(TargetStr: string; out Target: TTarget): Boolean;
@@ -192,6 +191,7 @@ var
   procedure GridScrollCheck(aSg: TStringGrid; ACol, ColWidth: Integer);
   procedure GridSelectCell(aSg: TStringGrid; ACol, ARow: Integer);
   procedure GridKeyDown(aSg: TStringGrid; Shift: TShiftState; var Key: Word);
+  procedure GridSelectAll(aSg: TStringGrid);
   procedure GridCheckAutoPopup(aSg: TStringGrid; ARow: Integer; AllowEmptyRows: Boolean = False);
   procedure GoToInvalidOption(PageID: TTabSheet; Msg: string = ''; edComponent: TCustomEdit = nil);
   procedure DeleteDuplicatesFromList(var List: TStringList; ListType: TListType = ltNone);
@@ -239,15 +239,38 @@ var
   function IntToBin(Value: Integer; Digits: Byte): string;
   function IpStrToBin(const IpStr: string; Delimiter: Char; Digits: Byte): string;
   function BinIpInCidr(const BinIpStr: string; CidrInfo: TCidrInfo; AddressType: TAddressType): Boolean;
-  function GetCidrType(const IpStr: string): TAddressType;
+  function GetAddressType(const IpStr: string; UseCidr: Boolean = False): TAddressType;
   function CidrStrToInfo(const CidrStr: string; AddressType: TAddressType): TCidrInfo;
   function IpInCidr(const IpStr: string; CidrInfo: TCidrInfo; AddressType: TAddressType): Boolean;
-  function IpInRanges(const IpStr: string; RangesData: array of string): Integer;
+  function IpInRanges(const IpStr: string; RangesData: array of string): Boolean;
+  function InsertMenuItem(ParentMenu: TMenuItem; FTag, FImageIndex: Integer;
+    FCaption: string = ''; FOnClick: TNotifyEvent = nil; FChecked: Boolean = False;
+    FAutoCheck: Boolean = False; FRadioItem: Boolean = False; FEnabled: Boolean = True;
+    FVisible: Boolean = True): TMenuItem;
 
 implementation
 
 uses
   Main, Languages;
+
+function InsertMenuItem(ParentMenu: TMenuItem; FTag, FImageIndex: Integer;
+  FCaption: string = ''; FOnClick: TNotifyEvent = nil; FChecked: Boolean = False;
+  FAutoCheck: Boolean = False; FRadioItem: Boolean = False; FEnabled: Boolean = True;
+  FVisible: Boolean = True): TMenuItem;
+begin
+  Result := TMenuItem.Create(ParentMenu.Owner);
+  Result.ImageIndex := FImageIndex;
+  Result.Tag := FTag;
+  Result.Caption := FCaption;
+  Result.Checked := FChecked;
+  Result.AutoCheck := FAutoCheck;
+  Result.RadioItem := FRadioItem;
+  Result.Enabled := FEnabled;
+  Result.Visible := FVisible;
+  if Assigned(FOnClick) then
+    Result.OnClick := FOnClick;
+  ParentMenu.Add(Result);
+end;
 
 function ExpandIPv6(IpStr: string): string;
 var
@@ -302,12 +325,22 @@ begin
   Result := Result + IntToBin(StrToIntDef(Str + Copy(IpStr, j), 0), Digits);
 end;
 
-function GetCidrType(const IpStr: string): TAddressType;
+function GetAddressType(const IpStr: string; UseCidr: Boolean = False): TAddressType;
 begin
- if Pos(':', IpStr) = 0 then
-   Result := atIPv4Cidr
- else
-   Result := atIPv6Cidr
+  if Pos(':', IpStr) = 0 then
+  begin
+    if UseCidr then
+      Result := atIPv4Cidr
+    else
+      Result := atIPv4;
+  end
+  else
+  begin
+    if UseCidr then
+      Result := atIPv6Cidr
+    else
+      Result := atIPv6;
+  end;
 end;
 
 function IpInCidr(const IpStr: string; CidrInfo: TCidrInfo; AddressType: TAddressType): Boolean;
@@ -333,13 +366,13 @@ begin
   Result := Copy(BinIpStr, 1, CidrInfo.Prefix) = Copy(CidrInfo.Bits, 1, CidrInfo.Prefix)
 end;
 
-function IpInRanges(const IpStr: string; RangesData: array of string): Integer;
+function IpInRanges(const IpStr: string; RangesData: array of string): Boolean;
 var
   i: Integer;
   IpBits: string;
   AddressType: TAddressType;
 begin
-  AddressType := GetCidrType(IpStr);
+  AddressType := GetAddressType(IpStr, True);
   if AddressType = atIPv4Cidr then
     IpBits := IpStrToBin(IpStr, '.', 8)
   else
@@ -348,11 +381,11 @@ begin
   begin
     if BinIpInCidr(IpBits, CidrStrToInfo(RangesData[i], AddressType), AddressType) then
     begin
-      Result := 1;
+      Result := True;
       Exit;
     end;
   end;
-  Result := 0;
+  Result := False;
 end;
 
 function CidrStrToInfo(const CidrStr: string; AddressType: TAddressType): TCidrInfo;
@@ -454,10 +487,7 @@ function GetBridgeIp(Bridge: TBridge): string;
 var
   BridgeInfo: TBridgeInfo;
   BridgeID, Str: string;
-  Data: Integer;
 begin
-  Result := Bridge.Ip;
-  Data := IpInRanges(Bridge.Ip, DocRanges);
   BridgeID := Bridge.Hash;
   if BridgeID = '' then
   begin
@@ -465,14 +495,13 @@ begin
       BridgeID := Str;
   end;
   if BridgesDic.TryGetValue(BridgeID, BridgeInfo) then
-  begin
-    if Data <> 0 then
-      Result := BridgeInfo.Router.IPv4;
-  end
+    Result := BridgeInfo.Router.IPv4
   else
   begin
-    if Data = 1 then
+    if IpInRanges(Bridge.Ip, DocRanges) then
       Result := ''
+    else
+      Result := Bridge.Ip;
   end;
 end;
 
@@ -615,14 +644,50 @@ begin
   aSg.SelRow := ARow;
 end;
 
+procedure GridSelectAll(aSg: TStringGrid);
+var
+  GridRect: TGridRect; 
+begin
+  if goRangeSelect in aSg.Options then
+  begin
+    if aSg.CanFocus and not aSg.Focused then
+      aSg.SetFocus;
+    if aSg.Focused then
+    begin
+      aSg.SelectAllState := True;    
+      if goRowSelect in aSg.Options then
+      begin
+        SetGridLastCell(aSg, False, False, False, aSg.RowCount - aSg.FixedRows, aSg.ColCount - 1);    
+        keybd_event(VK_LSHIFT, 0, 0, 0);
+        keybd_event(VK_HOME, 0, 0, 0);
+        keybd_event(VK_HOME, 0, KEYEVENTF_KEYUP, 0);
+        keybd_event(VK_LSHIFT, 0, KEYEVENTF_KEYUP, 0);
+      end                                                        
+      else                                                       
+      begin                                                       
+        GridRect.Left := aSg.FixedCols;                          
+        GridRect.Top := aSg.FixedRows;                           
+        GridRect.Right := aSg.ColCount - 1;
+        GridRect.Bottom := aSg.RowCount - 1; 
+        aSg.Selection := GridRect; 
+      end;
+      aSg.SelectAllState := False;  
+    end;
+  end;
+end;
+
 procedure GridKeyDown(aSg: TStringGrid; Shift: TShiftState; var Key: Word);
 var
   i: Integer;
+  GridRect: TGridRect;
+  MultiSel: Boolean;
 begin
+  MultiSel := (ssShift in Shift) and (goRangeSelect in aSg.Options) and not (goRowSelect in aSg.Options);
   if ssCtrl in Shift then
   begin
     case Key of
       67: Clipboard.AsText := aSg.Cells[aSg.SelCol, aSg.SelRow];
+      65: GridSelectAll(aSg);
     end;
   end;
 
@@ -646,7 +711,7 @@ begin
       if (aSg.SelCol > 0) then
       begin
         if (aSg.ColWidths[aSg.SelCol - 1] > 0) then
-          dec(aSg.SelCol)
+          Dec(aSg.SelCol)
         else
         begin
           for i := aSg.SelCol - 1 downto 0 do
@@ -659,16 +724,23 @@ begin
           end;
         end;
       end;
-      aSg.Col := aSg.SelCol;
+      if MultiSel then
+      begin
+        GridRect := aSg.Selection;
+        GridRect.Left := aSg.SelCol;
+        aSg.Selection := GridRect;
+      end
+      else
+        aSg.Col := aSg.SelCol;
       GridSetKeyboardLayout(aSg, aSg.SelCol)
     end;
     VK_RIGHT:
     begin
       Key := 0;
       if (aSg.SelCol < aSg.ColCount - 1) then
-      begin
+      begin    
         if aSg.ColWidths[aSg.SelCol + 1] > 0 then
-          inc(aSg.SelCol)
+          Inc(aSg.SelCol)
         else
         begin
           for i := aSg.SelCol + 1 to aSg.ColCount - 1 do
@@ -681,7 +753,14 @@ begin
           end;
         end;
       end;
-      aSg.Col := aSg.SelCol;
+      if MultiSel then
+      begin
+        GridRect := aSg.Selection;     
+        GridRect.Right := aSg.SelCol;
+        aSg.Selection := GridRect;
+      end
+      else
+        aSg.Col := aSg.SelCol;
       GridSetKeyboardLayout(aSg, aSg.SelCol)
     end;
   end;
@@ -2681,6 +2760,7 @@ begin
       ColIndex := aSg.SelCol;
     TUserGrid(aSg).MoveColRow(ColIndex, RowIndex, True, Show);
   end;
+    Tcp.UpdateSelectedRouter;
 end;
 
 procedure BeginUpdateTable(aSg: TStringGrid);
@@ -2916,7 +2996,12 @@ begin
       Result := HostStr;
   end
   else
-    Result := '[' + HostStr + ']'
+  begin
+    if HasBrackets(HostStr) then
+      Result := HostStr
+    else
+      Result := '[' + HostStr + ']'
+  end;
 end;
 
 function GetRouterBySocket(SocketStr: string): string;
@@ -3514,24 +3599,6 @@ begin
   Target.Hostname := '';
   Target.Port := '0';
   Target.Hash := '';
-end;
-
-function GetBridgeStrFromDic(HashStr: string): string;
-var
-  BridgeInfo: TBridgeInfo;
-begin
-  if BridgesDic.TryGetValue(HashStr, BridgeInfo) then
-  begin
-    Result := Trim(
-      BridgeInfo.Transport + ' ' +
-      BridgeInfo.Router.IPv4 + ':' +
-      IntToStr(BridgeInfo.Router.Port) + ' ' +
-      HashStr + ' ' +
-      BridgeInfo.Params
-    );
-    Exit;
-  end;
-  Result := '';
 end;
 
 function TryParseBridge(BridgeStr: string; out Bridge: TBridge; Validate: Boolean = True; UseFormatHost: Boolean = False): Boolean;

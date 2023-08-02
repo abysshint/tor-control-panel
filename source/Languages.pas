@@ -294,6 +294,7 @@ begin
     LoadStr('282', 'Статус');
     LoadStr('284', 'Обновить');
     LoadStr('285', 'Изменить список узлов');
+    LoadStr('286', 'Выбрать шаблон');
     LoadStr('287', 'Запрещённые');
     LoadStr('288', 'Входныe');
     LoadStr('289', 'Средние');
@@ -439,7 +440,16 @@ begin
     LoadStr('665', 'Авангард');
     LoadStr('666', 'Точка входа');
     LoadStr('667', 'Место встречи');
+    LoadStr('669', 'Извлечь данные');
+    LoadStr('670', 'Форматировать IPv6-адреса');
+    LoadStr('671', 'Удалять дубликаты');
+    LoadStr('672', 'Сортировать список');
+    LoadStr('673', 'Разделитель');
+    LoadStr('674', 'Автовыбор');
+    LoadStr('675', 'Новая строка');
+    LoadStr('676', 'Запятая');
     LoadStr('678', 'Набор значков (80x20)|*.png');
+    LoadStr('679', 'Форматировать коды стран');
 
     TranslateArray(HsHeader, TransStr('230'));
     TranslateArray(HsPortsHeader, TransStr('231'));
@@ -796,6 +806,7 @@ begin
     Tcp.imExcludeNodes.Hint := TransStr('287');
     Tcp.imFavoritesBridges.Hint := Load('644', 'Используемые мосты');
     Tcp.imFavoritesFallbackDirs.Hint := Load('649', 'Используемые резервные каталоги');
+    Tcp.imSelectedRouters.Hint := Load('680', 'Выделено элементов');
 
     Tcp.sbAutoScroll.Hint := Load('294', 'Автоматическая прокрутка');
     Tcp.sbWordWrap.Hint := Load('300', 'Перенос строк');
@@ -844,10 +855,10 @@ begin
     Tcp.miCheckIpProxyHttp.Caption := TransStr('593');
 
     Tcp.miDetailsUpdateIp.Caption := TransStr('284');
-    Tcp.miDetailsCopy.Caption := TransStr('274');
+    Tcp.miDetailsExtractData.Caption := TransStr('669');
     Tcp.miDetailsAddToNodesList.Caption := TransStr('285');
     Tcp.miDetailsRelayInfo.Caption := TransStr('281');
-    Tcp.miDetailsSelectTemplate.Caption := Load('286', 'Выбрать шаблон');
+    Tcp.miDetailsSelectTemplate.Caption := TransStr('286');
 
     Tcp.miGetBridges.Caption := Load('291', 'Получить мосты');
     Tcp.miGetBridgesSite.Caption := Load('501', 'Веб-сайт');
@@ -867,14 +878,7 @@ begin
     Tcp.miClearMenuNotAlive.Caption := Load('507', 'Не отвечающие на соединения');
     Tcp.miClearMenuNonCached.Caption := Load('508', 'Отсутствующие в кэше');
     Tcp.miClearMenuCached.Caption := Load('509', 'Найденные в кэше');
-    Tcp.miExtractData.Caption := Load('669', 'Извлечь данные');
-    Tcp.miFormatIPv6OnExtract.Caption := Load('670', 'Форматировать IPv6-адреса');
-    Tcp.miRemoveDuplicateOnExtract.Caption := Load('671', 'Удалять дубликаты');
-    Tcp.miSortOnExtract.Caption := Load('672', 'Сортировать список');
-    Tcp.miExtractDelimiterType.Caption := Load('673', 'Разделитель');
-    Tcp.miExtractDelimiterAuto.Caption := Load('674', 'Автовыбор');
-    Tcp.miExtractDelimiterLineBreak.Caption := Load('675', 'Новая строка');
-    Tcp.miExtractDelimiterComma.Caption := Load('676', 'Запятая');
+    Tcp.miExtractData.Caption := TransStr('669');
     Tcp.miSortData.Caption := TransStr('525');
     Tcp.miSortDataAsc.Caption := Load('305', 'По возрастанию');
     Tcp.miSortDataDesc.Caption := Load('306', 'По убыванию');
@@ -1039,10 +1043,10 @@ begin
     Tcp.miShowNodesUA.Caption := TransStr('369');
 
     Tcp.miRtResetFilter.Caption := Load('563', 'Сброс фильтров');
-    Tcp.miRtCopy.Caption := TransStr('274');
     Tcp.miRtAddToNodesList.Caption := TransStr('285');
     Tcp.miRtSelectAsBridge.Caption := Load('564', 'Выбрать в качестве моста');
     Tcp.miRtDisableBridges.Caption := Load('565', 'Отменить использование мостов');
+    Tcp.miRtExtractData.Caption := TransStr('669');
     Tcp.miRtRelayInfo.Caption := TransStr('281');
     Tcp.miRtFilters.Caption := TransStr('526');
     Tcp.miRtFiltersType.Caption := TransStr('547');
