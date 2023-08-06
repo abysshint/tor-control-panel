@@ -3,7 +3,7 @@
 interface
 
 uses
-  Winapi.Windows, Winapi.Messages, Winapi.ActiveX, Winapi.ShlObj, System.Classes,
+  Winapi.Windows, Winapi.Messages, Winapi.ActiveX, Winapi.ShlObj, System.Classes, Winapi.TlHelp32,
   Winapi.ShellApi, Winapi.WinSock, System.StrUtils, System.SysUtils, System.IniFiles,
   System.Variants, System.Masks, System.DateUtils, System.Generics.Collections, System.Math,
   System.Win.ComObj, System.Win.Registry, Vcl.Graphics, Vcl.Forms, Vcl.Controls, Vcl.Grids,
@@ -83,6 +83,7 @@ var
   function Crypt(str, Key: string): string;
   function Decrypt(str, Key: string): string;
   function FileGetString(Filename: string; Hex: Boolean = False): string;
+  function ProcessExists(ProcessID: Cardinal; FindChild: Boolean = True; AutoTerminate: Boolean = False): Boolean;
   function ExecuteProcess(CmdLine: string; Flags: TProcessFlags = []; JobHandle: THandle = 0): TProcessInfo;
   function RandomString(StrLen: Integer): string;
   function GetPasswordHash(const password: string): string;
@@ -1356,6 +1357,57 @@ begin
     Result := Str;
 end;
 
+function ProcessExists(ProcessID: Cardinal; FindChild: Boolean = True; AutoTerminate: Boolean = False): Boolean;
+var
+  Find: LongBool;
+  SnapshotHandle, ProcessHandle: THandle;
+  ProcessEntry: TProcessEntry32;
+  ls: TStringList;
+  i: Integer;
+begin
+  Result := False;
+  if ProcessID = 0 then
+    Exit;
+  ls := TStringList.Create;
+  SnapshotHandle := CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+  try
+    ProcessEntry.dwSize := SizeOf(ProcessEntry);
+    Find := Process32First(SnapshotHandle, ProcessEntry);
+    while Find do
+    begin
+      if ProcessEntry.th32ProcessID = ProcessID then
+      begin
+        ls.Insert(0, IntToStr(ProcessEntry.th32ProcessID));
+        Result := True;
+      end
+      else
+      begin
+        if (FindChild and (ProcessEntry.th32ParentProcessID = ProcessID)) then
+        begin
+          ls.Append(IntToStr(ProcessEntry.th32ProcessID));
+          Result := True;
+        end;
+      end;
+      Find := Process32Next(SnapshotHandle, ProcessEntry);
+    end;
+    if AutoTerminate then
+    begin
+      for i := ls.Count - 1 downto 0 do
+      begin
+        ProcessHandle := OpenProcess(PROCESS_TERMINATE, False, Cardinal(StrToInt(ls[i])));
+        if ProcessHandle <> INVALID_HANDLE_VALUE then
+        begin
+          TerminateProcess(ProcessHandle, 0);
+          CloseHandle(ProcessHandle);
+        end;
+      end;
+    end;
+  finally
+    CloseHandle(SnapshotHandle);
+    ls.Free;
+  end;
+end;
+
 function ExecuteProcess(CmdLine: string; Flags: TProcessFlags = []; JobHandle: THandle = 0): TProcessInfo;
 var
   hStdOutRead, hStdOutWrite: THandle;
@@ -1364,6 +1416,7 @@ var
   PI: PROCESS_INFORMATION;
   CreationFlags: Cardinal;
 begin
+  Result.ProcessID := 0;
   Result.hProcess := 0;
   Result.hStdOutput := 0;
   UniqueString(CmdLine);
@@ -1396,6 +1449,7 @@ begin
     if pfReadStdOut in Flags then
       Result.hStdOutput := hStdOutRead;
     Result.hProcess := PI.hProcess;
+    Result.ProcessID := PI.dwProcessId;
   end;
   if pfReadStdOut in Flags then
     CloseHandle(hStdOutWrite);

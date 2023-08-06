@@ -397,6 +397,7 @@ type
   TProcessFlag = (pfHideWindow, pfReadStdOut);
   TProcessFlags = set of TProcessFlag;
   TProcessInfo = record
+    ProcessID: Cardinal;
     hProcess: THandle;
     hStdOutput: THandle;
   end;

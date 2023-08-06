@@ -1660,7 +1660,7 @@ var
   ConsensusUpdated, FilterUpdated, RoutersUpdated, ExcludeUpdated, OpenDNSUpdated, LanguageUpdated,
   BridgesUpdated, BridgesRecalculate, BridgesFileUpdated, BridgesFileNeedSave: Boolean;
   SelectExitCircuit, TotalsNeedSave: Boolean;
-  SupportVanguardsLite, SupportRendPostPeriod: Boolean;
+  SupportVanguardsLite, SupportRendPostPeriod, SupportBridgesTesting, SupportDirPort: Boolean;
   FallbackDirsRecalculate, FallbackDirsUpdated: Boolean;
   Scale: Real;
   HsToDelete: ArrOfStr;
@@ -2788,6 +2788,7 @@ begin
       end;
     end;
   end;
+
 end;
 
 function TTcp.GetControlEvents: string;
@@ -5347,7 +5348,7 @@ begin
     1: Value := 0;
     2: Value := 100;
     else
-      Value := -1;       
+      Value := -1;
   end;
   UpdateConnectProgress(Value);
   btnSwitchTor.Caption := TransStr('10' + IntToStr(ConnectState));
@@ -5361,7 +5362,7 @@ procedure TTcp.StopTor;
 var
   BridgesFullUpdate: Boolean;
 begin
-  TerminateProcess(TorMainProcess.hProcess, 0);
+  ProcessExists(TorMainProcess.ProcessID, True, True);
   if Assigned(Controller) then
     Controller.Terminate;
   if Assigned(Consensus) then
@@ -5443,7 +5444,7 @@ end;
 
 procedure TTcp.RestartTimer(Sender: TObject);
 begin
-  if not Assigned(Controller) and not Assigned(Logger) and not Assigned(Consensus) and not Assigned(Descriptors) then
+  if not ProcessExists(TorMainProcess.ProcessID, True) and not Assigned(Controller) and not Assigned(Logger) then
   begin
     case TTimer(Sender).Tag of
       1:
@@ -6696,7 +6697,7 @@ begin
 
       if cdPorts and (cdAlive or NeedAlive) and cdRelay and not RouterInNodesList(Bridge.Hash, IpStr, ntExclude, NeedCountry and NeedAlive, CountryStr) then
       begin
-        if cbUseBridges.Checked and not DeleteUnsuitable then
+        if cbUseBridges.Checked and not DeleteUnsuitable and SupportBridgesTesting then
         begin
           if cbCacheNewBridges.Checked and (cbUseBridgesLimit.Checked or cbUsePreferredBridge.Checked) and (NeedAlive or not Cached) and not SpecialAddr then
           begin
@@ -11473,8 +11474,13 @@ begin
     SetTorConfig('ContactInfo', edContactInfo.Text);
 
     SetServerPort(udORPort);
-    if cbUseDirPort.Checked then
-      SetServerPort(udDirPort);
+    if SupportDirPort then
+    begin
+      if cbUseDirPort.Checked then
+        SetServerPort(udDirPort);
+    end
+    else
+      cbUseDirPort.Checked := False;
 
     ParseStr := Explode(',', RemoveBrackets(edAddress.Text, True));
     Address := '';
@@ -13795,7 +13801,7 @@ begin
   State := cbUseBridges.Checked;
   PreferredState := State and cbUsePreferredBridge.Checked;
   UnsuitableState := State and cbExcludeUnsuitableBridges.Checked;
-  NewState := cbUsePreferredBridge.Checked or cbUseBridgesLimit.Checked;
+  NewState := SupportBridgesTesting and (cbUsePreferredBridge.Checked or cbUseBridgesLimit.Checked);
   LimitState := State and cbUseBridgesLimit.Checked and not cbUsePreferredBridge.Checked;
   QueueState := UnsuitableState and NewState and cbCacheNewBridges.Checked;
   BuiltinState := State and BridgeIsBuiltin and (cbxBridgesList.Items.Count > 0);
@@ -14496,7 +14502,7 @@ begin
   cbDirCache.Enabled := State and not (BridgeState or cbUseDirPort.Checked);
   cbUseUPnP.Enabled := State;
   cbPublishServerDescriptor.Enabled := State;
-  cbUseDirPort.Enabled := State and not BridgeState;
+  cbUseDirPort.Enabled := State and not BridgeState and SupportDirPort;
   cbHiddenServiceStatistics.Enabled := State;
   cbDirReqStatistics.Enabled := State;
   cbAssumeReachable.Enabled := State;
@@ -15213,9 +15219,8 @@ begin
   if miShowGuard.Checked or miShowHSDir.Checked then
   begin
     FastAndStableEnable(False);
-    if miShowGuard.Checked then
-      miShowV2Dir.Checked := True;
-    miShowV2Dir.Enabled := not miShowGuard.Checked;
+    miShowV2Dir.Enabled := False;
+    miShowV2Dir.Checked := True;
   end
   else
   begin
@@ -15619,7 +15624,7 @@ procedure TTcp.btnSwitchTorClick(Sender: TObject);
 begin
   if ConnectState = 0 then
   begin
-    if not Assigned(Controller) and not Assigned(Logger) and not Assigned(Consensus) and not Assigned(Descriptors) then
+    if not ProcessExists(TorMainProcess.ProcessID, True, True) and not Assigned(Controller) and not Assigned(Logger) and not Assigned(Consensus) and not Assigned(Descriptors) then
     begin
       case CurrentScanPurpose of
         spUserBridges, spNewBridges: ShowMsg(Format(TransStr('400'), [TransStr('659')]));
@@ -17631,8 +17636,10 @@ procedure TTcp.LoadOptions(FirstStart: Boolean);
 begin
   if FirstStart then
     UpdateConfigVersion;
+  SupportDirPort := not CheckFileVersion(TorVersion, '0.4.6.1');
   SupportVanguardsLite := CheckFileVersion(TorVersion, '0.4.7.1');
   SupportRendPostPeriod := not CheckFileVersion(TorVersion, '0.4.8.1');
+  SupportBridgesTesting := SupportVanguardsLite;
   ResetOptions;
   if not Assigned(ShowTimer) then
   begin

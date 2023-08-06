@@ -6332,6 +6332,7 @@ object Tcp: TTcp
       AutoCheck = True
       Caption = #1042#1090#1086#1088#1072#1103' '#1074#1077#1088#1089#1080#1103' '#1082#1072#1090#1072#1083#1086#1075#1072
       Checked = True
+      Enabled = False
       OnClick = SetRoutersFilter
     end
     object miShowHSDir: TMenuItem
