@@ -35,6 +35,7 @@ type
 
   TTransportInfo = record
     TransportID: Byte;
+    ServerOptions: string;
     InList: Boolean;
   end;
 
@@ -1032,6 +1033,8 @@ type
     miDetailsExtractData: TMenuItem;
     imSelectedRouters: TImage;
     lbSelectedRouters: TLabel;
+    cbUseServerTransportOptions: TCheckBox;
+    meServerTransportOptions: TMemo;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1158,7 +1161,11 @@ type
     procedure LoadFallbackDirs(ini: TMemIniFile; Default: Boolean);
     procedure LoadBuiltinBridges(ini: TMemIniFile; UpdateBridges, UpdateList: Boolean; ListName: string = '');
     procedure ResetTransports(ini: TMemIniFile);
+    procedure ResetServerTransportOptions(ini: TMemIniFile);
     procedure LoadTransportsData(Data: TStringList);
+    procedure LoadServerTransportOptionsData(Data: TStringList);
+    procedure SaveServerTransportOptions(Key, Value: string; UpdateControls: Boolean = False);
+    procedure LoadServerTransportOptions(Key: string; UpdateControls: Boolean = False);
     procedure LoadProxyPorts(PortControl: TUpdown; HostControl: TCombobox; EnabledControl: TCheckBox; ini: TMemIniFile);
     procedure SaveReachableAddresses(ini: TMemIniFile);
     procedure SaveProxyData(ini: TMemIniFile);
@@ -1601,6 +1608,9 @@ type
       Shift: TShiftState; X, Y: Integer);
     procedure sbShowLogMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
+    procedure meServerTransportOptionsChange(Sender: TObject);
+    procedure meServerTransportOptionsExit(Sender: TObject);
+    procedure cbxBridgeTypeChange(Sender: TObject);
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
     procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -1661,7 +1671,7 @@ var
   BridgesUpdated, BridgesRecalculate, BridgesFileUpdated, BridgesFileNeedSave: Boolean;
   SelectExitCircuit, TotalsNeedSave: Boolean;
   SupportVanguardsLite, SupportRendPostPeriod, SupportBridgesTesting, SupportDirPort: Boolean;
-  FallbackDirsRecalculate, FallbackDirsUpdated: Boolean;
+  FallbackDirsRecalculate, FallbackDirsUpdated, ServerTransportOptionsUpdated: Boolean;
   Scale: Real;
   HsToDelete: ArrOfStr;
   SystemLanguage: Word;
@@ -6241,6 +6251,86 @@ begin
   end;
 end;
 
+procedure TTcp.SaveServerTransportOptions(Key, Value: string; UpdateControls: Boolean = False);
+var
+  i: Integer;
+  Options: string;
+  ParseStr: ArrOfStr;
+  T: TTransportInfo;
+begin
+  Key := Trim(Key);
+  if TransportsDic.TryGetValue(Key, T) then
+  begin
+    if T.TransportID <> TRANSPORT_CLIENT then
+    begin
+      ParseStr := Explode(' ', Trim(Value));
+      Options := '';
+      for i := 0 to Length(ParseStr) - 1 do
+      begin
+        ParseStr[i] := Trim(ParseStr[i]);
+        if ValidKeyValue(ParseStr[i]) then
+          Options := Options + ' ' + ParseStr[i];
+      end;
+      Delete(Options, 1, 1);
+      T.ServerOptions := Options;
+      TransportsDic.AddOrSetValue(Key, T);
+      if UpdateControls then
+        meServerTransportOptions.Text := Options;
+    end;
+  end;
+  ServerTransportOptionsUpdated := False;
+end;
+
+procedure TTcp.LoadServerTransportOptions(Key: string; UpdateControls: Boolean = False);
+var
+  T: TTransportInfo;
+  Data: string;
+begin
+  if TransportsDic.TryGetValue(Key, T) then
+  begin
+    if T.TransportID <> TRANSPORT_CLIENT then
+      Data := T.ServerOptions;
+  end
+  else
+    Data := '';
+  if UpdateControls then
+  begin
+    if Data = '' then
+      cbUseServerTransportOptions.Checked := False;
+  end;
+  meServerTransportOptions.Text := Data;
+end;
+
+procedure TTcp.LoadServerTransportOptionsData(Data: TStringList);
+var
+  i: Integer;
+  Key, Value: string;
+begin
+  for i := 0 to Data.Count - 1 do
+  begin
+    Key := SeparateLeft(Data[i], '=');
+    Value := SeparateRight(Data[i], '=');
+    SaveServerTransportOptions(Key, Value);
+  end;
+end;
+
+procedure TTcp.ResetServerTransportOptions(ini: TMemIniFile);
+var
+  ls: TStringList;
+begin
+  if FileExists(DefaultsFile) then
+  begin
+    ls := TStringList.Create;
+    try
+      ini.ReadSectionValues('ServerTransportOptions', ls);
+      if ls.Count > 0 then
+        LoadServerTransportOptionsData(ls);
+    finally
+      ls.Free;
+    end;
+  end;
+end;
+
 procedure TTcp.ResetTransports(ini: TMemIniFile);
 var
   ls: TStringList;
@@ -6361,14 +6451,15 @@ begin
   DeleteTorConfig('ClientTransportPlugin', [cfMultiLine]);
   DeleteTorConfig('ServerTransportPlugin', [cfMultiLine]);
   DeleteTorConfig('ServerTransportListenAddr', [cfMultiLine]);
+  DeleteTorConfig('ServerTransportOptions', [cfMultiLine]);
   DeleteTorConfig('ExtORPort', [cfMultiLine]);
   ini.EraseSection('Transports');
+  ini.EraseSection('ServerTransportOptions');
 
   if ReloadServerTransport then
     ServerTransport := GetSettings('Server', 'BridgeType', '', ini)
   else
     ServerTransport := cbxBridgeType.Text;
-
   cbxBridgeType.Clear;
   cbxBridgeType.Items.Insert(0, TransStr('206'));
   if not IsEmptyGrid(sgTransports) then
@@ -6396,15 +6487,22 @@ begin
             UsedTransports := UsedTransports + ',' + ParseStr[j];
             Find := True;
           end;
-        end;
-        if TransportID <> TRANSPORT_CLIENT then
-        begin
-          cbxBridgeType.Items.Append(ParseStr[j]);
-          if (cbxServerMode.ItemIndex = SERVER_MODE_BRIDGE) and (ServerTransport = ParseStr[j]) then
+          if TransportID <> TRANSPORT_CLIENT then
           begin
-            SetTorConfig('ServerTransportPlugin', Trim(ServerTransport + ' exec ' + TransportsDir + Handler + ' ' + Params));
-            SetTorConfig('ServerTransportListenAddr', ServerTransport + ' 0.0.0.0:' + IntToStr(udTransportPort.Position));
-            SetTorConfig('ExtORPort', 'auto');
+            cbxBridgeType.Items.Append(ParseStr[j]);
+            if T.ServerOptions <> '' then
+              SetSettings('ServerTransportOptions', ParseStr[j], T.ServerOptions, ini);
+            if ServerTransport = ParseStr[j] then
+            begin
+              if cbxServerMode.ItemIndex = SERVER_MODE_BRIDGE then
+              begin
+                SetTorConfig('ServerTransportPlugin', Trim(ServerTransport + ' exec ' + TransportsDir + Handler + ' ' + Params));
+                if cbUseServerTransportOptions.Checked and (T.ServerOptions <> '') then
+                  SetTorConfig('ServerTransportOptions', ServerTransport + ' ' + T.ServerOptions);
+                SetTorConfig('ServerTransportListenAddr', ServerTransport + ' 0.0.0.0:' + IntToStr(udTransportPort.Position));
+                SetTorConfig('ExtORPort', 'auto');
+              end;
+            end;
           end;
         end;
         Transports := Transports + ',' + ParseStr[j];
@@ -6423,8 +6521,10 @@ begin
     end;
   end;
   cbxBridgeType.ItemIndex := GetIntDef(cbxBridgeType.Items.IndexOf(ServerTransport), 0, 0, MAXINT);
-  SetSettings('Server', cbxBridgeType, ini, False);
+  LoadServerTransportOptions(cbxBridgeType.Text, True);
   ServerIsObfs4 := cbxBridgeType.Text = 'obfs4';
+  SetSettings('Server', cbxBridgeType, ini, False);
+  SetSettings('Server', cbUseServerTransportOptions, ini);
 end;
 
 procedure TTcp.LoadBridgesFromFile;
@@ -7236,7 +7336,7 @@ var
   ini, inidef: TMemIniFile;
   ScrollBars, SeparateType, LogAutoDelType: Byte;
   ParseStr: ArrOfStr;
-  Transports: TStringList;
+  Transports, ServerTransportOptions: TStringList;
   FilterEntry, FilterMiddle, FilterExit, Temp: string;
   FavoritesEntry, FavoritesMiddle, FavoritesExit, ExcludeNodes: string;
 begin
@@ -7572,6 +7672,21 @@ begin
     else
       ResetTransports(inidef);
 
+    if ini.SectionExists('ServerTransportOptions') then
+    begin
+      ServerTransportOptions := TStringList.Create;
+      try
+        ini.ReadSectionValues('ServerTransportOptions', ServerTransportOptions);
+        if ServerTransportOptions.Count > 0 then
+          LoadServerTransportOptionsData(ServerTransportOptions);
+      finally
+        ServerTransportOptions.Free;
+      end;
+    end
+    else
+      ResetServerTransportOptions(inidef);
+    LoadServerTransportOptions(GetSettings('Server', 'BridgeType', '', ini));
+
     GetSettings('Network', cbUseBridges, ini);
     GetSettings('Network', cbUsePreferredBridge, ini);
     GetSettings('Network', cbxBridgesType, ini);
@@ -7662,6 +7777,7 @@ begin
     GetSettings('Server', cbUseDirPort, ini);
     GetSettings('Server', cbDirCache, ini);
     GetSettings('Server', cbListenIPv6, ini);
+    GetSettings('Server', cbUseServerTransportOptions, ini);
     GetSettings('Server', cbUseAddress, ini);
     GetSettings('Server', udNumCPUs, ini);
     GetSettings('Server', udTransportPort, ini);
@@ -7685,6 +7801,7 @@ begin
     LineToMemo(GetSettings('Server', 'MyFamily', '', ini), meMyFamily, meMyFamily.SortType);
     SaveServerOptions(ini);
     SaveTransportsData(ini, True);
+    CheckServerControls;
 
     GetSettings('Main', cbxConnectionPadding, ini);
     GetSettings('Main', cbxCircuitPadding, ini);
@@ -8035,86 +8152,116 @@ function TTcp.CheckTransports: Boolean;
 var
   i, j, ResultCode: Integer;
   TransportID: Byte;
-  T: TTransportInfo;
+  T, TransportInfo: TTransportInfo;
   Transports, Item, Handler, Params, Msg, ResultMsg: string;
   ParseStr: ArrOfStr;
+  TransportsList: TDictionary<string, TTransportInfo>;
+  TransportItem: TPair<string, TTransportInfo>;
+  ls: TStringList;
 begin
   Result := True;
   ResultCode := 0;
-  TransportsDic.Clear;
   if not edTransports.Enabled then
     Exit;
-  edTransports.Text := StringReplace(edTransports.Text, ' ', '', [rfReplaceAll]);
-  edTransportsHandler.Text := StringReplace(edTransportsHandler.Text, ' ', '', [rfReplaceAll]);
-  meHandlerParams.Text := Trim(meHandlerParams.Text);
-  Msg := TTabSheet(gbTransports.GetParentComponent).Caption + ' - ' + gbTransports.Caption + BR + BR;
-  for i := 1 to sgTransports.RowCount - 1 do
-  begin
-    TransportID := GetTransportID(sgTransports.Cells[PT_TYPE, i]);
-    Transports := sgTransports.Cells[PT_TRANSPORTS, i];
-    Handler := sgTransports.Cells[PT_HANDLER, i];
-    Params := sgTransports.Cells[PT_PARAMS, i];
-
-    if not FileExists(TransportsDir + Handler) then
+  TransportsList := TDictionary<string, TTransportInfo>.Create;
+  try
+    edTransports.Text := StringReplace(edTransports.Text, ' ', '', [rfReplaceAll]);
+    edTransportsHandler.Text := StringReplace(edTransportsHandler.Text, ' ', '', [rfReplaceAll]);
+    meHandlerParams.Text := Trim(meHandlerParams.Text);
+    Msg := TTabSheet(gbTransports.GetParentComponent).Caption + ' - ' + gbTransports.Caption + BR + BR;
+    for i := 1 to sgTransports.RowCount - 1 do
     begin
-      ResultCode := 2;
-      Break;
-    end;
+      TransportID := GetTransportID(sgTransports.Cells[PT_TYPE, i]);
+      Transports := sgTransports.Cells[PT_TRANSPORTS, i];
+      Handler := sgTransports.Cells[PT_HANDLER, i];
+      Params := sgTransports.Cells[PT_PARAMS, i];
 
-    if Pos('|', Params) <> 0 then
-    begin
-      ResultCode := 5;
-      Break;
-    end;
-
-    ParseStr := Explode(',', Transports);
-    for j := 0 to Length(ParseStr) - 1 do
-    begin
-      Item := Trim(ParseStr[j]);
-      if Item = '' then
+      if not FileExists(TransportsDir + Handler) then
       begin
-        ResultCode := 1;
+        ResultCode := 2;
         Break;
       end;
 
-      ResultMsg := CheckEditString(Item, '_', False);
-      if ResultMsg <> '' then
+      if Pos('|', Params) <> 0 then
       begin
-        ResultCode := 3;
+        ResultCode := 5;
         Break;
       end;
 
-      if TransportsDic.TryGetValue(Item, T) then
+      ParseStr := Explode(',', Transports);
+      for j := 0 to Length(ParseStr) - 1 do
       begin
-        if (T.TransportID = TransportID) or
-           (T.TransportID = TRANSPORT_BOTH) or
-           (TransportID = TRANSPORT_BOTH) then
+        Item := Trim(ParseStr[j]);
+        if Item = '' then
         begin
-          ResultCode := 4;
+          ResultCode := 1;
           Break;
         end;
+
+        ResultMsg := CheckEditString(Item, '_', False);
+        if ResultMsg <> '' then
+        begin
+          ResultCode := 3;
+          Break;
+        end;
+
+        if TransportsList.TryGetValue(Item, T) then
+        begin
+          if (T.TransportID = TransportID) or
+             (T.TransportID = TRANSPORT_BOTH) or
+             (TransportID = TRANSPORT_BOTH) then
+          begin
+            ResultCode := 4;
+            Break;
+          end;
+        end;
+        T.TransportID := TransportID;
+        T.ServerOptions := '';
+        T.InList := False;
+        if TransportsDic.TryGetValue(Item, TransportInfo) then
+        begin
+          if TransportID <> TRANSPORT_CLIENT then
+            T.ServerOptions := TransportInfo.ServerOptions
+        end;
+        TransportsList.AddOrSetValue(Item, T);
       end;
-      T.TransportID := TransportID;
-      T.InList := False;
-      TransportsDic.AddOrSetValue(Item, T);
-    end;
 
+      if ResultCode > 0 then
+        Break;
+
+    end;
     if ResultCode > 0 then
-      Break;
-
-  end;
-  if ResultCode > 0 then
-  begin
-    Result := False;
-    sgTransports.Row := i;
-    SelectTransports;
-    case ResultCode of
-      1: GoToInvalidOption(tsOther, Msg + TransStr('394'), edTransports);
-      2: GoToInvalidOption(tsOther, Msg + TransStr('395'), edTransportsHandler);
-      3: GoToInvalidOption(tsOther, Msg + ResultMsg, edTransports);
-      4: GoToInvalidOption(tsOther, Msg + TransStr('399'), edTransports);
-      5: GoToInvalidOption(tsOther, Msg + Format(TransStr('255'), ['|']), meHandlerParams);
+    begin
+      Result := False;
+      sgTransports.Row := i;
+      SelectTransports;
+      case ResultCode of
+        1: GoToInvalidOption(tsOther, Msg + TransStr('394'), edTransports);
+        2: GoToInvalidOption(tsOther, Msg + TransStr('395'), edTransportsHandler);
+        3: GoToInvalidOption(tsOther, Msg + ResultMsg, edTransports);
+        4: GoToInvalidOption(tsOther, Msg + TransStr('399'), edTransports);
+        5: GoToInvalidOption(tsOther, Msg + Format(TransStr('255'), ['|']), meHandlerParams);
+      end;
+    end
+    else
+    begin
+      for TransportItem in TransportsList do
+        TransportsDic.AddOrSetValue(TransportItem.Key, TransportItem.Value);
+      ls := TStringList.Create;
+      try
+        for TransportItem in TransportsDic do
+        begin
+          if not TransportsList.ContainsKey(TransportItem.Key) then
+            ls.Append(TransportItem.Key);
+        end;
+        for i := 0 to ls.Count - 1 do
+          TransportsDic.Remove(ls[i]);
+      finally
+        ls.Free;
+      end;
     end;
+  finally
+    TransportsList.Free;
   end;
 end;
 
@@ -8724,6 +8871,7 @@ begin
     UpdateSystemInfo;
     SaveServerOptions(ini);
     SaveTransportsData(ini, False);
+    CheckServerControls;
     SavePaddingOptions(ini);
 
     GetLocalInterfaces(cbxHsAddress);
@@ -11496,8 +11644,6 @@ begin
     end;
     Delete(Address, 1, 1);
     edAddress.Text := Address;
-    if Address = '' then
-      cbUseAddress.Checked := False;
 
     if cbUseRelayBandwidth.Checked then
     begin
@@ -11546,6 +11692,8 @@ begin
     SetTorConfig('DirCache', IntToStr(Integer(cbDirCache.Checked)));
     SetTorConfig('AssumeReachable', IntToStr(Integer(cbAssumeReachable.Checked)));
   end;
+  if edAddress.Text = '' then
+    cbUseAddress.Checked := False;
 
   SetSettings('Server', cbxServerMode, ini);
   SetSettings('Server', edNickname, ini);
@@ -11577,7 +11725,6 @@ begin
   SetSettings('Server', cbPublishServerDescriptor, ini);
   SetSettings('Server', cbUseMyFamily, ini);
   SetSettings('Server', 'MyFamily', MyFamily, ini);
-  CheckServerControls;
 end;
 
 procedure TTcp.CheckPaddingControls;
@@ -13662,6 +13809,20 @@ begin
   end;
 end;
 
+procedure TTcp.meServerTransportOptionsChange(Sender: TObject);
+begin
+  if not meServerTransportOptions.Focused then
+    Exit;
+  ServerTransportOptionsUpdated := True;
+  EnableOptionButtons;
+end;
+
+procedure TTcp.meServerTransportOptionsExit(Sender: TObject);
+begin
+  if ServerTransportOptionsUpdated then
+    SaveServerTransportOptions(cbxBridgeType.Text, meServerTransportOptions.Text, True);
+end;
+
 procedure TTcp.meMyFamilyChange(Sender: TObject);
 begin
   lbTotalMyFamily.Caption := TransStr('203') + ': ' + IntToStr(meMyFamily.Lines.Count);
@@ -14156,6 +14317,16 @@ begin
     meBridges.SetFocus;
 end;
 
+procedure TTcp.cbxBridgeTypeChange(Sender: TObject);
+begin
+  if cbxBridgeType.Focused then
+  begin
+    LoadServerTransportOptions(cbxBridgeType.Text, False);
+    CheckServerControls;
+    EnableOptionButtons;
+  end;
+end;
+
 procedure TTcp.cbxHsAddressChange(Sender: TObject);
 begin
   sgHsPorts.Cells[HSP_INTERFACE, sgHsPorts.SelRow] := cbxHsAddress.Text;
@@ -14508,10 +14679,12 @@ begin
   cbAssumeReachable.Enabled := State;
   cbListenIPv6.Enabled := State;
   cbIPv6Exit.Enabled := ExitState and cbListenIPv6.Checked;
+  cbUseServerTransportOptions.Enabled := TransportState;
   cbUseAddress.Enabled := State;
   cbUseMyFamily.Enabled := State and not BridgeState;
 
   meExitPolicy.enabled := ExitState and (cbxExitPolicyType.ItemIndex = 2);
+  meServerTransportOptions.Enabled := TransportState and cbUseServerTransportOptions.Checked;
   meMyFamily.Enabled := FamilyState;
 
   imUPnPTest.Visible := State;
@@ -14690,8 +14863,6 @@ var
 begin
   if TEdit(Sender).Focused then
   begin
-    if CtrlKeyPressed('A') then
-      Exit;
     Str := Trim(edBridgesFile.Text);
     if BridgesFileName <> Str then
     begin
@@ -14747,8 +14918,6 @@ procedure TTcp.edBridgesLimitChange(Sender: TObject);
 begin
   if TEdit(Sender).Focused then
   begin
-    if CtrlKeyPressed('A') then
-      Exit;
     BridgesUpdated := True;
     BridgesRecalculate := True;
     EnableOptionButtons;
@@ -14765,8 +14934,6 @@ end;
 
 procedure TTcp.edTransportsChange(Sender: TObject);
 begin
-  if CtrlKeyPressed('A') then
-    Exit;
   if TCustomEdit(Sender).Focused then
     ChangeTransportTable(TEdit(Sender).HelpContext)
 end;
@@ -14775,8 +14942,6 @@ procedure TTcp.edHsChange(Sender: TObject);
 var
   UD: TUpDown;
 begin
-  if CtrlKeyPressed('A') then
-    Exit;
   if TEdit(Sender).Focused then
     ChangeHsTable(TEdit(Sender).HelpContext)
   else
@@ -14818,11 +14983,7 @@ end;
 procedure TTcp.EditChange(Sender: TObject);
 begin
   if TEdit(Sender).Focused then
-  begin
-    if CtrlKeyPressed('A') then
-      Exit;
     EnableOptionButtons;
-  end;
 end;
 
 procedure TTcp.SetDownState;
@@ -14977,8 +15138,6 @@ procedure TTcp.edPreferredBridgeChange(Sender: TObject);
 begin
   if TEdit(Sender).Focused then
   begin
-    if CtrlKeyPressed('A') then
-      Exit;
     btnFindPreferredBridge.Enabled := PreferredBridgeFound;
     BridgesUpdated := True;
     BridgesRecalculate := True;
@@ -15006,8 +15165,6 @@ procedure TTcp.edReachableAddressesChange(Sender: TObject);
 begin
   if TEdit(Sender).Focused then
   begin
-    if CtrlKeyPressed('A') then
-      Exit;
     BridgesUpdated := True;
     BridgesRecalculate := True;
     EnableOptionButtons;
@@ -15490,6 +15647,8 @@ begin
   ini := TMemIniFile.Create(DefaultsFile, TEncoding.UTF8);
   try
     ResetTransports(ini);
+    ResetServerTransportOptions(ini);
+    LoadServerTransportOptions(cbxBridgeType.Text, True);
   finally
     ini.Free;
   end;

@@ -108,6 +108,7 @@ var
   function HasBrackets(Str: string): Boolean;
   function IsIPv4(IpStr: string): Boolean;
   function IsIPv6(IpStr: string): Boolean;
+  function ValidKeyValue(const Str: string): Boolean;
   function ValidData(Str: string; ListType: TListType): Boolean;
   function ValidInt(IntStr: string; Min, Max: Integer): Boolean; overload;
   function ValidInt(IntStr: string; Min, Max: Int64): Boolean; overload;
@@ -3594,6 +3595,22 @@ begin
   Result := True;
 end;
 
+function ValidKeyValue(const Str: string): Boolean;
+var
+  Search, DL: Integer;
+begin
+  Result := False;
+  DL := Length(Str); 
+  if DL < 3 then
+    Exit;
+  Search := Pos('=', Str);
+  if Search = 0 then
+    Exit;
+  if (Str[1] = '=') or (Str[DL] = '=') then
+    Exit;
+  Result := True;  
+end;
+
 function GetTransportID(TypeStr: string): Byte;
 begin
   Result := TRANSPORT_CLIENT;
@@ -3743,7 +3760,7 @@ begin
         Result := True;
     end
     else
-      Result := ValidHash(ParseStr[1]) and (ValidSocket(ParseStr[0]) <> soNone);
+      Result := (ParamCount = 2) and ValidHash(ParseStr[1]) and (ValidSocket(ParseStr[0]) <> soNone);
   end
   else
     Result := ValidSocket(ParseStr[0]) <> soNone;

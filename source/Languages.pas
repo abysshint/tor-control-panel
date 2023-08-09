@@ -450,6 +450,7 @@ begin
     LoadStr('676', 'Запятая');
     LoadStr('678', 'Набор значков (80x20)|*.png');
     LoadStr('679', 'Форматировать коды стран');
+    LoadLns('682', '\n Список опций в формате: k=v\n разделённых пробелом');
 
     TranslateArray(HsHeader, TransStr('230'));
     TranslateArray(HsPortsHeader, TransStr('231'));
@@ -637,6 +638,8 @@ begin
     Tcp.meMyFamily.TextHint.Text := TransStr('322');
     Tcp.lbBridgeDistribution.Caption := Load('425', 'Распространение');
     LoadList(Tcp.cbxBridgeDistribution, '426', '"Любое","Https","E-mail","Moat","Не распространять"');
+    Tcp.cbUseServerTransportOptions.Caption :=  Load('681', 'Задать опции транспорта');
+    Tcp.meServerTransportOptions.TextHint.Text := TransStr('682');
     Tcp.cbUseAddress.Caption := Load('427', 'Задать внешний адрес вручную');
     Tcp.lbAddress.Caption := Load('428', 'Адрес');
     Tcp.edAddress.TextHint := Load('429', 'IP-адрес или имя узла');

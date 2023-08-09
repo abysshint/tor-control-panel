@@ -3057,7 +3057,7 @@ object Tcp: TTcp
         Height = 17
         Caption = #1054#1075#1088#1072#1085#1080#1095#1080#1090#1100' '#1089#1082#1086#1088#1086#1089#1090#1100
         Enabled = False
-        TabOrder = 15
+        TabOrder = 17
         OnClick = ServerControlsChange
       end
       object edContactInfo: TEdit
@@ -3100,7 +3100,7 @@ object Tcp: TTcp
         Checked = True
         Enabled = False
         State = cbChecked
-        TabOrder = 29
+        TabOrder = 31
         OnClick = ServerControlsChange
       end
       object cbUseMaxMemInQueues: TCheckBox
@@ -3110,7 +3110,7 @@ object Tcp: TTcp
         Height = 17
         Caption = #1054#1075#1088#1072#1085#1080#1095#1080#1090#1100' '#1087#1072#1084#1103#1090#1100
         Enabled = False
-        TabOrder = 9
+        TabOrder = 11
         OnClick = ServerControlsChange
       end
       object cbxBridgeType: TComboBox
@@ -3124,13 +3124,13 @@ object Tcp: TTcp
         Enabled = False
         ParentDoubleBuffered = False
         TabOrder = 3
-        OnChange = ServerControlsChange
+        OnChange = cbxBridgeTypeChange
       end
       object meExitPolicy: TMemo
         Left = 10
         Top = 148
         Width = 227
-        Height = 219
+        Height = 139
         Enabled = False
         Lines.Strings = (
           'accept *:80'
@@ -3149,7 +3149,7 @@ object Tcp: TTcp
         Height = 17
         Caption = #1054#1075#1088#1072#1085#1080#1095#1080#1090#1100' '#1087#1088#1086#1094#1077#1089#1089#1086#1088
         Enabled = False
-        TabOrder = 12
+        TabOrder = 14
         OnClick = ServerControlsChange
       end
       object cbPublishServerDescriptor: TCheckBox
@@ -3161,7 +3161,7 @@ object Tcp: TTcp
         Checked = True
         Enabled = False
         State = cbChecked
-        TabOrder = 30
+        TabOrder = 32
         OnClick = OptionsChange
       end
       object cbUseDirPort: TCheckBox
@@ -3172,7 +3172,7 @@ object Tcp: TTcp
         TabStop = False
         Caption = #1042#1082#1083#1102#1095#1080#1090#1100' '#1079#1077#1088#1082#1072#1083#1086' '#1082#1072#1090#1072#1083#1086#1075#1072' '#1088#1077#1090#1088#1072#1085#1089#1083#1103#1090#1086#1088#1086#1074
         Enabled = False
-        TabOrder = 31
+        TabOrder = 33
         OnClick = ServerControlsChange
       end
       object cbDirReqStatistics: TCheckBox
@@ -3184,7 +3184,7 @@ object Tcp: TTcp
         Checked = True
         Enabled = False
         State = cbChecked
-        TabOrder = 33
+        TabOrder = 35
         OnClick = OptionsChange
       end
       object cbIPv6Exit: TCheckBox
@@ -3194,7 +3194,7 @@ object Tcp: TTcp
         Height = 17
         Caption = #1056#1072#1079#1088#1077#1096#1080#1090#1100' '#1074#1099#1093#1086#1076' IPv6 '#1090#1088#1072#1092#1080#1082#1072
         Enabled = False
-        TabOrder = 36
+        TabOrder = 38
         OnClick = OptionsChange
       end
       object cbHiddenServiceStatistics: TCheckBox
@@ -3208,7 +3208,7 @@ object Tcp: TTcp
         Checked = True
         Enabled = False
         State = cbChecked
-        TabOrder = 32
+        TabOrder = 34
         OnClick = OptionsChange
       end
       object edORPort: TEdit
@@ -3220,7 +3220,7 @@ object Tcp: TTcp
         MaxLength = 5
         NumbersOnly = True
         PopupMenu = EditMenu
-        TabOrder = 22
+        TabOrder = 24
         Text = '9001'
         OnChange = EditChange
       end
@@ -3234,7 +3234,7 @@ object Tcp: TTcp
         Min = 1
         Max = 65535
         Position = 9001
-        TabOrder = 23
+        TabOrder = 25
         Thousands = False
         OnChanging = SpinChanging
       end
@@ -3247,7 +3247,7 @@ object Tcp: TTcp
         MaxLength = 5
         NumbersOnly = True
         PopupMenu = EditMenu
-        TabOrder = 24
+        TabOrder = 26
         Text = '9030'
         OnChange = EditChange
       end
@@ -3261,7 +3261,7 @@ object Tcp: TTcp
         Min = 1
         Max = 65535
         Position = 9030
-        TabOrder = 25
+        TabOrder = 27
         Thousands = False
         OnChanging = SpinChanging
       end
@@ -3274,7 +3274,7 @@ object Tcp: TTcp
         MaxLength = 5
         NumbersOnly = True
         PopupMenu = EditMenu
-        TabOrder = 26
+        TabOrder = 28
         Text = '443'
         OnChange = EditChange
       end
@@ -3288,7 +3288,7 @@ object Tcp: TTcp
         Min = 1
         Max = 65535
         Position = 443
-        TabOrder = 27
+        TabOrder = 29
         Thousands = False
         OnChanging = SpinChanging
       end
@@ -3301,7 +3301,7 @@ object Tcp: TTcp
         MaxLength = 5
         NumbersOnly = True
         PopupMenu = EditMenu
-        TabOrder = 10
+        TabOrder = 12
         Text = '1024'
         OnChange = EditChange
       end
@@ -3316,7 +3316,7 @@ object Tcp: TTcp
         Max = 32768
         Increment = 256
         Position = 1024
-        TabOrder = 11
+        TabOrder = 13
         Thousands = False
         OnChanging = SpinChanging
       end
@@ -3329,7 +3329,7 @@ object Tcp: TTcp
         MaxLength = 3
         NumbersOnly = True
         PopupMenu = EditMenu
-        TabOrder = 13
+        TabOrder = 15
         Text = '1'
         OnChange = EditChange
       end
@@ -3343,7 +3343,7 @@ object Tcp: TTcp
         Min = 1
         Max = 128
         Position = 1
-        TabOrder = 14
+        TabOrder = 16
         Thousands = False
         OnChanging = SpinChanging
       end
@@ -3356,7 +3356,7 @@ object Tcp: TTcp
         MaxLength = 7
         NumbersOnly = True
         PopupMenu = EditMenu
-        TabOrder = 16
+        TabOrder = 18
         Text = '1250'
         OnChange = EditChange
       end
@@ -3371,7 +3371,7 @@ object Tcp: TTcp
         Max = 1048576
         Increment = 250
         Position = 1250
-        TabOrder = 17
+        TabOrder = 19
         Thousands = False
         OnChanging = SpinChanging
       end
@@ -3384,7 +3384,7 @@ object Tcp: TTcp
         MaxLength = 7
         NumbersOnly = True
         PopupMenu = EditMenu
-        TabOrder = 18
+        TabOrder = 20
         Text = '2500'
         OnChange = EditChange
       end
@@ -3399,7 +3399,7 @@ object Tcp: TTcp
         Max = 1048576
         Increment = 250
         Position = 2500
-        TabOrder = 19
+        TabOrder = 21
         Thousands = False
         OnChanging = SpinChanging
       end
@@ -3413,7 +3413,7 @@ object Tcp: TTcp
         ParentDoubleBuffered = False
         PopupMenu = EditMenu
         ScrollBars = ssVertical
-        TabOrder = 38
+        TabOrder = 40
         WordWrap = False
         OnChange = meMyFamilyChange
       end
@@ -3425,7 +3425,7 @@ object Tcp: TTcp
         Caption = #1048#1089#1087#1086#1083#1100#1079#1086#1074#1072#1090#1100' '#1082#1101#1096' '#1082#1072#1090#1072#1083#1086#1075#1072
         Checked = True
         State = cbChecked
-        TabOrder = 28
+        TabOrder = 30
         OnMouseDown = cbDirCacheMouseDown
       end
       object cbListenIPv6: TCheckBox
@@ -3435,7 +3435,7 @@ object Tcp: TTcp
         Height = 17
         Caption = #1055#1088#1086#1089#1083#1091#1096#1080#1074#1072#1090#1100' IPv6-'#1072#1076#1088#1077#1089#1072
         Enabled = False
-        TabOrder = 35
+        TabOrder = 37
         OnClick = ServerControlsChange
       end
       object cbAssumeReachable: TCheckBox
@@ -3445,17 +3445,17 @@ object Tcp: TTcp
         Height = 17
         Caption = #1054#1090#1082#1083#1102#1095#1080#1090#1100' '#1087#1088#1086#1074#1077#1088#1082#1091' '#1076#1086#1089#1090#1091#1087#1085#1086#1089#1090#1080' '#1089#1077#1088#1074#1077#1088#1072
         Enabled = False
-        TabOrder = 34
+        TabOrder = 36
         OnClick = OptionsChange
       end
       object cbUseAddress: TCheckBox
         Left = 10
-        Top = 376
+        Top = 375
         Width = 222
         Height = 17
         Caption = #1047#1072#1076#1072#1090#1100' '#1074#1085#1077#1096#1085#1080#1081' '#1072#1076#1088#1077#1089' '#1074#1088#1091#1095#1085#1091#1102
         Enabled = False
-        TabOrder = 7
+        TabOrder = 9
         OnClick = ServerControlsChange
       end
       object edAddress: TEdit
@@ -3466,7 +3466,7 @@ object Tcp: TTcp
         Enabled = False
         MaxLength = 255
         PopupMenu = EditMenu
-        TabOrder = 8
+        TabOrder = 10
         TextHint = 'IP-'#1072#1076#1088#1077#1089' '#1080#1083#1080' '#1080#1084#1103' '#1091#1079#1083#1072
         OnChange = EditChange
       end
@@ -3477,7 +3477,7 @@ object Tcp: TTcp
         Height = 17
         Caption = #1048#1089#1087#1086#1083#1100#1079#1086#1074#1072#1090#1100' '#1089#1077#1084#1077#1081#1089#1090#1074#1086
         Enabled = False
-        TabOrder = 37
+        TabOrder = 39
         OnClick = ServerControlsChange
       end
       object cbxBridgeDistribution: TComboBox
@@ -3510,7 +3510,7 @@ object Tcp: TTcp
         MaxLength = 7
         NumbersOnly = True
         PopupMenu = EditMenu
-        TabOrder = 20
+        TabOrder = 22
         Text = '2000'
         OnChange = EditChange
       end
@@ -3525,9 +3525,34 @@ object Tcp: TTcp
         Max = 1048576
         Increment = 250
         Position = 2000
-        TabOrder = 21
+        TabOrder = 23
         Thousands = False
         OnChanging = SpinChanging
+      end
+      object cbUseServerTransportOptions: TCheckBox
+        Left = 10
+        Top = 295
+        Width = 222
+        Height = 17
+        Caption = #1047#1072#1076#1072#1090#1100' '#1086#1087#1094#1080#1080' '#1090#1088#1072#1085#1089#1087#1086#1088#1090#1072
+        Enabled = False
+        TabOrder = 7
+        OnClick = ServerControlsChange
+      end
+      object meServerTransportOptions: TMemo
+        Left = 10
+        Top = 320
+        Width = 227
+        Height = 48
+        HelpType = htKeyword
+        HelpContext = 3
+        Enabled = False
+        PopupMenu = EditMenu
+        ScrollBars = ssVertical
+        TabOrder = 8
+        WantReturns = False
+        OnChange = meServerTransportOptionsChange
+        OnExit = meServerTransportOptionsExit
       end
     end
     object tsHs: TTabSheet
