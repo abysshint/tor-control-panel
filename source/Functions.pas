@@ -83,7 +83,7 @@ var
   function Crypt(str, Key: string): string;
   function Decrypt(str, Key: string): string;
   function FileGetString(Filename: string; Hex: Boolean = False): string;
-  function ProcessExists(ProcessID: Cardinal; FindChild: Boolean = True; AutoTerminate: Boolean = False): Boolean;
+  function ProcessExists(var ProcessInfo: TProcessInfo; FindChild: Boolean = True; AutoTerminate: Boolean = False): Boolean;
   function ExecuteProcess(CmdLine: string; Flags: TProcessFlags = []; JobHandle: THandle = 0): TProcessInfo;
   function RandomString(StrLen: Integer): string;
   function GetPasswordHash(const password: string): string;
@@ -170,7 +170,7 @@ var
   procedure SetConfigString(Section, Ident: string; Value: string);
   procedure SaveToLog(str: string; LogFile: string);
   procedure AddUPnPEntry(Port: Integer; Desc, LanIp: string; Test: Boolean; var Msg: string);
-  procedure RemoveUPnPEntry(First: Integer; Second: Integer = 0; Third: Integer = 0);
+  procedure RemoveUPnPEntry(PortList: array of Word);
   procedure SetGridLastCell(aSg: TStringGrid; Show: Boolean = True; ScrollTop: Boolean = False; ManualSort: Boolean = False; ARow: Integer = -1; ACol: Integer = -1; FindCol: Integer = 0);
   procedure ClearRow(aSg: TStringGrid; ARow: Integer);
   procedure ClearGrid(aSg: TStringGrid; DeleteBlankRows: Boolean = True);
@@ -1358,7 +1358,7 @@ begin
     Result := Str;
 end;
 
-function ProcessExists(ProcessID: Cardinal; FindChild: Boolean = True; AutoTerminate: Boolean = False): Boolean;
+function ProcessExists(var ProcessInfo: TProcessInfo; FindChild: Boolean = True; AutoTerminate: Boolean = False): Boolean;
 var
   Find: LongBool;
   SnapshotHandle, ProcessHandle: THandle;
@@ -1367,7 +1367,7 @@ var
   i: Integer;
 begin
   Result := False;
-  if ProcessID = 0 then
+  if ProcessInfo.ProcessID = INVALID_HANDLE_VALUE then
     Exit;
   ls := TStringList.Create;
   SnapshotHandle := CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -1376,14 +1376,14 @@ begin
     Find := Process32First(SnapshotHandle, ProcessEntry);
     while Find do
     begin
-      if ProcessEntry.th32ProcessID = ProcessID then
+      if ProcessEntry.th32ProcessID = ProcessInfo.ProcessID then
       begin
         ls.Insert(0, IntToStr(ProcessEntry.th32ProcessID));
         Result := True;
       end
       else
       begin
-        if (FindChild and (ProcessEntry.th32ParentProcessID = ProcessID)) then
+        if (FindChild and (ProcessEntry.th32ParentProcessID = ProcessInfo.ProcessID)) then
         begin
           ls.Append(IntToStr(ProcessEntry.th32ProcessID));
           Result := True;
@@ -1402,6 +1402,7 @@ begin
           CloseHandle(ProcessHandle);
         end;
       end;
+      ProcessInfo := cDefaultTProcessInfo;
     end;
   finally
     CloseHandle(SnapshotHandle);
@@ -1417,9 +1418,7 @@ var
   PI: PROCESS_INFORMATION;
   CreationFlags: Cardinal;
 begin
-  Result.ProcessID := 0;
-  Result.hProcess := 0;
-  Result.hStdOutput := 0;
+  Result := cDefaultTProcessInfo;
   UniqueString(CmdLine);
   SA.nLength := SizeOf(SECURITY_ATTRIBUTES);
   SA.bInheritHandle := True;
@@ -2348,24 +2347,25 @@ begin
   end;
 end;
 
-procedure RemoveUPnPEntry(First: Integer; Second: Integer = 0; Third: Integer = 0);
+procedure RemoveUPnPEntry(PortList: array of Word);
 var
   Nat: Variant;
   Ports: Variant;
+  i, PortsCount: Integer;
 begin
-  if (First = 0) and (Second = 0) and (Third = 0) then
+  PortsCount := Length(PortList);
+  if PortsCount = 0 then
     Exit;
   try
     Nat := CreateOleObject('HNetCfg.NATUPnP');
     Ports := Nat.StaticPortMappingCollection;
     if not VarIsClear(Ports) then
     begin
-      if First > 0 then
-        Ports.Remove(First, 'TCP');
-      if Second > 0 then
-        Ports.Remove(Second, 'TCP');
-      if Third > 0 then
-        Ports.Remove(Third, 'TCP');
+      for i := 0 to PortsCount - 1 do
+      begin
+        if PortList[i] <> 0 then
+          Ports.Remove(PortList[i], 'TCP');
+      end;
     end;
   except
     on E:Exception do
@@ -4025,7 +4025,6 @@ begin
   CheckMask(ROUTER_ALIVE);
   CheckMask(ROUTER_REACHABLE_IPV6);
   CheckMask(ROUTER_HS_DIR);
-  CheckMask(ROUTER_DIR_MIRROR);
   CheckMask(ROUTER_NOT_RECOMMENDED);
   CheckMask(ROUTER_BAD_EXIT);
   CheckMask(ROUTER_MIDDLE_ONLY);

@@ -21,7 +21,6 @@ type
     IPv4: string;
     IPv6: string;
     Port: Word;
-    DirPort: Word;
     Flags: TRouterFlags;
     Version: string;
     Bandwidth: Integer;
@@ -361,7 +360,6 @@ type
     lbSpeed1: TLabel;
     lbSpeed2: TLabel;
     lbContactInfo: TLabel;
-    lbDirPort: TLabel;
     lbExitPolicy: TLabel;
     lbMaxMemInQueues: TLabel;
     lbSizeMb: TLabel;
@@ -380,14 +378,10 @@ type
     meExitPolicy: TMemo;
     cbUseNumCPUs: TCheckBox;
     cbPublishServerDescriptor: TCheckBox;
-    cbUseDirPort: TCheckBox;
     cbDirReqStatistics: TCheckBox;
-    cbIPv6Exit: TCheckBox;
     cbHiddenServiceStatistics: TCheckBox;
     edORPort: TEdit;
     udORPort: TUpDown;
-    edDirPort: TEdit;
-    udDirPort: TUpDown;
     edTransportPort: TEdit;
     udTransportPort: TUpDown;
     edMaxMemInQueues: TEdit;
@@ -407,8 +401,6 @@ type
     lbHsVirtualPort: TLabel;
     lbHsVersion: TLabel;
     lbHsNumIntroductionPoints: TLabel;
-    lbRendPostPeriod: TLabel;
-    lbMinutes: TLabel;
     lbHsMaxStreams: TLabel;
     lbHsName: TLabel;
     cbxHsAddress: TComboBox;
@@ -419,8 +411,6 @@ type
     udHsNumIntroductionPoints: TUpDown;
     edHsMaxStreams: TEdit;
     udHsMaxStreams: TUpDown;
-    udRendPostPeriod: TUpDown;
-    edRendPostPeriod: TEdit;
     edHsRealPort: TEdit;
     udHsRealPort: TUpDown;
     edHsVirtualPort: TEdit;
@@ -495,7 +485,6 @@ type
     miShowAuthority: TMenuItem;
     lbPorts: TLabel;
     cbDirCache: TCheckBox;
-    cbListenIPv6: TCheckBox;
     cbAssumeReachable: TCheckBox;
     lbAddress: TLabel;
     cbUseAddress: TCheckBox;
@@ -562,8 +551,6 @@ type
     cbEnforceDistinctSubnets: TCheckBox;
     edMaxCircuitDirtiness: TEdit;
     udMaxCircuitDirtiness: TUpDown;
-    cbUseOpenDNS: TCheckBox;
-    cbUseOpenDNSOnlyWhenUnknown: TCheckBox;
     miStreamsSortTrack: TMenuItem;
     miSelectExitCircuitWhenItChanges: TMenuItem;
     lsTray: TImageList;
@@ -591,7 +578,6 @@ type
     lbBridgeDistribution: TLabel;
     miShowRecommend: TMenuItem;
     miAbout: TMenuItem;
-    miShowDirMirror: TMenuItem;
     miRtFiltersQuery: TMenuItem;
     miDisableFiltersOnUserQuery: TMenuItem;
     miClearRoutersAbsent: TMenuItem;
@@ -1035,6 +1021,10 @@ type
     lbSelectedRouters: TLabel;
     cbUseServerTransportOptions: TCheckBox;
     meServerTransportOptions: TMemo;
+    cbUseOpenDNS: TCheckBox;
+    cbUseOpenDNSOnlyWhenUnknown: TCheckBox;
+    cbIPv6Exit: TCheckBox;
+    cbListenIPv6: TCheckBox;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1224,7 +1214,6 @@ type
     procedure UpdateHsPorts;
     procedure UpdateUsedProxyTypes(ini: TMemIniFile);
     procedure UpdateTransports;
-    procedure UseDirPortEnable(State: Boolean);
     procedure SaveSortData;
     procedure UpdateScaleFactor;
     function RoutersAutoSelect: Boolean;
@@ -1670,7 +1659,7 @@ var
   ConsensusUpdated, FilterUpdated, RoutersUpdated, ExcludeUpdated, OpenDNSUpdated, LanguageUpdated,
   BridgesUpdated, BridgesRecalculate, BridgesFileUpdated, BridgesFileNeedSave: Boolean;
   SelectExitCircuit, TotalsNeedSave: Boolean;
-  SupportVanguardsLite, SupportRendPostPeriod, SupportBridgesTesting, SupportDirPort: Boolean;
+  SupportVanguardsLite, SupportBridgesTesting: Boolean;
   FallbackDirsRecalculate, FallbackDirsUpdated, ServerTransportOptionsUpdated: Boolean;
   Scale: Real;
   HsToDelete: ArrOfStr;
@@ -2353,12 +2342,9 @@ begin
         Router.IPv4 := ParseStr[5];
         Router.IPv6 := '';
         Router.Port := StrToInt(ParseStr[6]);
-        Router.DirPort := StrToInt(ParseStr[7]);
         Router.Flags := [rfRelay];
         Router.Version := '';
         Router.Params := 0;
-        if Router.DirPort <> 0 then
-          Inc(Router.Params, ROUTER_DIR_MIRROR);
         Continue;
       end;
       if Pos('a ', ls[i]) = 1 then
@@ -2695,7 +2681,6 @@ begin
           DescRouter.IPv4 := ParseStr[2];
           DescRouter.IPv6 := '';
           DescRouter.Port := StrToInt(ParseStr[3]);
-          DescRouter.DirPort := 0;
           DescRouter.Flags := [rfBridge];
           DescRouter.Params := ROUTER_BRIDGE;
           DescRouter.Version := '';
@@ -2827,8 +2812,8 @@ begin
     until (Terminated = True) or (AuthStageReady(Tcp.cbxAuthMetod.ItemIndex) = True);
 
     case Tcp.cbxAuthMetod.ItemIndex of
-      0: AuthParam := FileGetString(UserDir + 'control_auth_cookie', True);
-      1: AuthParam := '"' + Decrypt(ControlPassword, 'True') + '"';
+      CONTROL_AUTH_COOKIE: AuthParam := FileGetString(UserDir + 'control_auth_cookie', True);
+      CONTROL_AUTH_PASSWORD: AuthParam := '"' + Decrypt(ControlPassword, 'True') + '"';
     end;
     Socket.SendString('AUTHENTICATE ' + AnsiString(AuthParam) + BR);
     Socket.SendString('SETEVENTS ' + AnsiString(Tcp.GetControlEvents) + BR);
@@ -4125,7 +4110,6 @@ begin
           DrawFlagIcon(ROUTER_ALIVE, 56);
           DrawFlagIcon(ROUTER_REACHABLE_IPV6, 34);
           DrawFlagIcon(ROUTER_HS_DIR, 53);
-          DrawFlagIcon(ROUTER_DIR_MIRROR, 38);
           DrawFlagIcon(ROUTER_NOT_RECOMMENDED, 44);
           DrawFlagIcon(ROUTER_BAD_EXIT, 43);
           DrawFlagIcon(ROUTER_MIDDLE_ONLY, 61);
@@ -4518,7 +4502,6 @@ begin
         CheckMask(ROUTER_ALIVE);
         CheckMask(ROUTER_REACHABLE_IPV6);
         CheckMask(ROUTER_HS_DIR);
-        CheckMask(ROUTER_DIR_MIRROR);
         CheckMask(ROUTER_NOT_RECOMMENDED);
         CheckMask(ROUTER_BAD_EXIT);
         CheckMask(ROUTER_MIDDLE_ONLY);
@@ -4546,7 +4529,6 @@ begin
             ROUTER_ALIVE: sgRouters.Hint := TransStr('386');
             ROUTER_REACHABLE_IPV6: sgRouters.Hint := TransStr('387');
             ROUTER_HS_DIR: sgRouters.Hint := TransStr('388');
-            ROUTER_DIR_MIRROR: sgRouters.Hint := Format(TransStr('389'), [RouterInfo.DirPort]);
             ROUTER_NOT_RECOMMENDED: sgRouters.Hint := TransStr('390');
             ROUTER_BAD_EXIT: sgRouters.Hint := TransStr('391');
             ROUTER_MIDDLE_ONLY: sgRouters.Hint := TransStr('640');
@@ -4757,7 +4739,6 @@ begin
     Exit;
   edHsName.Text := sgHs.Cells[HS_NAME, sgHs.SelRow];
   case StrToIntDef(sgHs.Cells[HS_VERSION, sgHs.SelRow], HS_VERSION_3) of
-    2: cbxHsVersion.ItemIndex := HS_VERSION_2;
     3: cbxHsVersion.ItemIndex := HS_VERSION_3;
   end;
   if sgHs.Cells[HS_STATE, sgHs.SelRow] = SELECT_CHAR then
@@ -5015,11 +4996,6 @@ begin
         Continue;
       AddUPnPEntry(udORPort.Position, 'ORPort', cbxSOCKSHost.Items[i], Test, UPnPMsg);
       udORPort.Tag := udORPort.Position;
-      if cbUseDirPort.Checked then
-      begin
-        AddUPnPEntry(udDirPort.Position, 'DirPort', cbxSOCKSHost.Items[i], Test, UPnPMsg);
-        udDirPort.Tag := udDirPort.Position;
-      end;
       if (cbxServerMode.ItemIndex = SERVER_MODE_BRIDGE) and (cbxBridgeType.ItemIndex > 0) then
       begin
         AddUPnPEntry(udTransportPort.Position, 'PTPort', cbxSOCKSHost.Items[i], Test, UPnPMsg);
@@ -5211,8 +5187,6 @@ begin
     if cbxServerMode.ItemIndex > SERVER_MODE_NONE then
     begin
       CheckOpenPorts(udORPort, LOOPBACK_ADDRESS, PortStr);
-      if cbUseDirPort.Checked then
-        CheckOpenPorts(udDirPort, LOOPBACK_ADDRESS, PortStr);
       if cbxBridgeType.ItemIndex > 0 then
         CheckOpenPorts(udTransportPort, LOOPBACK_ADDRESS, PortStr);
     end;
@@ -5232,7 +5206,7 @@ begin
     if LogAutoDelHours >= 0 then
       DeleteFiles(LogsDir + '*.log', LogAutoDelHours * 3600);
     TorMainProcess := ExecuteProcess(TorExeFile + ' -f "' + TorConfigFile + '"', [pfHideWindow, pfReadStdOut], hJob);
-    if TorMainProcess.hProcess <> 0 then
+    if TorMainProcess.hProcess <> INVALID_HANDLE_VALUE then
     begin
       if CheckFileVersion(TorVersion, '0.4.0.5') then
       begin
@@ -5290,7 +5264,7 @@ begin
         lbControlPort.Enabled := False;
         cbxAuthMetod.Enabled := False;
         lbAuthMetod.Enabled := False;
-        if cbxAuthMetod.ItemIndex = 1 then
+        if cbxAuthMetod.ItemIndex = CONTROL_AUTH_PASSWORD then
         begin
           edControlPassword.Enabled := False;
           lbControlPassword.Enabled := False;
@@ -5302,13 +5276,13 @@ begin
             if not Restarting then
               ShowBalloon(TransStr('240'));
         ControlPortConnect;
-        if TorMainProcess.hStdOutput <> 0 then
+        if TorMainProcess.hStdOutput <> INVALID_HANDLE_VALUE then
           LogListenerStart(TorMainProcess.hStdOutput);
         InitPortForwarding(False);
       end
       else
       begin
-        TerminateProcess(TorMainProcess.hProcess, 0);
+        ProcessExists(TorMainProcess, True, True);
         if not AutoResolveErrors then
         begin
           if Win32MajorVersion = 5 then
@@ -5372,7 +5346,7 @@ procedure TTcp.StopTor;
 var
   BridgesFullUpdate: Boolean;
 begin
-  ProcessExists(TorMainProcess.ProcessID, True, True);
+  ProcessExists(TorMainProcess, True, True);
   if Assigned(Controller) then
     Controller.Terminate;
   if Assigned(Consensus) then
@@ -5415,7 +5389,7 @@ begin
     lbControlPort.Enabled := True;
     cbxAuthMetod.Enabled := True;
     lbAuthMetod.Enabled := True;
-    if cbxAuthMetod.ItemIndex = 1 then
+    if cbxAuthMetod.ItemIndex = CONTROL_AUTH_PASSWORD then
     begin
       edControlPassword.Enabled := True;
       lbControlPassword.Enabled := True;
@@ -5432,9 +5406,8 @@ begin
       BridgesCheckControls;
     ShowBalloon(TransStr('241'));
   end;
-  RemoveUPnPEntry(udORPort.Tag, udDirPort.Tag, udTransportPort.Tag);
+  RemoveUPnPEntry([udORPort.Tag, udTransportPort.Tag]);
   udORPort.Tag := 0;
-  udDirPort.Tag := 0;
   udTransportPort.Tag := 0;
 end;
 
@@ -5454,7 +5427,7 @@ end;
 
 procedure TTcp.RestartTimer(Sender: TObject);
 begin
-  if not ProcessExists(TorMainProcess.ProcessID, True) and not Assigned(Controller) and not Assigned(Logger) then
+  if not ProcessExists(TorMainProcess, True) and not Assigned(Controller) and not Assigned(Logger) then
   begin
     case TTimer(Sender).Tag of
       1:
@@ -5679,9 +5652,9 @@ var
         end;
       end;
       case FMode of
-        0: Fmode := 1;
+        0: Fmode := FILTER_TYPE_COUNTRIES;
         1: ExitNodes := IncludeList;
-        2: FMode := 0;
+        2: FMode := FILTER_TYPE_NONE;
       end;
       case FNodes of
         1: begin EntryNodes := ExitNodes; ExitNodes := ''; end;
@@ -5877,6 +5850,19 @@ begin
         DeleteSettings('Main', 'MinimizeOnStartup', ini);
         ConfigVersion := 8;
       end;
+      if ConfigVersion = 8 then
+      begin
+        SetSettings('Server', 'UseOpenDNS', GetSettings('Main', 'UseOpenDNS', True, ini), ini);
+        SetSettings('Server', 'UseOpenDNSOnlyWhenUnknown', GetSettings('Main', 'UseOpenDNSOnlyWhenUnknown', True, ini), ini);
+        DeleteSettings('HiddenServices', 'RendPostPeriod', ini);
+        DeleteSettings('Server', 'UseDirPort', ini);
+        DeleteSettings('Server', 'DirPort', ini);
+        DeleteSettings('Main', 'UseOpenDNS', ini);
+        DeleteSettings('Main', 'UseOpenDNSOnlyWhenUnknown', ini);
+        DeleteTorConfig('RendPostPeriod');
+        DeleteTorConfig('DirPort');
+        ConfigVersion := 9;
+      end;
     end
     else
       ConfigVersion := CURRENT_CONFIG_VERSION;
@@ -6047,7 +6033,6 @@ begin
       continue;
     end;
   end;
-  udRendPostPeriod.Position := Round(StrToInt(GetTorConfig('RendPostPeriod', '3600', [], ptInteger, Tcp.udRendPostPeriod.Min * 60, Tcp.udRendPostPeriod.Max * 60)) / 60);
 end;
 
 function TTcp.LoadHiddenServices(ini: TMemIniFile): Integer;
@@ -6066,7 +6051,6 @@ begin
   HsList := TStringList.Create;
   PortList := TStringList.Create;
   try
-    GetSettings('HiddenServices', udRendPostPeriod, ini);
     ini.ReadSectionValues('HiddenServices', HsList);
     for i := 0 to HsList.Count - 1 do
     begin
@@ -6081,10 +6065,9 @@ begin
           MaxStreams := ParseStr[3];
           State := ParseStr[4];
           PortsData := ParseStr[5];
-          if not ValidInt(Version, 2, 3) then
+          if not ValidInt(Version, 3, 3) then
             Version := '3';
           case StrToInt(Version) of
-            2: begin Min := 1; Max := 10 end;
             3: begin Min := 3; Max := 20 end;
           end;
           if not ValidInt(IntroPoints, Min, Max) then
@@ -6151,7 +6134,7 @@ end;
 
 procedure TTcp.SaveHiddenServices(ini: TMemIniFile);
 var
-  i, j, Count: Integer;
+  i, j: Integer;
   UpdateControls: Boolean;
   ParseStr, ParsePort: ArrOfStr;
   Name, PrevName, Version, MaxStreams, IntroPoints, PortsData, State: string;
@@ -6162,7 +6145,6 @@ begin
   DeleteTorConfig('HiddenServicePort', [cfMultiLine]);
   DeleteTorConfig('HiddenServiceNumIntroductionPoints', [cfMultiLine]);
   DeleteTorConfig('HiddenServiceMaxStreams', [cfMultiLine]);
-  DeleteTorConfig('RendPostPeriod');
   ini.EraseSection('HiddenServices');
 
   if Length(HsToDelete) > 0 then
@@ -6171,13 +6153,11 @@ begin
       DeleteDir(HsDir + HsToDelete[i]);
     HsToDelete := nil;
   end;
-  SetSettings('HiddenServices', udRendPostPeriod, ini);
 
   if not IsEmptyGrid(sgHs) then
   begin
     if not DirectoryExists(UserDir + 'services') then
       ForceDirectories(UserDir + 'services');
-    Count := 0;
     for i := 1 to sgHs.RowCount - 1 do
     begin
       Name := sgHs.Cells[HS_NAME, i];
@@ -6190,21 +6170,12 @@ begin
 
       if not ValidInt(MaxStreams, 1, 65535) then MaxStreams := '0';
       if State = SELECT_CHAR then
-      begin
-        if CheckFileVersion(TorVersion, '0.4.6.1') and (Version = '2') then
-        begin
-          State := '0';
-          UpdateControls := True;
-        end
-        else
-          State := '1'
-      end
+        State := '1'
       else
         State := '0';
 
       if State = '1' then
       begin
-        Inc(Count);
         if DirectoryExists(HsDir + PrevName) then
         begin
           if Name <> PrevName then
@@ -6241,8 +6212,6 @@ begin
         PortsData,
       ini);
     end;
-    if SupportRendPostPeriod and (Count > 0) then
-      SetTorConfig('RendPostPeriod', IntToStr(Tcp.udRendPostPeriod.Position * 60));
     if UpdateControls then
     begin
       LoadHiddenServices(ini);
@@ -7380,8 +7349,6 @@ begin
     GetSettings('Main', cbNoDesktopBordersOnlyEnlarged, ini);
     GetSettings('Main', cbHideIPv6Addreses, ini);
     GetSettings('Main', cbUseNetworkCache, ini);
-    GetSettings('Main', cbUseOpenDNS, ini);
-    GetSettings('Main', cbUseOpenDNSOnlyWhenUnknown, ini);
     GetSettings('Main', cbRememberEnlargedPosition, ini);
     GetSettings('Main', cbClearPreviousSearchQuery, ini);
 
@@ -7631,12 +7598,12 @@ begin
       edControlPassword.Text := Decrypt(ControlPassword, 'True');
     if GetTorConfig('CookieAuthentication', '0') = '1' then
     begin
-      cbxAuthMetod.ItemIndex := 0;
+      cbxAuthMetod.ItemIndex := CONTROL_AUTH_COOKIE;
       DeleteTorConfig('HashedControlPassword');
     end
     else
     begin
-      cbxAuthMetod.ItemIndex := 1;
+      cbxAuthMetod.ItemIndex := CONTROL_AUTH_PASSWORD;
       SetTorConfig('HashedControlPassword', Temp);
     end;
     CheckAuthMetodContols;
@@ -7773,8 +7740,6 @@ begin
     GetSettings('Server', edAddress, ini);
     GetSettings('Server', cbxServerMode, ini);
     GetSettings('Server', udORPort, ini);
-    GetSettings('Server', udDirPort, ini);
-    GetSettings('Server', cbUseDirPort, ini);
     GetSettings('Server', cbDirCache, ini);
     GetSettings('Server', cbListenIPv6, ini);
     GetSettings('Server', cbUseServerTransportOptions, ini);
@@ -7797,6 +7762,8 @@ begin
     GetSettings('Server', cbUseMyFamily, ini);
     GetSettings('Server', cbxBridgeDistribution, ini);
     GetSettings('Server', cbxExitPolicyType, ini);
+    GetSettings('Server', cbUseOpenDNS, ini);
+    GetSettings('Server', cbUseOpenDNSOnlyWhenUnknown, ini);
     LineToMemo(GetSettings('Server', 'CustomExitPolicy', DEFAULT_CUSTOM_EXIT_POLICY, ini), meExitPolicy);
     LineToMemo(GetSettings('Server', 'MyFamily', '', ini), meMyFamily, meMyFamily.SortType);
     SaveServerOptions(ini);
@@ -7844,7 +7811,7 @@ begin
       if GetSettings('Main', 'Terminated', False, ini) = True then
       begin
         if (cbUseUPnP.Checked) and (cbxServerMode.ItemIndex > SERVER_MODE_NONE) then
-          RemoveUPnPEntry(udORPort.Position, udDirPort.Position, udTransportPort.Position);
+          RemoveUPnPEntry([udORPort.Position, udTransportPort.Position]);
       end;
       TotalDL := GetSettings('Status', 'TotalDL', 0, ini);
       TotalUL := GetSettings('Status', 'TotalUL', 0, ini);
@@ -8020,7 +7987,6 @@ begin
           if BridgeInfo.Router.IPv6 <> '' then
             Inc(BridgeInfo.Router.Params, ROUTER_REACHABLE_IPV6);
           BridgeInfo.Router.Port := StrToIntDef(ParseStr[3], 0);
-          BridgeInfo.Router.DirPort := 0;
           BridgeInfo.Router.Bandwidth := StrToIntDef(ParseStr[4], 0);  
           BridgeInfo.Router.Version := ParseStr[5];
           BridgeInfo.Kind := GetIntDef(StrToIntDef(ParseStr[6], BRIDGE_RELAY), BRIDGE_RELAY, BRIDGE_RELAY, BRIDGE_NATIVE);
@@ -8608,7 +8574,7 @@ var
   FavoritesEntry, FavoritesMiddle, FavoritesExit: string;
   StyleName: string;
 begin
-  if (cbxAuthMetod.ItemIndex = 1) and (CheckEditString(edControlPassword.Text, '', True, lbControlPassword.Caption, edControlPassword) <> '') then
+  if (cbxAuthMetod.ItemIndex = CONTROL_AUTH_PASSWORD) and (CheckEditString(edControlPassword.Text, '', True, lbControlPassword.Caption, edControlPassword) <> '') then
     Exit;
   if (cbxServerMode.ItemIndex > SERVER_MODE_NONE) and (CheckEditString(edNickname.Text, '', True, lbNickname.Caption, edNickname) <> '') then
     Exit;
@@ -8660,8 +8626,6 @@ begin
     SetSettings('Main', cbNoDesktopBorders, ini);
     SetSettings('Main', cbNoDesktopBordersOnlyEnlarged, ini);
     SetSettings('Main', cbHideIPv6Addreses, ini);
-    SetSettings('Main', cbUseOpenDNS, ini);
-    SetSettings('Main', cbUseOpenDNSOnlyWhenUnknown, ini);
     SetSettings('Main', cbRememberEnlargedPosition, ini);
     SetSettings('Main', cbClearPreviousSearchQuery, ini);
     SetSettings('Main', cbUseNetworkCache, ini);
@@ -8716,7 +8680,7 @@ begin
       IntToStr(meFallbackDirs.SortType), ini
     );
     edControlPassword.Hint := GetSettings('Main', 'HashedControlPassword', '', ini);
-    if cbxAuthMetod.ItemIndex = 1 then
+    if cbxAuthMetod.ItemIndex = CONTROL_AUTH_PASSWORD then
     begin
       if edControlPassword.Text <> '' then
       begin
@@ -8732,9 +8696,9 @@ begin
           SetTorConfig('HashedControlPassword', edControlPassword.Hint);
       end
       else
-        cbxAuthMetod.ItemIndex := 0;
+        cbxAuthMetod.ItemIndex := CONTROL_AUTH_COOKIE;
     end;
-    if cbxAuthMetod.ItemIndex = 0 then
+    if cbxAuthMetod.ItemIndex = CONTROL_AUTH_COOKIE then
     begin
       SetTorConfig('CookieAuthentication', '1');
       if edControlPassword.Text <> '' then
@@ -10235,8 +10199,6 @@ begin
   if Preview then
     RouterID := Copy(RouterID, 1, 30) + '..';
   Result := RouterInfo.IPv4;
-  if RouterInfo.DirPort <> 0 then
-    Result := Result + ':' + IntToStr(RouterInfo.DirPort);
   Result := Result + ' orport=' + IntToStr(RouterInfo.Port) + ' id=' + RouterID;
   if RouterInfo.IPv6 <> '' then
   begin
@@ -11597,7 +11559,6 @@ begin
   DeleteTorConfig('AssumeReachable');
   DeleteTorConfig('DirCache');
   DeleteTorConfig('ORPort');
-  DeleteTorConfig('DirPort');
   DeleteTorConfig('BridgeRelay');
   DeleteTorConfig('BridgeDistribution');
   DeleteTorConfig('ExitRelay');
@@ -11620,16 +11581,7 @@ begin
     SetTorConfig('Nickname', edNickname.Text);
     edContactInfo.Text := Trim(edContactInfo.Text);
     SetTorConfig('ContactInfo', edContactInfo.Text);
-
     SetServerPort(udORPort);
-    if SupportDirPort then
-    begin
-      if cbUseDirPort.Checked then
-        SetServerPort(udDirPort);
-    end
-    else
-      cbUseDirPort.Checked := False;
-
     ParseStr := Explode(',', RemoveBrackets(edAddress.Text, True));
     Address := '';
     for i := 0 to Length(ParseStr) - 1 do
@@ -11700,7 +11652,6 @@ begin
   SetSettings('Server', edContactInfo, ini);
   SetSettings('Server', edAddress, ini, True);
   SetSettings('Server', udORPort, ini);
-  SetSettings('Server', udDirPort, ini);
   SetSettings('Server', udTransportPort, ini);
   SetSettings('Server', udRelayBandwidthRate, ini);
   SetSettings('Server', udRelayBandwidthBurst, ini);
@@ -11714,7 +11665,6 @@ begin
   SetSettings('Server', cbUseNumCPUs, ini);
   SetSettings('Server', cbUseMaxMemInQueues, ini);
   SetSettings('Server', cbUseAddress, ini);
-  SetSettings('Server', cbUseDirPort, ini);
   SetSettings('Server', cbUseUPnP, ini);
   SetSettings('Server', cbAssumeReachable, ini);
   SetSettings('Server', cbDirCache, ini);
@@ -11723,6 +11673,8 @@ begin
   SetSettings('Server', cbListenIPv6, ini);
   SetSettings('Server', cbHiddenServiceStatistics, ini);
   SetSettings('Server', cbPublishServerDescriptor, ini);
+  SetSettings('Server', cbUseOpenDNS, ini);
+  SetSettings('Server', cbUseOpenDNSOnlyWhenUnknown, ini);
   SetSettings('Server', cbUseMyFamily, ini);
   SetSettings('Server', 'MyFamily', MyFamily, ini);
 end;
@@ -12369,7 +12321,7 @@ end;
 procedure TTcp.ShowRouters;
 var
   RoutersCount, i, j: Integer;
-  cdExit, cdGuard, cdAuthority, cdOther, cdBridge, cdFast, cdStable, cdV2Dir, cdHSDir, cdRecommended, cdDirMirror, cdAlive, cdConsensus: Boolean;
+  cdExit, cdGuard, cdAuthority, cdOther, cdBridge, cdFast, cdStable, cdV2Dir, cdHSDir, cdRecommended, cdAlive, cdConsensus: Boolean;
   cdRouterType, cdCountry, cdWeight, cdQuery, cdFavorites: Boolean;
   Item: TPair<string, TRouterInfo>;
   Transport: TPair<string, TTransportInfo>;
@@ -12452,7 +12404,7 @@ begin
   if miRtFiltersQuery.Checked and (Query <> '') then
   begin
     case cbxRoutersQuery.ItemIndex of
-      4,5:
+      USER_QUERY_PORT:
       begin
         PortsDic.Clear;
         ParseStr := Explode(',', Query);
@@ -12489,9 +12441,12 @@ begin
         Delete(Temp, 1, 1);
         Query := Temp;
       end;
-      7:if not (ValidInt(Query, -1, 65535) or (CharInSet(AnsiChar(Query[1]), [NONE_CHAR, INFINITY_CHAR]) and (Length(Query) = 1))) then
+      USER_QUERY_PING:
+      begin
+        if not (ValidInt(Query, -1, 65535) or (CharInSet(AnsiChar(Query[1]), [NONE_CHAR, INFINITY_CHAR]) and (Length(Query) = 1))) then
           WrongQuery := True;
-      8:
+      end;
+      USER_QUERY_TRANSPORT:
       begin
         if Query <> '-' then
         begin
@@ -12560,14 +12515,13 @@ begin
       if miRtFiltersQuery.Checked and (Query <> '') then
       begin
         case cbxRoutersQuery.ItemIndex of
-          0: cdQuery := FindStr(Query, Item.Key);
-          1: cdQuery := FindStr(Query, Item.Value.Name);
-          2: cdQuery := FindStr(Query, Item.Value.IPv4);
-          3: cdQuery := FindStr(RemoveBrackets(Query, True), RemoveBrackets(Item.Value.IPv6, True));
-          4: cdQuery := PortsDic.ContainsKey(Item.Value.Port);
-          5: cdQuery := PortsDic.ContainsKey(Item.Value.DirPort);
-          6: cdQuery := FindStr(Query, Item.Value.Version);
-          7:
+          USER_QUERY_HASH: cdQuery := FindStr(Query, Item.Key);
+          USER_QUERY_NICKNAME: cdQuery := FindStr(Query, Item.Value.Name);
+          USER_QUERY_IPV4: cdQuery := FindStr(Query, Item.Value.IPv4);
+          USER_QUERY_IPV6: cdQuery := FindStr(RemoveBrackets(Query, True), RemoveBrackets(Item.Value.IPv6, True));
+          USER_QUERY_PORT: cdQuery := PortsDic.ContainsKey(Item.Value.Port);
+          USER_QUERY_VERSION: cdQuery := FindStr(Query, Item.Value.Version);
+          USER_QUERY_PING:
           begin
             if GeoIpDic.TryGetValue(Item.Value.IPv4, GeoIpInfo) then
             begin
@@ -12581,7 +12535,7 @@ begin
             else
               cdQuery := False;
           end;
-          8:
+          USER_QUERY_TRANSPORT:
           begin
             if BridgesDic.TryGetValue(Item.Key, BridgeInfo) then
             begin
@@ -12611,12 +12565,11 @@ begin
         cdFast := CheckRouterType(miShowFast, rfFast in Item.Value.Flags);
         cdStable := CheckRouterType(miShowStable, rfStable in Item.Value.Flags);
         cdHSDir := CheckRouterType(miShowHSDir, rfHSDir in Item.Value.Flags);
-        cdDirMirror := CheckRouterType(miShowDirMirror, Item.Value.DirPort > 0);
         cdV2Dir := CheckRouterType(miShowV2Dir, rfV2Dir in Item.Value.Flags);
         cdAlive := CheckRouterType(miShowAlive, Item.Value.Params and ROUTER_ALIVE <> 0);
         cdRecommended := CheckRouterType(miShowRecommend, VersionsDic.ContainsKey(Item.Value.Version));
 
-        cdRouterType := cdExit and cdGuard and cdBridge and cdAuthority and cdOther and cdConsensus and cdFast and cdStable and cdV2Dir and cdHSDir and cdDirMirror and cdRecommended and cdAlive;
+        cdRouterType := cdExit and cdGuard and cdBridge and cdAuthority and cdOther and cdConsensus and cdFast and cdStable and cdV2Dir and cdHSDir and cdRecommended and cdAlive;
       end
       else
         cdRouterType := True;
@@ -13961,7 +13914,7 @@ begin
   BridgeIsBuiltin := cbxBridgesType.ItemIndex = BRIDGES_TYPE_BUILTIN;
   State := cbUseBridges.Checked;
   PreferredState := State and cbUsePreferredBridge.Checked;
-  UnsuitableState := State and cbExcludeUnsuitableBridges.Checked;
+  UnsuitableState := SupportBridgesTesting and State and cbExcludeUnsuitableBridges.Checked;
   NewState := SupportBridgesTesting and (cbUsePreferredBridge.Checked or cbUseBridgesLimit.Checked);
   LimitState := State and cbUseBridgesLimit.Checked and not cbUsePreferredBridge.Checked;
   QueueState := UnsuitableState and NewState and cbCacheNewBridges.Checked;
@@ -14035,25 +13988,6 @@ begin
   EnableOptionButtons;
 end;
 
-procedure TTcp.UseDirPortEnable(State: Boolean);
-begin
-  edDirPort.Enabled := State;
-  udDirPort.Enabled := State;
-  if State then
-  begin
-    cbDirCache.Checked := True;
-    cbDirCache.Enabled := False;
-  end
-  else
-  begin
-    if cbxServerMode.ItemIndex > SERVER_MODE_NONE then
-      cbDirCache.Enabled := True
-    else
-      cbDirCache.Enabled := False;
-  end;
-  lbDirPort.Enabled := State;
-end;
-
 procedure TTcp.cbUseFallbackDirsClick(Sender: TObject);
 begin
   FallbackDirsUpdated := True;
@@ -14075,15 +14009,21 @@ end;
 
 procedure TTcp.cbUseOpenDNSClick(Sender: TObject);
 begin
-  cbUseOpenDNSOnlyWhenUnknown.Enabled := cbUseOpenDNS.Checked;
-  OpenDNSUpdated := True;
-  EnableOptionButtons;    
+  if cbUseOpenDNS.Focused then
+  begin
+    cbUseOpenDNSOnlyWhenUnknown.Enabled := cbUseOpenDNS.Checked;
+    OpenDNSUpdated := True;
+    EnableOptionButtons;
+  end;
 end;
 
 procedure TTcp.cbUseOpenDNSOnlyWhenUnknownClick(Sender: TObject);
 begin
-  OpenDNSUpdated := True;
-  EnableOptionButtons;  
+  if cbUseOpenDNSOnlyWhenUnknown.Focused then
+  begin
+    OpenDNSUpdated := True;
+    EnableOptionButtons;
+  end;
 end;
 
 procedure TTcp.ProxyParamCheck;
@@ -14146,7 +14086,7 @@ procedure TTcp.CheckAuthMetodContols;
 var
   State: Boolean;
 begin
-  State := cbxAuthMetod.ItemIndex = 1;
+  State := cbxAuthMetod.ItemIndex = CONTROL_AUTH_PASSWORD;
   edControlPassword.PasswordChar := '*';
   edControlPassword.Enabled := State;
   lbControlPassword.Enabled := State;
@@ -14342,11 +14282,6 @@ end;
 procedure TTcp.CheckHsVersion;
 begin
   case cbxHsVersion.ItemIndex of
-    HS_VERSION_2:
-    begin
-      udHsNumIntroductionPoints.Min := 1;
-      udHsNumIntroductionPoints.Max := 10;
-    end;
     HS_VERSION_3:
     begin
       udHsNumIntroductionPoints.Min := 3;
@@ -14368,17 +14303,8 @@ end;
 
 procedure TTcp.cbxHsVersionChange(Sender: TObject);
 begin
-  if cbxHsVersion.ItemIndex = HS_VERSION_2 then
-  begin
-    if not ShowMsg(TransStr('326'), '', mtWarning, True) then
-    begin
-      cbxHsVersion.ItemIndex := HS_VERSION_3;
-      Exit;
-    end;
-  end;
   CheckHsVersion;
   case cbxHsVersion.ItemIndex of
-    HS_VERSION_2: sgHs.Cells[HS_VERSION, sgHs.SelRow] := '2';
     HS_VERSION_3: sgHs.Cells[HS_VERSION, sgHs.SelRow] := '3';
   end;
   EnableOptionButtons;
@@ -14620,7 +14546,7 @@ end;
 
 procedure TTcp.CheckServerControls;
 var
-  State, MemState, CpuState, BandState, AddrState, DirState: Boolean;
+  State, MemState, CpuState, BandState, AddrState: Boolean;
   BridgeState, FamilyState, ExitState, TransportState: Boolean;
 begin
   if cbxServerMode.HelpContext = 1 then
@@ -14629,15 +14555,12 @@ begin
   BridgeState := cbxServerMode.ItemIndex = SERVER_MODE_BRIDGE;
   if BridgeState then
   begin
-    cbUseDirPort.Checked := False;
     cbUseMyFamily.Checked := False;
-  end;
-  if BridgeState or cbUseDirPort.Checked then
     cbDirCache.Checked := True;
+  end;
   AddrState := State and cbUseAddress.Checked;
   BandState := State and cbUseRelayBandwidth.Checked;
   CpuState := State and cbUseNumCPUs.Checked;
-  DirState := State and cbUseDirPort.Checked;
   ExitState := State and (cbxServerMode.ItemIndex = SERVER_MODE_EXIT);
   FamilyState := State and cbUseMyFamily.Checked and not BridgeState;
   MemState := State and cbUseMaxMemInQueues.Checked;
@@ -14651,7 +14574,6 @@ begin
   edRelayBandwidthBurst.Enabled := BandState;
   edMaxAdvertisedBandwidth.Enabled := BandState;
   edORPort.Enabled := State;
-  edDirPort.Enabled := DirState;
   edTransportPort.Enabled := TransportState;
   edAddress.Enabled := AddrState;
 
@@ -14661,7 +14583,6 @@ begin
   udRelayBandwidthBurst.Enabled := BandState;
   udMaxAdvertisedBandwidth.Enabled := BandState;
   udOrPort.Enabled := State;
-  udDirPort.Enabled := DirState;
   udTransportPort.Enabled := TransportState;
 
   cbxBridgeType.Enabled := BridgeState;
@@ -14670,15 +14591,16 @@ begin
   cbUseNumCPUs.Enabled := State;
   cbUseMaxMemInQueues.Enabled := State;
   cbUseRelayBandwidth.Enabled := State;
-  cbDirCache.Enabled := State and not (BridgeState or cbUseDirPort.Checked);
+  cbDirCache.Enabled := State and not BridgeState;
   cbUseUPnP.Enabled := State;
   cbPublishServerDescriptor.Enabled := State;
-  cbUseDirPort.Enabled := State and not BridgeState and SupportDirPort;
   cbHiddenServiceStatistics.Enabled := State;
   cbDirReqStatistics.Enabled := State;
   cbAssumeReachable.Enabled := State;
   cbListenIPv6.Enabled := State;
   cbIPv6Exit.Enabled := ExitState and cbListenIPv6.Checked;
+  cbUseOpenDNS.Enabled := State;
+  cbUseOpenDNSOnlyWhenUnknown.Enabled := State and cbUseOpenDNS.Checked;
   cbUseServerTransportOptions.Enabled := TransportState;
   cbUseAddress.Enabled := State;
   cbUseMyFamily.Enabled := State and not BridgeState;
@@ -14708,7 +14630,6 @@ begin
   lbSpeed4.Enabled := BandState;
   lbPorts.Enabled := State;
   lbORPort.Enabled := State;
-  lbDirPort.Enabled := DirState;
   lbTransportPort.Enabled := TransportState;
 end;
 
@@ -15227,7 +15148,7 @@ var
 begin
   Query := Trim(edRoutersQuery.Text);
   if ValidHash(Query) then
-    SetIndex(0)
+    SetIndex(USER_QUERY_HASH)
   else
   begin
     Data := ValidAddress(RemoveBrackets(Query, True));
@@ -15236,12 +15157,12 @@ begin
       if Data = atIPv4 then
       begin
         if SeparateLeft(Query, '.') <> '0' then
-          SetIndex(2)
+          SetIndex(USER_QUERY_IPV4)
         else
-          SetIndex(6)
+          SetIndex(USER_QUERY_VERSION)
       end
       else
-        SetIndex(3)
+        SetIndex(USER_QUERY_IPV6)
     end;
   end;
 end;
@@ -15386,7 +15307,6 @@ begin
   end;
 
   miShowHsDir.Enabled := AuthorityOrBridgeState;
-  miShowDirMirror.Enabled := AuthorityOrBridgeState;
 
   edRoutersQuery.Enabled := miRtFiltersQuery.Checked;
   cbxRoutersQuery.Enabled := miRtFiltersQuery.Checked;
@@ -15493,16 +15413,16 @@ begin
   for i := 0 to Length(ParseStr) - 1 do
   begin
     case i of
-      0:
+      RF_CURRENT_TYPES:
       begin
         RoutersFilters := StrToIntDef(ParseStr[i], ROUTER_FILTER_DEFAULT);
         IntToMenu(miRtFilters, RoutersFilters);
       end;
-      1: LastFilters := StrToIntDef(ParseStr[i], -1);
-      2: IntToMenu(mnShowNodes.Items, StrToIntDef(ParseStr[i], SHOW_NODES_FILTER_DEFAULT));
-      3: cbxRoutersCountry.Tag := StrToIntDef(ParseStr[i], -1);
-      4: udRoutersWeight.Position := StrToIntDef(ParseStr[i], 10);
-      5:
+      RF_PREVIOUS_TYPES: LastFilters := StrToIntDef(ParseStr[i], -1);
+      RF_NODE_TYPES: IntToMenu(mnShowNodes.Items, StrToIntDef(ParseStr[i], SHOW_NODES_FILTER_DEFAULT));
+      RF_COUNTRY: cbxRoutersCountry.Tag := StrToIntDef(ParseStr[i], -1);
+      RF_WEIGHT: udRoutersWeight.Position := StrToIntDef(ParseStr[i], 10);
+      RF_CURRENT_CUSTOM:
       begin
         if ResetCustomFilter then
           RoutersCustomFilter := 0
@@ -15513,18 +15433,18 @@ begin
             RoutersCustomFilter := 0;
         end;
       end;
-      6:
+      RF_PREVIOUS_CUSTOM:
       begin
         LastRoutersCustomFilter := StrToIntDef(ParseStr[i], 0);
         if not (LastRoutersCustomFilter in [0, FILTER_BY_BRIDGE..FALLBACK_DIR_ID]) then
           LastRoutersCustomFilter := 0;
       end;
-      7:
+      RF_QUERY_TYPE:
       begin
         QueryType := StrToIntDef(ParseStr[i], -1);
         if (QueryType < 0) or (QueryType > cbxRoutersQuery.Items.Count - 1) then
         begin
-          cbxRoutersQuery.ItemIndex := 0;
+          cbxRoutersQuery.ItemIndex := USER_QUERY_HASH;
           edRoutersQuery.Text := '';
           Break;
         end
@@ -15532,7 +15452,7 @@ begin
           if FirstLoad then
             cbxRoutersQuery.ItemIndex := QueryType;
       end;
-      8: edRoutersQuery.Text := ParseStr[i];
+      RF_QUERY_TEXT: edRoutersQuery.Text := ParseStr[i];
     end;
   end;
 
@@ -15570,7 +15490,7 @@ begin
   if Search <> 0 then
   begin
     case cbxRoutersQuery.ItemIndex of
-      4,5: UserQuery := StringReplace(UserQuery, ';', ',', [rfReplaceAll]);
+      USER_QUERY_PORT: UserQuery := StringReplace(UserQuery, ';', ',', [rfReplaceAll]);
       else
         SetLength(UserQuery, Pred(Search));
     end;
@@ -15783,7 +15703,7 @@ procedure TTcp.btnSwitchTorClick(Sender: TObject);
 begin
   if ConnectState = 0 then
   begin
-    if not ProcessExists(TorMainProcess.ProcessID, True, True) and not Assigned(Controller) and not Assigned(Logger) and not Assigned(Consensus) and not Assigned(Descriptors) then
+    if not ProcessExists(TorMainProcess, True) and not Assigned(Controller) and not Assigned(Logger) and not Assigned(Consensus) and not Assigned(Descriptors) then
     begin
       case CurrentScanPurpose of
         spUserBridges, spNewBridges: ShowMsg(Format(TransStr('400'), [TransStr('659')]));
@@ -16055,7 +15975,6 @@ begin
       if rfV2Dir in Router.Flags then Inc(Sum, 128);
       if rfHSDir in Router.Flags then Inc(Sum, 256);
       if VersionsDic.ContainsKey(Router.Version) then Inc(Sum, 512);
-      if Router.DirPort > 0 then Inc(Sum, 1024);
       if (Router.Params and ROUTER_ALIVE <> 0) then Inc(Sum, 2048);
 
       IntToMenu(mnShowNodes.Items, Sum);
@@ -16144,9 +16063,7 @@ begin
   sgHsPorts.Enabled := State;
   edHsName.Enabled := State;
   edHsNumIntroductionPoints.Enabled := State;
-  edRendPostPeriod.Enabled := State and SupportRendPostPeriod;
   udHsNumIntroductionPoints.Enabled := State;
-  udRendPostPeriod.Enabled := State and SupportRendPostPeriod;
   cbxHsVersion.Enabled := State;
   cbxHsState.Enabled := State;
   cbHsMaxStreams.Enabled := State;
@@ -16155,8 +16072,6 @@ begin
   lbHsName.Enabled := State;
   lbHsVersion.Enabled := State;
   lbHsNumIntroductionPoints.Enabled := State;
-  lbRendPostPeriod.Enabled := State and SupportRendPostPeriod;
-  lbMinutes.Enabled := State and SupportRendPostPeriod;
   lbHsState.Enabled := State;
 end;
 
@@ -16985,7 +16900,7 @@ begin
           if (rfExit in Flags) and not (rfBadExit in Flags) then
             AddRouterToList(ExitNodes, ntExit);
 
-          if (not (rfHsDir in Flags) and (Router.Value.DirPort = 0)) or not cbAutoSelMiddleNodesWithoutDir.Checked then
+          if not ((rfHsDir in Flags) or (rfAuthority in Flags)) or not cbAutoSelMiddleNodesWithoutDir.Checked then
             AddRouterToList(MiddleNodes, ntMiddle);
         end;
       end;
@@ -17535,6 +17450,8 @@ var
   i: Integer;
   Filter: TFilterInfo;
 begin
+  TorVersionProcess := cDefaultTProcessInfo;
+  TorMainProcess := cDefaultTProcessInfo;
   LastTrayIconType := MAXWORD;
   WindowsShutdown := False;
   FirstLoad := True;
@@ -17623,7 +17540,6 @@ begin
   DefaultsDic.AddOrSetValue('HiddenServiceStatistics', '1');
   DefaultsDic.AddOrSetValue('EnforceDistinctSubnets', '1');
   DefaultsDic.AddOrSetValue('AssumeReachable', '0');
-  DefaultsDic.AddOrSetValue('RendPostPeriod', '3600');
   DefaultsDic.AddOrSetValue('StrictNodes', '0');
   DefaultsDic.AddOrSetValue('ConnectionPadding', 'auto');
   DefaultsDic.AddOrSetValue('ReducedConnectionPadding', '0');
@@ -17795,9 +17711,7 @@ procedure TTcp.LoadOptions(FirstStart: Boolean);
 begin
   if FirstStart then
     UpdateConfigVersion;
-  SupportDirPort := not CheckFileVersion(TorVersion, '0.4.6.1');
   SupportVanguardsLite := CheckFileVersion(TorVersion, '0.4.7.1');
-  SupportRendPostPeriod := not CheckFileVersion(TorVersion, '0.4.8.1');
   SupportBridgesTesting := SupportVanguardsLite;
   ResetOptions;
   if not Assigned(ShowTimer) then
@@ -17874,7 +17788,7 @@ begin
       SetErrorMode(ErrorMode or SEM_FAILCRITICALERRORS);
     end;
     TorVersionProcess := ExecuteProcess(TorExeFile + ' --version', [pfHideWindow, pfReadStdOut], hJob);
-    if TorVersionProcess.hProcess <> 0 then
+    if TorVersionProcess.hProcess <> INVALID_HANDLE_VALUE then
     begin
       CheckVersionStart(TorVersionProcess.hStdOutput, FirstStart);
       Fail := False;
@@ -18476,10 +18390,10 @@ begin
     Data := GetSettings('Routers', 'DefaultFilter', DEFAULT_ROUTERS_FILTER_DATA, ini);
     LoadRoutersFilterData(Data);
     ParseStr := Explode(';', Data);
-    if Length(ParseStr) > 7 then
+    if Length(ParseStr) > RF_QUERY_TYPE then
     begin
-      if Trim(ParseStr[8]) = '' then
-        ParseStr[7] := IntToStr(cbxRoutersQuery.ItemIndex);
+      if Trim(ParseStr[RF_QUERY_TEXT]) = '' then
+        ParseStr[RF_QUERY_TYPE] := IntToStr(cbxRoutersQuery.ItemIndex);
       Data := '';
       for i := 0 to Length(ParseStr) - 1 do
         Data := Data + ';' + ParseStr[i];

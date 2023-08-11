@@ -1205,8 +1205,7 @@ object Tcp: TTcp
         #1053#1080#1082
         'IPv4'
         'IPv6'
-        'OR-'#1087#1086#1088#1090
-        'DIR-'#1087#1086#1088#1090
+        #1055#1086#1088#1090
         #1042#1077#1088#1089#1080#1103
         #1055#1080#1085#1075
         #1058#1088#1072#1085#1089#1087#1086#1088#1090)
@@ -1624,7 +1623,7 @@ object Tcp: TTcp
         end
         object lbConnectionPadding: TLabel
           Left = 17
-          Top = 296
+          Top = 247
           Width = 250
           Height = 13
           Alignment = taRightJustify
@@ -1633,7 +1632,7 @@ object Tcp: TTcp
         end
         object lbCircuitPadding: TLabel
           Left = 35
-          Top = 320
+          Top = 271
           Width = 232
           Height = 13
           Alignment = taRightJustify
@@ -1752,37 +1751,15 @@ object Tcp: TTcp
           Thousands = False
           OnChanging = SpinChanging
         end
-        object cbUseOpenDNS: TCheckBox
-          Left = 13
-          Top = 223
-          Width = 350
-          Height = 17
-          Caption = #1054#1087#1088#1077#1076#1077#1083#1103#1090#1100' '#1074#1085#1077#1096#1085#1080#1081' '#1072#1076#1088#1077#1089' '#1089#1077#1088#1074#1077#1088#1072' '#1095#1077#1088#1077#1079' OpenDNS'
-          Checked = True
-          State = cbChecked
-          TabOrder = 14
-          OnClick = cbUseOpenDNSClick
-        end
-        object cbUseOpenDNSOnlyWhenUnknown: TCheckBox
-          Left = 29
-          Top = 246
-          Width = 334
-          Height = 17
-          Caption = #1058#1086#1083#1100#1082#1086' '#1077#1089#1083#1080' TOR '#1085#1077' '#1084#1086#1078#1077#1090' '#1086#1087#1088#1077#1076#1077#1083#1080#1090#1100' '#1077#1075#1086' '#1089#1072#1084
-          Checked = True
-          State = cbChecked
-          TabOrder = 15
-          OnClick = cbUseOpenDNSOnlyWhenUnknownClick
-        end
         object cbUseNetworkCache: TCheckBox
           Left = 13
-          Top = 269
+          Top = 223
           Width = 350
           Height = 17
           Caption = #1050#1101#1096#1080#1088#1086#1074#1072#1090#1100' IP-cc-'#1079#1072#1087#1088#1086#1089#1099' '#1080' '#1088#1077#1079#1091#1083#1100#1090#1072#1090#1099' '#1089#1077#1090#1077#1074#1086#1075#1086' '#1089#1082#1072#1085#1077#1088#1072
           Checked = True
           State = cbChecked
-          TabOrder = 16
+          TabOrder = 14
           OnClick = OptionsChange
         end
         object cbStrictNodes: TCheckBox
@@ -1824,7 +1801,7 @@ object Tcp: TTcp
         end
         object cbxCircuitPadding: TComboBox
           Left = 270
-          Top = 316
+          Top = 267
           Width = 100
           Height = 21
           AutoDropDown = True
@@ -1832,7 +1809,7 @@ object Tcp: TTcp
           DoubleBuffered = False
           ItemIndex = 0
           ParentDoubleBuffered = False
-          TabOrder = 18
+          TabOrder = 16
           Text = #1042#1082#1083#1102#1095#1077#1085#1086
           OnChange = OptionsChange
           Items.Strings = (
@@ -1842,7 +1819,7 @@ object Tcp: TTcp
         end
         object cbxConnectionPadding: TComboBox
           Left = 270
-          Top = 292
+          Top = 243
           Width = 100
           Height = 21
           AutoDropDown = True
@@ -1850,7 +1827,7 @@ object Tcp: TTcp
           DoubleBuffered = False
           ItemIndex = 0
           ParentDoubleBuffered = False
-          TabOrder = 17
+          TabOrder = 15
           Text = #1040#1074#1090#1086#1074#1099#1073#1086#1088
           OnChange = OptionsChange
           Items.Strings = (
@@ -2884,16 +2861,6 @@ object Tcp: TTcp
         Enabled = False
         Transparent = True
       end
-      object lbDirPort: TLabel
-        Left = 653
-        Top = 54
-        Width = 42
-        Height = 13
-        Alignment = taRightJustify
-        Caption = #1050#1072#1090#1072#1083#1086#1075
-        Enabled = False
-        Transparent = True
-      end
       object lbExitPolicy: TLabel
         Left = 26
         Top = 127
@@ -2945,7 +2912,7 @@ object Tcp: TTcp
       end
       object lbTransportPort: TLabel
         Left = 642
-        Top = 78
+        Top = 54
         Width = 53
         Height = 13
         Alignment = taRightJustify
@@ -2955,7 +2922,7 @@ object Tcp: TTcp
       end
       object imUPnPTest: TImage
         Left = 734
-        Top = 122
+        Top = 124
         Width = 16
         Height = 16
         Cursor = crHandPoint
@@ -2963,7 +2930,7 @@ object Tcp: TTcp
       end
       object lbTotalMyFamily: TLabel
         Left = 711
-        Top = 296
+        Top = 299
         Width = 41
         Height = 13
         Alignment = taRightJustify
@@ -3093,14 +3060,14 @@ object Tcp: TTcp
       end
       object cbUseUPnP: TCheckBox
         Left = 248
-        Top = 124
-        Width = 457
+        Top = 126
+        Width = 450
         Height = 17
         Caption = #1055#1099#1090#1072#1090#1100#1089#1103' '#1072#1074#1090#1086#1084#1072#1090#1080#1095#1077#1089#1082#1080' '#1085#1072#1089#1090#1088#1086#1080#1090#1100' '#1087#1077#1088#1077#1072#1076#1088#1077#1089#1072#1094#1080#1102' '#1087#1086#1088#1090#1086#1074
         Checked = True
         Enabled = False
         State = cbChecked
-        TabOrder = 31
+        TabOrder = 29
         OnClick = ServerControlsChange
       end
       object cbUseMaxMemInQueues: TCheckBox
@@ -3130,7 +3097,7 @@ object Tcp: TTcp
         Left = 10
         Top = 148
         Width = 227
-        Height = 139
+        Height = 142
         Enabled = False
         Lines.Strings = (
           'accept *:80'
@@ -3155,52 +3122,31 @@ object Tcp: TTcp
       object cbPublishServerDescriptor: TCheckBox
         Left = 248
         Top = 145
-        Width = 457
+        Width = 450
         Height = 17
         Caption = #1055#1091#1073#1083#1080#1082#1086#1074#1072#1090#1100' '#1089#1077#1088#1074#1077#1088' '#1074' '#1082#1072#1090#1072#1083#1086#1075#1077' '#1088#1077#1090#1088#1072#1085#1089#1083#1103#1090#1086#1088#1086#1074
+        Checked = True
+        Enabled = False
+        State = cbChecked
+        TabOrder = 30
+        OnClick = OptionsChange
+      end
+      object cbDirReqStatistics: TCheckBox
+        Left = 248
+        Top = 183
+        Width = 450
+        Height = 17
+        Caption = #1057#1086#1073#1080#1088#1072#1090#1100' '#1089#1090#1072#1090#1080#1089#1090#1080#1082#1091' '#1079#1072#1087#1088#1086#1089#1086#1074' '#1082#1072#1090#1072#1083#1086#1075#1072
         Checked = True
         Enabled = False
         State = cbChecked
         TabOrder = 32
         OnClick = OptionsChange
       end
-      object cbUseDirPort: TCheckBox
-        Left = 248
-        Top = 166
-        Width = 457
-        Height = 17
-        TabStop = False
-        Caption = #1042#1082#1083#1102#1095#1080#1090#1100' '#1079#1077#1088#1082#1072#1083#1086' '#1082#1072#1090#1072#1083#1086#1075#1072' '#1088#1077#1090#1088#1072#1085#1089#1083#1103#1090#1086#1088#1086#1074
-        Enabled = False
-        TabOrder = 33
-        OnClick = ServerControlsChange
-      end
-      object cbDirReqStatistics: TCheckBox
-        Left = 248
-        Top = 208
-        Width = 457
-        Height = 17
-        Caption = #1057#1086#1073#1080#1088#1072#1090#1100' '#1089#1090#1072#1090#1080#1089#1090#1080#1082#1091' '#1079#1072#1087#1088#1086#1089#1086#1074' '#1082#1072#1090#1072#1083#1086#1075#1072
-        Checked = True
-        Enabled = False
-        State = cbChecked
-        TabOrder = 35
-        OnClick = OptionsChange
-      end
-      object cbIPv6Exit: TCheckBox
-        Left = 264
-        Top = 271
-        Width = 320
-        Height = 17
-        Caption = #1056#1072#1079#1088#1077#1096#1080#1090#1100' '#1074#1099#1093#1086#1076' IPv6 '#1090#1088#1072#1092#1080#1082#1072
-        Enabled = False
-        TabOrder = 38
-        OnClick = OptionsChange
-      end
       object cbHiddenServiceStatistics: TCheckBox
         Left = 248
-        Top = 187
-        Width = 457
+        Top = 164
+        Width = 450
         Height = 17
         Caption = 
           #1057#1086#1073#1080#1088#1072#1090#1100' '#1089#1090#1072#1090#1080#1089#1090#1080#1082#1091' '#1086' '#1089#1074#1086#1077#1081' '#1088#1086#1083#1080' '#1074' '#1082#1072#1095#1077#1089#1090#1074#1077' '#1091#1079#1083#1072' '#1089#1082#1088#1099#1090#1086#1075#1086' '#1089#1077#1088#1074#1080#1089 +
@@ -3208,7 +3154,7 @@ object Tcp: TTcp
         Checked = True
         Enabled = False
         State = cbChecked
-        TabOrder = 34
+        TabOrder = 31
         OnClick = OptionsChange
       end
       object edORPort: TEdit
@@ -3238,7 +3184,7 @@ object Tcp: TTcp
         Thousands = False
         OnChanging = SpinChanging
       end
-      object edDirPort: TEdit
+      object edTransportPort: TEdit
         Left = 698
         Top = 51
         Width = 42
@@ -3248,39 +3194,12 @@ object Tcp: TTcp
         NumbersOnly = True
         PopupMenu = EditMenu
         TabOrder = 26
-        Text = '9030'
-        OnChange = EditChange
-      end
-      object udDirPort: TUpDown
-        Left = 740
-        Top = 51
-        Width = 13
-        Height = 21
-        Associate = edDirPort
-        Enabled = False
-        Min = 1
-        Max = 65535
-        Position = 9030
-        TabOrder = 27
-        Thousands = False
-        OnChanging = SpinChanging
-      end
-      object edTransportPort: TEdit
-        Left = 698
-        Top = 75
-        Width = 42
-        Height = 21
-        Enabled = False
-        MaxLength = 5
-        NumbersOnly = True
-        PopupMenu = EditMenu
-        TabOrder = 28
         Text = '443'
         OnChange = EditChange
       end
       object udTransportPort: TUpDown
         Left = 740
-        Top = 75
+        Top = 51
         Width = 13
         Height = 21
         Associate = edTransportPort
@@ -3288,7 +3207,7 @@ object Tcp: TTcp
         Min = 1
         Max = 65535
         Position = 443
-        TabOrder = 29
+        TabOrder = 27
         Thousands = False
         OnChanging = SpinChanging
       end
@@ -3413,39 +3332,29 @@ object Tcp: TTcp
         ParentDoubleBuffered = False
         PopupMenu = EditMenu
         ScrollBars = ssVertical
-        TabOrder = 40
+        TabOrder = 39
         WordWrap = False
         OnChange = meMyFamilyChange
       end
       object cbDirCache: TCheckBox
         Left = 248
-        Top = 103
-        Width = 162
+        Top = 107
+        Width = 180
         Height = 17
         Caption = #1048#1089#1087#1086#1083#1100#1079#1086#1074#1072#1090#1100' '#1082#1101#1096' '#1082#1072#1090#1072#1083#1086#1075#1072
         Checked = True
         State = cbChecked
-        TabOrder = 30
+        TabOrder = 28
         OnMouseDown = cbDirCacheMouseDown
-      end
-      object cbListenIPv6: TCheckBox
-        Left = 248
-        Top = 250
-        Width = 457
-        Height = 17
-        Caption = #1055#1088#1086#1089#1083#1091#1096#1080#1074#1072#1090#1100' IPv6-'#1072#1076#1088#1077#1089#1072
-        Enabled = False
-        TabOrder = 37
-        OnClick = ServerControlsChange
       end
       object cbAssumeReachable: TCheckBox
         Left = 248
-        Top = 229
-        Width = 457
+        Top = 202
+        Width = 450
         Height = 17
         Caption = #1054#1090#1082#1083#1102#1095#1080#1090#1100' '#1087#1088#1086#1074#1077#1088#1082#1091' '#1076#1086#1089#1090#1091#1087#1085#1086#1089#1090#1080' '#1089#1077#1088#1074#1077#1088#1072
         Enabled = False
-        TabOrder = 36
+        TabOrder = 33
         OnClick = OptionsChange
       end
       object cbUseAddress: TCheckBox
@@ -3472,12 +3381,12 @@ object Tcp: TTcp
       end
       object cbUseMyFamily: TCheckBox
         Left = 248
-        Top = 292
-        Width = 337
+        Top = 297
+        Width = 350
         Height = 17
         Caption = #1048#1089#1087#1086#1083#1100#1079#1086#1074#1072#1090#1100' '#1089#1077#1084#1077#1081#1089#1090#1074#1086
         Enabled = False
-        TabOrder = 39
+        TabOrder = 38
         OnClick = ServerControlsChange
       end
       object cbxBridgeDistribution: TComboBox
@@ -3531,7 +3440,7 @@ object Tcp: TTcp
       end
       object cbUseServerTransportOptions: TCheckBox
         Left = 10
-        Top = 295
+        Top = 297
         Width = 222
         Height = 17
         Caption = #1047#1072#1076#1072#1090#1100' '#1086#1087#1094#1080#1080' '#1090#1088#1072#1085#1089#1087#1086#1088#1090#1072
@@ -3553,6 +3462,50 @@ object Tcp: TTcp
         WantReturns = False
         OnChange = meServerTransportOptionsChange
         OnExit = meServerTransportOptionsExit
+      end
+      object cbUseOpenDNS: TCheckBox
+        Left = 248
+        Top = 221
+        Width = 450
+        Height = 17
+        Caption = #1054#1087#1088#1077#1076#1077#1083#1103#1090#1100' '#1074#1085#1077#1096#1085#1080#1081' '#1072#1076#1088#1077#1089' '#1089#1077#1088#1074#1077#1088#1072' '#1095#1077#1088#1077#1079' OpenDNS'
+        Checked = True
+        Enabled = False
+        State = cbChecked
+        TabOrder = 34
+        OnClick = cbUseOpenDNSClick
+      end
+      object cbUseOpenDNSOnlyWhenUnknown: TCheckBox
+        Left = 264
+        Top = 240
+        Width = 434
+        Height = 17
+        Caption = #1058#1086#1083#1100#1082#1086' '#1077#1089#1083#1080' TOR '#1085#1077' '#1084#1086#1078#1077#1090' '#1086#1087#1088#1077#1076#1077#1083#1080#1090#1100' '#1077#1075#1086' '#1089#1072#1084
+        Checked = True
+        Enabled = False
+        State = cbChecked
+        TabOrder = 35
+        OnClick = cbUseOpenDNSOnlyWhenUnknownClick
+      end
+      object cbIPv6Exit: TCheckBox
+        Left = 264
+        Top = 277
+        Width = 334
+        Height = 17
+        Caption = #1056#1072#1079#1088#1077#1096#1080#1090#1100' '#1074#1099#1093#1086#1076' IPv6 '#1090#1088#1072#1092#1080#1082#1072
+        Enabled = False
+        TabOrder = 37
+        OnClick = OptionsChange
+      end
+      object cbListenIPv6: TCheckBox
+        Left = 248
+        Top = 258
+        Width = 350
+        Height = 17
+        Caption = #1055#1088#1086#1089#1083#1091#1096#1080#1074#1072#1090#1100' IPv6-'#1072#1076#1088#1077#1089#1072
+        Enabled = False
+        TabOrder = 36
+        OnClick = ServerControlsChange
       end
     end
     object tsHs: TTabSheet
@@ -3657,25 +3610,6 @@ object Tcp: TTcp
           Enabled = False
           Transparent = True
         end
-        object lbRendPostPeriod: TLabel
-          Left = 268
-          Top = 78
-          Width = 112
-          Height = 13
-          Alignment = taRightJustify
-          Caption = #1048#1085#1090#1077#1088#1074#1072#1083' '#1087#1091#1073#1083#1080#1082#1072#1094#1080#1080
-          Enabled = False
-          Transparent = True
-        end
-        object lbMinutes: TLabel
-          Left = 440
-          Top = 78
-          Width = 22
-          Height = 13
-          Caption = #1084#1080#1085'.'
-          Enabled = False
-          Transparent = True
-        end
         object lbHsMaxStreams: TLabel
           Left = 28
           Top = 77
@@ -3717,7 +3651,7 @@ object Tcp: TTcp
           Enabled = False
           ItemIndex = 0
           ParentDoubleBuffered = False
-          TabOrder = 9
+          TabOrder = 7
           Text = '127.0.0.1'
           OnChange = cbxHsAddressChange
           OnDropDown = cbxHsAddressDropDown
@@ -3733,13 +3667,12 @@ object Tcp: TTcp
           Style = csDropDownList
           DoubleBuffered = False
           Enabled = False
-          ItemIndex = 1
+          ItemIndex = 0
           ParentDoubleBuffered = False
           TabOrder = 4
           Text = '3'
           OnChange = cbxHsVersionChange
           Items.Strings = (
-            '2'
             '3')
         end
         object cbHsMaxStreams: TCheckBox
@@ -3823,34 +3756,6 @@ object Tcp: TTcp
           Thousands = False
           OnMouseDown = udHsMouseDown
         end
-        object udRendPostPeriod: TUpDown
-          Left = 424
-          Top = 75
-          Width = 13
-          Height = 21
-          Associate = edRendPostPeriod
-          Enabled = False
-          Min = 10
-          Max = 5040
-          Increment = 10
-          Position = 60
-          TabOrder = 8
-          Thousands = False
-          OnChanging = SpinChanging
-        end
-        object edRendPostPeriod: TEdit
-          Left = 382
-          Top = 75
-          Width = 42
-          Height = 21
-          Enabled = False
-          MaxLength = 4
-          NumbersOnly = True
-          PopupMenu = EditMenu
-          TabOrder = 7
-          Text = '60'
-          OnChange = EditChange
-        end
         object edHsRealPort: TEdit
           Left = 674
           Top = 19
@@ -3862,7 +3767,7 @@ object Tcp: TTcp
           MaxLength = 5
           NumbersOnly = True
           PopupMenu = EditMenu
-          TabOrder = 10
+          TabOrder = 8
           Text = '80'
           OnChange = edHsChange
         end
@@ -3877,7 +3782,7 @@ object Tcp: TTcp
           Min = 1
           Max = 65535
           Position = 80
-          TabOrder = 11
+          TabOrder = 9
           Thousands = False
           OnMouseDown = udHsMouseDown
         end
@@ -3892,7 +3797,7 @@ object Tcp: TTcp
           MaxLength = 5
           NumbersOnly = True
           PopupMenu = EditMenu
-          TabOrder = 12
+          TabOrder = 10
           Text = '80'
           OnChange = edHsChange
         end
@@ -3907,7 +3812,7 @@ object Tcp: TTcp
           Min = 1
           Max = 65535
           Position = 80
-          TabOrder = 13
+          TabOrder = 11
           Thousands = False
           OnMouseDown = udHsMouseDown
         end
@@ -3922,7 +3827,7 @@ object Tcp: TTcp
           Enabled = False
           ItemIndex = 0
           ParentDoubleBuffered = False
-          TabOrder = 14
+          TabOrder = 12
           Text = #1042#1082#1083#1102#1095#1077#1085#1086
           OnChange = cbxHsStateChange
           Items.Strings = (
@@ -6364,12 +6269,6 @@ object Tcp: TTcp
       Tag = 256
       AutoCheck = True
       Caption = #1050#1072#1090#1072#1083#1086#1075' '#1089#1082#1088#1099#1090#1099#1093' '#1089#1077#1088#1074#1080#1089#1086#1074
-      OnClick = SetRoutersFilter
-    end
-    object miShowDirMirror: TMenuItem
-      Tag = 1024
-      AutoCheck = True
-      Caption = #1047#1077#1088#1082#1072#1083#1086' '#1082#1072#1090#1072#1083#1086#1075#1072
       OnClick = SetRoutersFilter
     end
     object miDelimiter49: TMenuItem

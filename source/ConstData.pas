@@ -3,7 +3,7 @@
 interface
 
 uses
-  System.Types;
+  System.Types, Winapi.Windows;
 
 const
   BR = #13#10;
@@ -33,7 +33,7 @@ const
 
   LOOPBACK_ADDRESS = '127.0.0.1';
 
-  CURRENT_CONFIG_VERSION = 8;
+  CURRENT_CONFIG_VERSION = 9;
   MAX_SPEED_DATA_LENGTH = 24 * 60 * 60;
   BUFSIZE = 1024 * 1024;
 
@@ -137,8 +137,7 @@ const
   SERVER_MODE_EXIT = 2;
   SERVER_MODE_BRIDGE = 3;
 
-  HS_VERSION_2 = 0;
-  HS_VERSION_3 = 1;
+  HS_VERSION_3 = 0;
 
   HS_STATE_ENABLED = 0;
   HS_STATE_DISABLED = 1;
@@ -276,12 +275,11 @@ const
   ROUTER_MIDDLE_ONLY = 1;
   ROUTER_BAD_EXIT = 2;
   ROUTER_NOT_RECOMMENDED = 4;
-  ROUTER_DIR_MIRROR = 8;
-  ROUTER_HS_DIR = 16;
-  ROUTER_REACHABLE_IPV6 = 32;
-  ROUTER_ALIVE = 64;
-  ROUTER_AUTHORITY = 128;
-  ROUTER_BRIDGE = 256;
+  ROUTER_HS_DIR = 8;
+  ROUTER_REACHABLE_IPV6 = 16;
+  ROUTER_ALIVE = 32;
+  ROUTER_AUTHORITY = 64;
+  ROUTER_BRIDGE = 128;
 
   GENERAL = 0;
   HS_CLIENT_HSDIR = 1;
@@ -337,6 +335,25 @@ const
   FILTER_BY_GUARD = 7;
   FILTER_BY_EXIT = 8;
   FILTER_BY_QUERY = 9;
+
+  USER_QUERY_HASH = 0;
+  USER_QUERY_NICKNAME = 1;
+  USER_QUERY_IPV4 = 2;
+  USER_QUERY_IPV6 = 3;
+  USER_QUERY_PORT = 4;
+  USER_QUERY_VERSION = 5;
+  USER_QUERY_PING = 6;
+  USER_QUERY_TRANSPORT = 7;
+
+  RF_CURRENT_TYPES = 0;
+  RF_PREVIOUS_TYPES = 1;
+  RF_NODE_TYPES = 2;
+  RF_COUNTRY = 3;
+  RF_WEIGHT = 4;
+  RF_CURRENT_CUSTOM = 5;
+  RF_PREVIOUS_CUSTOM = 6;
+  RF_QUERY_TYPE = 7;
+  RF_QUERY_TEXT = 8;
 
   NONE_ID = 0;
   ENTRY_ID = ROUTER_ENTRY_NODES;
@@ -419,6 +436,9 @@ type
     CidrInfo: TCidrInfo;
   end;
   ArrOfNodes = array of TNodeData;
+
+const
+  cDefaultTProcessInfo: TProcessInfo = (ProcessID: INVALID_HANDLE_VALUE; hProcess: INVALID_HANDLE_VALUE; hStdOutput: INVALID_HANDLE_VALUE);
 var
   CountryCodes: array [0..MAX_COUNTRIES - 1] of string = (
     'au','at','az','ax','al','dz','as','ai','ao','ad','aq','ag','ar','am','aw',

@@ -304,7 +304,6 @@ begin
     LoadLns('322', '\n  Список хэшей, определяющих ваше семейство\n\n  Пример:\n\n        ABCD1234CDEF5..');
     LoadStr('323', 'Роутеры');
     LoadStr('324', 'Неправильные настройки');
-    LoadStr('326', 'Протокол скрытых сервисов второй версии устарел, его поддержка была прекращена в версии 0.4.6.1 и выше. Вы действительно хотите использовать эту версию протокола?');
     LoadStr('327', 'Цепочки');
     LoadStr('328', 'Компактный режим');
     LoadStr('329', 'Назначение,Флаги');
@@ -367,7 +366,6 @@ begin
     LoadStr('386', 'Живой (отвечает на соединения)');
     LoadStr('387', 'Принимает IPv6-соединения');
     LoadStr('388', 'Каталог скрытых сервисов');
-    LoadStr('389', 'Зеркало каталога (порт: %d)');
     LoadStr('390', 'Не рекомендуемая версия');
     LoadStr('391', 'Плохой выходной узел');
     LoadStr('640', 'Только средний');
@@ -612,7 +610,6 @@ begin
     Tcp.lbBridgeType.Caption := Load('169', 'Тип моста');
     Tcp.lbExitPolicy.Caption := Load('170', 'Политика выхода');
     Tcp.lbORPort.Caption := Load('171', 'Сервер');
-    Tcp.lbDirPort.Caption := Load('172', 'Каталог');
     Tcp.lbTransportPort.Caption := Load('173', 'Транспорт');
     Tcp.cbUseMaxMemInQueues.Caption := Load('174', 'Ограничить память');
     Tcp.lbSizeMb.Caption := Prefixes[2];
@@ -627,7 +624,6 @@ begin
     Tcp.imUPnPTest.Hint := TransStr('181');
     Tcp.cbUseUPnP.Caption := Load('182', 'Пытаться автоматически настроить переадресацию портов');
     Tcp.cbPublishServerDescriptor.Caption := Load('183', 'Публиковать сервер в каталоге ретрансляторов');
-    Tcp.cbUseDirPort.Caption := Load('184', 'Включить зеркало каталога ретрансляторов');
     Tcp.cbDirReqStatistics.Caption := Load('185', 'Собирать статистику запросов каталога');
     Tcp.cbHiddenServiceStatistics.Caption := Load('186', 'Собирать статистику о своей роли в качестве узла скрытого сервиса');
     Tcp.cbIPv6Exit.Caption := Load('187', 'Разрешить выход IPv6 трафика');
@@ -658,8 +654,6 @@ begin
     Tcp.lbHsMaxStreams.Caption := Load('193', 'Соединений на цепочку');
     Tcp.lbHsVersion.Caption := Load('194', 'Версия протокола');
     Tcp.lbHsNumIntroductionPoints.Caption := Load('195', 'Точек входа');
-    Tcp.lbRendPostPeriod.Caption := Load('196', 'Интервал публикации');
-    Tcp.lbMinutes.Caption := TranslateTime(0, TIME_MINUTE, False, True);
     Tcp.lbHsSocket.Caption := Load('198', 'Сервис');
     Tcp.lbHsState.Caption := Load('199', 'Состояние');
     Tcp.lbHsVirtualPort.Caption := Load('200', 'Виртуальный порт');
@@ -799,7 +793,7 @@ begin
 
     Tcp.lbSpeed3.Caption := Prefixes[2] + '/' + TransStr('180');
     Tcp.btnShowNodes.Caption := TransStr('547');
-    LoadList(Tcp.cbxRoutersQuery, '548', '"Хеш","Ник","IPv4","IPv6","Порт","DIR-порт","Версия","Пинг","Транспорт"');
+    LoadList(Tcp.cbxRoutersQuery, '548', '"Хеш","Ник","IPv4","IPv6","Порт","Версия","Пинг","Транспорт"');
     Tcp.edRoutersQuery.TextHint := Load('549', 'Введите запрос');
     Tcp.lbFavoritesTotalSelected.Caption := TransStr('643') + ':';
     Tcp.imFavoritesEntry.Hint := TransStr('288');
@@ -1039,7 +1033,6 @@ begin
     Tcp.miShowStable.Caption := Load('556', 'Стабильный');
     Tcp.miShowV2Dir.Caption := Load('557', 'Вторая версия каталога');
     Tcp.miShowHSDir.Caption := Load('558', 'Каталог скрытых сервисов');
-    Tcp.miShowDirMirror.Caption := Load('559', 'Зеркало каталога');
     Tcp.miShowRecommend.Caption := Load('560', 'Рекомендуемая версия');
     Tcp.miShowAlive.Caption := Load('561', 'Живой узел');
     Tcp.miReverseConditions.Caption := Load('562', 'Обратить условия фильтра');
