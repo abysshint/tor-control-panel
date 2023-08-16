@@ -2351,10 +2351,15 @@ procedure RemoveUPnPEntry(PortList: array of Word);
 var
   Nat: Variant;
   Ports: Variant;
-  i, PortsCount: Integer;
+  i, PortsCount, Sum: Integer;
 begin
   PortsCount := Length(PortList);
   if PortsCount = 0 then
+    Exit;
+  Sum := 0;
+  for i := 0 to PortsCount - 1 do
+    Inc(Sum, PortList[i]);
+  if Sum = 0 then
     Exit;
   try
     Nat := CreateOleObject('HNetCfg.NATUPnP');
@@ -4006,7 +4011,7 @@ function GetCircuitsParamsCount(PurposeID: Integer): Integer;
 begin
   case PurposeID of
     HS_CLIENT_HSDIR..HS_SERVICE_REND: Result := 3;
-    HS_VANGUARDS: Result := 2;
+    HS_VANGUARDS, CONFLUX_LINKED, CONFLUX_UNLINKED: Result := 2;
     else
       Result := 1;
   end;
@@ -4028,6 +4033,7 @@ begin
   CheckMask(ROUTER_NOT_RECOMMENDED);
   CheckMask(ROUTER_BAD_EXIT);
   CheckMask(ROUTER_MIDDLE_ONLY);
+  CheckMask(ROUTER_SUPPORT_CONFLUX);
 end;
 
 function CheckSplitButton(Button: TButton; DirectClick: Boolean): Boolean;

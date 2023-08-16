@@ -73,7 +73,7 @@ type
     Date: TDateTime;
     BytesRead: int64;
     BytesWritten: int64;
-    Flags: Word;
+    Flags: Integer;
   end;
 
   TStreamInfo = record
@@ -158,7 +158,7 @@ type
   TControlThread = class(TThread)
   private
     Socket: TTCPBlockSocket;
-    StreamStatusID, CircuitStatusID: Integer;
+    StatusID: Integer;
     CircuitInfo: TCircuitInfo;
     StreamInfo: TStreamInfo;
     SendBuffer: string;
@@ -170,7 +170,7 @@ type
     AddressType: TAddressType;
     UpdateCountry: Boolean;
     function AuthStageReady(AuthMethod: Integer): Boolean;
-    function GetCircuitFlags(Circuit: TCircuitInfo): Word;
+    function GetCircuitFlags(Circuit: TCircuitInfo): Integer;
     procedure GetData;
     procedure SendData(cmd: string);
     procedure CheckDirFetches(StreamInfo: TStreamInfo; Counter: Integer);
@@ -1025,6 +1025,13 @@ type
     cbUseOpenDNSOnlyWhenUnknown: TCheckBox;
     cbIPv6Exit: TCheckBox;
     cbListenIPv6: TCheckBox;
+    lbUseConflux: TLabel;
+    cbxUseConflux: TComboBox;
+    lbConfluxPriority: TLabel;
+    cbxConfluxPriority: TComboBox;
+    cbAutoSelConfluxOnly: TCheckBox;
+    miCircConfluxLinked: TMenuItem;
+    miCircConfluxUnLinked: TMenuItem;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1179,6 +1186,8 @@ type
     procedure SelectTransports;
     procedure CheckCircuitsControls(UpdateAll: Boolean = True);
     procedure CheckStreamsControls;
+    procedure CheckConfluxControls;
+    procedure SaveConfluxOptions(ini: TMemIniFile);
     procedure ChangeCircuit(DirectClick: Boolean = True);
     procedure SendCommand(const cmd: string);
     procedure CheckSelectRowOptions(aSg: TStringGrid; Checked: Boolean; Save: Boolean = False);
@@ -1600,6 +1609,7 @@ type
     procedure meServerTransportOptionsChange(Sender: TObject);
     procedure meServerTransportOptionsExit(Sender: TObject);
     procedure cbxBridgeTypeChange(Sender: TObject);
+    procedure cbxUseConfluxChange(Sender: TObject);
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
     procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -1659,7 +1669,7 @@ var
   ConsensusUpdated, FilterUpdated, RoutersUpdated, ExcludeUpdated, OpenDNSUpdated, LanguageUpdated,
   BridgesUpdated, BridgesRecalculate, BridgesFileUpdated, BridgesFileNeedSave: Boolean;
   SelectExitCircuit, TotalsNeedSave: Boolean;
-  SupportVanguardsLite, SupportBridgesTesting: Boolean;
+  SupportVanguardsLite, SupportBridgesTesting, SupportConflux, SupportCircuitPadding: Boolean;
   FallbackDirsRecalculate, FallbackDirsUpdated, ServerTransportOptionsUpdated: Boolean;
   Scale: Real;
   HsToDelete: ArrOfStr;
@@ -2218,6 +2228,48 @@ begin
   end;
 end;
 
+procedure TTcp.CheckConfluxControls;
+var
+  State, UseState: Boolean;
+begin
+  State := SupportConflux;
+  UseState := State and (cbxUseConflux.ItemIndex <> CONFLUX_TYPE_DISABLED);
+  cbxUseConflux.Enabled := State;
+  cbxConfluxPriority.Enabled := UseState;
+  lbUseConflux.Enabled := State;
+  lbConfluxPriority.Enabled := UseState;
+end;
+
+procedure TTcp.SaveConfluxOptions(ini: TMemIniFile);
+begin
+  DeleteTorConfig('ConfluxEnabled');
+  DeleteTorConfig('ConfluxClientUX');
+  if SupportConflux then
+  begin
+    case cbxUseConflux.ItemIndex of
+      CONFLUX_TYPE_AUTO: SetTorConfig('ConfluxEnabled', 'auto');
+      CONFLUX_TYPE_ENABLED: SetTorConfig('ConfluxEnabled', '1');
+      CONFLUX_TYPE_DISABLED: SetTorConfig('ConfluxEnabled', '0');
+    end;
+    if cbxUseConflux.ItemIndex <> CONFLUX_TYPE_DISABLED then
+    begin
+      case cbxConfluxPriority.ItemIndex of
+        PRIORITY_THROUGHPUT: SetTorConfig('ConfluxClientUX', 'throughput');
+        PRIORITY_LATENCY: SetTorConfig('ConfluxClientUX', 'latency');
+      end;
+    end;
+  end;
+  SetSettings('Main', cbxUseConflux, ini);
+  SetSettings('Main', cbxConfluxPriority, ini);
+end;
+
+procedure TTcp.cbxUseConfluxChange(Sender: TObject);
+begin
+  CheckConfluxControls;
+  CheckAutoSelControls;
+  EnableOptionButtons;
+end;
+
 procedure TTcp.ConnectOnStartupTimer(Sender: TObject);
 begin
   if TorVersion <> '' then
@@ -2279,9 +2331,9 @@ procedure TConsensusThread.Execute;
 var
   ls: TStringList;
   NeedUpdate: Boolean;
-  i, j, FlagsCount: Integer;
+  i, j, DataCount: Integer;
   RouterID, FallbackStr: string;
-  ParseStr, ParseFlag: ArrOfStr;
+  ParseStr: ArrOfStr;
   Router: TRouterInfo;
   GeoIpInfo: TGeoIpInfo; 
   BridgeItem: TPair<string, TBridgeInfo>;
@@ -2355,39 +2407,39 @@ begin
       end;
       if Pos('s ', ls[i]) = 1 then
       begin
-        ParseFlag := Explode(' ', ls[i]);
-        FlagsCount := Length(ParseFlag);
-        for j := 0 to FlagsCount - 1 do
+        ParseStr := Explode(' ', ls[i]);
+        DataCount := Length(ParseStr);
+        for j := 1 to DataCount - 1 do
         begin
-          if Pos('Authority', ParseFlag[j]) = 1 then
+          if Pos('Authority', ParseStr[j]) = 1 then
           begin
             Include(Router.Flags, rfAuthority);
             Inc(Router.Params, ROUTER_AUTHORITY);
           end;
-          if Pos('BadExit', ParseFlag[j]) = 1 then
+          if Pos('BadExit', ParseStr[j]) = 1 then
           begin
             Include(Router.Flags, rfBadExit);
             Inc(Router.Params, ROUTER_BAD_EXIT);
           end;
-          if Pos('Exit', ParseFlag[j]) = 1 then
+          if Pos('Exit', ParseStr[j]) = 1 then
             Include(Router.Flags, rfExit);
-          if Pos('MiddleOnly', ParseFlag[j]) = 1 then
+          if Pos('MiddleOnly', ParseStr[j]) = 1 then
           begin
             Include(Router.Flags, rfMiddleOnly);
             Inc(Router.Params, ROUTER_MIDDLE_ONLY);
           end;
-          if Pos('Fast', ParseFlag[j]) = 1 then
+          if Pos('Fast', ParseStr[j]) = 1 then
             Include(Router.Flags, rfFast);
-          if Pos('Guard', ParseFlag[j]) = 1 then
+          if Pos('Guard', ParseStr[j]) = 1 then
             Include(Router.Flags, rfGuard);
-          if Pos('HSDir', ParseFlag[j]) = 1 then
+          if Pos('HSDir', ParseStr[j]) = 1 then
           begin
             Include(Router.Flags, rfHSDir);
             Inc(Router.Params, ROUTER_HS_DIR);
           end;
-          if Pos('Stable', ParseFlag[j]) = 1 then
+          if Pos('Stable', ParseStr[j]) = 1 then
             Include(Router.Flags, rfStable);
-          if Pos('V2Dir', ParseFlag[j]) = 1 then
+          if Pos('V2Dir', ParseStr[j]) = 1 then
             Include(Router.Flags, rfV2Dir);
         end;
         Continue;
@@ -2397,6 +2449,13 @@ begin
         Router.Version := Copy(ls[i], 7);
         if not VersionsDic.ContainsKey(Router.Version) then
           Inc(Router.Params, ROUTER_NOT_RECOMMENDED);
+        Continue;
+      end;
+
+      if Pos('pr ', ls[i]) = 1 then
+      begin
+        if Pos('Conflux', ls[i]) <> 0 then
+          Inc(Router.Params, ROUTER_SUPPORT_CONFLUX);
         Continue;
       end;
 
@@ -2485,7 +2544,6 @@ begin
         end;
       end;
     end;
-
   finally
     ls.Free;
     HashList.Free;
@@ -2788,7 +2846,7 @@ end;
 
 function TTcp.GetControlEvents: string;
 begin
-  Result := 'BW CIRC STREAM STATUS_CLIENT';
+  Result := 'BW CIRC CIRC_MINOR STREAM STATUS_CLIENT';
   if cbxServerMode.ItemIndex <> SERVER_MODE_NONE then
     Result := Result + ' STATUS_SERVER';
   if miShowCircuitsTraffic.Checked then
@@ -2920,7 +2978,7 @@ begin
   end;
 end;
 
-function TControlThread.GetCircuitFlags(Circuit: TCircuitInfo): Word;
+function TControlThread.GetCircuitFlags(Circuit: TCircuitInfo): Integer;
 begin
   if bfOneHop in (Circuit.BuildFlags) then
     Result := CF_DIR_REQUEST
@@ -2946,6 +3004,8 @@ begin
       CIRCUIT_PADDING: Result := CF_CIRCUIT_PADDING;
       MEASURE_TIMEOUT: Result := CF_MEASURE_TIMEOUT;
       CONTROLLER_CIRCUIT: Result := CF_CONTROLLER;
+      CONFLUX_LINKED: Result := CF_EXIT + CF_CONFLUX_LINKED;
+      CONFLUX_UNLINKED: Result := CF_EXIT + CF_CONFLUX_UNLINKED;
       else
         Result := CF_OTHER;
     end;
@@ -3190,8 +3250,8 @@ begin
   begin
     ParseStr := Explode(' ', Data);
     CircuitID := ParseStr[2];
-    CircuitStatusID := GetConstantIndex(ParseStr[3]);
-    case CircuitStatusID of
+    StatusID := GetConstantIndex(ParseStr[3]);
+    case StatusID of
       BUILT:
       begin
         CircuitInfo.BuildFlags := [];
@@ -3236,13 +3296,40 @@ begin
     Exit;
   end;
 
+  if Pos('650 CIRC_MINOR ', Data) = 1  then
+  begin
+    ParseStr := Explode(' ', Data);
+    CircuitID := ParseStr[2];
+    StatusID := GetConstantIndex(ParseStr[3]);
+    case StatusID of
+      PURPOSE_CHANGED:
+      begin
+        for i := 6 to Length(ParseStr) - 1 do
+        begin
+          if Pos('PURPOSE', ParseStr[i]) = 1 then
+          begin
+            if CircuitsDic.TryGetValue(CircuitID, CircuitInfo) then
+            begin
+              CircuitInfo.PurposeID := GetConstantIndex(SeparateRight(ParseStr[i], '='));
+              CircuitInfo.Flags := GetCircuitFlags(CircuitInfo);
+              CircuitsDic.AddOrSetValue(CircuitID, CircuitInfo);
+              CircuitsUpdated := True;
+            end;
+            Break;
+          end;
+        end;
+      end;
+    end;
+    Exit;
+  end;
+
   if Pos('650 STREAM ', Data) = 1  then
   begin
     ParseStr := Explode(' ', Data);
     StreamID := ParseStr[2];
-    StreamStatusID := GetConstantIndex(ParseStr[3]);
+    StatusID := GetConstantIndex(ParseStr[3]);
     CircuitID := ParseStr[4];
-    case StreamStatusID of
+    case StatusID of
       NEW:
       begin
         StreamInfo.CircuitID := CircuitID;
@@ -3333,7 +3420,7 @@ begin
     begin
       if StreamsDic.ContainsKey(StreamID) then
       begin
-        case StreamStatusID of
+        case StatusID of
           SENTCONNECT: Inc(CircuitInfo.Streams);
           DETACHED: Dec(CircuitInfo.Streams);
           CLOSED:
@@ -3348,7 +3435,7 @@ begin
     end
     else
     begin
-      if StreamStatusID = CLOSED then
+      if StatusID = CLOSED then
       begin
         if (UsedProxyType <> ptNone) and (ConnectState = 2) and (ExitNodeID = '') then
         begin
@@ -3554,7 +3641,7 @@ var
   PurposeID, Indent, Mask, Interval: Integer;
   Params: string;
 
-  procedure DrawFlagIcon(Flag: Word; Index: Integer);
+  procedure DrawFlagIcon(Flag: Integer; Index: Integer);
   begin
     if Indent > Interval then
     begin
@@ -3595,6 +3682,8 @@ begin
 
         DrawFlagIcon(CF_EXIT, 42);
         DrawFlagIcon(CF_INTERNAL, 61);
+        DrawFlagIcon(CF_CONFLUX_LINKED, 74);
+        DrawFlagIcon(CF_CONFLUX_UNLINKED, 75);
         DrawFlagIcon(CF_HIDDEN_SERVICE, 53);
         DrawFlagIcon(CF_VANGUARDS, 40);
         DrawFlagIcon(CF_CLIENT, 32);
@@ -4113,6 +4202,7 @@ begin
           DrawFlagIcon(ROUTER_NOT_RECOMMENDED, 44);
           DrawFlagIcon(ROUTER_BAD_EXIT, 43);
           DrawFlagIcon(ROUTER_MIDDLE_ONLY, 61);
+          DrawFlagIcon(ROUTER_SUPPORT_CONFLUX, 74);
         end;
       end;
     end;
@@ -4324,7 +4414,7 @@ begin
       begin
         if SelData <> '' then
         begin
-          ConvertNodes := PrepareNodesToRemove(NodesList.DelimitedText, NodeTypeID, Nodes);;
+          ConvertNodes := PrepareNodesToRemove(NodesList.DelimitedText, NodeTypeID, Nodes);
           if ConvertNodes then
             ConvertMsg := BR + BR + TransStr('146')
           else
@@ -4392,7 +4482,7 @@ var
   Mask, MaxItems: Integer;
   Params: string;
   CellRect, CellPoint: TRect;
-  Data: array of Word;
+  Data: array of Integer;
   ArrayIndex: Integer;
 
   procedure CheckMask(Param: Integer);
@@ -4416,6 +4506,8 @@ begin
 
       CheckMask(CF_EXIT);
       CheckMask(CF_INTERNAL);
+      CheckMask(CF_CONFLUX_LINKED);
+      CheckMask(CF_CONFLUX_UNLINKED);
       CheckMask(CF_HIDDEN_SERVICE);
       CheckMask(CF_VANGUARDS);
       CheckMask(CF_CLIENT);
@@ -4439,6 +4531,8 @@ begin
         case Data[ArrayIndex div 16] of
           CF_EXIT: sgCircuits.Hint := TransStr('333');
           CF_INTERNAL: sgCircuits.Hint := TransStr('332');
+          CF_CONFLUX_LINKED: sgCircuits.Hint := TransStr('172');
+          CF_CONFLUX_UNLINKED: sgCircuits.Hint := TransStr('184');
           CF_HIDDEN_SERVICE: sgCircuits.Hint := TransStr('122');
           CF_VANGUARDS: sgCircuits.Hint := TransStr('665');
           CF_CLIENT: sgCircuits.Hint := TransStr('663');
@@ -4505,6 +4599,7 @@ begin
         CheckMask(ROUTER_NOT_RECOMMENDED);
         CheckMask(ROUTER_BAD_EXIT);
         CheckMask(ROUTER_MIDDLE_ONLY);
+        CheckMask(ROUTER_SUPPORT_CONFLUX);
 
         CellRect := sgRouters.CellRect(ROUTER_FLAGS, sgRouters.MovRow);
         CellPoint := sgRouters.ClientToScreen(CellRect);
@@ -4532,6 +4627,7 @@ begin
             ROUTER_NOT_RECOMMENDED: sgRouters.Hint := TransStr('390');
             ROUTER_BAD_EXIT: sgRouters.Hint := TransStr('391');
             ROUTER_MIDDLE_ONLY: sgRouters.Hint := TransStr('640');
+            ROUTER_SUPPORT_CONFLUX: sgRouters.Hint := TransStr('684');
             else
               sgRouters.Hint := TransStr('392');
           end;
@@ -5449,7 +5545,7 @@ begin
   PrepareOpenDialog(BridgesFileName, TransStr('615'));
   if OpenDialog.Execute then
   begin
-    BridgesFileName := StringReplace(OpenDialog.FileName, GetFullFileName(ProgramDir) + '\', '', [rfIgnoreCase]);;
+    BridgesFileName := StringReplace(OpenDialog.FileName, GetFullFileName(ProgramDir) + '\', '', [rfIgnoreCase]);
     BridgesUpdated := True;      
     LoadBridgesFromFile;
     SaveBridgesData;  
@@ -5862,6 +5958,13 @@ begin
         DeleteTorConfig('RendPostPeriod');
         DeleteTorConfig('DirPort');
         ConfigVersion := 9;
+      end;
+      if ConfigVersion = 9 then
+      begin
+        SetSettings('Circuits', 'PurposeFilter',
+          GetIntDef(GetSettings('Circuits', 'PurposeFilter', CIRCUIT_FILTER_DEFAULT, ini) + miCircConfluxLinked.Tag + miCircConfluxUnLinked.Tag,
+            CIRCUIT_FILTER_DEFAULT, 0, CIRCUIT_FILTER_MAX), ini);
+        ConfigVersion := 10;
       end;
     end
     else
@@ -7351,6 +7454,10 @@ begin
     GetSettings('Main', cbUseNetworkCache, ini);
     GetSettings('Main', cbRememberEnlargedPosition, ini);
     GetSettings('Main', cbClearPreviousSearchQuery, ini);
+    GetSettings('Main', cbxUseConflux, ini);
+    GetSettings('Main', cbxConfluxPriority, ini);
+    SaveConfluxOptions(ini);
+    CheckConfluxControls;
 
     FormatCodesOnExtract := GetSettings('Extractor', 'FormatCodesOnExtract', True, ini);
     FormatIPv6OnExtract := GetSettings('Extractor', 'FormatIPv6OnExtract', True, ini);
@@ -7448,6 +7555,7 @@ begin
     GetSettings('AutoSelNodes', udAutoSelFallbackDirCount, ini);
     GetSettings('AutoSelNodes', udAutoSelMinWeight, ini);
     GetSettings('AutoSelNodes', udAutoSelMaxPing, ini);
+    GetSettings('AutoSelNodes', cbAutoSelConfluxOnly, ini);
     GetSettings('AutoSelNodes', cbAutoSelFallbackDirNoLimit, ini);
     GetSettings('AutoSelNodes', cbAutoSelStableOnly, ini);
     GetSettings('AutoSelNodes', cbAutoSelFilterCountriesOnly, ini);
@@ -8656,6 +8764,7 @@ begin
     SetSettings('AutoSelNodes', udAutoSelMinWeight, ini);
     SetSettings('AutoSelNodes', udAutoSelMaxPing, ini);
     SetSettings('AutoSelNodes', cbxAutoSelPriority, ini);
+    SetSettings('AutoSelNodes', cbAutoSelConfluxOnly, ini);
     SetSettings('AutoSelNodes', cbAutoSelFallbackDirNoLimit, ini);
     SetSettings('AutoSelNodes', cbAutoSelStableOnly, ini);
     SetSettings('AutoSelNodes', cbAutoSelFilterCountriesOnly, ini);
@@ -8837,6 +8946,7 @@ begin
     SaveTransportsData(ini, False);
     CheckServerControls;
     SavePaddingOptions(ini);
+    SaveConfluxOptions(ini);
 
     GetLocalInterfaces(cbxHsAddress);
     SaveHiddenServices(ini);
@@ -11683,7 +11793,7 @@ procedure TTcp.CheckPaddingControls;
 var
   State: Boolean;
 begin
-  State := CheckFileVersion(TorVersion, '0.4.1.1');
+  State := SupportCircuitPadding;
   cbxCircuitPadding.Enabled := State;
   lbCircuitPadding.Enabled := State;
 end;
@@ -11703,7 +11813,7 @@ begin
       2: SetTorConfig('ReducedConnectionPadding', '1');
       3: SetTorConfig('ConnectionPadding', '0');
     end;
-    if CheckFileVersion(TorVersion, '0.4.1.1') then
+    if SupportCircuitPadding then
     begin
       case cbxCircuitPadding.ItemIndex of
         0: SetTorConfig('CircuitPadding', '1');
@@ -12913,6 +13023,8 @@ begin
           CIRCUIT_PADDING: if miCircCircuitPadding.Checked then PurposeStr := TransStr('343');
           MEASURE_TIMEOUT: if miCircMeasureTimeout.Checked then PurposeStr := TransStr('344');
           CONTROLLER_CIRCUIT: if miCircController.Checked then PurposeStr := TransStr('661');
+          CONFLUX_LINKED: if miCircConfluxLinked.Checked then PurposeStr := TransStr('172');
+          CONFLUX_UNLINKED: if miCircConfluxUnLinked.Checked then PurposeStr := TransStr('184');
           else
             if miCircOther.Checked then PurposeStr := TransStr('345');
         end;
@@ -14142,6 +14254,7 @@ begin
   udAutoSelMaxPing.Enabled := State;
   cbxAutoSelPriority.Enabled := State;
   cbxAutoSelRoutersAfterScanType.Enabled := State and cbAutoScanNewNodes.Checked;
+  cbAutoSelConfluxOnly.Enabled := ExitState and SupportConflux and (cbxUseConflux.ItemIndex <> CONFLUX_TYPE_DISABLED);
   cbAutoSelFallbackDirNoLimit.Enabled := FallbackDirState;
   cbAutoSelMiddleNodesWithoutDir.Enabled := MiddleState;
   cbAutoSelFilterCountriesOnly.Enabled := State;
@@ -14670,6 +14783,8 @@ var
   DefaultState: Boolean;
   Index: Integer;
 begin
+  if Closing then
+    Exit;
   DefaultState := True;
   if LastTrayIconType <> cbxTrayIconType.ItemIndex then
   begin
@@ -14728,7 +14843,7 @@ begin
     PrepareOpenDialog(TrayIconFile, TransStr('678'));
     if OpenDialog.Execute then
     begin
-      TrayIconFile := StringReplace(OpenDialog.FileName, GetFullFileName(ProgramDir) + '\', '', [rfIgnoreCase]);;
+      TrayIconFile := StringReplace(OpenDialog.FileName, GetFullFileName(ProgramDir) + '\', '', [rfIgnoreCase]);
       LastTrayIconType := MAXWORD;
     end
     else
@@ -16562,7 +16677,7 @@ begin
   else
     NodesList := TMenuItem(Sender).Hint;
 
-  ConvertNodes := PrepareNodesToRemove(NodesList, ntNone, Nodes);;
+  ConvertNodes := PrepareNodesToRemove(NodesList, ntNone, Nodes);
   if ConvertNodes then
     ConvertMsg := BR + BR + TransStr('146')
   else
@@ -16702,7 +16817,7 @@ var
   RouterInfo: TRouterInfo;
   NodeItem: TPair<string, TNodeTypes>;
   Flags: TRouterFlags;
-  PriorityType, PingData, PingSum, PingCount, PingAvg: Integer;
+  PriorityType, PingData, PingSum, PingCount, PingAvg, WeightSum, WeightCount, WeightAvg: Integer;
   FilterNodeTypes, AutoSelNodeTypes: TNodeTypes;
   FilterInfo: TFilterInfo;
   CountryID: Byte;
@@ -16711,6 +16826,7 @@ var
   UniqueList: TDictionary<string, Byte>;
   SortCompare: TStringListSortCompare;
   ParseStr: ArrOfStr;
+  ConfluxEnabled: Boolean;
   i: Integer;
 
   function ListToStr(ls: TStringList; Max: Integer): string;
@@ -16791,6 +16907,11 @@ var
                 Inc(PingSum, PingData);
                 Inc(PingCount);
               end;
+              if (NodeType = ntExit) and ConfluxEnabled then
+              begin
+                Inc(WeightSum, Router.Value.Bandwidth);
+                Inc(WeightCount);
+              end;
             end;
           end;
           PRIORITY_WEIGHT: ls.AddObject(Router.Key, TObject(Router.Value.Bandwidth));
@@ -16808,7 +16929,6 @@ begin
     Exit;
   if not (cbAutoSelEntryEnabled.Checked or cbAutoSelMiddleEnabled.Checked or cbAutoSelExitEnabled.Checked or cbAutoSelFallbackDirEnabled.Checked) then
     Exit;
-
   CheckEntryPorts := ReachablePortsExists;
   EntryNodes := TStringList.Create;
   MiddleNodes := TStringList.Create;
@@ -16820,10 +16940,13 @@ begin
     PriorityType := PRIORITY_WEIGHT
   else
     PriorityType := cbxAutoSelPriority.ItemIndex;
+  ConfluxEnabled := SupportConflux and (cbxUseConflux.ItemIndex <> CONFLUX_TYPE_DISABLED);
 
   PingCount := 0;
   PingSum := 0;
   PingAvg := 0;
+  WeightCount := 0;
+  WeightSum := 0;
 
   try
     AutoSelNodeTypes := [];
@@ -16898,7 +17021,15 @@ begin
           end;
 
           if (rfExit in Flags) and not (rfBadExit in Flags) then
-            AddRouterToList(ExitNodes, ntExit);
+          begin
+            if ConfluxEnabled then
+            begin
+              if (Router.Value.Params and ROUTER_SUPPORT_CONFLUX <> 0) or not cbAutoSelConfluxOnly.Checked then
+                AddRouterToList(ExitNodes, ntExit);
+            end
+            else
+              AddRouterToList(ExitNodes, ntExit);
+          end;
 
           if not ((rfHsDir in Flags) or (rfAuthority in Flags)) or not cbAutoSelMiddleNodesWithoutDir.Checked then
             AddRouterToList(MiddleNodes, ntMiddle);
@@ -16909,6 +17040,19 @@ begin
     begin
       if PingCount > 0 then
         PingAvg := Round(PingSum / PingCount);
+
+      if (WeightCount > 0) and ConfluxEnabled then
+      begin
+        WeightAvg := Round(WeightSum / WeightCount);
+        for i := 0 to ExitNodes.Count - 1 do
+        begin
+          if RoutersDic.TryGetValue(ExitNodes[i], RouterInfo) then
+          begin
+            if RouterInfo.Params and ROUTER_SUPPORT_CONFLUX <> 0 then
+              ExitNodes.Objects[i] := TObject(RouterInfo.Bandwidth + WeightAvg);
+          end;
+        end;
+      end;
     end;
 
     case PriorityType of
@@ -17546,6 +17690,8 @@ begin
   DefaultsDic.AddOrSetValue('CircuitPadding', '1');
   DefaultsDic.AddOrSetValue('ReducedCircuitPadding', '0');
   DefaultsDic.AddOrSetValue('DisableNetwork', '0');
+  DefaultsDic.AddOrSetValue('ConfluxEnabled', 'auto');
+  DefaultsDic.AddOrSetValue('ConfluxClientUX', 'throughput');
 
   udHsMaxStreams.ResetValue := udHsMaxStreams.Position;
   udHsNumIntroductionPoints.ResetValue := udHsNumIntroductionPoints.Position;
@@ -17566,6 +17712,7 @@ begin
   end;
 
   LoadStaticArray(CircuitStatuses);
+  LoadStaticArray(CircuitStatusesMinor);
   LoadStaticArray(CircuitPurposes);
   LoadStaticArray(StreamStatuses);
   LoadStaticArray(StreamPurposes);
@@ -17711,8 +17858,10 @@ procedure TTcp.LoadOptions(FirstStart: Boolean);
 begin
   if FirstStart then
     UpdateConfigVersion;
+  SupportCircuitPadding := CheckFileVersion(TorVersion, '0.4.1.1');
   SupportVanguardsLite := CheckFileVersion(TorVersion, '0.4.7.1');
   SupportBridgesTesting := SupportVanguardsLite;
+  SupportConflux := CheckFileVersion(TorVersion, '0.4.8.1');
   ResetOptions;
   if not Assigned(ShowTimer) then
   begin

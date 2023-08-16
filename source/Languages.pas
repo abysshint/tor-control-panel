@@ -223,9 +223,11 @@ begin
     LoadStr('160', 'Прокручивать вверх при сортировке');
     LoadLns('161', 'Текущая конфигурация авангардов для скрытых сервисов требует как минимум %d избранных входных узлов (Найдено: %d). \n\nИсправить проблему и продолжить сохранение настроек?');
     LoadStr('164', 'Эта операция требует перезапуска Tor');
+    LoadStr('172', 'Разделение трафика: Привязано');
     LoadStr('175', 'Максимум');
     LoadStr('180', 'c');
     LoadStr('181', 'Проверка переадресации портов');
+    LoadStr('184', 'Разделение трафика: Ожидание');
     LoadStr('197', 'мин|минута|минуты|минут');
     LoadStr('203', 'Всего');
     LoadStr('204', 'Внимание! Отключение кэша каталога ускорит работу сервера, но ваш сервер никогда не станет сторожевым узлом. Хотите продолжить?');
@@ -449,6 +451,7 @@ begin
     LoadStr('678', 'Набор значков (80x20)|*.png');
     LoadStr('679', 'Форматировать коды стран');
     LoadLns('682', '\n Список опций в формате: k=v\n разделённых пробелом');
+    LoadStr('684', 'Поддерживает Conflux');
 
     TranslateArray(HsHeader, TransStr('230'));
     TranslateArray(HsPortsHeader, TransStr('231'));
@@ -527,7 +530,11 @@ begin
     Tcp.lbCircuitPadding.Caption := Load('620', 'Заполнение цепочек маскирующим трафиком');
     LoadList(Tcp.cbxCircuitPadding, '621', '"Включено","Ограничено","Выключено"');
     Tcp.lbSocksTimeout.Caption := Load('646', 'Макс. время на установление OR-соединений');
-    Tcp.lbSeconds6.Caption := TranslateTime(0, TIME_SECOND, False, True);;
+    Tcp.lbSeconds6.Caption := TranslateTime(0, TIME_SECOND, False, True);
+    Tcp.lbUseConflux.Caption := Load('326', 'Разделять трафик между цепочками (Conflux)');
+    LoadList(Tcp.cbxUseConflux, '389', '"Автовыбор","Включено","Выключено"');
+    Tcp.lbConfluxPriority.Caption := Load('559', 'Приоритет при объединении трафика');
+    LoadList(Tcp.cbxConfluxPriority, '683', '"Скорость канала","Мин. задержка"');
 
     Tcp.gbControlAuth.Caption := Load('412', 'Управление');
     Tcp.lbControlPort.Caption := Load('127', 'Порт');
@@ -737,6 +744,7 @@ begin
     Tcp.cbAutoSelNodesWithPingOnly.Caption := Load('476', 'Только отвечающие на пинг');
     Tcp.cbAutoSelMiddleNodesWithoutDir.Caption := Load('591', 'Средние узлы без каталогов');
     Tcp.cbAutoSelFallbackDirNoLimit.Caption := Load('653', 'Не ограничивать подбор каталогов');
+    Tcp.cbAutoSelConfluxOnly.Caption := Load('196', 'Только с поддержкой Conflux');
 
     Tcp.gbTraffic.Caption := Load('211', 'Скорость');
     Tcp.lbDownloadSpeedCaption.Caption := TransStr('212') + ':';
@@ -930,7 +938,7 @@ begin
     Tcp.miFilterHideUnused.Caption := Load('163', 'Скрыть неиспользуемые страны');
     Tcp.miFilterScrollTop.Caption := TransStr('160');
     Tcp.miFilterOptions.Caption := TransStr('107');
-    Tcp.miFilterSelectRow.Caption := TransStr('515');;
+    Tcp.miFilterSelectRow.Caption := TransStr('515');
     Tcp.miNotLoadEmptyTplData.Caption := Load('516', 'Не загружать пустые данные шаблона');
     Tcp.miIgnoreTplLoadParamsOutsideTheFilter.Caption := Load('517', 'Игнорировать параметры загрузки из шаблона вне фильтра');
     Tcp.miReplaceDisabledFavoritesWithCountries.Caption := Load('518', 'Заменять выключенные списки узлов выбранными странами');
@@ -985,6 +993,8 @@ begin
     Tcp.miCircCircuitPadding.Caption := TransStr('343');
     Tcp.miCircMeasureTimeout.Caption := TransStr('344');
     Tcp.miCircController.Caption := TransStr('661');
+    Tcp.miCircConfluxLinked.Caption := TransStr('172');
+    Tcp.miCircConfluxUnLinked.Caption := TransStr('184');
     Tcp.miCircOther.Caption := TransStr('345');
     Tcp.miCircSA.Caption := TransStr('368');
     Tcp.miCircUA.Caption := TransStr('369');

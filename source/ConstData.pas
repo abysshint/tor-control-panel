@@ -33,15 +33,15 @@ const
 
   LOOPBACK_ADDRESS = '127.0.0.1';
 
-  CURRENT_CONFIG_VERSION = 9;
+  CURRENT_CONFIG_VERSION = 10;
   MAX_SPEED_DATA_LENGTH = 24 * 60 * 60;
   BUFSIZE = 1024 * 1024;
 
   MAX_COUNTRIES = 251;
   MAX_TOTALS = 7;
 
-  CIRCUIT_FILTER_DEFAULT = 65535;
-  CIRCUIT_FILTER_MAX = 65535;
+  CIRCUIT_FILTER_DEFAULT = 262144;
+  CIRCUIT_FILTER_MAX = 262144;
   ROUTER_FILTER_DEFAULT = 15;
   ROUTER_FILTER_MAX = 15;
   SHOW_NODES_FILTER_DEFAULT = 739;
@@ -96,6 +96,13 @@ const
   PRIORITY_WEIGHT = 1;
   PRIORITY_PING = 2;
   PRIORITY_RANDOM = 3;
+
+  PRIORITY_THROUGHPUT = 0;
+  PRIORITY_LATENCY = 1;
+
+  CONFLUX_TYPE_AUTO = 0;
+  CONFLUX_TYPE_ENABLED = 1;
+  CONFLUX_TYPE_DISABLED = 2;
 
   BRIDGE_RELAY = 0;
   BRIDGE_NATIVE = 1;
@@ -277,9 +284,10 @@ const
   ROUTER_NOT_RECOMMENDED = 4;
   ROUTER_HS_DIR = 8;
   ROUTER_REACHABLE_IPV6 = 16;
-  ROUTER_ALIVE = 32;
-  ROUTER_AUTHORITY = 64;
-  ROUTER_BRIDGE = 128;
+  ROUTER_AUTHORITY = 32;
+  ROUTER_SUPPORT_CONFLUX = 64;
+  ROUTER_ALIVE = 128;
+  ROUTER_BRIDGE = 256;
 
   GENERAL = 0;
   HS_CLIENT_HSDIR = 1;
@@ -294,6 +302,8 @@ const
   CIRCUIT_PADDING = 10;
   MEASURE_TIMEOUT = 11;
   CONTROLLER_CIRCUIT = 38;
+  CONFLUX_LINKED = 39;
+  CONFLUX_UNLINKED = 40;
 
   LAUNCHED = 12;
   BUILT = 13;
@@ -310,6 +320,10 @@ const
   SUCCEEDED = 23;
   DETACHED = 24;
   CONTROLLER_WAIT = 25;
+  XOFF_SENT = 41;
+  XOFF_RECV = 42;
+  XON_SENT = 43;
+  XON_RECV = 44;
 
   DIR_FETCH = 26;
   DIR_UPLOAD = 27;
@@ -324,6 +338,10 @@ const
   DNS = 35;
   HTTPCONNECT = 36;
   UNKNOWN = 37;
+  METRICS = 45;
+
+  PURPOSE_CHANGED = 46;
+  CANNIBALIZED = 47;
 
   FILTER_MODE_NONE = 0;
   FILTER_MODE_COUNTRIES = 1;
@@ -366,19 +384,21 @@ const
 
   CF_EXIT = 1;
   CF_INTERNAL = 2;
-  CF_DIR_REQUEST = 4;
-  CF_HIDDEN_SERVICE = 8;
-  CF_VANGUARDS = 16;
-  CF_REND = 32;
-  CF_INTRO = 64;
-  CF_CLIENT = 128;
-  CF_SERVICE = 256;
-  CF_MEASURE_TIMEOUT = 512;
-  CF_CIRCUIT_PADDING = 1024;
-  CF_TESTING = 2048;
-  CF_PATH_BIAS_TESTING = 4096;
-  CF_CONTROLLER = 8192;
-  CF_OTHER = 16384;
+  CF_CONFLUX_LINKED = 4;
+  CF_CONFLUX_UNLINKED = 8;
+  CF_DIR_REQUEST = 16;
+  CF_HIDDEN_SERVICE = 32;
+  CF_VANGUARDS = 64;
+  CF_REND = 128;
+  CF_INTRO = 256;
+  CF_CLIENT = 512;
+  CF_SERVICE = 1024;
+  CF_MEASURE_TIMEOUT = 2048;
+  CF_CIRCUIT_PADDING = 4096;
+  CF_TESTING = 8192;
+  CF_PATH_BIAS_TESTING = 16384;
+  CF_CONTROLLER = 32768;
+  CF_OTHER = 65536;
 
 type
   ArrOfStr = array of string;
@@ -502,7 +522,7 @@ var
     '%ProgramDir%\Tor\PluggableTransports\'
   );
 
-  CircuitPurposes: array[0..12] of TStaticPair = (
+  CircuitPurposes: array[0..14] of TStaticPair = (
     (Key: 'GENERAL'; Value: GENERAL),
     (Key: 'HS_CLIENT_HSDIR'; Value: HS_CLIENT_HSDIR),
     (Key: 'HS_CLIENT_INTRO'; Value: HS_CLIENT_INTRO),
@@ -515,7 +535,9 @@ var
     (Key: 'TESTING'; Value: TESTING),
     (Key: 'CIRCUIT_PADDING'; Value: CIRCUIT_PADDING),
     (Key: 'MEASURE_TIMEOUT'; Value: MEASURE_TIMEOUT),
-    (Key: 'CONTROLLER'; Value: CONTROLLER_CIRCUIT)
+    (Key: 'CONTROLLER'; Value: CONTROLLER_CIRCUIT),
+    (Key: 'CONFLUX_LINKED'; Value: CONFLUX_LINKED),
+    (Key: 'CONFLUX_UNLINKED'; Value: CONFLUX_UNLINKED)
   );
 
   CircuitStatuses: array[0..5] of TStaticPair = (
@@ -527,6 +549,11 @@ var
     (Key: 'CLOSED'; Value: CLOSED)
   );
 
+  CircuitStatusesMinor: array[0..1] of TStaticPair = (
+    (Key: 'PURPOSE_CHANGED'; Value: PURPOSE_CHANGED),
+    (Key: 'CANNIBALIZED'; Value: CANNIBALIZED)
+  );
+
   StreamPurposes: array[0..4] of TStaticPair = (
     (Key: 'DIR_FETCH'; Value: DIR_FETCH),
     (Key: 'DIR_UPLOAD'; Value: DIR_UPLOAD),
@@ -535,7 +562,7 @@ var
     (Key: 'USER'; Value: USER)
   );
 
-  StreamStatuses: array[0..9] of TStaticPair = (
+  StreamStatuses: array[0..13] of TStaticPair = (
     (Key: 'NEW'; Value: NEW),
     (Key: 'NEWRESOLVE'; Value: NEWRESOLVE),
     (Key: 'REMAP'; Value: REMAP),
@@ -545,16 +572,21 @@ var
     (Key: 'FAILED'; Value: FAILED),
     (Key: 'CLOSED'; Value: CLOSED),
     (Key: 'DETACHED'; Value: DETACHED),
-    (Key: 'CONTROLLER_WAIT'; Value: CONTROLLER_WAIT)
+    (Key: 'CONTROLLER_WAIT'; Value: CONTROLLER_WAIT),
+    (Key: 'XOFF_SENT'; Value: XOFF_SENT),
+    (Key: 'XOFF_RECV'; Value: XOFF_RECV),
+    (Key: 'XON_SENT'; Value: XON_SENT),
+    (Key: 'XON_RECV'; Value: XON_RECV)
   );
 
-  ClientProtocols: array[0..6] of TStaticPair = (
+  ClientProtocols: array[0..7] of TStaticPair = (
     (Key: 'SOCKS4'; Value: SOCKS4),
     (Key: 'SOCKS5'; Value: SOCKS5),
     (Key: 'TRANS'; Value: TRANS),
     (Key: 'NATD'; Value: NATD),
     (Key: 'DNS'; Value: DNS),
     (Key: 'HTTPCONNECT'; Value: HTTPCONNECT),
+    (Key: 'METRICS'; Value: METRICS),
     (Key: 'UNKNOWN'; Value: UNKNOWN)
   );
 
