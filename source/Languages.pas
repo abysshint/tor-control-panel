@@ -955,6 +955,7 @@ begin
     Tcp.miTplLoadSA.Caption := TransStr('368');
     Tcp.miTplLoadUA.Caption := TransStr('369');
     Tcp.miExcludeBridgesWhenCounting.Caption := Load('607', 'Исключить мосты при подсчёте узлов');
+    Tcp.miResetFilterCountries.Caption := Load('685', 'Сбросить выбранные страны');
 
     Tcp.miChangeCircuit.Caption := TransStr('103');
     Tcp.miShowStatus.Caption := TransStr('282');

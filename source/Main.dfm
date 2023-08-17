@@ -5798,6 +5798,14 @@ object Tcp: TTcp
     object miFilterOptions: TMenuItem
       Caption = #1053#1072#1089#1090#1088#1086#1081#1082#1080
       ImageIndex = 11
+      object miResetFilterCountries: TMenuItem
+        Caption = #1057#1073#1088#1086#1089#1080#1090#1100' '#1074#1099#1073#1088#1072#1085#1085#1099#1077' '#1089#1090#1088#1072#1085#1099
+        ImageIndex = 18
+        OnClick = miResetFilterCountriesClick
+      end
+      object miDelimiter70: TMenuItem
+        Caption = '-'
+      end
       object miFilterScrollTop: TMenuItem
         AutoCheck = True
         Caption = #1055#1088#1086#1082#1088#1091#1095#1080#1074#1072#1090#1100' '#1074#1074#1077#1088#1093' '#1087#1088#1080' '#1089#1086#1088#1090#1080#1088#1086#1074#1082#1077

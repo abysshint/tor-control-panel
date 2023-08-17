@@ -170,6 +170,7 @@ type
     AddressType: TAddressType;
     UpdateCountry: Boolean;
     function AuthStageReady(AuthMethod: Integer): Boolean;
+    function GetSpecialFlags(const BaseFlag: Integer; Circuit: TCircuitInfo): Integer;
     function GetCircuitFlags(Circuit: TCircuitInfo): Integer;
     procedure GetData;
     procedure SendData(cmd: string);
@@ -1032,6 +1033,8 @@ type
     cbAutoSelConfluxOnly: TCheckBox;
     miCircConfluxLinked: TMenuItem;
     miCircConfluxUnLinked: TMenuItem;
+    miDelimiter70: TMenuItem;
+    miResetFilterCountries: TMenuItem;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1610,6 +1613,7 @@ type
     procedure meServerTransportOptionsExit(Sender: TObject);
     procedure cbxBridgeTypeChange(Sender: TObject);
     procedure cbxUseConfluxChange(Sender: TObject);
+    procedure miResetFilterCountriesClick(Sender: TObject);
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
     procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -2978,6 +2982,14 @@ begin
   end;
 end;
 
+function TControlThread.GetSpecialFlags(const BaseFlag: Integer; Circuit: TCircuitInfo): Integer;
+begin
+  if bfInternal in (Circuit.BuildFlags) then
+    Result := CF_INTERNAL + BaseFlag
+  else
+    Result := CF_EXIT + BaseFlag;
+end;
+
 function TControlThread.GetCircuitFlags(Circuit: TCircuitInfo): Integer;
 begin
   if bfOneHop in (Circuit.BuildFlags) then
@@ -2985,13 +2997,7 @@ begin
   else
   begin
     case Circuit.PurposeID of
-      GENERAL:
-      begin
-        if bfInternal in (Circuit.BuildFlags) then
-          Result := CF_INTERNAL
-        else
-          Result := CF_EXIT;
-      end;
+      GENERAL: Result := GetSpecialFlags(0, Circuit);
       HS_CLIENT_HSDIR: Result := CF_HIDDEN_SERVICE + CF_CLIENT + CF_DIR_REQUEST;
       HS_CLIENT_INTRO: Result := CF_HIDDEN_SERVICE + CF_CLIENT + CF_INTRO;
       HS_CLIENT_REND: Result := CF_HIDDEN_SERVICE + CF_CLIENT + CF_REND;
@@ -3004,8 +3010,8 @@ begin
       CIRCUIT_PADDING: Result := CF_CIRCUIT_PADDING;
       MEASURE_TIMEOUT: Result := CF_MEASURE_TIMEOUT;
       CONTROLLER_CIRCUIT: Result := CF_CONTROLLER;
-      CONFLUX_LINKED: Result := CF_EXIT + CF_CONFLUX_LINKED;
-      CONFLUX_UNLINKED: Result := CF_EXIT + CF_CONFLUX_UNLINKED;
+      CONFLUX_LINKED: Result := GetSpecialFlags(CF_CONFLUX_LINKED, Circuit);
+      CONFLUX_UNLINKED: Result := GetSpecialFlags(CF_CONFLUX_UNLINKED, Circuit);
       else
         Result := CF_OTHER;
     end;
@@ -5729,7 +5735,7 @@ var
       begin
         NodesList := TStringList.Create;
         try
-          ParseParametersEx(RemoveBrackets(DEFAULT_EXIT_NODES), ',', NodesList);
+          ParseParametersEx(RemoveBrackets(GetDefaultsValue('DefaultExitCountries', DEFAULT_EXIT_COUNTRIES)), ',', NodesList);
           for i := NodesList.Count - 1 downto 0 do
           begin
             if Pos(NodesList[i], ExcludeList) <> 0 then
@@ -7394,6 +7400,9 @@ end;
 
 procedure TTcp.LoadUserOverrides(ini: TMemIniFile);
 begin
+  DefaultsDic.AddOrSetValue('DefaultEntryCountries', GetSettings('UserOverrides', 'DefaultEntryCountries', DEFAULT_ENTRY_COUNTRIES, ini));
+  DefaultsDic.AddOrSetValue('DefaultMiddleCountries', GetSettings('UserOverrides', 'DefaultMiddleCountries', DEFAULT_MIDDLE_COUNTRIES, ini));
+  DefaultsDic.AddOrSetValue('DefaultExitCountries', GetSettings('UserOverrides', 'DefaultExitCountries', DEFAULT_EXIT_COUNTRIES, ini));
   DefaultsDic.AddOrSetValue('BridgesBot', GetSettings('UserOverrides', 'BridgesBot', BRIDGES_BOT, ini));
   DefaultsDic.AddOrSetValue('BridgesEmail', GetSettings('UserOverrides', 'BridgesEmail', BRIDGES_EMAIL, ini));
   DefaultsDic.AddOrSetValue('BridgesSite', GetSettings('UserOverrides', 'BridgesSite', BRIDGES_SITE, ini));
@@ -7786,9 +7795,9 @@ begin
       LoadBridgesCache;
 
     GetSettings('Filter', cbxFilterMode, ini, FILTER_TYPE_COUNTRIES);
-    FilterEntry := GetSettings('Filter', 'EntryNodes', DEFAULT_ENTRY_NODES, ini);
-    FilterMiddle := GetSettings('Filter', 'MiddleNodes', DEFAULT_MIDDLE_NODES, ini);
-    FilterExit := GetSettings('Filter', 'ExitNodes', DEFAULT_EXIT_NODES, ini);
+    FilterEntry := GetSettings('Filter', 'EntryNodes', GetDefaultsValue('DefaultEntryCountries', DEFAULT_ENTRY_COUNTRIES), ini);
+    FilterMiddle := GetSettings('Filter', 'MiddleNodes', GetDefaultsValue('DefaultMiddleCountries', DEFAULT_MIDDLE_COUNTRIES), ini);
+    FilterExit := GetSettings('Filter', 'ExitNodes', GetDefaultsValue('DefaultExitCountries', DEFAULT_EXIT_COUNTRIES), ini);
     if not FirstLoad then
       ClearFilter(ntNone);
     GetNodes(FilterEntry, ntEntry, False, ini);
@@ -14477,37 +14486,54 @@ var
   Counters: array[0..3] of integer;
   lbComponent: TLabel;
   IsExclude: Boolean;
+  ls: TStringList;
+  FilterInfo: TFilterInfo;
   i, j: Integer;
 begin
   for i := 0 to Length(Counters) - 1 do
     Counters[i] := 0;
-  for FilterItem in FilterDic do
-  begin
-    if NodesDic.TryGetValue(FilterItem.Key, NodeType) then
-      IsExclude := ntExclude in NodeType
-    else
-      IsExclude := False;
-
-    if IsExclude then
-      Inc(Counters[3])
-    else
+  ls := TStringList.Create;
+  try
+    for FilterItem in FilterDic do
     begin
-      NodeType := FilterItem.Value.Data;
-      if ntEntry in NodeType then Inc(Counters[0]);
-      if ntMiddle in NodeType then Inc(Counters[1]);
-      if ntExit in NodeType then Inc(Counters[2]);
+      if NodesDic.TryGetValue(FilterItem.Key, NodeType) then
+      begin
+        IsExclude := ntExclude in NodeType;
+        if IsExclude and (FilterItem.Value.Data <> []) then
+          ls.Append(FilterItem.Key);
+      end
+      else
+        IsExclude := False;
+      if IsExclude then
+        Inc(Counters[3])
+      else
+      begin
+        NodeType := FilterItem.Value.Data;
+        if ntEntry in NodeType then Inc(Counters[0]);
+        if ntMiddle in NodeType then Inc(Counters[1]);
+        if ntExit in NodeType then Inc(Counters[2]);
+      end;
     end;
-  end;
-
-  for i := FILTER_ENTRY_NODES to FILTER_EXCLUDE_NODES do
-  begin
-    lbComponent := GetFilterLabel(i);
-    j := i - differ;
-    if AlwaysUpdate or (lbComponent.Tag <> Counters[j]) then
+    for i := FILTER_ENTRY_NODES to FILTER_EXCLUDE_NODES do
     begin
-      lbComponent.Tag := Counters[j];
-      lbComponent.Caption := IntToStr(Counters[j])
+      lbComponent := GetFilterLabel(i);
+      j := i - differ;
+      if AlwaysUpdate or (lbComponent.Tag <> Counters[j]) then
+      begin
+        lbComponent.Tag := Counters[j];
+        lbComponent.Caption := IntToStr(Counters[j])
+      end;
     end;
+    for i := 0 to ls.Count - 1 do
+    begin
+      if FilterDic.TryGetValue(ls[i], FilterInfo) then
+      begin
+        FilterInfo.Data := [];
+        FilterDic.AddOrSetValue(ls[i], FilterInfo);
+      end;
+    end;
+  finally
+    ls.Free;
   end;
 end;
 
@@ -15977,6 +16003,27 @@ begin
   finally
     UpdateConfigFile(ini);
   end;
+end;
+
+procedure TTcp.miResetFilterCountriesClick(Sender: TObject);
+var
+  EntryNodes, MiddleNodes, ExitNodes: string;
+begin
+  EntryNodes := GetDefaultsValue('DefaultEntryCountries', DEFAULT_ENTRY_COUNTRIES);
+  MiddleNodes := GetDefaultsValue('DefaultMiddleCountries', DEFAULT_MIDDLE_COUNTRIES);
+  ExitNodes := GetDefaultsValue('DefaultExitCountries', DEFAULT_EXIT_COUNTRIES);
+
+  ClearFilter(ntNone);
+  GetNodes(EntryNodes, ntEntry, False);
+  GetNodes(MiddleNodes, ntMiddle, False);
+  GetNodes(ExitNodes, ntExit, False);
+
+  CalculateFilterNodes;
+  FilterUpdated := True;
+  ShowFilter;
+  CheckFilterMode;
+  UpdateRoutersAfterFilterUpdate;
+  EnableOptionButtons;
 end;
 
 procedure TTcp.miResetScannerScheduleClick(Sender: TObject);

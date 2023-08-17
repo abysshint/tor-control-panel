@@ -22,9 +22,10 @@ const
   METRICS_URL = 'https://metrics.torproject.org/rs.html';
   GITHUB_URL = 'https://github.com/abysshint/tor-control-panel';
 
-  DEFAULT_ENTRY_NODES = '{cz},{fi},{fr},{gb},{se},{nl},{de},{no},{at},{ch}';
-  DEFAULT_MIDDLE_NODES = '{cz},{fi},{fr},{gb},{se},{nl},{de},{no},{at},{dk},{pl},{ch}';
-  DEFAULT_EXIT_NODES = '{gb},{se},{nl},{de},{no},{hr},{at},{pl},{ro},{ch}';
+  DEFAULT_ENTRY_COUNTRIES = '{bg},{ch},{cz},{de},{fi},{fr},{gb},{hr},{lt},{lu},{nl},{no},{pl},{ro},{se}';
+  DEFAULT_MIDDLE_COUNTRIES = '{at},{bg},{ch},{cz},{de},{dk},{fi},{fr},{gb},{hr},{hu},{it},{lt},{lu},{md},{nl},{no},{pl},{ro},{se}';
+  DEFAULT_EXIT_COUNTRIES = '{at},{ch},{de},{fr},{lu},{nl},{no},{pl},{ro},{se}';
+
   DEFAULT_ROUTERS_FILTER_DATA = '15;-1;739;-1;10;0;0;0;';
   DEFAULT_CUSTOM_EXIT_POLICY = 'accept *:80,accept *:443,reject *:*';
   DEFAULT_ALLOWED_PORTS = '80,443';
