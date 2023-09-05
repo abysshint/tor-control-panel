@@ -40,6 +40,7 @@ const
 
   MAX_COUNTRIES = 251;
   MAX_TOTALS = 7;
+  MAX_RELAY_INFO_QUERY = 5;
 
   CIRCUIT_FILTER_DEFAULT = 262144;
   CIRCUIT_FILTER_MAX = 262144;
@@ -194,11 +195,14 @@ const
   EXTRACT_NICKNAME = 8;
   EXTRACT_COUNTRY_CODE = 9;
   EXTRACT_CSV = 10;
+  EXTRACT_IPV4_SOCKET = 11;
+  EXTRACT_IPV6_SOCKET = 12;
 
   OPTION_FORMAT_IPV6 = 1;
   OPTION_SORT = 2;
   OPTION_REMOVE_DUPLICATES = 3;
   OPTION_FORMAT_CODES = 4;
+  OPTION_SHOW_FULL_MENU = 5;
 
   DELIM_AUTO = 0;
   DELIM_NEW_LINE = 1;
@@ -426,8 +430,9 @@ type
   TParamType = (ptString, ptInteger, ptBoolean, ptSocket, ptHost, ptBridge);
   TTaskBarPos = (tbTop, tbBottom, tbLeft, tbRight, tbNone);
   TScanType = (stNone, stPing, stAlive, stBoth);
-  TScanPurpose = (spNone, spNew, spFailed, spUserBridges, spUserFallbackDirs, spAll, spNewAndFailed, spNewAndAlive, spNewAndBridges, spBridges, spGuards, spAlive, spNewBridges, spAuto);
+  TScanPurpose = (spNone, spNew, spFailed, spUserBridges, spUserFallbackDirs, spAll, spNewAndFailed, spNewAndAlive, spNewAndBridges, spBridges, spGuards, spAlive, spNewBridges, spAuto, spSelected);
   TProxyType = (ptNone, ptSocks, ptHttp, ptBoth);
+  TBracketsType = (btCurly, btSquare, btRound);
 
   TConfigFlag = (cfAutoAppend, cfAutoSave, cfFindComments, cfExistCheck, cfMultiLine, cfBoolInvert);
   TConfigFlags = set of TConfigFlag;

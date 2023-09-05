@@ -28,8 +28,14 @@ type
     Ip: string;
     Port: Word;
     Hash: string;
+    SocketType: TSocketType;
     Transport: string;
     Params: string;
+  end;
+
+  TBridgeData = record
+    Data: TBridge;
+    DataStr: string;
   end;
 
   TTarget = record
@@ -140,7 +146,7 @@ var
   function CompFlagsAsc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
   function CompFlagsDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
   function GetTaskBarPos: TTaskBarPos;
-  function RemoveBrackets(Str: string; Square: Boolean = False): string;
+  function RemoveBrackets(Str: string; BracketsType: TBracketsType): string;
   function SearchEdit(EditControl: TCustomEdit; const SearchString: String; Options: TFindOptions; FindFirst: Boolean = False): Boolean;
   function ShowMsg(Msg: string; Caption: string = ''; MsgType: TMsgType = mtInfo; Question: Boolean = False): Boolean;
   function MemoToLine(Memo: TMemo; SortType: Byte = SORT_NONE; Separator: string = ','): string;
@@ -248,7 +254,7 @@ var
   function InsertMenuItem(ParentMenu: TMenuItem; FTag, FImageIndex: Integer;
     FCaption: string = ''; FOnClick: TNotifyEvent = nil; FChecked: Boolean = False;
     FAutoCheck: Boolean = False; FRadioItem: Boolean = False; FEnabled: Boolean = True;
-    FVisible: Boolean = True): TMenuItem;
+    FVisible: Boolean = True; FHelpContext: THelpContext = 0; FHint: string = ''): TMenuItem;
 
 implementation
 
@@ -258,7 +264,7 @@ uses
 function InsertMenuItem(ParentMenu: TMenuItem; FTag, FImageIndex: Integer;
   FCaption: string = ''; FOnClick: TNotifyEvent = nil; FChecked: Boolean = False;
   FAutoCheck: Boolean = False; FRadioItem: Boolean = False; FEnabled: Boolean = True;
-  FVisible: Boolean = True): TMenuItem;
+  FVisible: Boolean = True; FHelpContext: THelpContext = 0; FHint: string = ''): TMenuItem;
 begin
   Result := TMenuItem.Create(ParentMenu.Owner);
   Result.ImageIndex := FImageIndex;
@@ -269,6 +275,8 @@ begin
   Result.RadioItem := FRadioItem;
   Result.Enabled := FEnabled;
   Result.Visible := FVisible;
+  Result.HelpContext := FHelpContext;
+  Result.Hint := FHint;
   if Assigned(FOnClick) then
     Result.OnClick := FOnClick;
   ParentMenu.Add(Result);
@@ -355,7 +363,7 @@ begin
   if AddressType = atIPv4Cidr then
     Result := Copy(IpStrToBin(IpStr, '.', 8), 1, CidrInfo.Prefix) = Copy(CidrInfo.Bits, 1, CidrInfo.Prefix)
   else
-    Result := Copy(IpStrToBin(ExpandIPv6(RemoveBrackets(IpStr, True)), ':', 16), 1, CidrInfo.Prefix) = Copy(CidrInfo.Bits, 1, CidrInfo.Prefix);
+    Result := Copy(IpStrToBin(ExpandIPv6(RemoveBrackets(IpStr, btSquare)), ':', 16), 1, CidrInfo.Prefix) = Copy(CidrInfo.Bits, 1, CidrInfo.Prefix);
 end;
 
 function BinIpInCidr(const BinIpStr: string; CidrInfo: TCidrInfo; AddressType: TAddressType): Boolean;
@@ -400,7 +408,7 @@ begin
   if AddressType = atIPv4Cidr then
     Result.Bits := IpStrToBin(Subnet, '.', 8)
   else
-    Result.Bits := IpStrToBin(ExpandIPv6(RemoveBrackets(Subnet, True)), ':', 16);
+    Result.Bits := IpStrToBin(ExpandIPv6(RemoveBrackets(Subnet, btSquare)), ':', 16);
 end;
 
 procedure SetMaskData(var Mask: Integer; CheckBoxControl: TCheckBox);
@@ -488,23 +496,43 @@ end;
 function GetBridgeIp(Bridge: TBridge): string;
 var
   BridgeInfo: TBridgeInfo;
-  BridgeID, Str: string;
+  RouterInfo: TRouterInfo;
+  BridgeID: string;
 begin
   BridgeID := Bridge.Hash;
   if BridgeID = '' then
-  begin
-    if CompBridgesDic.TryGetValue(Bridge.Ip, Str) then
-      BridgeID := Str;
-  end;
+    CompBridgesDic.TryGetValue(Bridge.Ip, BridgeID);
   if BridgesDic.TryGetValue(BridgeID, BridgeInfo) then
-    Result := BridgeInfo.Router.IPv4
+  begin
+    if Bridge.Port = BridgeInfo.Router.Port then
+    begin
+      Result := BridgeInfo.Router.IPv4;
+      if BridgeInfo.Source <> '' then
+        Exit;
+      case Bridge.SocketType of
+        soIPv4: if Bridge.Ip = BridgeInfo.Router.IPv4 then Exit;
+        soIPv6: if Bridge.Ip = RemoveBrackets(BridgeInfo.Router.IPv6, btSquare) then Exit;
+      end;
+    end;
+  end
   else
   begin
-    if IpInRanges(Bridge.Ip, DocRanges) then
-      Result := ''
-    else
-      Result := Bridge.Ip;
+    if RoutersDic.TryGetValue(BridgeID, RouterInfo) then
+    begin
+      if (Bridge.Port = RouterInfo.Port) and (rfRelay in RouterInfo.Flags) then
+      begin
+        Result := RouterInfo.IPv4;
+        case Bridge.SocketType of
+          soIPv4: if Bridge.Ip = RouterInfo.IPv4 then Exit;
+          soIPv6: if Bridge.Ip = RemoveBrackets(RouterInfo.IPv6, btSquare) then Exit;
+        end;
+      end;
+    end;
   end;
+  if IpInRanges(Bridge.Ip, DocRanges) then
+    Result := ''
+  else
+    Result := Bridge.Ip;
 end;
 
 function BoolToStrDef(Value: Boolean): string;
@@ -666,7 +694,7 @@ begin
         keybd_event(VK_LSHIFT, 0, KEYEVENTF_KEYUP, 0);
       end                                                        
       else                                                       
-      begin                                                       
+      begin
         GridRect.Left := aSg.FixedCols;                          
         GridRect.Top := aSg.FixedRows;                           
         GridRect.Right := aSg.ColCount - 1;
@@ -1110,17 +1138,14 @@ begin
     Result := False;
 end;
 
-function RemoveBrackets(Str: string; Square: Boolean = False): string;
+function RemoveBrackets(Str: string; BracketsType: TBracketsType): string;
 begin
-  if Square then
-  begin
-    Result := StringReplace(Str, '[', '', [rfReplaceAll]);
-    Result := StringReplace(Result, ']', '', [rfReplaceAll]);
-  end
-  else
-  begin
-    Result := StringReplace(Str, '{', '', [rfReplaceAll]);
-    Result := StringReplace(Result, '}', '', [rfReplaceAll]);
+  case BracketsType of
+    btCurly: Result := StringReplace(StringReplace(Str, '{', '', [rfReplaceAll]), '}', '', [rfReplaceAll]);
+    btSquare: Result := StringReplace(StringReplace(Str, '[', '', [rfReplaceAll]), ']', '', [rfReplaceAll]);
+    btRound: Result := StringReplace(StringReplace(Str, '(', '', [rfReplaceAll]), ')', '', [rfReplaceAll]);
+    else
+      Result := Str;
   end;
 end;
 
@@ -1159,7 +1184,7 @@ begin
   begin
     if Favorites then
     begin
-      Nodes := Explode(',', UpperCase(RemoveBrackets(Nodeslist)));
+      Nodes := Explode(',', UpperCase(RemoveBrackets(Nodeslist, btCurly)));
       for i := 0 to Length(Nodes) - 1 do
       begin
         case ValidNode(Nodes[i]) of
@@ -1183,7 +1208,7 @@ begin
     end
     else
     begin
-      Nodes := Explode(',', LowerCase(RemoveBrackets(Nodeslist)));
+      Nodes := Explode(',', LowerCase(RemoveBrackets(Nodeslist, btCurly)));
       for i := 0 to Length(Nodes) - 1 do
       begin
         if FilterDic.TryGetValue(Nodes[i], FilterInfo) then
@@ -1632,7 +1657,7 @@ begin
   Str := ini.ReadString(Section, StringReplace(EditControl.Name, 'ed', '', [rfIgnoreCase]), EditControl.ResetValue);
 
   if RemoveSquareBrackets then
-    EditControl.Text := RemoveBrackets(Str, True)
+    EditControl.Text := RemoveBrackets(Str, btSquare)
   else
     EditControl.Text := Str;
 end;
@@ -2286,7 +2311,7 @@ begin
     begin
       ls.Text := StringReplace(Memo.Text, ',', BR, [rfReplaceAll]);
       if ListType = ltNode then
-        ls.Text := UpperCase(RemoveBrackets(ls.Text));
+        ls.Text := UpperCase(RemoveBrackets(ls.Text, btCurly));
     end;
     for i := ls.Count - 1 downto 0 do
     begin
@@ -2820,7 +2845,7 @@ begin
       ColIndex := aSg.SelCol;
     TUserGrid(aSg).MoveColRow(ColIndex, RowIndex, True, Show);
   end;
-    Tcp.UpdateSelectedRouter;
+  Tcp.UpdateSelectedRouter(aSg);
 end;
 
 procedure BeginUpdateTable(aSg: TStringGrid);
@@ -2952,7 +2977,7 @@ begin
   if RecentHost = '' then
     RecentHost := Combobox.Text
   else
-    RecentHost := RemoveBrackets(RecentHost, True);
+    RecentHost := RemoveBrackets(RecentHost, btSquare);
   ShowMask := ComboBox <> Tcp.cbxHsAddress;
   FindIPv6 := False;
 
@@ -3018,7 +3043,7 @@ begin
     else
       if (Search = Pos(':', Result)) or HasPort then
         SetLength(Result, Pred(Search));
-    Result := RemoveBrackets(Result, True);
+    Result := RemoveBrackets(Result, btSquare);
   end;
   Search := Pos('.$', Result);
   if Search > 0 then
@@ -3035,7 +3060,7 @@ begin
     if UseFormatHost then
       Result := Copy(SocketStr, 1, Search - 1)
     else
-      Result := RemoveBrackets(Copy(SocketStr, 1, Search - 1), True)
+      Result := RemoveBrackets(Copy(SocketStr, 1, Search - 1), btSquare)
   end
   else
     Result := SocketStr;
@@ -3066,10 +3091,22 @@ end;
 
 function GetRouterBySocket(SocketStr: string): string;
 var
-  Item: TPair<string, TRouterInfo>;
+  RoutersItem: TPair<string, TRouterInfo>;
+  BridgesItem: TPair<string, TBridgeInfo>;
   SocketType: TSocketType;
   IpStr: string;
   Port: Word;
+
+  function FindData(RouterInfo: TRouterInfo): Boolean;
+  begin
+    case SocketType of
+      soIPv4: Result := (RouterInfo.IPv4 = IpStr) and (RouterInfo.Port = Port);
+      soIPv6: Result := (RouterInfo.IPv6 = IpStr) and (RouterInfo.Port = Port);
+      else
+        Result := False;
+    end;
+  end;
+
 begin
   Result := '';
   SocketType := ValidSocket(SocketStr);
@@ -3079,22 +3116,20 @@ begin
     IpStr := GetAddressFromSocket(SocketStr);
     if SocketType = soIPv6 then
       IpStr := FormatHost(IpStr);
-
-    for Item in RoutersDic do
+    for BridgesItem in BridgesDic do
     begin
-      case SocketType of
-        soIPv4:
-        if (Item.Value.IPv4 = IpStr) and (Item.Value.Port = Port) then
-        begin
-          Result := Item.Key;
-          Break;
-        end;
-        soIPv6:
-        if (Item.Value.IPv6 = IpStr) and (Item.Value.Port = Port) then
-        begin
-          Result := Item.Key;
-          Break;
-        end;
+      if FindData(BridgesItem.Value.Router) then
+      begin
+        Result := BridgesItem.Key;
+        Exit;
+      end;
+    end;
+    for RoutersItem in RoutersDic do
+    begin
+      if FindData(RoutersItem.Value) then
+      begin
+        Result := RoutersItem.Key;
+        Exit;
       end;
     end;
   end;
@@ -3681,6 +3716,7 @@ function TryParseBridge(BridgeStr: string; out Bridge: TBridge; Validate: Boolea
 var
   ParseStr: ArrOfStr;
   ParamsState: Byte;
+  SocketType: TSocketType;
   ParamsStr: string;
   i: Integer;
 begin
@@ -3689,6 +3725,7 @@ begin
   Bridge.Hash := '';
   Bridge.Transport := '';
   Bridge.Params := '';
+  Bridge.SocketType := soNone;
   if Validate then
     Result := ValidBridge(BridgeStr)
   else
@@ -3721,10 +3758,12 @@ begin
         Bridge.Transport := ParseStr[i];
         Continue;
       end;
-      if ValidSocket(ParseStr[i]) <> soNone then
+      SocketType := ValidSocket(ParseStr[i]);
+      if SocketType <> soNone then
       begin
         Bridge.Ip := GetAddressFromSocket(ParseStr[i], UseFormatHost);
         Bridge.Port := GetPortFromSocket(ParseStr[i]);
+        Bridge.SocketType := SocketType;
         ParamsState := 1;
         Continue;
       end;

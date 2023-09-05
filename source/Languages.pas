@@ -292,7 +292,7 @@ begin
     LoadStr('278', 'Очистить');
     LoadStr('279', 'Добавить');
     LoadStr('280', 'Удалить');
-    LoadStr('281', 'Информация по ретранслятору');
+    LoadStr('281', 'Получить информацию');
     LoadStr('282', 'Статус');
     LoadStr('284', 'Обновить');
     LoadStr('285', 'Изменить список узлов');
@@ -301,6 +301,7 @@ begin
     LoadStr('288', 'Входныe');
     LoadStr('289', 'Средние');
     LoadStr('290', 'Выходные');
+    LoadStr('310', 'Действия с роутерами');
     LoadStr('320', 'Ник,IP адрес,,Страна,Вес,Порт,Версия,Пинг,Флаги');
     LoadStr('321', 'Показано: %d из %d');
     LoadLns('322', '\n  Список хэшей, определяющих ваше семейство\n\n  Пример:\n\n        ABCD1234CDEF5..');
@@ -404,6 +405,8 @@ begin
     LoadStr('528', 'Соединения');
     LoadStr('530', 'Назначение');
     LoadStr('547', 'Тип узла');
+    LoadStr('564', 'Выбрать в качестве предпочитаемого моста:');
+    LoadStr('565', 'Отменить использование мостов');
     LoadStr('568', 'Показывать подсказки флагов при наведении мыши');
     LoadStr('584', 'Все избранные');
     LoadStr('593', 'HTTP-прокси');
@@ -452,6 +455,9 @@ begin
     LoadStr('679', 'Форматировать коды стран');
     LoadLns('682', '\n Список опций в формате: k=v\n разделённых пробелом');
     LoadStr('684', 'Поддерживает Conflux');
+    LoadStr('686', 'Измерить пинг');
+    LoadStr('687', 'Определить доступность');
+    LoadStr('688', 'Показывать полное меню');
 
     TranslateArray(HsHeader, TransStr('230'));
     TranslateArray(HsPortsHeader, TransStr('231'));
@@ -862,8 +868,8 @@ begin
     Tcp.miDetailsUpdateIp.Caption := TransStr('284');
     Tcp.miDetailsExtractData.Caption := TransStr('669');
     Tcp.miDetailsAddToNodesList.Caption := TransStr('285');
-    Tcp.miDetailsRelayInfo.Caption := TransStr('281');
     Tcp.miDetailsSelectTemplate.Caption := TransStr('286');
+    Tcp.miDetailsRelayOperations.Caption := TransStr('310');
 
     Tcp.miGetBridges.Caption := Load('291', 'Получить мосты');
     Tcp.miGetBridgesSite.Caption := Load('501', 'Веб-сайт');
@@ -922,7 +928,6 @@ begin
     Tcp.miLogDel1y.Caption := TranslateTime(1, TIME_YEAR);
 
     Tcp.miStat.Caption := Load('309', 'Статистика');
-    Tcp.miStatRelays.Caption := Load('310', 'Все узлы');
     Tcp.miStatGuards.Caption := Load('311', 'Сторожевые');
     Tcp.miStatExit.Caption := Load('312', 'Выходные');
     Tcp.miStatAggregate.Caption := Load('313', 'Общая по странам');
@@ -1050,11 +1055,8 @@ begin
     Tcp.miShowNodesUA.Caption := TransStr('369');
 
     Tcp.miRtResetFilter.Caption := Load('563', 'Сброс фильтров');
-    Tcp.miRtAddToNodesList.Caption := TransStr('285');
-    Tcp.miRtSelectAsBridge.Caption := Load('564', 'Выбрать в качестве моста');
-    Tcp.miRtDisableBridges.Caption := Load('565', 'Отменить использование мостов');
+    Tcp.miRtAddToNodesList.Caption := TransStr('285');;
     Tcp.miRtExtractData.Caption := TransStr('669');
-    Tcp.miRtRelayInfo.Caption := TransStr('281');
     Tcp.miRtFilters.Caption := TransStr('526');
     Tcp.miRtFiltersType.Caption := TransStr('547');
     Tcp.miRtFiltersCountry.Caption := TransStr('114');
@@ -1089,6 +1091,7 @@ begin
     Tcp.miClearRoutersFavorites.Caption := TransStr('584');
     Tcp.miClearRoutersIncorrect.Caption := Load('585', 'Неправильные узлы');
     Tcp.miClearRoutersAbsent.Caption := Load('586', 'Отсутствующие в консенсусе');
+    Tcp.miRtRelayOperations.Caption := TransStr('310');
 
     Tcp.miTransportsInsert.Caption := TransStr('279');
     Tcp.miTransportsDelete.Caption := TransStr('280');

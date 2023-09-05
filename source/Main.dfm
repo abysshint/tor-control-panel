@@ -7,6 +7,7 @@ object Tcp: TTcp
   ClientHeight = 556
   ClientWidth = 772
   Color = clBtnFace
+  CustomTitleBar.CaptionAlignment = taCenter
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -11
@@ -5750,13 +5751,10 @@ object Tcp: TTcp
       ImageIndex = 24
       object miStatCountry: TMenuItem
         Caption = #1057#1090#1088#1072#1085#1072
+        OnClick = MetricsInfo
       end
       object miDelimiter73: TMenuItem
         Caption = '-'
-      end
-      object miStatRelays: TMenuItem
-        Caption = #1042#1089#1077
-        OnClick = MetricsInfo
       end
       object miStatGuards: TMenuItem
         Caption = #1057#1090#1086#1088#1086#1078#1077#1074#1099#1077
@@ -6161,10 +6159,9 @@ object Tcp: TTcp
     object miDelimiter16: TMenuItem
       Caption = '-'
     end
-    object miDetailsRelayInfo: TMenuItem
-      Caption = #1048#1085#1092#1086#1088#1084#1072#1094#1080#1103' '#1087#1086' '#1088#1077#1090#1088#1072#1085#1089#1083#1103#1090#1086#1088#1091
-      ImageIndex = 35
-      OnClick = miDetailsRelayInfoClick
+    object miDetailsRelayOperations: TMenuItem
+      Caption = #1044#1077#1081#1089#1090#1074#1080#1103' '#1089' '#1088#1086#1091#1090#1077#1088#1072#1084#1080
+      ImageIndex = 76
     end
     object miDelimiter8: TMenuItem
       Caption = '-'
@@ -6405,36 +6402,12 @@ object Tcp: TTcp
       Caption = #1048#1079#1084#1077#1085#1080#1090#1100' '#1089#1087#1080#1089#1086#1082' '#1091#1079#1083#1086#1074
       ImageIndex = 31
     end
-    object miRtSelectAsBridge: TMenuItem
-      Caption = #1042#1099#1073#1088#1072#1090#1100' '#1074' '#1082#1072#1095#1077#1089#1090#1074#1077' '#1084#1086#1089#1090#1072
-      ImageIndex = 28
-      object miRtSelectAsBridgeIPv4: TMenuItem
-        Caption = #1052#1086#1089#1090' IPv4'
-        ImageIndex = 59
-        OnClick = SelectNodeAsBridge
-      end
-      object miRtSelectAsBridgeIPv6: TMenuItem
-        Tag = 1
-        Caption = #1052#1086#1089#1090' IPv6'
-        ImageIndex = 60
-        OnClick = SelectNodeAsBridge
-      end
-      object miDelimiter48: TMenuItem
-        Caption = '-'
-      end
-      object miRtDisableBridges: TMenuItem
-        Caption = #1054#1090#1084#1077#1085#1080#1090#1100' '#1080#1089#1087#1086#1083#1100#1079#1086#1074#1072#1085#1080#1077' '#1084#1086#1089#1090#1086#1074
-        ImageIndex = 43
-        OnClick = miRtDisableBridgesClick
-      end
-    end
     object miDelimiter29: TMenuItem
       Caption = '-'
     end
-    object miRtRelayInfo: TMenuItem
-      Caption = #1048#1085#1092#1086#1088#1084#1072#1094#1080#1103' '#1087#1086' '#1088#1077#1090#1088#1072#1085#1089#1083#1103#1090#1086#1088#1091
-      ImageIndex = 35
-      OnClick = miRtRelayInfoClick
+    object miRtRelayOperations: TMenuItem
+      Caption = #1044#1077#1081#1089#1090#1074#1080#1103' '#1089' '#1088#1086#1091#1090#1077#1088#1072#1084#1080
+      ImageIndex = 76
     end
     object miDelimiter21: TMenuItem
       Caption = '-'
