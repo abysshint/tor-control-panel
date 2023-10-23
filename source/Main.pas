@@ -3,7 +3,7 @@
 interface
 
 uses
-  Winapi.Windows, Winapi.Messages, Winapi.CommCtrl, Winapi.Winsock, Winapi.ShellApi,
+  Winapi.Windows, Winapi.Messages, Winapi.CommCtrl, Winapi.Winsock, Winapi.ShellApi, Winapi.shlwapi,
   Winapi.ShlObj, Winapi.GDIPAPI, Winapi.GDIPOBJ, System.SysUtils, System.IniFiles,
   System.Generics.Collections, System.ImageList, System.DateUtils, System.Math, System.IOUtils,
   Vcl.Forms, System.Classes, System.Masks, Vcl.ImgList, Vcl.Controls, Vcl.ExtCtrls,
@@ -14,8 +14,6 @@ uses
 type
   TUserGrid = class(TCustomGrid);
 
-  TRouterFlag = (rfAuthority, rfBadExit, rfExit, rfFast, rfGuard, rfHSDir, rfStable, rfV2Dir, rfBridge, rfRelay, rfMiddleOnly, rfNoBridgeRelay);
-  TRouterFlags = set of TRouterFlag;
   TRouterInfo = record
     Name: string;
     IPv4: string;
@@ -36,6 +34,7 @@ type
     TransportID: Byte;
     ServerOptions: string;
     InList: Boolean;
+    State: Boolean;
   end;
 
   TBridgeInfo = record
@@ -95,7 +94,7 @@ type
   TReadPipeThread = class(TThread)
   public
     hStdOut: THandle;
-    VersionCheck: Boolean;
+    VersionCheck, AutoResolveErrors: Boolean;
   private
     Data: string;
     DataSize, dwRead: DWORD;
@@ -103,6 +102,7 @@ type
     FirstStart: Boolean;
     procedure UpdateLog;
     procedure UpdateVersionInfo;
+    procedure HandleHalt;
   protected
     procedure Execute; override;
   end;
@@ -157,24 +157,25 @@ type
 
   TControlThread = class(TThread)
   private
+    Duplicates: TDictionary<string, Byte>;
     Socket: TTCPBlockSocket;
-    StatusID: Integer;
+    PurposeID, StatusID: Integer;
     CircuitInfo: TCircuitInfo;
     StreamInfo: TStreamInfo;
     SendBuffer: string;
     Data, AuthParam: string;
-    Ip, Temp, CircuitID, StreamID: string;
+    Ip, Temp, CircuitID, StreamID, NodeID, LinkedCircID: string;
     ParseStr: ArrOfStr;
     SearchPos, InfoCount: Integer;
     CountryCode: Byte;
     AddressType: TAddressType;
-    UpdateCountry: Boolean;
     function AuthStageReady(AuthMethod: Integer): Boolean;
     function GetSpecialFlags(const BaseFlag: Integer; Circuit: TCircuitInfo): Integer;
     function GetCircuitFlags(Circuit: TCircuitInfo): Integer;
     procedure GetData;
     procedure SendData(cmd: string);
     procedure CheckDirFetches(StreamInfo: TStreamInfo; Counter: Integer);
+    procedure UpdateConnectState;
   protected
     procedure Execute; override;
   end;
@@ -523,7 +524,6 @@ type
     lbVanguardLayerType: TLabel;
     cbxVanguardLayerType: TComboBox;
     miLoadCachedRoutersOnStartup: TMenuItem;
-    miUpdateIpToCountryCache: TMenuItem;
     gbControlAuth: TGroupBox;
     lbControlPort: TLabel;
     lbAuthMetod: TLabel;
@@ -657,7 +657,6 @@ type
     miClearServerCache: TMenuItem;
     miDelimiter47: TMenuItem;
     miCacheOperations: TMenuItem;
-    miDelimiter46: TMenuItem;
     miShowAlive: TMenuItem;
     miDelimiter49: TMenuItem;
     miDelimiter50: TMenuItem;
@@ -886,13 +885,13 @@ type
     miLogDel1y: TMenuItem;
     miLogDelOlderThan: TMenuItem;
     miLogDel2w: TMenuItem;
-    miDelimiter71: TMenuItem;
+    miDelimiter44: TMenuItem;
     miLogSeparateWeek: TMenuItem;
     pbScanProgress: TProgressBar;
     lbScanType: TLabel;
     lbScanProgress: TLabel;
     cbExcludeUnsuitableBridges: TCheckBox;
-    miDelimiter72: TMenuItem;
+    miDelimiter45: TMenuItem;
     miClearMenuUnsuitable: TMenuItem;
     cbUseBridgesLimit: TCheckBox;
     lbBridgesLimit: TLabel;
@@ -925,7 +924,7 @@ type
     imFavoritesExit: TImage;
     imFavoritesTotal: TImage;
     imExcludeNodes: TImage;
-    miDelimiter73: TMenuItem;
+    miDelimiter48: TMenuItem;
     miStatCountry: TMenuItem;
     imFavoritesBridges: TImage;
     lbFavoritesBridges: TLabel;
@@ -963,7 +962,7 @@ type
     udTrackHostExitsExpire: TUpDown;
     cbAutoSelFallbackDirNoLimit: TCheckBox;
     cbExcludeUnsuitableFallbackDirs: TCheckBox;
-    lbCircPurpose: TLabel;
+    lbCircuitPurpose: TLabel;
     imCircuitPurpose: TImage;
     miCircuitsSortFlags: TMenuItem;
     miCircController: TMenuItem;
@@ -1029,11 +1028,18 @@ type
     miResetFilterCountries: TMenuItem;
     miRtRelayOperations: TMenuItem;
     miDetailsRelayOperations: TMenuItem;
+    cbHandlerParamsState: TCheckBox;
+    lbTransportState: TLabel;
+    cbxTransportState: TComboBox;
+    miDelimiter46: TMenuItem;
+    miRequestVanillaBridges: TMenuItem;
+    miRequestWebTunnelBridges: TMenuItem;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
     function CheckHsPorts: Boolean;
     function CheckHsTable: Boolean;
+    function GetTransportState(var TransportStateID: Integer; FindTransport: Boolean; TransportFileData: TFileID; CheckTransport: Boolean): Boolean;
     function CheckTransports: Boolean;
     function CheckSimilarPorts: Boolean;
     function NodesToFavorites(NodesID: Integer): Integer;
@@ -1049,7 +1055,6 @@ type
     function GetTorHs: Integer;
     function LoadHiddenServices(ini: TMemIniFile): Integer;
     function PreferredBridgeFound: Boolean;
-    function GetRouterStrFlags(Flags: TRouterFlags): string;
     function GetRouterCsvData(RouterID: string; RouterInfo: TRouterInfo; Preview: Boolean = False): string;
     function GetBridgeStr(RouterID: string; RouterInfo: TRouterInfo; UseIPv6: Boolean; Preview: Boolean = False): string;
     function GetFallbackStr(RouterID: string; RouterInfo: TRouterInfo; Preview: Boolean = False): string;
@@ -1061,10 +1066,11 @@ type
     procedure ShowCircuitsFlagsHint;
     procedure CalculateFilterNodes(AlwaysUpdate: Boolean = True);
     procedure CalculateTotalNodes(AlwaysUpdate: Boolean = True);
+    function CloseCircuitInternal(CircuitID: string): Boolean;
     procedure CloseCircuit(CircuitID: string; AutoUpdate: Boolean = True);
     procedure CloseStream(StreamID: string);
     procedure CloseStreams(CircuitID: string; FindTarget: Boolean = False; TargetID: string = '');
-    procedure CheckOptionsChanged;
+    function CheckFilesChanged: Boolean;
     procedure LoadNetworkCache;
     procedure SaveNetworkCache(AutoSave: Boolean = True);
     procedure LoadBridgesCache;
@@ -1073,6 +1079,7 @@ type
     procedure SetNodes(FilterEntry, FilterMiddle, FilterExit, FavoritesEntry, FavoritesMiddle, FavoritesExit, ExcludeNodes: string);
     procedure ShowFilter;
     procedure ApplyOptions(AutoResolveErrors: Boolean = False);
+    function GetTransportFilesID: string;
     function InsertExtractMenu(ParentMenu: TMenuItem; ControlType, ControlID, ExtractType: Integer): Boolean;
     procedure InsertNodesMenu(ParentMenu: TMenuItem; NodeID: string; AutoSave: Boolean = True);
     procedure InsertNodesListMenu(ParentMenu: TmenuItem; NodeID: string; NodeTypeID: Integer; AutoSave: Boolean = True);
@@ -1089,7 +1096,7 @@ type
     procedure ChangeHsTable(Param: Integer);
     procedure ChangeTransportTable(Param: Integer);
     procedure SetDesktopPosition(ALeft, ATop: Integer; AutoUpdate: Boolean = True);
-    procedure LoadOptions(FirstStart: Boolean);
+    procedure LoadOptions(FirstStart: Boolean; Fail: Boolean; StartTimer: Boolean = True);
     function GetTorVersion(FirstStart: Boolean): Boolean;
     procedure CheckLinesLimitControls;
     procedure CheckAuthMetodContols;
@@ -1105,7 +1112,7 @@ type
     procedure ClearFilter(NodeType: TNodeType; Silent: Boolean = True);
     procedure ClearRouters(NodeTypes: TNodeTypes = []; Silent: Boolean = True);
     procedure ControlPortConnect;
-    procedure LogListenerStart(hStdOut: THandle);
+    procedure LogListenerStart(hStdOut: THandle; AutoResolveErrors: Boolean);
     procedure CheckVersionStart(hStdOut: THandle; FirstStart: Boolean);
     procedure DecreaseFormSize(AutoRestore: Boolean = True);
     procedure ChangeButtonsCaption;
@@ -1116,7 +1123,7 @@ type
     procedure BridgesCheckControls;
     procedure FallbackDirsCheckControls;
     procedure EnableOptionButtons(State: Boolean = True);
-    procedure FindInFilter(IpAddr: string);
+    procedure FindInFilter(const IpAddr: string);
     procedure FindInRouters(RouterID: string; SocketStr: string = '');
     procedure FindInCircuits(CircID, NodeID: string; AutoSelect: Boolean = False);
     procedure SendDataThroughProxy;
@@ -1142,6 +1149,7 @@ type
     procedure CheckFavoritesState(FavoritesID: Integer = -1);
     procedure LoadNodesList(UseDic: Boolean = True; NodesStr: string = '');
     procedure SaveNodesList(NodesID: Integer);
+    procedure UpdateGeoFileID(ini: TMeminiFile = nil);
     procedure LoadFilterTotals;
     procedure LoadRoutersCountries;
     procedure OpenMetricsUrl(Page, Query: string);
@@ -1183,6 +1191,7 @@ type
     procedure SelectHs;
     procedure SelectHsPorts;
     procedure SelectTransports;
+    procedure CheckTransportsControls;
     procedure CheckCircuitsControls(UpdateAll: Boolean = True);
     procedure CheckStreamsControls;
     procedure CheckConfluxControls;
@@ -1207,7 +1216,7 @@ type
     procedure SetOptionsEnable(State: Boolean);
     procedure PrepareOpenDialog(FileName, Filter: string);    
     procedure StartTor(AutoResolveErrors: Boolean = False);
-    procedure StopTor;
+    procedure StopTor(SkipMessages: Boolean = False);
     procedure UpdateTrayIcon;
     procedure UpdateConnectProgress(Value: Integer);
     procedure UpdateConnectControls;
@@ -1224,6 +1233,7 @@ type
     procedure UpdateTransports;
     procedure SaveSortData;
     procedure UpdateScaleFactor;
+    procedure UpdateImagesPosition(ImageObject: TImage; TextObject: TLabel);
     function RoutersAutoSelect: Boolean;
     procedure CheckTorAutoStart;
     procedure UpdateSelectedRouter(aSg: TStringGrid);
@@ -1231,6 +1241,12 @@ type
     procedure UpdateRoutersData;
     procedure CheckFallbackDirsUpdateState;
     procedure CheckBridgesUpdateState;
+    function GetTransportStateID(StateStr: string): Integer;
+    function GetTransportStateChar(StateID: Integer): string;
+    function GetHsStateID(StateStr: string): Integer;
+    function GetHsStateChar(StateID: Integer): string;
+    function GetTransportID(TypeStr: string): Integer;
+    function GetTransportChar(TransportID: Integer): string;
     function ShowRelayInfo(aSg: TStringGrid; Handle: Boolean): Boolean;
     procedure CountTotalBridges(ShowSuitableCount: Boolean = True);
     procedure CountTotalFallbackDirs(ShowSuitableCount: Boolean = True);
@@ -1425,7 +1441,6 @@ type
     procedure BindToExitNodeClick(Sender: TObject);
     procedure cbUseHiddenServiceVanguardsClick(Sender: TObject);
     procedure miLoadCachedRoutersOnStartupClick(Sender: TObject);
-    procedure miUpdateIpToCountryCacheClick(Sender: TObject);
     procedure cbUseReachableAddressesClick(Sender: TObject);
     procedure miSelectExitCircuitWhenItChangesClick(Sender: TObject);
     procedure sgStreamsFixedCellClick(Sender: TObject; ACol, ARow: Integer);
@@ -1510,7 +1525,7 @@ type
       Shift: TShiftState);
     procedure cbxBridgesListCloseUp(Sender: TObject);
     procedure miRequestIPv6BridgesClick(Sender: TObject);
-    procedure miRequestObfuscatedBridgesClick(Sender: TObject);
+    procedure SetRequestBridgesType(Sender: TObject);
     procedure miGetBridgesTelegramClick(Sender: TObject);
     procedure miPreferWebTelegramClick(Sender: TObject);
     procedure miClearMenuNotAliveClick(Sender: TObject);
@@ -1613,6 +1628,9 @@ type
     procedure cbxBridgeTypeChange(Sender: TObject);
     procedure cbxUseConfluxChange(Sender: TObject);
     procedure miResetFilterCountriesClick(Sender: TObject);
+    procedure cbHandlerParamsStateClick(Sender: TObject);
+    procedure cbxTransportStateChange(Sender: TObject);
+    procedure cbxBridgesTypeCloseUp(Sender: TObject);
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
     procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -1625,6 +1643,7 @@ var
   TorConfig, RandomBridges: TStringList;
   CountryTotals: array [0..MAX_TOTALS - 1, 0..MAX_COUNTRIES - 1] of Integer;
   SpeedData: array [0..MAX_SPEED_DATA_LENGTH - 1] of TSpeedData;
+  ConfluxLinks: TDictionary<string, string>;
   DirFetches: TDictionary<string, TFetchInfo>;
   RoutersDic: TDictionary<string, TRouterInfo>;
   FilterDic: TDictionary<string, TFilterInfo>;
@@ -1651,12 +1670,13 @@ var
   DefaultsFile, UserConfigFile, UserBackupFile, TorConfigFile, TorStateFile, TorLogFile,
   TorExeFile, GeoIpFile, GeoIpv6File, NetworkCacheFile, BridgesCacheFile, BridgesFileName,
   UserProfile, LangFile, ConsensusFile, DescriptorsFile, NewDescriptorsFile, TrayIconFile: string;
-  ControlPassword, SelectedNode, SearchStr, UPnPMsg, GeoFileID, TorFileID, BridgeFileID, TorrcFileID, DefaultsFileID: string;
+  ControlPassword, SelectedNode, SearchStr, UPnPMsg,
+  GeoFileID, TorFileID, BridgeFileID, TorrcFileID, DefaultsFileID, TransportFilesID: string;
   Circuit, LastRoutersFilter, LastPreferBridgeID, ExitNodeID, ServerIPv4, ServerIPv6, TorVersion: string;
   jLimit: TJobObjectExtendedLimitInformation;
   TorVersionProcess, TorMainProcess: TProcessInfo;
   hJob: THandle;
-  DLSpeed, ULSpeed, MaxDLSpeed, MaxULSpeed, CurrentTrafficPeriod, LogAutoDelHours: Integer;
+  DLSpeed, ULSpeed, MaxDLSpeed, MaxULSpeed, CurrentTrafficPeriod, LogAutoDelHours, RequestBridgesType: Integer;
   SessionDL, SessionUL, TotalDL, TotalUL: Int64;
   ConnectState, StopCode, FormSize, LastPlace, InfoStage, GetIpStage, NodesListStage, NewBridgesStage: Byte;
   EncodingNoBom: TUTF8EncodingNoBOM;
@@ -1692,10 +1712,11 @@ var
   SuitableFallbackDirsCount, UsedFallbackDirsCount, UnknownFallbackDirCountriesCount, MissingFallbackDirCount: Integer;
   Scanner: TScanThread;
   UsedProxyType: TProxyType;
-  LastUserStreamProtocol, LastTrayIconType, ExtractDelimiterType: Integer;
+  LastUserStreamProtocol, LastTrayIconType, ExtractDelimiterType, ConfigVersion: Integer;
   FindBridgesCountries, FindFallbackDirCountries, ScanNewBridges, NeedUpdateFallbackDirs, NeedUpdateBridges: Boolean;
   FormatIPv6OnExtract, RemoveDuplicateOnExtract, SortOnExtract, FormatCodesOnExtract, ShowFullMenuOnExtract: Boolean;
   Time: Cardinal;
+
 implementation
 
 {$R *.dfm}
@@ -1723,6 +1744,7 @@ begin
   inherited;
   UpdateScaleFactor;
   UpdateFormSize;
+  UpdateTrayIcon;
 end;
 
 procedure TTcp.SendCommand(const cmd: string);
@@ -1760,6 +1782,26 @@ begin
   end;
 end;
 
+procedure TReadPipeThread.HandleHalt;
+begin
+  case StopCode of
+    STOP_CONFIG_ERROR:
+    begin
+      Tcp.StopTor;
+      Tcp.Show;
+      Tcp.sbShowLog.Click;
+      ShowMsg(TransStr('236'), '', mtError);
+    end
+    else
+    begin
+      StopCode := STOP_HALT;
+      Tcp.StopTor(AutoResolveErrors);
+      if not AutoResolveErrors then
+        ShowMsg('Halt ' + TransStr('238'), '', mtWarning);
+    end;
+  end;
+end;
+
 procedure TReadPipeThread.UpdateVersionInfo;
 var
   ParseStr: ArrOfStr;
@@ -1771,7 +1813,7 @@ begin
   begin
     ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
     try
-      TorFileID := GetFileID(TorExeFile, True, TorVersion);
+      TorFileID := GetFileID(TorExeFile, True, TorVersion).Data;
       SetSettings('Main', 'TorFileID', TorFileID, ini);
     finally
       UpdateConfigFile(ini);
@@ -1779,7 +1821,7 @@ begin
   end
   else
     TorVersion := '0.0.0.0';
-  Tcp.LoadOptions(FirstStart);
+  Tcp.LoadOptions(FirstStart, TorVersion = '0.0.0.0');
   Terminate;
 end;
 
@@ -1897,7 +1939,13 @@ begin
           Synchronize(UpdateVersionInfo)
         end
         else
-          Terminate;
+        begin
+          if (ConnectState = 1) and not Connected then
+          begin
+            Synchronize(HandleHalt);
+            Terminate;
+          end;
+        end;
       end;
     end;
     Sleep(1);
@@ -2252,7 +2300,7 @@ procedure TTcp.CheckTorAutoStart;
 begin
   if FirstLoad then
   begin
-    if cbConnectOnStartup.Checked then
+    if cbConnectOnStartup.Checked and (ConfigVersion = CURRENT_CONFIG_VERSION) then
     begin
       StartTimer := TTimer.Create(Tcp);
       StartTimer.OnTimer := ConnectOnStartupTimer;
@@ -2304,6 +2352,12 @@ begin
   EnableOptionButtons;
 end;
 
+procedure TTcp.cbxTransportStateChange(Sender: TObject);
+begin
+  sgTransports.Cells[PT_STATE, sgTransports.SelRow] := GetTransportStateChar(cbxTransportState.ItemIndex);
+  EnableOptionButtons;
+end;
+
 procedure TTcp.ConnectOnStartupTimer(Sender: TObject);
 begin
   if TorVersion <> '' then
@@ -2311,6 +2365,66 @@ begin
     StartTor(True);
     FreeAndNil(StartTimer);
   end;
+end;
+
+function TTcp.GetTransportStateID(StateStr: string): Integer;
+begin
+  Result := PT_STATE_AUTO;
+  if Length(StateStr) > 0 then
+  begin
+    case AnsiChar(StateStr[1]) of
+      SELECT_CHAR: Result := PT_STATE_ENABLED;
+      FAVERR_CHAR: Result := PT_STATE_DISABLED;
+    end;
+  end;
+end;
+
+function TTcp.GetTransportStateChar(StateID: Integer): string;
+begin
+  case StateID of
+    PT_STATE_ENABLED: Result := SELECT_CHAR;
+    PT_STATE_DISABLED: Result := FAVERR_CHAR;
+    else
+      Result := BOTH_CHAR;
+  end;
+end;
+
+function TTcp.GetTransportID(TypeStr: string): Integer;
+begin
+  Result := TRANSPORT_CLIENT;
+  if Length(TypeStr) > 0 then
+  begin
+    case AnsiChar(TypeStr[1]) of
+      SELECT_CHAR: Result := TRANSPORT_SERVER;
+      BOTH_CHAR: Result := TRANSPORT_BOTH;
+    end;
+  end;
+end;
+
+function TTcp.GetTransportChar(TransportID: Integer): string;
+begin
+  case TransportID of
+    TRANSPORT_SERVER: Result := SELECT_CHAR;
+    TRANSPORT_BOTH: Result := BOTH_CHAR;
+    else
+      Result := FAVERR_CHAR;
+  end;
+end;
+
+function TTcp.GetHsStateID(StateStr: string): Integer;
+begin
+  if StateStr = SELECT_CHAR then
+    Result := HS_STATE_ENABLED
+  else
+    Result := HS_STATE_DISABLED;
+end;
+
+function TTcp.GetHsStateChar(StateID: Integer): string;
+begin
+  if StateID = HS_STATE_ENABLED then
+    Result := SELECT_CHAR
+  else
+    Result := FAVERR_CHAR;
 end;
 
 procedure TTcp.UpdateRoutersData;
@@ -2608,7 +2722,7 @@ var
   DescRouter, Router: TRouterInfo;
   UserBridges: TDictionary<string, TBridge>;
   Bridge, PrevBridge: TBridge;
-  RouterID, Temp, BridgeKey, SourceAddr: string;
+  RouterID, BridgeID, Temp, SourceAddr: string;
   BridgeRelay, UpdateFromDesc, DifferSource: Boolean;
   GeoIpInfo: TGeoIpInfo;
 
@@ -2625,6 +2739,26 @@ var
         ls.AddStrings(Desc);
     finally
       Desc.Free;
+    end;
+  end;
+
+  procedure UpdateBridgeData(IpStr, PortStr: string; UpdatePort: Boolean = False);
+  var
+    BridgeKey: string;
+  begin
+    if IpStr = '' then
+      Exit;
+    BridgeKey := IpStr + '|' + PortStr;
+    DirFetches.Remove(BridgeKey);
+    if UpdatePort then
+      SetPortsValue(IpStr, PortStr, 1);
+    if (NewBridgesStage = 1) and (NewBridgesCount > 0) then
+    begin
+      if NewBridgesList.ContainsKey(BridgeKey) then
+      begin
+        NewBridgesList.Remove(BridgeKey);
+        Dec(NewBridgesCount);
+      end;
     end;
   end;
 
@@ -2691,36 +2825,14 @@ var
     else
       BridgeInfo.Source := '';
     BridgeInfo.Router := RouterInfo;
+    BridgesDic.AddOrSetValue(RouterID, BridgeInfo);
 
     if ConnectState <> 0 then
     begin
-      SetPortsValue(BridgeInfo.Router.IPv4, IntToStr(BridgeInfo.Router.Port), 1);
-      BridgeKey := BridgeInfo.Router.IPv4 + '|' + IntToStr(BridgeInfo.Router.Port);
-      DirFetches.Remove(BridgeKey);
-      if (NewBridgesStage = 1) and (NewBridgesCount > 0) then
-      begin
-        if NewBridgesList.ContainsKey(BridgeKey) then
-        begin
-          NewBridgesList.Remove(BridgeKey);
-          Dec(NewBridgesCount);
-        end;
-      end;
-      if GeoIpDic.ContainsKey(BridgeInfo.Router.IPv6) then
-      begin
-        SetPortsValue(BridgeInfo.Router.IPv6, IntToStr(BridgeInfo.Router.Port), 1);
-        BridgeKey := BridgeInfo.Router.IPv6 + '|' + IntToStr(BridgeInfo.Router.Port);
-        DirFetches.Remove(BridgeKey);
-        if (NewBridgesStage = 1) and (NewBridgesCount > 0) then
-        begin
-          if NewBridgesList.ContainsKey(BridgeKey) then
-          begin
-            NewBridgesList.Remove(BridgeKey);
-            Dec(NewBridgesCount);
-          end;
-        end;
-      end;
+      UpdateBridgeData(BridgeInfo.Router.IPv4, IntToStr(BridgeInfo.Router.Port), True);
+      UpdateBridgeData(RemoveBrackets(BridgeInfo.Router.IPv6, btSquare), IntToStr(BridgeInfo.Router.Port));
+      UpdateBridgeData(BridgeInfo.Source, IntToStr(BridgeInfo.Router.Port));
     end;
-    BridgesDic.AddOrSetValue(RouterID, BridgeInfo);
   end;
 
 begin
@@ -2738,10 +2850,10 @@ begin
       if TryParseBridge(lb[i], Bridge, False) then
       begin
         if Bridge.Hash <> '' then
-          BridgeKey := Bridge.Hash
+          BridgeID := Bridge.Hash
         else
-          BridgeKey := Bridge.Ip;
-        if UserBridges.TryGetValue(BridgeKey, PrevBridge) then
+          BridgeID := Bridge.Ip;
+        if UserBridges.TryGetValue(BridgeID, PrevBridge) then
         begin
           if GeoIpDic.TryGetValue(PrevBridge.Ip, GeoIpInfo) then
             PrevData := GetPortsValue(GeoIpInfo.ports, IntToStr(PrevBridge.Port))
@@ -2754,10 +2866,10 @@ begin
             CurrData := 0;
 
           if CurrData > PrevData then
-            UserBridges.AddOrSetValue(BridgeKey, Bridge)
+            UserBridges.AddOrSetValue(BridgeID, Bridge)
         end
         else
-          UserBridges.AddOrSetValue(BridgeKey, Bridge)
+          UserBridges.AddOrSetValue(BridgeID, Bridge)
       end;
     end;
     SourceAddr := '';
@@ -2881,13 +2993,6 @@ begin
   begin
     case StopCode of
       STOP_NORMAL: RestartTor;
-      STOP_CONFIG_ERROR:
-      begin
-        StopTor;
-        Tcp.Show;
-        sbShowLog.Click;
-        ShowMsg(TransStr('236'), '', mtError);
-      end;
       STOP_AUTH_ERROR:
       begin
         StopTor;
@@ -2895,7 +3000,6 @@ begin
       end;
     end;
   end;
-
 end;
 
 function TTcp.GetControlEvents: string;
@@ -2909,9 +3013,15 @@ begin
     Result := Result + ' STREAM_BW';
 end;
 
+procedure TControlThread.UpdateConnectState;
+begin
+  Connected := True;
+end;
+
 procedure TControlThread.Execute;
 begin
   Socket := TTCPBlockSocket.Create;
+  Duplicates := TDictionary<string, Byte>.Create;
   try
     repeat
       Socket.Connect(LOOPBACK_ADDRESS, IntToStr(Tcp.udControlPort.Position));
@@ -2929,23 +3039,24 @@ begin
     end;
     Socket.SendString('AUTHENTICATE ' + AnsiString(AuthParam) + BR);
     Socket.SendString('SETEVENTS ' + AnsiString(Tcp.GetControlEvents) + BR);
-    Connected := True;
+
+    Synchronize(UpdateConnectState);
+
     while not Terminated do
     begin
       Data := string(socket.RecvString(1));
       if Socket.LastError = 0 then
         Synchronize(GetData);
-        
       if SendBuffer <> '' then
       begin
         Socket.SendString(AnsiString(SendBuffer));
         SendBuffer := '';
       end;
-              
       if Socket.LastError = WSAECONNRESET then
         Terminate;
     end;
   finally
+    Duplicates.Free;
     Socket.CloseSocket;
     Socket.Free;
   end;
@@ -2981,6 +3092,7 @@ var
   RouterInfo: TRouterInfo;
   BridgeKey, BridgeStr: string;
   Bridge: TBridge;
+  PortData: Integer;
 begin
   if StreamInfo.PurposeID = DIR_FETCH then
   begin
@@ -3014,7 +3126,11 @@ begin
           DirFetches.AddOrSetValue(BridgeKey, FetchInfo);
           if FetchInfo.FailsCount > Tcp.udMaxDirFails.Position then
           begin
-            SetPortsValue(FetchInfo.IpStr, FetchInfo.PortStr, -1);
+            if IpInRanges(FetchInfo.IpStr, DocRanges) then
+              PortData := -2
+            else
+              PortData := -1;
+            SetPortsValue(FetchInfo.IpStr, FetchInfo.PortStr, PortData);
             DirFetches.Remove(BridgeKey);
             Inc(FailedBridgesCount);
             ConsensusUpdated := True;
@@ -3071,7 +3187,7 @@ end;
 procedure TControlThread.GetData;
 var
   i: Integer;
-  Item: TPair<string, TRouterInfo>;
+  Router: TPair<string, TRouterInfo>;
   GeoIpItem: TPair<string, TGeoIpInfo>;
   ls: TStringList;
   GeoIpInfo: TGeoIpInfo;
@@ -3083,20 +3199,19 @@ var
 
   procedure CheckCountryUpdate(IpStr: string; FindData: Boolean = True);
   begin
-    UpdateCountry := True;
+    if Duplicates.ContainsKey(IpStr) then
+      Exit;
     if FindData then
     begin
       if GeoIpDic.TryGetValue(IpStr, GeoIpInfo) then
       begin
         if GeoIpInfo.cc <> DEFAULT_COUNTRY_ID then
-          UpdateCountry := False;
+          Exit;
       end;
     end;
-    if UpdateCountry then
-    begin
-      Inc(InfoCount);
-      Temp := Temp + ' ip-to-country/' + IpStr;
-    end;
+    Duplicates.AddOrSetValue(IpStr, 0);
+    Inc(InfoCount);
+    Temp := Temp + ' ip-to-country/' + IpStr;
   end;
 
 begin
@@ -3109,10 +3224,15 @@ begin
 
       if GeoIpExists then
       begin
-        if FindBridgesCountries or FindFallbackDirCountries then
+        if FindBridgesCountries or FindFallbackDirCountries or GeoIpUpdating then
         begin
           ls := TStringList.Create;
           try
+            if GeoIpUpdating then
+            begin
+              for GeoIpItem in GeoIpDic do
+                CheckCountryUpdate(GeoIpItem.Key, False);
+            end;
             if FindBridgesCountries then
             begin
               ls.Text := Tcp.meBridges.Text;
@@ -3143,21 +3263,14 @@ begin
         end
         else
         begin
-          if GeoIpUpdating then
-          begin
-            for GeoIpItem in GeoIpDic do
-              CheckCountryUpdate(GeoIpItem.Key, False);
-          end
-          else
-          begin
-            for Item in RoutersDic do
-              CheckCountryUpdate(Item.Value.IPv4);
-          end;
+          for Router in RoutersDic do
+            CheckCountryUpdate(Router.Value.IPv4);
         end;
       end;
 
       if InfoCount > 0 then
       begin
+        Duplicates.Clear;
         SendData('GETINFO' + Temp);
         InfoStage := 2;
       end
@@ -3189,15 +3302,7 @@ begin
         Dec(InfoCount);
 
         if InfoCount = 0 then
-        begin
-          if GeoIpUpdating then
-          begin
-            GeoFileID := GetFileID(GeoIpFile);
-            SetConfigString('Main', 'GeoFileID', GeoFileID);
-            GeoIpUpdating := False;
-          end;
-          InfoStage := 3;
-        end
+          InfoStage := 3
         else
           Exit;
       end;
@@ -3206,12 +3311,13 @@ begin
     if InfoStage = 3 then
     begin
       InfoStage := 0;
-      if FindBridgesCountries or FindFallbackDirCountries then
+      if FindBridgesCountries or FindFallbackDirCountries or GeoIpUpdating then
       begin
         FindBridgesCountries := False;
         FindFallbackDirCountries := False;
         if not ScanNewBridges then
         begin
+          ConsensusUpdated := True;
           OptionsLocked := True;
           Tcp.ApplyOptions(True);
         end;
@@ -3225,7 +3331,6 @@ begin
         Tcp.ShowRouters;
         if (ConnectState = 2) and (Circuit = '') then
           Tcp.SendDataThroughProxy;
-
         if AutoScanStage = 0 then
         begin
           if Tcp.cbAutoScanNewNodes.Checked and
@@ -3343,7 +3448,7 @@ begin
       end;
       CLOSED:
       begin
-        CircuitsDic.Remove(CircuitID);
+        Tcp.CloseCircuitInternal(CircuitID);
         CircuitsUpdated := True;
         if CircuitID = Circuit then
           Tcp.SendDataThroughProxy;
@@ -3364,14 +3469,27 @@ begin
         begin
           if Pos('PURPOSE', ParseStr[i]) = 1 then
           begin
-            if CircuitsDic.TryGetValue(CircuitID, CircuitInfo) then
+            PurposeID := GetConstantIndex(SeparateRight(ParseStr[i], '='));
+            if PurposeID = CONFLUX_LINKED then
             begin
-              CircuitInfo.PurposeID := GetConstantIndex(SeparateRight(ParseStr[i], '='));
-              CircuitInfo.Flags := GetCircuitFlags(CircuitInfo);
-              CircuitsDic.AddOrSetValue(CircuitID, CircuitInfo);
-              CircuitsUpdated := True;
+              if CircuitsDic.TryGetValue(CircuitID, CircuitInfo) then
+              begin
+                NodeID := Copy(CircuitInfo.Nodes, RPos(',', CircuitInfo.Nodes) + 1);
+                if ConfluxLinks.TryGetValue(NodeID, LinkedCircID) then
+                begin
+                  ConfluxLinks.AddOrSetValue(CircuitID, LinkedCircID);
+                  ConfluxLinks.AddOrSetValue(LinkedCircID, CircuitID);
+                  ConfluxLinks.Remove(NodeID);
+                end
+                else
+                  ConfluxLinks.AddOrSetValue(NodeID, CircuitID);
+                CircuitInfo.PurposeID := PurposeID;
+                CircuitInfo.Flags := GetCircuitFlags(CircuitInfo);
+                CircuitsDic.AddOrSetValue(CircuitID, CircuitInfo);
+                CircuitsUpdated := True;
+              end;
+              Break;
             end;
-            Break;
           end;
         end;
       end;
@@ -3766,9 +3884,23 @@ end;
 
 procedure TTcp.sgCircuitsMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
+var
+  LinkedCircID: string;
 begin
-  if Button = mbRight then
-    sgCircuits.MouseToCell(X, Y, sgCircuits.MovCol, sgCircuits.MovRow);
+  case Button of
+    mbRight: sgCircuits.MouseToCell(X, Y, sgCircuits.MovCol, sgCircuits.MovRow);
+    mbLeft:
+    begin
+      if ssDouble in Shift then
+      begin
+        if ConfluxLinks.TryGetValue(sgCircuits.Cells[CIRC_ID, sgCircuits.SelRow], LinkedCircID) then
+        begin
+          if CircuitsDic.ContainsKey(LinkedCircID) then
+            FindInCircuits(LinkedCircID, ExitNodeID)
+        end;
+      end;
+    end;
+  end;
 end;
 
 procedure TTcp.sgCircuitsMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
@@ -4120,6 +4252,7 @@ begin
   begin
     edTransports.Text := '';
     edTransportsHandler.Text := '';
+    cbHandlerParamsState.Checked := False;
     cbxTransportType.ItemIndex := 0;
     meHandlerParams.Clear;
     TransportsEnable(False);
@@ -4850,8 +4983,15 @@ procedure TTcp.sgTransportsDrawCell(Sender: TObject; ACol, ARow: Integer;
   Rect: TRect; State: TGridDrawState);
 begin
   if ARow = 0 then
-    DrawText(sgTransports.Canvas.Handle, PChar(TransportsHeader[ACol]), Length(TransportsHeader[ACol]), Rect, DT_CENTER);
-  GridScrollCheck(sgTransports, PT_TRANSPORTS, 204);
+  begin
+    case ACol of
+      PT_STATE: GridDrawIcon(sgTransports, Rect, lsMain, 17);
+      else
+        if ACol < PT_STATE then
+          DrawText(sgTransports.Canvas.Handle, PChar(TransportsHeader[ACol]), Length(TransportsHeader[ACol]), Rect, DT_CENTER);
+    end;
+  end;
+  GridScrollCheck(sgTransports, PT_TRANSPORTS, 180);
 end;
 
 procedure TTcp.sgTransportsKeyDown(Sender: TObject; var Key: Word;
@@ -4895,10 +5035,7 @@ begin
   case StrToIntDef(sgHs.Cells[HS_VERSION, sgHs.SelRow], HS_VERSION_3) of
     3: cbxHsVersion.ItemIndex := HS_VERSION_3;
   end;
-  if sgHs.Cells[HS_STATE, sgHs.SelRow] = SELECT_CHAR then
-    cbxHsState.ItemIndex := HS_STATE_ENABLED
-  else
-    cbxHsState.ItemIndex := HS_STATE_DISABLED;
+  cbxHsState.ItemIndex := GetHsStateID(sgHs.Cells[HS_STATE, sgHs.SelRow]);
   udHsNumIntroductionPoints.Position := StrToInt(sgHs.Cells[HS_INTRO_POINTS, sgHs.SelRow]);
   CheckHsVersion;
   if sgHs.Cells[HS_MAX_STREAMS, sgHs.SelRow] = NONE_CHAR then
@@ -4944,6 +5081,11 @@ begin
   udHsVirtualPort.Position := StrToInt(sgHsPorts.Cells[HSP_VIRTUAL_PORT, sgHsPorts.SelRow]);
 end;
 
+procedure TTcp.CheckTransportsControls;
+begin
+  meHandlerParams.Enabled := cbHandlerParamsState.Checked;
+end;
+
 procedure TTcp.SelectTransports;
 begin
   if sgTransports.SelRow = 0 then
@@ -4952,6 +5094,9 @@ begin
   edTransportsHandler.Text := sgTransports.Cells[PT_HANDLER, sgTransports.SelRow];
   meHandlerParams.Text := sgTransports.Cells[PT_PARAMS, sgTransports.SelRow];
   cbxTransportType.ItemIndex := GetTransportID(sgTransports.Cells[PT_TYPE, sgTransports.SelRow]);
+  cbxTransportState.ItemIndex := GetTransportStateID(sgTransports.Cells[PT_STATE, sgTransports.SelRow]);
+  cbHandlerParamsState.Checked := StrToBoolDef(sgTransports.Cells[PT_PARAMS_STATE, sgTransports.SelRow], False);
+  CheckTransportsControls;
 end;
 
 procedure TTcp.SelectorMenuClick(Sender: TObject);
@@ -5159,11 +5304,12 @@ begin
   end;
 end;
 
-procedure TTcp.LogListenerStart(hStdOut: THandle);
+procedure TTcp.LogListenerStart(hStdOut: THandle; AutoResolveErrors: Boolean);
 begin
   if not Assigned(Logger) then
   begin
     Logger := TReadPipeThread.Create(True);
+    Logger.AutoResolveErrors := AutoResolveErrors;
     Logger.hStdOut := hStdOut;
     Logger.FreeOnTerminate := True;
     Logger.Priority := tpNormal;
@@ -5283,17 +5429,33 @@ begin
     pcOptions.Pages[i].Enabled := State;
 end;
 
-procedure TTcp.CheckOptionsChanged;
+function TTcp.GetTransportFilesID: string;
 var
-  TorrcChanged, PathChanged, BridgesChanged, DefaultsChanged, FallbackDirsChanged, NeedReset: Boolean;
+  i: Integer;
 begin
-  DefaultsChanged := DefaultsFileID <> GetFileID(DefaultsFile);
-  TorrcChanged := TorrcFileID <> GetFileID(TorConfigFile);
+  Result := '';
+  if not IsEmptyGrid(sgTransports) then
+  begin
+    for i := 1 to sgTransports.RowCount - 1 do
+      Result := Result + GetFileID(TransportsDir + sgTransports.Cells[PT_HANDLER, i]).Data;
+  end;
+end;
+
+function TTcp.CheckFilesChanged: Boolean;
+var
+  TorrcChanged, PathChanged, DefaultsChanged,
+  BridgesChanged, FallbackDirsChanged, TransportsChanged,
+  NeedReset: Boolean;
+begin
+  DefaultsChanged := DefaultsFileID <> GetFileID(DefaultsFile).Data;
+  TorrcChanged := TorrcFileID <> GetFileID(TorConfigFile).Data;
   PathChanged := not CheckRequiredFiles;
   FallbackDirsChanged := (MissingFallbackDirCount > 0) or NeedUpdateFallbackDirs;
+  TransportsChanged := TransportFilesID <> GetTransportFilesID;
   BridgesChanged := (FailedBridgesCount > 0) or (AlreadyStarted and (NewBridgesCount > 0)) or
-     ((cbxBridgesType.ItemIndex = BRIDGES_TYPE_FILE) and (BridgeFileID <> GetFileID(BridgesFileName))) or NeedUpdateBridges;
-  NeedReset := TorrcChanged or PathChanged or BridgesChanged or DefaultsChanged or FallbackDirsChanged;
+     ((cbxBridgesType.ItemIndex = BRIDGES_TYPE_FILE) and (BridgeFileID <> GetFileID(BridgesFileName).Data)) or NeedUpdateBridges;
+
+  NeedReset := TorrcChanged or PathChanged or BridgesChanged or DefaultsChanged or FallbackDirsChanged or TransportsChanged;
   if OptionsChanged or NeedReset then
   begin
     if Restarting or NeedReset then
@@ -5310,26 +5472,46 @@ begin
         ResetOptions;
     end;
   end;
+  Result := not OptionsChanged;
 end;
 
 procedure TTcp.StartTor(AutoResolveErrors: Boolean = False);
 var
-  PortStr, Msg: string;
-  FindVersion: Boolean;
+  StartMsg: Integer;
+  PortStr: string;
+  TorFileData: TFileID;
+  TorFileExists, TorFileChanged, GeoIpState: Boolean;
 begin
-  if FileExists(TorExeFile) then
+  GeoIpState := False;
+  StartMsg := 0;
+  TorFileExists := FileExists(TorExeFile);
+  TorFileData := GetFileID(TorExeFile, TorFileExists, TorVersion);
+  TorFileChanged := TorFileID <> TorFileData.Data;
+
+  if TorFileExists then
   begin
-    FindVersion := True;
-    if TorFileID <> GetFileID(TorExeFile, True, TorVersion) then
+    if not CheckFileVersion(TorVersion, '0.4.0.5') then
+      StartMsg := 1;
+    if TorFileChanged then
     begin
-      if not AutoResolveErrors then
+      StartMsg := 2;
+      if TorFileData.ExecSupport then
       begin
-        FindVersion := GetTorVersion(False);
-        if FindVersion then
+        if GetTorVersion(False) then
           Exit;
       end;
     end;
-    CheckOptionsChanged;
+  end
+  else
+    StartMsg := 3;
+
+  if ConfigVersion <> CURRENT_CONFIG_VERSION then
+    StartMsg := 4;
+
+  if StartMsg = 0 then
+  begin
+    if not CheckFilesChanged then
+      Exit;
     PortStr := '';
     OptionsLocked := True;
     ForceDirectories(LogsDir);
@@ -5358,106 +5540,106 @@ begin
     FileAge(UserDir + 'control_auth_cookie', LastAuthCookieDate);
     if LogAutoDelHours >= 0 then
       DeleteFiles(LogsDir + '*.log', LogAutoDelHours * 3600);
+
+    if GeoIpExists then
+    begin
+      if GeoFileID <> GetFileID(GeoIpFile, True).Data then
+        GeoIpUpdating := True;
+      if UnknownBridgesCountriesCount > 0 then
+        FindBridgesCountries := True;
+      if UnknownFallbackDirCountriesCount > 0 then
+        FindFallbackDirCountries := True;
+      GeoIpState := FindBridgesCountries or FindFallbackDirCountries or GeoIpUpdating;
+    end;
+    SetTorConfig('DisableNetwork', BoolToStrDef(GeoIpState or ScanNewBridges), [cfAutoSave]);
     TorMainProcess := ExecuteProcess(TorExeFile + ' -f "' + TorConfigFile + '"', [pfHideWindow, pfReadStdOut], hJob);
     if TorMainProcess.hProcess <> INVALID_HANDLE_VALUE then
     begin
-      if CheckFileVersion(TorVersion, '0.4.0.5') then
+      if GeoIpState then
+        InfoStage := 1;
+      StopCode := STOP_NORMAL;
+      if miAutoClear.Checked then
       begin
-        if GeoIpExists then
-        begin
-          if GeoFileID <> GetFileID(GeoIpFile, True) then
-            GeoIpUpdating := True;
-          if UnknownBridgesCountriesCount > 0 then
-            FindBridgesCountries := True;
-          if UnknownFallbackDirCountriesCount > 0 then
-            FindFallbackDirCountries := True;
-          if FindBridgesCountries or FindFallbackDirCountries then
-            InfoStage := 1;
-        end;
-        StopCode := STOP_NORMAL;
-        if miAutoClear.Checked then
-        begin
-          meLog.Clear;
-          LogHasSel := False;
-        end;
-        StreamsDic.Clear;
-        CircuitsDic.Clear;
-        LockCircuits := False;
-        LockCircuitInfo := False;
-        LockStreams := False;
-        LockStreamsInfo := False;
-        ShowCircuits;
-        Circuit := '';
-        ExitNodeID := '';
-        DLSpeed := 0;
-        ULSpeed := 0;
-        SessionDL := 0;
-        SessionUL := 0;
-        MaxDLSpeed := 0;
-        MaxULSpeed := 0;
-        ConnectProgress := 0;
-        LastUserStreamProtocol := -1;
-        LastSaveStats := DateTimeToUnix(Now);
-        ConnectState := 1;
-        TotalsNeedSave := False;
-        SelectExitCircuit := False;
-        tmTraffic.Enabled := True;
-        tmCircuits.Enabled := True;
-        tmConsensus.Enabled := True;
-        UpdateConnectControls;
-        if UsedProxyType <> ptNone then
-        begin
-          lbExitIp.Caption := TransStr('111');
-          lbExitCountry.Caption := TransStr('112');
-        end;
-        SetOptionsEnable(False);
-        ControlsDisable(tsNetwork);
-        ControlsDisable(tsServer);
-        edControlPort.Enabled := False;
-        lbControlPort.Enabled := False;
-        cbxAuthMetod.Enabled := False;
-        lbAuthMetod.Enabled := False;
-        if cbxAuthMetod.ItemIndex = CONTROL_AUTH_PASSWORD then
-        begin
-          edControlPassword.Enabled := False;
-          lbControlPassword.Enabled := False;
-          imGeneratePassword.Enabled := False;
-        end;
-        CheckStatusControls;
-        if(cbShowBalloonHint.Checked and not cbShowBalloonOnlyWhenHide.Checked)
-          or (not cbConnectOnStartup.Checked or (cbConnectOnStartup.Checked and (cbxMinimizeOnEvent.ItemIndex in [MINIMIZE_ON_ALL, MINIMIZE_ON_STARTUP]))) then
-            if not Restarting then
-              ShowBalloon(TransStr('240'));
-        ControlPortConnect;
-        if TorMainProcess.hStdOutput <> INVALID_HANDLE_VALUE then
-          LogListenerStart(TorMainProcess.hStdOutput);
-        InitPortForwarding(False);
-      end
-      else
-      begin
-        ProcessExists(TorMainProcess, True, True);
-        if not AutoResolveErrors then
-        begin
-          if Win32MajorVersion = 5 then
-            Msg := TransStr('377') + BR + BR + TransStr('397')
-          else
-            Msg := TransStr('377');
-          ShowMsg(Msg, '', mtWarning);
-        end;
+        meLog.Clear;
+        LogHasSel := False;
       end;
+      ConfluxLinks.Clear;
+      StreamsDic.Clear;
+      CircuitsDic.Clear;
+      LockCircuits := False;
+      LockCircuitInfo := False;
+      LockStreams := False;
+      LockStreamsInfo := False;
+      ShowCircuits;
+      Circuit := '';
+      ExitNodeID := '';
+      DLSpeed := 0;
+      ULSpeed := 0;
+      SessionDL := 0;
+      SessionUL := 0;
+      MaxDLSpeed := 0;
+      MaxULSpeed := 0;
+      ConnectProgress := 0;
+      LastUserStreamProtocol := -1;
+      LastSaveStats := DateTimeToUnix(Now);
+      ConnectState := 1;
+      TotalsNeedSave := False;
+      SelectExitCircuit := False;
+      tmTraffic.Enabled := True;
+      tmCircuits.Enabled := True;
+      tmConsensus.Enabled := True;
+      UpdateConnectControls;
+      if UsedProxyType <> ptNone then
+      begin
+        lbExitIp.Caption := TransStr('111');
+        lbExitCountry.Caption := TransStr('112');
+      end;
+      SetOptionsEnable(False);
+      ControlsDisable(tsNetwork);
+      ControlsDisable(tsServer);
+      edControlPort.Enabled := False;
+      lbControlPort.Enabled := False;
+      cbxAuthMetod.Enabled := False;
+      lbAuthMetod.Enabled := False;
+      if cbxAuthMetod.ItemIndex = CONTROL_AUTH_PASSWORD then
+      begin
+        edControlPassword.Enabled := False;
+        lbControlPassword.Enabled := False;
+        imGeneratePassword.Enabled := False;
+      end;
+      CheckStatusControls;
+      if(cbShowBalloonHint.Checked and not cbShowBalloonOnlyWhenHide.Checked)
+        or (not cbConnectOnStartup.Checked or (cbConnectOnStartup.Checked and (cbxMinimizeOnEvent.ItemIndex in [MINIMIZE_ON_ALL, MINIMIZE_ON_STARTUP]))) then
+          if not Restarting then
+            ShowBalloon(TransStr('240'));
+      ControlPortConnect;
+      if TorMainProcess.hStdOutput <> INVALID_HANDLE_VALUE then
+        LogListenerStart(TorMainProcess.hStdOutput, AutoResolveErrors);
+      InitPortForwarding(False);
     end
     else
-    begin
-      if not AutoResolveErrors and FindVersion then
-        ShowMsg(TransStr('238'), '', mtWarning);
-    end;
-  end
-  else
+      StartMsg := 2;
+  end;
+  if StartMsg > 0 then
   begin
+    if TorFileChanged then
+    begin
+      if StartMsg > 1  then
+        TorVersion := '0.0.0.0';
+      LoadOptions(False, True, False);
+    end;
     if not AutoResolveErrors then
     begin
-      if (ShowMsg(TransStr('239'),'', mtWarning, True)) then
-        ShellOpen(GetDefaultsValue('DownloadUrl', DOWNLOAD_URL));
+      case StartMsg of
+        1: ShowMsg(TransStr('377'), '', mtWarning);
+        2: ShowMsg(TransStr('238'), '', mtWarning);
+        3:
+        begin
+          if (ShowMsg(TransStr('239'),'', mtWarning, True)) then
+            ShellOpen(GetDefaultsValue('DownloadUrl', DOWNLOAD_URL));
+        end;
+        4: ShowMsg(TransStr('479'), '', mtWarning);
+      end;
     end;
   end;
 end;
@@ -5495,7 +5677,7 @@ begin
   UpdateTrayIcon;
 end;
 
-procedure TTcp.StopTor;
+procedure TTcp.StopTor(SkipMessages: Boolean = False);
 var
   BridgesFullUpdate: Boolean;
 begin
@@ -5519,6 +5701,9 @@ begin
   LockCircuitInfo := False;
   LockStreams := False;
   LockStreamsInfo := False;
+  GeoIpUpdating := False;
+  FindBridgesCountries := False;
+  FindFallbackDirCountries := False;
   tmUpdateIp.Enabled := False;
   tmConsensus.Enabled := False;
   tmCircuits.Enabled := False;
@@ -5557,7 +5742,8 @@ begin
     end
     else
       BridgesCheckControls;
-    ShowBalloon(TransStr('241'));
+    if not SkipMessages then
+      ShowBalloon(TransStr('241'));
   end;
   RemoveUPnPEntry([udORPort.Tag, udTransportPort.Tag]);
   udORPort.Tag := 0;
@@ -5650,6 +5836,7 @@ begin
       SetTorConfig('GeoIPv6File', GeoIpv6File)
     else
       DeleteTorConfig('GeoIPv6File');
+    DeleteTorConfig('DisableNetwork');
   end;
 end;
 
@@ -5736,12 +5923,21 @@ end;
 
 procedure TTcp.UpdateConfigVersion;
 var
-  ini: TMemIniFile;
-  TemplateList: TStringlist;
-  TemplateName, Temp: string;
+  ini, inidef: TMemIniFile;
+  TemplateList, ls: TStringlist;
+  TemplateName, Temp, OldPath, NewPath: string;
   ParseStr: ArrOfStr;
   FirstRun: Boolean;
-  i, ConfigVersion: Integer;
+  i: Integer;
+  SearchRec: TSearchRec;
+
+  procedure UpdateGeoIpDir(FileName: string);
+  begin
+    if FileExists(NewPath + FileName) then
+      DeleteFile(OldPath + FileName)
+    else
+      RenameFile(OldPath + FileName, NewPath + FileName);
+  end;
 
   function ConvertCodes(Str: string): string;
   var
@@ -6023,6 +6219,67 @@ begin
             CIRCUIT_FILTER_DEFAULT, 0, CIRCUIT_FILTER_MAX), ini);
         ConfigVersion := 10;
       end;
+
+      if (ConfigVersion = 10) and IsDirectoryWritable(ProgramDir) then
+      begin
+        if GetSettings('Network', 'MaxDirFails', 3, ini) = 4 then
+          SetSettings('Network', 'MaxDirFails', 3, ini);
+        if GetSettings('Network', 'BridgesQueueSize', 128, ini) = 256 then
+          SetSettings('Network', 'BridgesQueueSize', 128, ini);
+
+        DeleteSettings('Network', 'RequestObfuscatedBridges', ini);
+
+        OldPath := ProgramDir + 'Data\Tor\';
+        NewPath := ProgramDir + 'Data\';
+        UpdateGeoIpDir('geoip');
+        UpdateGeoIpDir('geoip6');
+        if PathIsDirectoryEmpty(PWideChar(OldPath)) then
+          RemoveDir(OldPath);
+
+        OldPath := ProgramDir + 'Tor\PluggableTransports\';
+        NewPath := ProgramDir + 'Tor\Pluggable_Transports\';
+        RenameFile(OldPath + 'obfs4proxy.exe', OldPath + 'lyrebird.exe');
+        if DirectoryExists(NewPath) then
+        begin
+          try
+            if FindFirst(NewPath + '*.*', faAnyFile, SearchRec) = 0 then
+            repeat
+              if (SearchRec.Name[1] <> '.') and (SearchRec.Attr and faDirectory <> faDirectory) then
+              begin
+                if FileExists(OldPath + SearchRec.Name) then
+                  DeleteFile(OldPath + SearchRec.Name);
+              end;
+            until FindNext(SearchRec) <> 0;
+          finally
+            FindClose(SearchRec);
+          end;
+        end
+        else
+          MoveFile(PWideChar(OldPath), PWideChar(NewPath));
+        if PathIsDirectoryEmpty(PWideChar(OldPath)) then
+          RemoveDir(OldPath);
+
+        if FileExists(DefaultsFile) then
+        begin
+          inidef := TMemIniFile.Create(DefaultsFile, TEncoding.UTF8);
+          ls := TStringList.Create;
+          try
+            inidef.ReadSectionValues('Transports', ls);
+            if ls.Count > 0 then
+            begin
+              ini.EraseSection('Transports');
+              for i := 0 to ls.Count - 1 do
+              begin
+                SetSettings('Transports', IntToStr(i), SeparateRight(ls[i], '='), ini);
+              end;
+            end;
+          finally
+            ls.Free;
+            inidef.Free;
+          end;
+        end;
+        ConfigVersion := 11;
+      end;
     end
     else
       ConfigVersion := CURRENT_CONFIG_VERSION;
@@ -6072,7 +6329,7 @@ begin
       sgHs.Cells[HS_VERSION, Result] := '3';
       sgHs.Cells[HS_INTRO_POINTS, Result] := '3';
       sgHs.Cells[HS_MAX_STREAMS, Result] := NONE_CHAR;
-      sgHs.cells[HS_STATE, Result] := SELECT_CHAR;
+      sgHs.cells[HS_STATE, Result] := GetHsStateChar(HS_STATE_ENABLED);
       sgHs.Cells[HS_PORTS_DATA, Result] := '';
       if Result > 1 then
         sgHs.RowCount := sgHs.RowCount + 1;
@@ -6083,7 +6340,7 @@ begin
       sgHs.Cells[HS_NAME, Result] := Name;
       sgHs.Cells[HS_PREVIOUS_NAME, Result] := sgHs.Cells[HS_NAME, Result];
 
-      continue;
+      Continue;
     end;
 
     Version := GetParam('HiddenServiceVersion', TorConfig[i]);
@@ -6390,22 +6647,19 @@ begin
   Key := Trim(Key);
   if TransportsDic.TryGetValue(Key, T) then
   begin
-    if T.TransportID <> TRANSPORT_CLIENT then
+    ParseStr := Explode(' ', Trim(Value));
+    Options := '';
+    for i := 0 to Length(ParseStr) - 1 do
     begin
-      ParseStr := Explode(' ', Trim(Value));
-      Options := '';
-      for i := 0 to Length(ParseStr) - 1 do
-      begin
-        ParseStr[i] := Trim(ParseStr[i]);
-        if ValidKeyValue(ParseStr[i]) then
-          Options := Options + ' ' + ParseStr[i];
-      end;
-      Delete(Options, 1, 1);
-      T.ServerOptions := Options;
-      TransportsDic.AddOrSetValue(Key, T);
-      if UpdateControls then
-        meServerTransportOptions.Text := Options;
+      ParseStr[i] := Trim(ParseStr[i]);
+      if ValidKeyValue(ParseStr[i]) then
+        Options := Options + ' ' + ParseStr[i];
     end;
+    Delete(Options, 1, 1);
+    T.ServerOptions := Options;
+    TransportsDic.AddOrSetValue(Key, T);
+    if UpdateControls then
+      meServerTransportOptions.Text := Options;
   end;
   ServerTransportOptionsUpdated := False;
 end;
@@ -6416,10 +6670,7 @@ var
   Data: string;
 begin
   if TransportsDic.TryGetValue(Key, T) then
-  begin
-    if T.TransportID <> TRANSPORT_CLIENT then
-      Data := T.ServerOptions;
-  end
+    Data := T.ServerOptions
   else
     Data := '';
   if UpdateControls then
@@ -6479,13 +6730,15 @@ end;
 
 procedure TTcp.LoadTransportsData(Data: TStringList);
 var
-  i, j, TotalTransports: Integer;
+  i, j, TotalTransports, DataCount, TransportState: Integer;
   TransportID: Byte;
   ParseStr, TransList: ArrOfStr;
-  Transports, Handler, Params, StrType, Item: string;
+  Transports, Handler, Params, StrType, Item, FilesID: string;
   T: TTransportInfo;
-  IsValid: Boolean;
+  IsValid, ParamsState, FindTransport, State: Boolean;
+  TransportFileData: TFileID;
 begin
+  FilesID := '';
   TotalTransports := 0;
   sgTransports.RowID := sgTransports.Cells[PT_HANDLER, sgTransports.SelRow];
   BeginUpdateTable(sgTransports);
@@ -6495,56 +6748,73 @@ begin
   for i := 0 to Data.Count - 1 do
   begin
     ParseStr := Explode('|', SeparateRight(Data[i], '='));
-    if Length(ParseStr) in [3, 4] then
+    DataCount := Length(ParseStr);
+    if InRange(DataCount, 2, 6) then
     begin
-      Transports := ParseStr[0];
-      Handler := ParseStr[1];
-      StrType := GetTransportChar(StrToIntDef(ParseStr[2], 0));
+      Transports := Trim(ParseStr[0]);
+      Handler := Trim(ParseStr[1]);
+
+      if DataCount > 2 then
+        StrType := GetTransportChar(StrToIntDef(Trim(ParseStr[2]), TRANSPORT_CLIENT))
+      else
+        StrType := GetTransportChar(TRANSPORT_CLIENT);
       TransportID := GetTransportID(StrType);
 
-      if Length(ParseStr) = 4 then
-        Params := ParseStr[3]
+      if DataCount > 3 then
+        TransportState := StrToIntDef(Trim(ParseStr[3]), PT_STATE_AUTO)
+      else
+        TransportState := PT_STATE_AUTO;
+
+      if DataCount > 4 then
+        Params := Trim(ParseStr[4])
       else
         Params := '';
 
-      if FileExists(TransportsDir + Handler) then
+      if DataCount > 5 then
+        ParamsState := StrToBoolDef(Trim(ParseStr[5]), False) and (Params <> '')
+      else
+        ParamsState := False;
+
+      FindTransport := FileExists(TransportsDir + Handler);
+      TransportFileData := GetFileID(TransportsDir + Handler, FindTransport);
+      State := GetTransportState(TransportState, FindTransport, TransportFileData, True);
+
+      TransList := Explode(',', Transports);
+      Transports := '';
+      for j := 0 to Length(TransList) - 1 do
       begin
-        TransList := Explode(',', Transports);
-        Transports := '';
-        for j := 0 to Length(TransList) - 1 do
+        IsValid := False;
+        Item := Trim(TransList[j]);
+        if (Item <> '') and (CheckEditString(Item, '_', False) = '') then
         begin
-          IsValid := False;
-          Item := Trim(TransList[j]);
-          if (Item <> '') and (CheckEditString(Item, '_', False) = '') then
+          if TransportsDic.TryGetValue(Item, T) then
           begin
-            if TransportsDic.TryGetValue(Item, T) then
-            begin
-              if T.TransportID = TRANSPORT_BOTH then
-                Continue
-              else
-              begin
-                if (TransportID <> TRANSPORT_BOTH) and (TransportID <> T.TransportID) then
-                begin
-                  T.TransportID := TRANSPORT_BOTH;
-                  IsValid := True;
-                end;
-              end;
-            end
+            if T.TransportID = TRANSPORT_BOTH then
+              Continue
             else
             begin
-              T.TransportID := TransportID;
-              IsValid := True;
+              if (TransportID <> TRANSPORT_BOTH) and (TransportID <> T.TransportID) then
+              begin
+                T.TransportID := TRANSPORT_BOTH;
+                IsValid := True;
+              end;
             end;
-            if IsValid then
-            begin
-              T.InList := False;
-              TransportsDic.AddOrSetValue(Item, T);
-              Transports := Transports + ',' + Item;
-            end;
+          end
+          else
+          begin
+            T.TransportID := TransportID;
+            IsValid := True;
+          end;
+          if IsValid then
+          begin
+            T.InList := False;
+            T.State := State;
+            TransportsDic.AddOrSetValue(Item, T);
+            Transports := Transports + ',' + Item;
           end;
         end;
-        Delete(Transports, 1, 1);
       end;
+      Delete(Transports, 1, 1);
 
       if Transports <> '' then
       begin
@@ -6553,10 +6823,13 @@ begin
         sgTransports.Cells[PT_HANDLER, TotalTransports] := Handler;
         sgTransports.Cells[PT_TYPE, TotalTransports] := StrType;
         sgTransports.Cells[PT_PARAMS, TotalTransports] := Params;
+        sgTransports.Cells[PT_PARAMS_STATE, TotalTransports] := BoolToStrDef(ParamsState);
+        sgTransports.Cells[PT_STATE, TotalTransports] := GetTransportStateChar(TransportState);
+        FilesID := FilesID + TransportFileData.Data;
       end;
     end;
   end;
-
+  TransportFilesID := FilesID;
   if TotalTransports > 0 then
   begin
     sgTransports.RowCount := TotalTransports + 1;
@@ -6571,10 +6844,10 @@ end;
 
 procedure TTcp.SaveTransportsData(ini: TMemIniFile; ReloadServerTransport: Boolean);
 var
-  i, j, TransportID: Integer;
-  Transports, UsedTransports, Handler, Params, StrType, ServerTransport: string;
+  i, j, TransportID, TransportState: Integer;
+  Transports, UsedTransports, Handler, Params, StrType, ServerTransport, ParamsData: string;
   ParseStr: ArrOfStr;
-  Find, InBridges: Boolean;
+  State, InBridges, ParamsState: Boolean;
   T: TTransportInfo;
 begin
   DeleteTorConfig('ClientTransportPlugin', [cfMultiLine]);
@@ -6584,7 +6857,6 @@ begin
   DeleteTorConfig('ExtORPort', [cfMultiLine]);
   ini.EraseSection('Transports');
   ini.EraseSection('ServerTransportOptions');
-
   if ReloadServerTransport then
     ServerTransport := GetSettings('Server', 'BridgeType', '', ini)
   else
@@ -6599,12 +6871,14 @@ begin
       Handler := sgTransports.Cells[PT_HANDLER, i];
       StrType := sgTransports.Cells[PT_TYPE, i];
       Params := sgTransports.Cells[PT_PARAMS, i];
+      ParamsState := StrToBoolDef(sgTransports.Cells[PT_PARAMS_STATE, i], False) and (Params <> '');
+      TransportState := GetTransportStateID(sgTransports.Cells[PT_STATE, i]);
 
       TransportID := GetTransportID(StrType);
       ParseStr := Explode(',', Transports);
       Transports := '';
       UsedTransports := '';
-      Find := False;
+      State := False;
       for j := 0 to Length(ParseStr) - 1 do
       begin
         ParseStr[j] := Trim(ParseStr[j]);
@@ -6614,16 +6888,17 @@ begin
           if (T.TransportID <> TRANSPORT_SERVER) and InBridges then
           begin
             UsedTransports := UsedTransports + ',' + ParseStr[j];
-            Find := True;
+            State := T.State;
           end;
+          if T.ServerOptions <> '' then
+            SetSettings('ServerTransportOptions', ParseStr[j], T.ServerOptions, ini);
           if TransportID <> TRANSPORT_CLIENT then
           begin
-            cbxBridgeType.Items.Append(ParseStr[j]);
-            if T.ServerOptions <> '' then
-              SetSettings('ServerTransportOptions', ParseStr[j], T.ServerOptions, ini);
+            if T.State then
+              cbxBridgeType.Items.Append(ParseStr[j]);
             if ServerTransport = ParseStr[j] then
             begin
-              if cbxServerMode.ItemIndex = SERVER_MODE_BRIDGE then
+              if (cbxServerMode.ItemIndex = SERVER_MODE_BRIDGE) and T.State then
               begin
                 SetTorConfig('ServerTransportPlugin', Trim(ServerTransport + ' exec ' + TransportsDir + Handler + ' ' + Params));
                 if cbUseServerTransportOptions.Checked and (T.ServerOptions <> '') then
@@ -6639,14 +6914,21 @@ begin
       Delete(Transports, 1, 1);
       Delete(UsedTransports, 1, 1);
 
-      if cbUseBridges.Checked and Find then
-        TorConfig.Append('ClientTransportPlugin ' + UsedTransports + ' exec ' + TransportsDir + Handler + ' ' + Params);
+      if ParamsState then
+        ParamsData := ' ' + Params
+      else
+        ParamsData := '';
+
+      if cbUseBridges.Checked and State then
+        TorConfig.Append('ClientTransportPlugin ' + UsedTransports + ' exec ' + TransportsDir + Handler + ParamsData);
 
       if Params <> '' then
-        Params := '|' + Params;
+        ParamsData := '|' + Params + '|' + BoolToStrDef(ParamsState)
+      else
+        ParamsData := '';
 
-      SetSettings('Transports', IntToStr(i - 1),
-        Transports + '|' + Handler + '|' + IntToStr(TransportID) + Params, ini);
+      SetSettings('Transports', IntToStr(i),
+        Transports + '|' + Handler + '|' + IntToStr(TransportID) + '|' + IntToStr(TransportState) +  ParamsData, ini);
     end;
   end;
   cbxBridgeType.ItemIndex := GetIntDef(cbxBridgeType.Items.IndexOf(ServerTransport), 0, 0, MAXINT);
@@ -6848,7 +7130,7 @@ end;
 
 procedure TTcp.ExcludeUnsuitableBridges(var Data: TStringList; DeleteUnsuitable: Boolean = False; AutoSave: Boolean = False);
 var
-  cdPorts, cdAlive, cdRelay: Boolean;
+  cdPorts, cdAlive, cdRelay, cdTransport: Boolean;
   CheckEntryPorts, NeedCountry, NeedAlive, Cached, SpecialAddr, FindCountry, ConsensusNode: Boolean;
   BridgesCount: Integer;
   Bridge: TBridge;
@@ -6858,6 +7140,7 @@ var
   DataItem: TPair<string, TBridgeData>;
   RouterInfo: TRouterInfo;
   GeoIpInfo: TGeoIpInfo;
+  T: TTransportInfo;
   CountryStr, IpStr, HashStr: string;
   i, CountryID, PortData: Integer;
 begin
@@ -6874,6 +7157,16 @@ begin
     begin
       if TryParseBridge(Data[i], Bridge, False) then
       begin
+        if Bridge.Transport <> '' then
+        begin
+          if TransportsDic.TryGetValue(Bridge.Transport, T) then
+            cdTransport := T.State and (T.TransportID <> TRANSPORT_SERVER)
+          else
+            cdTransport := False;
+        end
+        else
+          cdTransport := True;
+
         if CheckEntryPorts then
           cdPorts := PortsDic.ContainsKey(Bridge.Port)
         else
@@ -6888,7 +7181,7 @@ begin
             PortData := GetPortsValue(GeoIpInfo.ports, IntToStr(Bridge.Port));
             NeedCountry := CountryID = DEFAULT_COUNTRY_ID;
             NeedAlive := PortData = 0;
-            cdAlive := PortData <> -1;
+            cdAlive := PortData > -1;
             FindCountry := NeedCountry and cdAlive;
           end
           else
@@ -6949,11 +7242,11 @@ begin
         Cached := BridgesDic.ContainsKey(HashStr);
         CountryStr := CountryCodes[CountryID];
 
-        if cdPorts and (cdAlive or NeedAlive) and cdRelay and not RouterInNodesList(HashStr, IpStr, ntExclude, NeedCountry and NeedAlive, CountryStr) then
+        if cdPorts and (cdAlive or NeedAlive) and cdRelay and cdTransport and not RouterInNodesList(HashStr, IpStr, ntExclude, NeedCountry and NeedAlive, CountryStr) then
         begin
           if cbUseBridges.Checked and not DeleteUnsuitable and SupportBridgesTesting then
           begin
-            if AutoSave and cbCacheNewBridges.Checked and (cbUseBridgesLimit.Checked or cbUsePreferredBridge.Checked) and (NeedAlive or not (Cached or ConsensusNode)) and not SpecialAddr then
+            if AutoSave and cbCacheNewBridges.Checked and (cbUseBridgesLimit.Checked or cbUsePreferredBridge.Checked) and (NeedAlive or not (Cached or ConsensusNode)) then
             begin
               if NewBridgesStage = 1 then
                 NewBridgesList.AddOrSetValue(Bridge.Ip + '|' + IntToStr(Bridge.Port) , Data[i]);
@@ -7175,7 +7468,7 @@ begin
       begin
         IpStr := GetBridgeIp(Bridge);
         if IpStr <> '' then
-          UsedBridgesList.AddOrSetValue(IpStr + '|' + IntToStr(Bridge.Port), 0);
+          UsedBridgesList.AddOrSetValue(Bridge.Ip + IntToStr(Bridge.Port), 0);
         Inc(UsedBridgesCount);
       end;
     end;
@@ -7218,7 +7511,7 @@ begin
         ls.Text := PreferredBridge;
         ExcludeUnSuitableBridges(ls, not AutoSave);
         NewBridgesCount := 0;
-        if (SuitableBridgesCount = 0) and miDisableSelectionUnSuitableAsBridge.Checked then
+        if (SuitableBridgesCount = 0) and (miDisableSelectionUnSuitableAsBridge.Checked or (ConnectState = 1)) then
           cbUsePreferredBridge.Checked := False;
       end;
     end;
@@ -7244,13 +7537,7 @@ begin
 
     if AutoSave then
     begin
-      if ConnectState = 0 then
-      begin
-        ScanNewBridges := cbEnableDetectAliveNodes.Checked and cbUseBridges.Checked and cbScanNewBridges.Checked and (NewBridgesCount > 0);
-        if (UnknownBridgesCountriesCount > 0) or ScanNewBridges then
-          SetTorConfig('DisableNetwork', '1');
-      end;
-
+      ScanNewBridges := cbEnableDetectAliveNodes.Checked and cbUseBridges.Checked and cbScanNewBridges.Checked and (NewBridgesCount > 0) and (ConnectState = 0);
       SetTorConfig('UseBridges', IntToStr(Integer(cbUseBridges.Checked)));
       if cbUseBridges.Checked then
         SetTorConfig('Bridge', ls);
@@ -7291,7 +7578,7 @@ begin
           end;
           BridgesFileNeedSave := False;
         end;
-        BridgeFileID := GetFileID(BridgesFileName);
+        BridgeFileID := GetFileID(BridgesFileName).Data;
       end;
 
       if FastUpdate and (ConnectState <> 0) then
@@ -7544,6 +7831,7 @@ var
   FilterEntry, FilterMiddle, FilterExit, Temp: string;
   FavoritesEntry, FavoritesMiddle, FavoritesExit, ExcludeNodes: string;
 begin
+  Time := GetTickCount;
   LoadTorConfig;
   ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
   inidef := TMemIniFile.Create(DefaultsFile, TEncoding.UTF8);
@@ -7716,7 +8004,7 @@ begin
     GeoFileID := GetSettings('Main', 'GeoFileID', '', ini);
     if (GeoFileID = '') and GeoIpExists and not FileExists(NetworkCacheFile) then
     begin
-      GeoFileID := GetFileID(GeoIpFile, True);
+      GeoFileID := GetFileID(GeoIpFile, True).Data;
       SetSettings('Main', 'GeoFileID', GeoFileID, ini);
     end;
 
@@ -7812,6 +8100,13 @@ begin
     miLogAutoDelType.Items[LogAutoDelType].Checked := True;
     LogAutoDelHours := miLogAutoDelType.Items[LogAutoDelType].Tag;
 
+    RequestBridgesType := GetIntDef(GetSettings('Network', 'RequestBridgesType', REQUEST_TYPE_OBFUSCATED, ini), REQUEST_TYPE_OBFUSCATED, REQUEST_TYPE_VANILLA, REQUEST_TYPE_WEBTUNNEL);
+    case RequestBridgesType of
+      REQUEST_TYPE_VANILLA: miRequestVanillaBridges.Checked := True;
+      REQUEST_TYPE_OBFUSCATED: miRequestObfuscatedBridges.Checked := True;
+      REQUEST_TYPE_WEBTUNNEL: miRequestWebTunnelBridges.Checked := True;
+    end;
+
     if FirstLoad then
       cbxLogLevel.ResetValue := 2;
     LogID := GetArrayIndex(LogLevels, LowerCase(SeparateLeft(GetTorConfig('Log', 'notice stdout', [cfAutoAppend]), ' ')));
@@ -7871,8 +8166,9 @@ begin
       Transports := TStringList.Create;
       try
         ini.ReadSectionValues('Transports', Transports);
-        if Transports.Count > 0 then
-          LoadTransportsData(Transports);
+        LoadTransportsData(Transports);
+        if IsEmptyGrid(sgTransports) then
+          ResetTransports(inidef);
       finally
         Transports.Free;
       end;
@@ -7968,7 +8264,6 @@ begin
     CheckFavoritesState;
     CheckVanguards(True);
 
-    DeleteTorConfig('DisableNetwork');
     GetSettings('Lists', cbUseFallbackDirs, ini);
     GetSettings('Lists', cbExcludeUnsuitableFallbackDirs, ini);
     GetSettings('Lists', cbxFallbackDirsType, ini);
@@ -8098,7 +8393,7 @@ begin
       FilterUpdated := False;
     end;
     FallbackDirsUpdated := False;
-    DefaultsFileID := GetFileID(DefaultsFile);
+    DefaultsFileID := GetFileID(DefaultsFile).Data;
     SaveTorConfig;
     OptionsLocked := False;
     EnableOptionButtons(False);
@@ -8357,19 +8652,36 @@ begin
   cbxFilterMode.ItemIndex := FMode;
 end;
 
+function TTcp.GetTransportState(var TransportStateID: Integer; FindTransport: Boolean; TransportFileData: TFileID; CheckTransport: Boolean): Boolean;
+begin
+  case TransportStateID of
+    PT_STATE_AUTO, PT_STATE_ENABLED:
+    begin
+      Result := FindTransport and TransportFileData.ExecSupport;
+      if CheckTransport and not Result and (TransportStateID = PT_STATE_ENABLED) then
+        TransportStateID := PT_STATE_DISABLED;
+    end;
+    PT_STATE_DISABLED: Result := False;
+    else
+      Result := False;
+  end;
+end;
+
 function TTcp.CheckTransports: Boolean;
 var
-  i, j, ResultCode: Integer;
-  TransportID: Byte;
+  i, j, ResultCode, TransportState, TransportID: Integer;
   T, TransportInfo: TTransportInfo;
-  Transports, Item, Handler, Params, Msg, ResultMsg: string;
+  Transports, Item, Handler, Params, Msg, MsgData, ResultMsg, FilesID: string;
   ParseStr: ArrOfStr;
   TransportsList: TDictionary<string, TTransportInfo>;
   TransportItem: TPair<string, TTransportInfo>;
+  ParamsState, State, FindTransport: Boolean;
+  TransportFileData: TFileID;
   ls: TStringList;
 begin
   Result := True;
   ResultCode := 0;
+  MsgData := '';
   if not edTransports.Enabled then
     Exit;
   TransportsList := TDictionary<string, TTransportInfo>.Create;
@@ -8384,11 +8696,30 @@ begin
       Transports := sgTransports.Cells[PT_TRANSPORTS, i];
       Handler := sgTransports.Cells[PT_HANDLER, i];
       Params := sgTransports.Cells[PT_PARAMS, i];
+      ParamsState := StrToBoolDef(sgTransports.Cells[PT_PARAMS_STATE, i], False);
+      TransportState := GetTransportStateID(sgTransports.Cells[PT_STATE, i]);
 
-      if not FileExists(TransportsDir + Handler) then
+      FindTransport := FileExists(TransportsDir + Handler);
+      TransportFileData := GetFileID(TransportsDir + Handler, FindTransport);
+      State := GetTransportState(TransportState, FindTransport, TransportFileData, False);
+      if ParamsState and (Params = '') then
+        sgTransports.Cells[PT_PARAMS_STATE, i] := '0';
+
+      if TransportState = PT_STATE_ENABLED then
       begin
-        ResultCode := 2;
-        Break;
+        if not FindTransport then
+        begin
+          ResultCode := 2;
+          MsgData := Handler;
+          Break;
+        end;
+
+        if not TransportFileData.ExecSupport then
+        begin
+          ResultCode := 6;
+          MsgData := Handler;
+          Break;
+        end;
       end;
 
       if Pos('|', Params) <> 0 then
@@ -8425,20 +8756,20 @@ begin
           end;
         end;
         T.TransportID := TransportID;
-        T.ServerOptions := '';
         T.InList := False;
+        T.State := State;
         if TransportsDic.TryGetValue(Item, TransportInfo) then
-        begin
-          if TransportID <> TRANSPORT_CLIENT then
-            T.ServerOptions := TransportInfo.ServerOptions
-        end;
+          T.ServerOptions := TransportInfo.ServerOptions
+        else
+          T.ServerOptions := '';
         TransportsList.AddOrSetValue(Item, T);
       end;
 
       if ResultCode > 0 then
         Break;
-
+      FilesID := FilesID + TransportFileData.Data;
     end;
+
     if ResultCode > 0 then
     begin
       Result := False;
@@ -8446,14 +8777,16 @@ begin
       SelectTransports;
       case ResultCode of
         1: GoToInvalidOption(tsOther, Msg + TransStr('394'), edTransports);
-        2: GoToInvalidOption(tsOther, Msg + TransStr('395'), edTransportsHandler);
+        2: GoToInvalidOption(tsOther, Msg + Format(TransStr('395'), [MsgData]), edTransportsHandler);
         3: GoToInvalidOption(tsOther, Msg + ResultMsg, edTransports);
         4: GoToInvalidOption(tsOther, Msg + TransStr('399'), edTransports);
         5: GoToInvalidOption(tsOther, Msg + Format(TransStr('255'), ['|']), meHandlerParams);
+        6: GoToInvalidOption(tsOther, Msg + Format(TransStr('397'), [MsgData]), edTransportsHandler);
       end;
     end
     else
     begin
+      TransportFilesID := FilesID;
       for TransportItem in TransportsList do
         TransportsDic.AddOrSetValue(TransportItem.Key, TransportItem.Value);
       ls := TStringList.Create;
@@ -8468,6 +8801,7 @@ begin
       finally
         ls.Free;
       end;
+      SelectTransports;
     end;
   finally
     TransportsList.Free;
@@ -8993,22 +9327,26 @@ begin
     SaveReachableAddresses(ini);
     SaveProxyData(ini);
 
-    Temp := GetFileID(DefaultsFile);
-    if DefaultsFileID <> Temp then
+    Temp := GetFileID(DefaultsFile).Data;
+    if (DefaultsFileID <> Temp) or IsEmptyGrid(sgTransports) then
     begin
       inidef := TMemIniFile.Create(DefaultsFile, TEncoding.UTF8);
       try
-        if cbxBridgesType.ItemIndex <> BRIDGES_TYPE_FILE then
-          LoadBuiltinBridges(inidef, True, True, cbxBridgesList.Text);
-        if cbxFallbackDirsType.ItemIndex = FALLBACK_TYPE_BUILTIN then
-          LoadFallbackDirs(inidef, True);
-        LoadUserOverrides(inidef);
+        if IsEmptyGrid(sgTransports) then
+          ResetTransports(inidef);
+        if DefaultsFileID <> Temp then
+        begin
+          if cbxBridgesType.ItemIndex = BRIDGES_TYPE_BUILTIN then
+            LoadBuiltinBridges(inidef, True, True, cbxBridgesList.Text);
+          if cbxFallbackDirsType.ItemIndex = FALLBACK_TYPE_BUILTIN then
+            LoadFallbackDirs(inidef, True);
+          LoadUserOverrides(inidef);
+          DefaultsFileID := Temp;
+        end;
       finally
         inidef.Free;
       end;
-      DefaultsFileID := Temp;
     end;
-    DeleteTorConfig('DisableNetwork');
     SaveFallbackDirsData(ini);
     SaveBridgesData(ini);
 
@@ -9092,6 +9430,10 @@ begin
 
     OptionsLocked := False;
     EnableOptionButtons(False);
+
+    if ConnectState <> 0 then
+      UpdateGeoFileID(ini);
+
     if ConsensusUpdated then
       LoadConsensus
     else
@@ -9117,7 +9459,6 @@ begin
       cbxLanguage.Tag := cbxLanguage.ItemIndex;
 
     UpdateOptionsAfterRoutersUpdate;
-
     SaveTorConfig;
     if ConnectState <> 0 then
     begin
@@ -10180,10 +10521,12 @@ var
   TimeStamp: Int64;
   TemplateList: TStringList;
   TemplateName, TimeStampStr: string;
-  State: Boolean;
+  State, SingleRow: Boolean;
 begin
   SelectRowPopup(sgFilter, mnFilter);
-  State := not IsEmptyGrid(sgFilter);
+  SingleRow := sgFilter.Selection.Top = sgFilter.Selection.Bottom;
+  State := SingleRow and not IsEmptyGrid(sgFilter);
+
   miStatCountry.Visible := State;
   if State then
   begin
@@ -10197,6 +10540,7 @@ begin
   end;
   miStatGuards.Enabled := State;
   miStatExit.Enabled := State;
+
   miClearFilterEntry.Enabled := lbFilterEntry.Tag > 0;
   miClearFilterMiddle.Enabled := lbFilterMiddle.Tag > 0;
   miClearFilterExit.Enabled := lbFilterExit.Tag > 0;
@@ -10362,20 +10706,6 @@ begin
   end
   else
     Result := IpStr + ':' + IntToStr(RouterInfo.Port) + ' ' + HashStr;
-end;
-
-function TTcp.GetRouterStrFlags(Flags: TRouterFlags): string;
-begin
-  if rfAuthority in Flags then Result := Result + 'Authority';
-  if rfBadExit in Flags then Result := Result + ' BadExit';
-  if rfExit in Flags then Result := Result + ' Exit';
-  if rfFast in Flags then Result := Result + ' Fast';
-  if rfGuard in Flags then Result := Result + ' Guard';
-  if rfHSDir in Flags then Result := Result + ' HSDir';
-  if rfMiddleOnly in Flags then Result := Result + ' MiddleOnly';
-  if rfStable in Flags then Result := Result + ' Stable';
-  if rfV2Dir in Flags then Result := Result + ' V2Dir';
-  Result := Trim(Result);
 end;
 
 function TTcp.GetRouterCsvData(RouterID: string; RouterInfo: TRouterInfo; Preview: Boolean = False): string;
@@ -10657,7 +10987,6 @@ begin
   ClearBridgesState := ScanState and (ConnectState = 0) and FileExists(BridgesCacheFile);
 
   miCacheOperations.Enabled := NotStarting;
-  miUpdateIpToCountryCache.Enabled := ClearNetworkState and GeoIpExists and (ConnectState = 2);
   miClearDNSCache.Enabled := ConnectState = 2;
   miClearServerCache.Enabled := (ConnectState = 0) and
     (DirectoryExists(UserDir + 'diff-cache') or FileExists(UserDir + 'cached-consensus') or FileExists(UserDir + 'cached-consensus.tmp'));
@@ -10713,8 +11042,12 @@ begin
   miClear.Visible := not (IsUserBridges or IsUserFallbackDirs);
   miClearMenu.Visible := IsUserBridges or IsUserFallbackDirs;
 
-  miGetBridgesEmail.Enabled := IsBridgeEdit and RegistryFileExists(HKEY_CLASSES_ROOT, 'mailto\shell\open\command', '');
-  miGetBridgesTelegram.Enabled := IsBridgeEdit and (RegistryFileExists(HKEY_CLASSES_ROOT, 'tg\shell\open\command', '') or miPreferWebTelegram.Checked);
+  miGetBridgesEmail.Enabled := IsBridgeEdit and (RequestBridgesType <> REQUEST_TYPE_WEBTUNNEL) and
+    RegistryFileExists(HKEY_CLASSES_ROOT, 'mailto\shell\open\command', '');
+  miGetBridgesTelegram.Enabled := IsBridgeEdit and (RequestBridgesType = REQUEST_TYPE_OBFUSCATED) and
+    (RegistryFileExists(HKEY_CLASSES_ROOT, 'tg\shell\open\command', '') or miPreferWebTelegram.Checked);
+
+  miPreferWebTelegram.Enabled := RequestBridgesType = REQUEST_TYPE_OBFUSCATED;
 
   miClearMenuAll.Enabled := BridgesState or FallbackState;
   miClearMenuNotAlive.Enabled := (BridgesState or FallbackState) and cbEnableDetectAliveNodes.Checked;
@@ -11270,8 +11603,8 @@ procedure TTcp.paButtonsDblClick(Sender: TObject);
 begin
   if FormSize = 1 then
   begin
-    CheckOptionsChanged;
-    DecreaseFormSize;
+    if CheckFilesChanged then
+      DecreaseFormSize;
   end
   else
   begin
@@ -11859,10 +12192,9 @@ begin
     begin
       SetTorConfig('BridgeRelay', '1');
       SetTorConfig('BridgeDistribution', BridgeDistributions[cbxBridgeDistribution.ItemIndex]);
-
     end;
-    if cbxServerMode.ItemIndex in [SERVER_MODE_RELAY, SERVER_MODE_BRIDGE] then
-      SetTorConfig('ExitPolicy', 'reject *:*');
+    if cbxServerMode.ItemIndex = SERVER_MODE_RELAY then
+      SetTorConfig('ExitRelay', '0');
 
     if MyFamily <> '' then
     begin
@@ -12563,18 +12895,18 @@ var
   BridgeInfo: TBridgeInfo;
 begin
   Result := False;
-  if UsedBridgesList.ContainsKey(Router.IPv4 + '|' + IntToStr(Router.Port)) then
+  if UsedBridgesList.ContainsKey(Router.IPv4 + IntToStr(Router.Port)) then
     Result := True
   else
   begin
-    if Router.IPv6 <> '' then
-      Result := UsedBridgesList.ContainsKey(RemoveBrackets(Router.IPv6, btSquare) + '|' + IntToStr(Router.Port))
+    if UsedBridgesList.ContainsKey(RemoveBrackets(Router.IPv6, btSquare) + IntToStr(Router.Port)) then
+      Result := True
     else
     begin
       if BridgesDic.TryGetValue(RouterID, BridgeInfo) then
       begin
         if BridgeInfo.Source <> '' then
-          Result := UsedBridgesList.ContainsKey(RemoveBrackets(BridgeInfo.Source, btSquare) + '|' + IntToStr(Router.Port));
+          Result := UsedBridgesList.ContainsKey(RemoveBrackets(BridgeInfo.Source, btSquare) + IntToStr(Router.Port));
       end;
     end;
   end;
@@ -13011,6 +13343,19 @@ begin
     cbxRoutersCountry.ItemIndex := Index;
 end;
 
+procedure TTcp.UpdateGeoFileID(ini: TMeminiFile = nil);
+begin
+  if GeoIpUpdating then
+  begin
+    GeoFileID := GetFileID(GeoIpFile).Data;
+    if Assigned(ini) then
+      SetSettings('Main', 'GeoFileID', GeoFileID, ini)
+    else
+      SetConfigString('Main', 'GeoFileID', GeoFileID);
+    GeoIpUpdating := False;
+  end;
+end;
+
 procedure TTcp.LoadFilterTotals;
 var
   Item: TPair<string, TRouterInfo>;
@@ -13271,12 +13616,12 @@ begin
       end;
       sgCircuitInfo.Cells[CIRC_INFO_PING, NodesCount] := PingData;
     end;
-    lbCircPurpose.Caption := sgCircuits.Cells[CIRC_PURPOSE, sgCircuits.SelRow];
+    lbCircuitPurpose.Caption := sgCircuits.Cells[CIRC_PURPOSE, sgCircuits.SelRow];
     lbDetailsTime.Caption := TransStr('221') + ': ' + DateTimeToStr(CircuitInfo.Date);
   end
   else
   begin
-    lbCircPurpose.Caption := TransStr('662');
+    lbCircuitPurpose.Caption := TransStr('662');
     lbDetailsTime.Caption := TransStr('221') + ': ' + TransStr('110');
     CheckCircuitExists(CircID);
   end;
@@ -13292,13 +13637,41 @@ end;
 
 procedure TTcp.CheckCircuitExists(CircID: string; UpdateStreamsCount: Boolean = False);
 var
-  Search, i: Integer;
+  Search, CircuitPurpose, LinkedSearch, i: Integer;
+  Item: TPair<string, string>;
+  LinkedCircID: string;
+  CircuitInfo: TCircuitInfo;
 begin
   if miCircuitsUpdateLow.Checked or miCircuitsUpdateManual.Checked or (ConnectState = 0) then
   begin
     Search := sgCircuits.Cols[CIRC_ID].IndexOf(CircID);
     if Search > 0 then
     begin
+      CircuitPurpose := StrToIntDef(SeparateRight(sgCircuits.Cells[CIRC_PARAMS, Search], '|'), -1);
+      if CircuitPurpose = CONFLUX_LINKED then
+      begin
+        LinkedCircID := '';
+        for Item in ConfluxLinks do
+        begin
+          if Item.Value = CircID then
+          begin
+            LinkedCircID := Item.Key;
+            Break;
+          end;
+        end;
+        if LinkedCircID <> '' then
+        begin
+          LinkedSearch := sgCircuits.Cols[CIRC_ID].IndexOf(LinkedCircID);
+          if LinkedSearch > 0 then
+          begin
+            if CircuitsDic.TryGetValue(LinkedCircID, CircuitInfo) then
+            begin
+              if CircuitInfo.Streams > 0 then
+                sgCircuits.Cells[CIRC_STREAMS, LinkedSearch] := IntToStr(CircuitInfo.Streams);
+            end;
+          end;
+        end;
+      end;
       sgCircuits.Cells[CIRC_STREAMS, Search] := EXCLUDE_CHAR;
       if (Search = sgCircuits.Row) and not IsEmptyGrid(sgStreams) then
       begin
@@ -13326,11 +13699,12 @@ begin
       begin
         sgCircuits.Cells[CIRC_STREAMS, sgCircuits.SelRow] := NONE_CHAR;
         if not IsEmptyGrid(sgStreams) then
+        begin
           for i := 1 to sgStreams.RowCount - 1 do
             sgStreams.Cells[STREAMS_COUNT, i] := EXCLUDE_CHAR;
+        end;
       end;
     end;
-
     if StrToIntDef(sgStreams.Cells[STREAMS_COUNT, sgStreams.SelRow], 0) > 0 then
     begin
       if TargetStreams = 0 then
@@ -13338,7 +13712,6 @@ begin
       else
         sgStreams.Cells[STREAMS_COUNT, sgStreams.SelRow] := IntToStr(TargetStreams);
     end;
-
     if not IsEmptyGrid(sgCircuits) then
       lbStreamsCount.Caption := TransStr('350') + ': ' + IntToStr(StreamsDic.Count);
   end;
@@ -13796,6 +14169,16 @@ begin
   udHTTPTunnelPort.Enabled := State;
   cbxHTTPTunnelHost.Enabled := State;
   EnableOptionButtons;
+end;
+
+procedure TTcp.cbHandlerParamsStateClick(Sender: TObject);
+begin
+  if cbHandlerParamsState.Focused then
+  begin
+    sgTransports.Cells[PT_PARAMS_STATE, sgTransports.SelRow] := BoolToStrDef(cbHandlerParamsState.Checked);
+    CheckTransportsControls;
+    EnableOptionButtons;
+  end;
 end;
 
 procedure TTcp.cbHsMaxStreamsClick(Sender: TObject);
@@ -14515,6 +14898,12 @@ begin
   UpdateBridgesControls(True, True);
 end;
 
+procedure TTcp.cbxBridgesTypeCloseUp(Sender: TObject);
+begin
+  if meBridges.CanFocus then
+    meBridges.SetFocus;
+end;
+
 procedure TTcp.cbxBridgesTypeKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
@@ -14917,10 +15306,7 @@ end;
 
 procedure TTcp.cbxHsStateChange(Sender: TObject);
 begin
-  case cbxHsState.ItemIndex of
-    HS_STATE_ENABLED: sgHs.Cells[HS_STATE, sgHs.SelRow] := SELECT_CHAR;
-    HS_STATE_DISABLED: sgHs.Cells[HS_STATE, sgHs.SelRow] := FAVERR_CHAR;
-  end;
+  sgHs.Cells[HS_STATE, sgHs.SelRow] := GetHsStateChar(cbxHsState.ItemIndex);
   EnableOptionButtons;
 end;
 
@@ -15264,8 +15650,8 @@ end;
 
 procedure TTcp.sbDecreaseFormClick(Sender: TObject);
 begin
-  CheckOptionsChanged;
-  DecreaseFormSize;
+  if CheckFilesChanged then
+    DecreaseFormSize;
 end;
 
 procedure TTcp.sbAutoScrollClick(Sender: TObject);
@@ -15832,9 +16218,11 @@ begin
     sgTransports.Row := sgTransports.RowCount - 1;
   end;
   sgTransports.Cells[PT_TRANSPORTS, sgTransports.SelRow] := 'transport';
-  sgTransports.Cells[PT_HANDLER, sgTransports.SelRow] := 'program.exe';
-  sgTransports.Cells[PT_Type, sgTransports.SelRow] := FAVERR_CHAR;
+  sgTransports.Cells[PT_HANDLER, sgTransports.SelRow] := 'transport.exe';
+  sgTransports.Cells[PT_Type, sgTransports.SelRow] := GetTransportChar(TRANSPORT_CLIENT);
   sgTransports.Cells[PT_PARAMS, sgTransports.SelRow] := '';
+  sgTransports.Cells[PT_PARAMS_STATE, sgTransports.SelRow] := '0';
+  sgTransports.Cells[PT_STATE, sgTransports.SelRow] := GetTransportStateChar(PT_STATE_AUTO);
   SelectTransports;
   EnableOptionButtons;
 end;
@@ -16111,7 +16499,7 @@ begin
     Param := 'get ipv6'
   else
   begin
-    if miRequestObfuscatedBridges.Checked then
+    if RequestBridgesType = REQUEST_TYPE_OBFUSCATED then
       Param := 'get transport obfs4'
     else
       Param := 'get vanilla';
@@ -16124,9 +16512,11 @@ begin
   SetConfigBoolean('Network', 'RequestIPv6Bridges', miRequestIPv6Bridges.Checked);
 end;
 
-procedure TTcp.miRequestObfuscatedBridgesClick(Sender: TObject);
+procedure TTcp.SetRequestBridgesType(Sender: TObject);
 begin
-  SetConfigBoolean('Network', 'RequestObfuscatedBridges', miRequestObfuscatedBridges.Checked);
+  TMenuItem(Sender).Checked := True;
+  RequestBridgesType := TMenuItem(Sender).Tag;
+  SetConfigInteger('Network', 'RequestBridgesType', RequestBridgesType);
 end;
 
 function TTCP.CheckCacheOpConfirmation(OpStr: string): Boolean;
@@ -16206,15 +16596,18 @@ procedure TTcp.miGetBridgesSiteClick(Sender: TObject);
 var
   Transport, IPv6: string;
 begin
-  if miRequestObfuscatedBridges.Checked then
-    Transport := 'transport=obfs4'
-  else
-    Transport := 'transport=0';
-  if miRequestIPv6Bridges.Checked then
+  case RequestBridgesType of
+    REQUEST_TYPE_VANILLA: Transport := '?transport=0';
+    REQUEST_TYPE_OBFUSCATED: Transport := '?transport=obfs4';
+    REQUEST_TYPE_WEBTUNNEL: Transport := '?transport=webtunnel';
+    else
+      Transport := '';
+  end;
+  if miRequestIPv6Bridges.Checked and (Transport <> '') then
     IPv6 := '&ipv6=yes'
   else
     IPv6 := '';
-  ShellOpen(GetDefaultsValue('BridgesSite', BRIDGES_SITE) + '?' + Transport + IPv6);
+  ShellOpen(GetDefaultsValue('BridgesSite', BRIDGES_SITE) + Transport + IPv6);
 end;
 
 procedure TTcp.miGetBridgesTelegramClick(Sender: TObject);
@@ -16228,16 +16621,18 @@ begin
   ShellOpen(Url + GetDefaultsValue('BridgesBot', BRIDGES_BOT));
 end;
 
-procedure TTcp.FindInFilter(IpAddr: string);
+procedure TTcp.FindInFilter(const IpAddr: string);
 var
   Index: Integer;
   GeoIpInfo: TGeoIpInfo;
+  IpStr: string;
 begin
-  if ValidAddress(IpAddr) <> atNone then
+  IpStr := GetAddressFromSocket(IpAddr);
+  if ValidAddress(IpStr) <> atNone then
   begin
     pcOptions.ActivePage := tsFilter;
     sbShowOptions.Click;
-    if GeoIpDic.TryGetValue(IpAddr, GeoIpInfo) then
+    if GeoIpDic.TryGetValue(IpStr, GeoIpInfo) then
       Index := sgFilter.Cols[FILTER_ID].IndexOf(CountryCodes[GeoIpInfo.cc])
     else
       Index := sgFilter.Cols[FILTER_ID].IndexOf('??');
@@ -16344,10 +16739,13 @@ procedure TTcp.TransportsEnable(State: Boolean);
 begin
   edTransports.Enabled := State;
   edTransportsHandler.Enabled := State;
+  cbxTRansportState.Enabled := State;
   cbxTRansportType.Enabled := State;
+  cbHandlerParamsState.Enabled := State;
   meHandlerParams.Enabled := State;
   lbTransports.Enabled := State;
   lbTransportsHandler.Enabled := State;
+  lbTransportState.Enabled := State;
   lbTransportType.Enabled := State;
   lbHandlerParams.Enabled := State;
 end;
@@ -16467,7 +16865,7 @@ begin
     sgHs.Cells[HS_VERSION, sgHs.SelRow] := '3';
     sgHs.Cells[HS_INTRO_POINTS, sgHs.SelRow] := '3';
     sgHs.Cells[HS_MAX_STREAMS, sgHs.SelRow] := NONE_CHAR;
-    sgHs.Cells[HS_STATE, sgHs.SelRow] := SELECT_CHAR;
+    sgHs.Cells[HS_STATE, sgHs.SelRow] := GetHsStateChar(HS_STATE_ENABLED);
     sgHs.Cells[HS_PORTS_DATA, sgHs.SelRow] := LOOPBACK_ADDRESS + ',' + DEFAULT_PORT + ',' + DEFAULT_PORT;
     ClearGrid(sgHsPorts);
     SelectHs;
@@ -17348,7 +17746,7 @@ begin
 
       if (WeightCount > 0) and ConfluxEnabled then
       begin
-        WeightAvg := Round(WeightSum / WeightCount);
+        WeightAvg := Round((WeightSum / WeightCount) * 0.25);
         for i := 0 to ExitNodes.Count - 1 do
         begin
           if RoutersDic.TryGetValue(ExitNodes[i], RouterInfo) then
@@ -17585,9 +17983,6 @@ begin
 
     if AutoSave then
     begin
-      if (UnknownFallbackDirCountriesCount > 0) and (ConnectState = 0) then
-        SetTorConfig('DisableNetwork', '1');
-
       if cbUseFallbackDirs.Checked then
         SetTorConfig('FallbackDir', ls)
       else
@@ -17626,11 +18021,19 @@ begin
 end;
 
 procedure TTcp.miAboutClick(Sender: TObject);
+var
+  Data: TPeData;
+  BitStr: string;
 begin
+  GetPeData(Paramstr(0), Data);
+  if Data.Bits <> 0 then
+    BitStr := ' (' + IntToStr(Data.Bits) + ' bit)'
+  else
+    BitStr := '';
   if ShowMsg(Format(TransStr('356'),
   [
     TransStr('105'),
-    GetFileVersionStr(Paramstr(0)),
+    GetFileVersionStr(Paramstr(0)) + BitStr,
     'Copyright © 2020-2023, abysshint',
     TransStr('357')
   ]), TransStr('355'), mtInfo, True) then
@@ -17810,28 +18213,19 @@ begin
   end;
 end;
 
+procedure TTcp.UpdateImagesPosition(ImageObject: TImage; TextObject: TLabel);
+begin
+  if CompareValue(Scale, 1.0, 0.01) = 0 then
+    ImageObject.Top := Round(TextObject.Top - 1 * Scale)
+  else
+    ImageObject.Top := Round(TextObject.Top + 1 * Scale)
+end;
+
 procedure TTcp.UpdateScaleFactor;
-var
-  Factor: Integer;
 begin
   Scale := 1.0;
-  if Screen.PixelsPerInch <> Screen.DefaultPixelsPerInch then
-    Scale := Screen.PixelsPerInch / Screen.DefaultPixelsPerInch
-  else
-  begin
-    if (Win32MajorVersion = 6) and (Win32MinorVersion = 3) then
-    begin
-      Factor := StrToIntDef(RegistryGetValue(HKEY_CURRENT_USER, 'Control Panel\Desktop', 'DesktopDPIOverride'), 0);
-      if Factor <> 0 then
-      begin
-        case Factor of
-          1: Scale := 1.25;
-          2: Scale := 1.50;
-          3: Scale := 2.0;
-        end;
-      end;
-    end;
-  end;
+  if PixelsPerInch <> USER_DEFAULT_SCREEN_DPI then
+    Scale := PixelsPerInch / USER_DEFAULT_SCREEN_DPI;
 
   sgHs.ColWidths[HS_VERSION] := Round(50 * Scale);
   sgHs.ColWidths[HS_INTRO_POINTS] := Round(80 * Scale);
@@ -17876,6 +18270,24 @@ begin
   sgTransports.ColWidths[PT_HANDLER] := Round(120 * Scale);
   sgTransports.ColWidths[PT_TYPE] := Round(37 * Scale);
   sgTransports.ColWidths[PT_PARAMS] := -1;
+  sgTransports.ColWidths[PT_PARAMS_STATE] := -1;
+  sgTransports.ColWidths[PT_STATE] := Round(24 * Scale);
+
+  UpdateImagesPosition(imFilterEntry, lbFilterEntry);
+  UpdateImagesPosition(imFilterMiddle, lbFilterMiddle);
+  UpdateImagesPosition(imFilterExit, lbFilterExit);
+  UpdateImagesPosition(imFilterExclude, lbFilterExclude);
+  UpdateImagesPosition(imCircuitPurpose, lbCircuitPurpose);
+
+  UpdateImagesPosition(imFavoritesEntry, lbFavoritesEntry);
+  UpdateImagesPosition(imFavoritesMiddle, lbFavoritesMiddle);
+  UpdateImagesPosition(imFavoritesExit, lbFavoritesExit);
+  UpdateImagesPosition(imExcludeNodes, lbExcludeNodes);
+  UpdateImagesPosition(imFavoritesTotal, lbFavoritesTotal);
+  UpdateImagesPosition(imFavoritesBridges, lbFavoritesBridges);
+  UpdateImagesPosition(imFavoritesFallbackDirs, lbFavoritesFallbackDirs);
+  UpdateImagesPosition(imSelectedRouters, lbSelectedRouters);
+
   CheckScannerControls;
   CheckCircuitsControls;
   CheckStreamsControls;
@@ -17895,7 +18307,6 @@ var
   i: Integer;
   Filter: TFilterInfo;
 begin
-  Time := GetTickCount;
   TorVersionProcess := cDefaultTProcessInfo;
   TorMainProcess := cDefaultTProcessInfo;
   LastTrayIconType := MAXWORD;
@@ -17964,6 +18375,7 @@ begin
   TransportsDic := TDictionary<string, TTransportInfo>.Create;
   BridgesDic := TDictionary<string, TBridgeInfo>.Create;
   DirFetches := TDictionary<string, TFetchInfo>.Create;
+  ConfluxLinks := TDictionary<string, string>.Create;
   TransportsList := TDictionary<string, Byte>.Create;
   UserScanList := TDictionary<string, Byte>.Create;
   RandomBridges := TStringList.Create;
@@ -18063,6 +18475,7 @@ begin
   sgStreamsInfo.ColsDefaultAlignment[STREAMS_INFO_BYTES_READ] := taRightJustify;
   sgStreamsInfo.ColsDefaultAlignment[STREAMS_INFO_BYTES_WRITTEN] := taRightJustify;
   sgTransports.ColsDefaultAlignment[PT_TYPE] := taCenter;
+  sgTransports.ColsDefaultAlignment[PT_STATE] := taCenter;
 
   sgFilter.ColsDataType[FILTER_TOTAL] := dtInteger;
   sgFilter.ColsDataType[FILTER_GUARD] := dtInteger;
@@ -18133,30 +18546,34 @@ begin
 end;
 
 procedure TTcp.ShowTimerEvent(Sender: TObject);
+var
+  FirstStart, Fail: Boolean;
 begin
-  if not FirstLoad then
+  FirstStart := TTimer(Sender).Tag and 1 <> 0;
+  Fail := TTimer(Sender).Tag and 2 <> 0;
+
+  if FirstStart then
   begin
-    if TTimer(Sender).Tag = 1 then
+    if not (cbxMinimizeOnEvent.ItemIndex in [MINIMIZE_ON_ALL, MINIMIZE_ON_STARTUP]) then
+      RestoreForm;
+    FreeAndNil(ShowTimer);
+  end
+  else
+  begin
+    if not Assigned(VersionChecker) then
     begin
-      if not Assigned(VersionChecker) then
-      begin
-        FreeAndNil(ShowTimer);
-        if TorVersion <> '0.0.0.0' then
-          StartTor
-        else
-          ShowMsg(TransStr('238'), '', mtWarning);
-      end;
-    end
-    else
-    begin
-      if not (cbxMinimizeOnEvent.ItemIndex in [MINIMIZE_ON_ALL, MINIMIZE_ON_STARTUP]) then
-        RestoreForm;
       FreeAndNil(ShowTimer);
+      if Fail then
+        ShowMsg(TransStr('238'), '', mtWarning)
+      else
+        StartTor;
     end;
   end;
 end;
 
-procedure TTcp.LoadOptions(FirstStart: Boolean);
+procedure TTcp.LoadOptions(FirstStart: Boolean; Fail: Boolean; StartTimer: Boolean = True);
+var
+  Params: Integer;
 begin
   if FirstStart then
     UpdateConfigVersion;
@@ -18165,11 +18582,15 @@ begin
   SupportBridgesTesting := SupportVanguardsLite;
   SupportConflux := CheckFileVersion(TorVersion, '0.4.8.1');
   ResetOptions;
-  if not Assigned(ShowTimer) then
+  if StartTimer and not Assigned(ShowTimer) and not FirstLoad then
   begin
+    Params := 0;
     ShowTimer := TTimer.Create(Tcp);
-    if not FirstStart then
-      ShowTimer.Tag := 1;
+    if FirstStart then
+      Inc(Params, 1);
+    if Fail then
+      Inc(Params, 2);
+    ShowTimer.Tag := Params;
     ShowTimer.OnTimer := ShowTimerEvent;
     ShowTimer.Interval := 25;
   end;
@@ -18177,7 +18598,6 @@ end;
 
 function TTCP.GetTorVersion(FirstStart: Boolean): Boolean;
 var
-  ErrorMode: DWORD;
   Fail: Boolean;
   i: Integer;
   ls: TStringList;
@@ -18185,6 +18605,7 @@ var
   ini: TMemIniFile;
   TempVersion: string;
   TorFileExists: Boolean;
+  TorFileData: TFileID;
 begin
   Result := True;
   Fail := True;
@@ -18213,46 +18634,45 @@ begin
       ls.Free;
     end;
 
-    if not Fail then
+    if Fail then
+      TorFileData := GetFileID(TorExeFile, TorFileExists)
+    else
     begin
+      TorFileData := GetFileID(TorExeFile, TorFileExists, TempVersion);
       ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
       try
         TorFileID := GetSettings('Main', 'TorFileID', '', ini);
       finally
         ini.Free;
       end;
-      if TorFileID = GetFileID(TorExeFile, TorFileExists, TempVersion) then
+      if TorFileID = TorFileData.Data then
       begin
         TorVersion := TempVersion;
-        LoadOptions(FirstStart);
+        LoadOptions(FirstStart, Fail);
         Exit;
       end
       else
         Fail := True;
     end;
-  end;
-
-  if TorFileExists then
+  end
+  else
+    TorFileData := GetFileID(TorExeFile, TorFileExists);
+  if TorFileExists and TorFileData.ExecSupport then
   begin
-    if not Assigned(GetProcAddress(GetModuleHandle('IPHLPAPI.DLL'), 'if_nametoindex')) then
-    begin
-      ErrorMode := SetErrorMode(SEM_FAILCRITICALERRORS);
-      SetErrorMode(ErrorMode or SEM_FAILCRITICALERRORS);
-    end;
     TorVersionProcess := ExecuteProcess(TorExeFile + ' --version', [pfHideWindow, pfReadStdOut], hJob);
     if TorVersionProcess.hProcess <> INVALID_HANDLE_VALUE then
     begin
-      CheckVersionStart(TorVersionProcess.hStdOutput, FirstStart);
       Fail := False;
+      CheckVersionStart(TorVersionProcess.hStdOutput, FirstStart);
     end;
-    SetErrorMode(0);
-  end;
 
+  end;
   if Fail then
   begin
     Result := False;
     TorVersion := '0.0.0.0';
-    LoadOptions(FirstStart);
+    if FirstStart then
+      LoadOptions(FirstStart, Fail);
   end;
 end;
 
@@ -18444,6 +18864,7 @@ begin
   tiTray.Free;
   StreamsDic.Free;
   CircuitsDic.Free;
+  ConfluxLinks.Free;
   FilterDic.Free;
   RoutersDic.Free;
   GeoIpDic.Free;
@@ -18782,7 +19203,7 @@ begin
     ls.LoadFromFile(TorStateFile);
     for i := ls.Count - 1 downto 0 do
     begin
-      if (Pos('Guard ' + TypeStr, ls[i]) = 1) then
+      if Pos('Guard ' + TypeStr, ls[i]) = 1 then
         ls.Delete(i);
     end;
     ls.SaveToFile(TorStateFile);
@@ -18790,14 +19211,6 @@ begin
   finally
     ls.Free;
   end;
-end;
-
-procedure TTcp.miUpdateIpToCountryCacheClick(Sender: TObject);
-begin
-  if not CheckCacheOpConfirmation(TMenuItem(Sender).Caption) then
-    Exit;
-  GeoIpUpdating := True;
-  InfoStage := 1;
 end;
 
 procedure TTcp.SetResetGuards(Sender: TObject);
@@ -18910,33 +19323,76 @@ end;
 procedure TTcp.miDestroyExitCircuitsClick(Sender: TObject);
 var
   Item: TPair<string, TCircuitInfo>;
-  ParseStr: ArrOfStr;
-  Temp: string;
+  ls: TStringList;
+  CommandStr: string;
   i: Integer;
 begin
   if (ConnectState <> 2) then
     Exit;
-    
-  Temp := '';
-  for Item in CircuitsDic do
-    if not (bfInternal in Item.Value.BuildFlags) then
-      Temp := Temp + ',' + Item.Key;
-  Delete(Temp, 1, 1);
-  
-  if Temp <> '' then
-  begin
-    btnChangeCircuit.Enabled := False;
-    miChangeCircuit.Enabled := False;
-    ParseStr := Explode(',', Temp);
-    Temp := '';
-    for i := 0 to Length(ParseStr) - 1 do
+  ls := TStringList.Create;
+  try
+    for Item in CircuitsDic do
     begin
-      CircuitsDic.Remove(ParseStr[i]);
-      Temp := Temp + BR + 'CLOSECIRCUIT ' + ParseStr[i];
+      if not (bfInternal in Item.Value.BuildFlags) then
+        ls.Append(Item.Key);
     end;
-    Delete(Temp, 1, Length(BR));
-    ShowCircuits;
-    SendCommand(Temp);
+    if ls.Count > 0 then
+    begin
+      btnChangeCircuit.Enabled := False;
+      miChangeCircuit.Enabled := False;
+      CommandStr := '';
+      for i := 0 to ls.Count - 1 do
+      begin
+        CloseCircuitInternal(ls[i]);
+        CommandStr := CommandStr + BR + 'CLOSECIRCUIT ' + ls[i];
+      end;
+      Delete(CommandStr, 1, Length(BR));
+      ShowCircuits;
+      SendCommand(CommandStr);
+    end;
+  finally
+    ls.Free;
+  end;
+end;
+
+function TTcp.CloseCircuitInternal(CircuitID: string): Boolean;
+var
+  CircuitInfo: TCircuitInfo;
+  StreamInfo: TStreamInfo;
+  LinkedCircID: string;
+  LinkedStreams: Integer;
+  Stream: TPair<string, TStreamInfo>;
+begin
+  Result := CircuitsDic.TryGetValue(CircuitID, CircuitInfo);
+  if Result then
+  begin
+    if CircuitInfo.PurposeID = CONFLUX_LINKED then
+    begin
+      if ConfluxLinks.TryGetValue(CircuitID, LinkedCircID) then
+      begin
+        if CircuitInfo.Streams > 0 then
+        begin
+          LinkedStreams := 0;
+          for Stream in StreamsDic do
+          begin
+            if Stream.Value.CircuitID = CircuitID then
+            begin
+              Inc(LinkedStreams);
+              StreamInfo := Stream.Value;
+              StreamInfo.CircuitID := LinkedCircID;
+              StreamsDic.AddOrSetValue(Stream.Key, StreamInfo);
+            end;
+          end;
+          if CircuitsDic.TryGetValue(LinkedCircID, CircuitInfo) then
+          begin
+            Inc(CircuitInfo.Streams, LinkedStreams);
+            CircuitsDic.AddOrSetValue(LinkedCircID, CircuitInfo);
+          end;
+        end;
+        ConfluxLinks.Remove(CircuitID);
+      end;
+    end;
+    CircuitsDic.Remove(CircuitID);
   end;
 end;
 
@@ -18944,11 +19400,8 @@ procedure TTcp.CloseCircuit(CircuitID: string; AutoUpdate: Boolean = True);
 begin
   if (CircuitID = '') or (ConnectState <> 2) then
     Exit;
-  if CircuitsDic.ContainsKey(CircuitID) then
-  begin
-    CircuitsDic.Remove(CircuitID);
+  if CloseCircuitInternal(CircuitID) then
     SendCommand('CLOSECIRCUIT ' + CircuitID);
-  end;
   if AutoUpdate then
     ShowCircuits;
 end;
@@ -19210,8 +19663,11 @@ begin
   begin
     if CircuitsDic.TryGetValue(StreamInfo.CircuitID, CircuitInfo) then
     begin
-      Dec(CircuitInfo.Streams);
-      CircuitsDic.AddOrSetValue(StreamInfo.CircuitID, CircuitInfo);
+      if CircuitInfo.Streams > 0 then
+      begin
+        Dec(CircuitInfo.Streams);
+        CircuitsDic.AddOrSetValue(StreamInfo.CircuitID, CircuitInfo);
+      end;
     end;
     StreamsDic.Remove(StreamID);
     SendCommand('CLOSESTREAM ' + StreamID + ' 1');

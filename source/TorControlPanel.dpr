@@ -13,7 +13,8 @@ uses
   ConstData in 'ConstData.pas';
 
 var
-  i, FH: Integer;
+  i, Locker: Integer;
+  AppDataDir, DataDir: string;
 
 {$IFDEF RELEASE}
   {$SETPEFlAGS
@@ -26,6 +27,9 @@ var
   {$WEAKLINKRTTI ON}
   {$RTTI EXPLICIT METHODS([]) PROPERTIES([]) FIELDS([])}
 {$ENDIF}
+
+{$SETPEOSVERSION 5.0}
+{$SETPESUBSYSVERSION 5.0}
 
 {$R *.res}
 
@@ -43,16 +47,18 @@ begin
     end;
   end;
   ProgramDir := ExtractShortPathName(GetCurrentDir + '\');
+  DataDir := ProgramDir + 'Data\' + UserProfile + '\';
+  AppDataDir := GetEnvironmentVariable('appdata') + '\Tcp\' + UserProfile + '\';
 
-  if IsDirectoryWritable(ProgramDir) then
-    UserDir := ProgramDir + 'Data\' + UserProfile + '\'
+  if IsDirectoryWritable(ProgramDir) and not DirectoryExists(AppDataDir) then
+    UserDir := DataDir
   else
-    UserDir := GetEnvironmentVariable('appdata') + '\Tcp\' + UserProfile + '\';
+    UserDir := AppDataDir;
 
   ForceDirectories(UserDir);
 
-  FH := FileCreate(UserDir + 'lock.tcp');
-  if FH = -1 then
+  Locker := FileCreate(UserDir + 'lock.tcp');
+  if Locker = -1 then
     Exit;
   UserDir := ExtractShortPathName(UserDir);
 

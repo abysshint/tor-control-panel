@@ -25,7 +25,7 @@ var
   CircuitsHeader: array [0..1] of string;
   StreamsHeader: array [0..0] of string;
   StreamsInfoHeader: array [0..2] of string;
-  TransportsHeader: array [0..3] of string;
+  TransportsHeader: array [0..4] of string;
   Prefixes: array[0..6] of string;
   LangStr: TDictionary<string, string>;
   LangIniFile: TMemIniFile;
@@ -229,6 +229,7 @@ begin
     LoadStr('181', 'Проверка переадресации портов');
     LoadStr('184', 'Разделение трафика: Ожидание');
     LoadStr('197', 'мин|минута|минуты|минут');
+    LoadStr('199', 'Состояние');
     LoadStr('203', 'Всего');
     LoadStr('204', 'Внимание! Отключение кэша каталога ускорит работу сервера, но ваш сервер никогда не станет сторожевым узлом. Хотите продолжить?');
     LoadStr('206', 'Обычный');
@@ -373,11 +374,11 @@ begin
     LoadStr('391', 'Плохой выходной узел');
     LoadStr('640', 'Только средний');
     LoadStr('392', 'Неизвестный флаг');
-    LoadStr('393', 'Транспорты,Обработчик,,Тип');
+    LoadStr('393', 'Транспорты,Обработчик,,,Тип');
     LoadStr('394', 'Список транспортов не может содержать пустые данные');
-    LoadStr('395', 'Не найден файл обработчика, скопируйте его в каталог транспортов и повторите');
+    LoadLns('395', 'Не найден файл обработчика "%s"\n\nСкопируйте его в каталог транспортов и повторите');
     LoadStr('396', 'Определение живых мостов');
-    LoadStr('397', 'Последняя поддерживаемая версия для вашей операционной системы: 0.4.4.6');
+    LoadStr('397', 'Запуск обработчика "%s" не поддерживается вашей операционной системой');
     LoadStr('398', 'Цифры в начале слова запрещены');
     LoadStr('399', 'Транспорт с таким названием и типом уже существует');
     LoadLns('400', '%s...\n\nДождитесь окончания и повторите попытку.');
@@ -393,6 +394,7 @@ begin
     LoadStr('470', 'шт');
     LoadStr('471', 'Приоритет');
     LoadStr('477', 'ч|час|часа|часов');
+    LoadLns('479', 'Настройки программы не удалось обновить до текущей версии. Возможно, у вас недостаточно прав на запись в каталог с программой.\n\nПопробуйте запустить программу от имени Администратора');
     LoadStr('495', 'Остановить сканирование');
     LoadStr('510', 'Все мосты');
     LoadStr('515', 'Выделять все ячейки в строке');
@@ -668,7 +670,7 @@ begin
     Tcp.lbHsVersion.Caption := Load('194', 'Версия протокола');
     Tcp.lbHsNumIntroductionPoints.Caption := Load('195', 'Точек входа');
     Tcp.lbHsSocket.Caption := Load('198', 'Сервис');
-    Tcp.lbHsState.Caption := Load('199', 'Состояние');
+    Tcp.lbHsState.Caption := TransStr('199');
     Tcp.lbHsVirtualPort.Caption := Load('200', 'Виртуальный порт');
     Tcp.gbHsEdit.Caption := Load('272', 'Панель редактирования');
     LoadList(Tcp.cbxHsState, '436', '"Включено","Выключено"');
@@ -725,6 +727,8 @@ begin
     Tcp.lbTransportsHandler.Caption := Load('463', 'Обработчик');
     Tcp.edTransportsHandler.TextHint := Load('464', 'Введите имя файла');
     Tcp.lbHandlerParams.Caption := Load('465', 'Параметры');
+    Tcp.lbTransportState.Caption := TransStr('199');
+    LoadList(Tcp.cbxTransportState, '689', '"Автовыбор","Включено","Выключено"');
     Tcp.lbTransportType.Caption := TransStr('151');
     LoadList(Tcp.cbxTransportType, '466', '"Клиент","Сервер","Совмещённый"');
 
@@ -836,7 +840,6 @@ begin
     Tcp.miServerInfo.Caption := TransStr('281');
 
     Tcp.miCacheOperations.Caption := Load('478', 'Операции с кэшем');
-    Tcp.miUpdateIpToCountryCache.Caption := Load('479', 'Обновить страны в сетевом кэше');
     Tcp.miClearDNSCache.Caption := Load('283', 'Очистить DNS-кэш');
     Tcp.miClearServerCache.Caption := Load('480', 'Очистить серверный кэш');
     Tcp.miClearBridgeCacheUnnecessary.Caption := Load('481', 'Очистить кэш от ненужных мостов');
@@ -876,7 +879,9 @@ begin
     Tcp.miGetBridgesTelegram.Caption := Load('502', 'Телеграм-канал');
     Tcp.miGetBridgesEmail.Caption := Load('503', 'Электронная почта');
     Tcp.miPreferWebTelegram.Caption := Load('504', 'Предпочитать веб-версию Телеграма');
-    Tcp.miRequestObfuscatedBridges.Caption := Load('505', 'Запрашивать обфусцированные мосты');
+    Tcp.miRequestObfuscatedBridges.Caption := Load('505', 'OBFS4 (обфусцирующие трафик)');
+    Tcp.miRequestVanillaBridges.Caption := Load('690', 'VANILLA (без подключаемых транспортов)');
+    Tcp.miRequestWebTunnelBridges.Caption := Load('691', 'WEBTUNNEL (имитирующие веб-активность)');
     Tcp.miRequestIPv6Bridges.Caption := Load('506', 'Запрашивать IPv6-мосты');
     Tcp.miCut.Caption := TransStr('276');
     Tcp.miCopy.Caption := TransStr('274');
@@ -1115,8 +1120,6 @@ begin
     Tcp.miResetTotalsCounter.Caption := Load('487', 'Сбросить счётчик трафика');
     Tcp.miTotalsCounter.Caption := Load('612', 'Счётчик трафика');
     Tcp.miEnableTotalsCounter.Caption := Load('613', 'Включить подсчёт');
-
-
 
     if ValidInt(TransStr('Locale'), 0, 65535) then
       CurrentLanguage := StrToInt(TransStr('Locale'))
@@ -1386,6 +1389,7 @@ begin
     LoadStr('jp','Япония');
     LoadStr('??','Неизвестная');
     LoadStr('eu','Европейский союз');
+    LoadStr('ap','Азиатско-Тихоокеанский регион');
 
   finally
     LangIniFile.Free;

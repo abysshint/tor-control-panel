@@ -15,6 +15,19 @@ const
   CREATE_BREAKAWAY_FROM_JOB = $01000000;
 
 type
+  TPeData = record
+    Bits: Byte;
+    CheckSum: Cardinal;
+    MajorOSVersion: Word;
+    MinorOSVersion: Word;
+    IsDLL: Boolean;
+  end;
+
+  TFileID = record
+    Data :string;
+    ExecSupport: Boolean;
+  end;
+
   TFallbackDir = record
     Hash: string;
     IPv4: string;
@@ -152,15 +165,14 @@ var
   function MemoToLine(Memo: TMemo; SortType: Byte = SORT_NONE; Separator: string = ','): string;
   procedure MemoToList(Memo: TMemo; SortType: Byte; out ls: TStringList);
   function MenuToInt(Menu: TMenuItem): Integer;
-  function GetTransportID(TypeStr: string): Byte;
-  function GetTransportChar(TransportID: Byte): string;
   function TryUpdateMask(var Mask: Word; Param: Word; Condition: Boolean): Boolean;
   function TryGetDataFromStr(Str: string; DataType: TListType; out DatatStr: string; Separator: string = ''): Boolean;
   function SampleDown(Data: ArrOfPoint; Threshold: Integer): ArrOfPoint;
   function FileTimeToDateTime(const FileTime: TFileTime): TDateTime;
   function GetPortsValue(const PortsData, PortStr: string): Integer;
   function GetBridgeIp(Bridge: TBridge): string;
-  function GetFileID(FileName: string; SkipFileExists: Boolean = False; ConstData: string = ''): string;
+  function GetFileID(FileName: string; SkipFileExists: Boolean = False; ConstData: string = ''): TFileID;
+  procedure GetPeData(FileName: string; var Data: TPEData);
   procedure SetPortsValue(IpStr, PortStr: string; Value: Integer);
   procedure DeleteFiles(const FileMask: string; TimeOffset: Integer = 0);
   procedure DeleteDir(const DirName: string);
@@ -198,6 +210,8 @@ var
   procedure GridShowHints(aSg: TStringGrid);
   procedure GridScrollCheck(aSg: TStringGrid; ACol, ColWidth: Integer);
   procedure GridSelectCell(aSg: TStringGrid; ACol, ARow: Integer);
+  function GetRouterStrFlags(Flags: TRouterFlags): string;
+  function GetRouterStrParams(const Params: Word; Flags: TRouterFlags): string;     
   procedure GridKeyDown(aSg: TStringGrid; Shift: TShiftState; var Key: Word);
   procedure GridSelectAll(aSg: TStringGrid);
   procedure GridCheckAutoPopup(aSg: TStringGrid; ARow: Integer; AllowEmptyRows: Boolean = False);
@@ -497,6 +511,7 @@ function GetBridgeIp(Bridge: TBridge): string;
 var
   BridgeInfo: TBridgeInfo;
   RouterInfo: TRouterInfo;
+  GeoIpInfo: TGeoIpInfo;
   BridgeID: string;
 begin
   BridgeID := Bridge.Hash;
@@ -529,10 +544,14 @@ begin
       end;
     end;
   end;
+  Result := Bridge.Ip;
+  if GeoIpDic.TryGetValue(Bridge.Ip, GeoIpInfo) then
+  begin
+    if GetPortsValue(GeoIpInfo.ports, IntToStr(Bridge.Port)) < -1 then
+      Exit;
+  end;
   if IpInRanges(Bridge.Ip, DocRanges) then
-    Result := ''
-  else
-    Result := Bridge.Ip;
+    Result := '';
 end;
 
 function BoolToStrDef(Value: Boolean): string;
@@ -657,8 +676,10 @@ begin
   if ACol in EN_COLS then
     ActivateKeyboardLayout(1033, 0)
   else
+  begin
     if ACol in LOCALE_COLS then
       ActivateKeyboardLayout(CurrentLanguage, 0);
+  end;
 end;
 
 procedure GridSelectCell(aSg: TStringGrid; ACol, ARow: Integer);
@@ -704,6 +725,52 @@ begin
       aSg.SelectAllState := False;  
     end;
   end;
+end;
+
+function GetRouterStrFlags(Flags: TRouterFlags): string;
+begin
+  Result := '';
+  if rfAuthority in Flags then Result := Result + 'Authority';
+  if rfBadExit in Flags then Result := Result + ' BadExit';
+  if rfExit in Flags then Result := Result + ' Exit';
+  if rfFast in Flags then Result := Result + ' Fast';
+  if rfGuard in Flags then Result := Result + ' Guard';
+  if rfHSDir in Flags then Result := Result + ' HSDir';
+  if rfMiddleOnly in Flags then Result := Result + ' MiddleOnly';
+  if rfStable in Flags then Result := Result + ' Stable';
+  if rfV2Dir in Flags then Result := Result + ' V2Dir';
+  Result := Trim(Result);
+end;
+
+function GetRouterStrParams(const Params: Word; Flags: TRouterFlags): string;
+  procedure InsertData(const Key: Word; Data: string);
+  begin
+    if Params and Key <> 0 then
+      Result := Result + Data;    
+  end;
+begin
+  Result := '';
+  if Params and ROUTER_BRIDGE <> 0 then
+  begin
+    if rfRelay in Flags then
+      Result := Result + 'BridgeRelay'
+    else
+    begin
+      if rfNoBridgeRelay in Flags then
+        Result := Result + 'NoBridgeRelay'
+      else
+        Result := Result + 'Bridge';
+    end;
+  end;
+  InsertData(ROUTER_AUTHORITY, ' Authority');
+  InsertData(ROUTER_ALIVE, ' Alive');
+  InsertData(ROUTER_REACHABLE_IPV6, ' IPv6');
+  InsertData(ROUTER_HS_DIR, ' HSDir');
+  InsertData(ROUTER_NOT_RECOMMENDED, ' NotRecommended');
+  InsertData(ROUTER_BAD_EXIT, ' BadExit');
+  InsertData(ROUTER_MIDDLE_ONLY, ' MiddleOnly');
+  InsertData(ROUTER_SUPPORT_CONFLUX, ' Conflux');
+  Result := Trim(Result);
 end;
 
 procedure GridKeyDown(aSg: TStringGrid; Shift: TShiftState; var Key: Word);
@@ -1442,6 +1509,7 @@ var
   SI: STARTUPINFO;
   PI: PROCESS_INFORMATION;
   CreationFlags: Cardinal;
+  ErrorMode: DWORD;
 begin
   Result := cDefaultTProcessInfo;
   UniqueString(CmdLine);
@@ -1467,6 +1535,8 @@ begin
     CreationFlags := CREATE_BREAKAWAY_FROM_JOB
   else
     CreationFlags := 0;
+  ErrorMode := SetErrorMode(SEM_FAILCRITICALERRORS);
+  SetErrorMode(ErrorMode or SEM_FAILCRITICALERRORS);
   if CreateProcess(nil, PWideChar(CmdLine), nil, nil, True, CreationFlags, nil, nil, SI, PI) then
   begin
     if JobHandle <> 0 then
@@ -1476,6 +1546,7 @@ begin
     Result.hProcess := PI.hProcess;
     Result.ProcessID := PI.dwProcessId;
   end;
+  SetErrorMode(0);
   if pfReadStdOut in Flags then
     CloseHandle(hStdOutWrite);
   CloseHandle(PI.hThread);
@@ -1851,7 +1922,7 @@ begin
       TorConfig.Delete(i);
   TorConfig.SaveToFile(TorConfigFile, EncodingNoBom);
   FreeAndNil(TorConfig);
-  TorrcFileID := GetFileID(TorConfigFile, True);
+  TorrcFileID := GetFileID(TorConfigFile, True).Data;
 end;
 
 function GetTorConfig(const Param, Default: string; Flags: TConfigFlags = []; ParamType: TParamType = ptString; MinValue: Integer = 0; MaxValue: Integer = 0; Prefix: string = ''): string;
@@ -3651,28 +3722,6 @@ begin
   Result := True;  
 end;
 
-function GetTransportID(TypeStr: string): Byte;
-begin
-  Result := TRANSPORT_CLIENT;
-  if Length(TypeStr) > 0 then
-  begin
-    case AnsiChar(TypeStr[1]) of
-      SELECT_CHAR: Result := TRANSPORT_SERVER;
-      BOTH_CHAR: Result := TRANSPORT_BOTH;
-    end;
-  end;
-end;
-
-function GetTransportChar(TransportID: Byte): string;
-begin
-  case TransportID of
-    TRANSPORT_SERVER: Result := SELECT_CHAR;
-    TRANSPORT_BOTH: Result := BOTH_CHAR;
-    else
-      Result := FAVERR_CHAR;
-  end;
-end;
-
 function TryParseTarget(TargetStr: string; out Target: TTarget): Boolean;
 var
   PortIndex, ExitIndex, HashIndex, TargetLength: Integer;
@@ -3753,14 +3802,11 @@ begin
           Continue;
         end;
       end;
-      if ValidTransport(ParseStr[i]) then
-      begin
-        Bridge.Transport := ParseStr[i];
-        Continue;
-      end;
       SocketType := ValidSocket(ParseStr[i]);
       if SocketType <> soNone then
       begin
+        if i = 1 then
+          Bridge.Transport := ParseStr[0];
         Bridge.Ip := GetAddressFromSocket(ParseStr[i], UseFormatHost);
         Bridge.Port := GetPortFromSocket(ParseStr[i]);
         Bridge.SocketType := SocketType;
@@ -3773,22 +3819,17 @@ begin
 end;
 
 function ValidTransport(TransportStr: string): Boolean;
-var
-  T: TTransportInfo;
 begin
-  if TransportsDic.TryGetValue(TransportStr, T) then
-  begin
-    Result := T.TransportID <> TRANSPORT_SERVER;
-    Exit;
-  end;
-  Result := False;
+  if TransportStr = '' then
+    Result := False
+  else
+    Result := CheckEditString(TransportStr, '_', False) = '';
 end;
 
 function ValidBridge(BridgeStr: string): Boolean;
 var
   ParseStr: ArrOfStr;
   ParamCount: Integer;
-  T: TTransportInfo;
 begin
   Result := False;
   BridgeStr := Trim(BridgeStr);
@@ -3798,13 +3839,21 @@ begin
   ParamCount := Length(ParseStr);
   if ParamCount > 1 then
   begin
-    if TransportsDic.TryGetValue(ParseStr[0], T) then
+    if ValidTransport(ParseStr[0]) then
     begin
-      if (T.TransportID <> TRANSPORT_SERVER) and (ValidSocket(ParseStr[1]) <> soNone) then
-        Result := True;
+      if ValidSocket(ParseStr[1]) <> soNone then
+      begin
+        if ParamCount > 2 then
+          Result := ValidHash(ParseStr[2]) or ValidKeyValue(ParseStr[2])
+        else
+          Result := True;
+      end;
     end
     else
-      Result := (ParamCount = 2) and ValidHash(ParseStr[1]) and (ValidSocket(ParseStr[0]) <> soNone);
+    begin
+      if ValidSocket(ParseStr[0]) <> soNone then
+        Result := ValidHash(ParseStr[1])
+    end;
   end
   else
     Result := ValidSocket(ParseStr[0]) <> soNone;
@@ -4109,21 +4158,82 @@ begin
   Result := -1;
 end;
 
-function GetFileID(FileName: string; SkipFileExists: Boolean = False; ConstData: string = ''): string;
+procedure GetPeData(FileName: string; var Data: TPEData);
+var
+  fs: TFilestream;
+  NtSignature: DWORD;
+  DosHeader: IMAGE_DOS_HEADER;
+  PeHeader: IMAGE_FILE_HEADER;
+  OptHeader: IMAGE_OPTIONAL_HEADER;
+begin
+  Data.Bits := 0;
+  Data.CheckSum := 0;
+  Data.MajorOSVersion := MAXWORD;
+  Data.MinorOSVersion := MAXWORD;
+  Data.IsDLL := False;
+  fs := TFilestream.Create(FileName, fmOpenread or fmShareDenyNone);
+  try
+    fs.Read(DosHeader, SizeOf(DosHeader));
+    if DosHeader.e_magic <> IMAGE_DOS_SIGNATURE then
+      Exit;
+    fs.Seek(DosHeader._lfanew, soFromBeginning);
+    fs.Read(NtSignature, SizeOf(NtSignature));
+    if NtSignature <> IMAGE_NT_SIGNATURE then
+      Exit;
+    fs.Read(PeHeader, SizeOf(PeHeader));
+    Data.IsDLL := PeHeader.Characteristics and IMAGE_FILE_DLL <> 0;
+    if PeHeader.SizeOfOptionalHeader > 0 then
+    begin
+      fs.Read(OptHeader, SizeOf(OptHeader));
+      Data.CheckSum := OptHeader.CheckSum;
+      Data.MajorOSVersion := OptHeader.MajorOperatingSystemVersion;
+      Data.MinorOSVersion := OptHeader.MinorOperatingSystemVersion;
+      case OptHeader.Magic of
+        $10b: Data.Bits := 32;
+        $20b: Data.Bits := 64;
+      end;
+    end;
+  finally
+    fs.Free;
+  end;
+end;
+
+function GetFileID(FileName: string; SkipFileExists: Boolean = False; ConstData: string = ''): TFileID;
 var
   F: TSearchRec;
+  PeData: TPeData;
+  OSBits: Integer;
 begin
-  Result := '-1';
+  Result.Data := '-1';
+  Result.ExecSupport := False;
   if SkipFileExists or FileExists(FileName) then
   begin
-    if FindFirst(FileName, faAnyFile, F) = 0 then
-    {$WARN SYMBOL_PLATFORM OFF}
-      Result := IntToHex(Crc32(AnsiString(IntToStr(F.Size)) + ':' +
-        AnsiString(IntToStr(DateTimeToUnix(F.TimeStamp))) + ':' +
-        AnsiString(IntToStr(DateTimeToUnix(FileTimeToDateTime(F.FindData.ftCreationTime)))) + ':' +
-        AnsiString(ConstData)));
-    {$WARN SYMBOL_PLATFORM ON}
-    FindClose(F);
+    try
+      if FindFirst(FileName, faAnyFile, F) = 0 then
+      begin
+        GetPeData(FileName, PeData);
+        case TOSVersion.Architecture of
+          arIntelX86: OSBits := 32;
+          arIntelX64: OSBits := 64;
+          else
+            OSBits := -1;
+        end;
+        Result.ExecSupport := (OSBits >= PeData.Bits) and not PeData.IsDLL and CheckFileVersion(
+          IntToStr(Win32MajorVersion) + '.' + IntToStr(Win32MinorVersion),
+          IntToStr(PeData.MajorOSVersion) + '.' + IntToStr(PeData.MinorOSVersion)
+        );
+        {$WARN SYMBOL_PLATFORM OFF}
+        Result.Data := IntToHex(Crc32(AnsiString(IntToStr(F.Size) +
+          IntToStr(DateTimeToUnix(F.TimeStamp)) +
+          IntToStr(DateTimeToUnix(FileTimeToDateTime(F.FindData.ftCreationTime))) +
+          IntToStr(DateTimeToUnix(FileTimeToDateTime(F.FindData.ftLastAccessTime))) +
+          IntToStr(PeData.CheckSum) + ConstData)
+        ));
+        {$WARN SYMBOL_PLATFORM ON}
+      end;
+    finally
+      FindClose(F);
+    end;
   end;
 end;
 

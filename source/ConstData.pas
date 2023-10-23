@@ -7,6 +7,7 @@ uses
 
 const
   BR = #13#10;
+  TAB = #9;
   SELECT_CHAR = '★';
   FAVERR_CHAR = '☆';
   BOTH_CHAR = '✿';
@@ -34,11 +35,11 @@ const
 
   LOOPBACK_ADDRESS = '127.0.0.1';
 
-  CURRENT_CONFIG_VERSION = 10;
+  CURRENT_CONFIG_VERSION = 11;
   MAX_SPEED_DATA_LENGTH = 24 * 60 * 60;
   BUFSIZE = 1024 * 1024;
 
-  MAX_COUNTRIES = 251;
+  MAX_COUNTRIES = 252;
   MAX_TOTALS = 7;
   MAX_RELAY_INFO_QUERY = 5;
 
@@ -72,6 +73,7 @@ const
   STOP_NORMAL = 0;
   STOP_CONFIG_ERROR = 1;
   STOP_AUTH_ERROR = 2;
+  STOP_HALT = 3;
 
   LP_OPTIONS = 0;
   LP_LOG = 1;
@@ -113,6 +115,10 @@ const
   BRIDGES_TYPE_USER = 1;
   BRIDGES_TYPE_FILE = 2;
 
+  REQUEST_TYPE_VANILLA = 1;
+  REQUEST_TYPE_OBFUSCATED = 2;
+  REQUEST_TYPE_WEBTUNNEL = 3;
+
   FALLBACK_TYPE_BUILTIN = 0;
   FALLBACK_TYPE_USER = 1;
 
@@ -150,6 +156,10 @@ const
 
   HS_STATE_ENABLED = 0;
   HS_STATE_DISABLED = 1;
+
+  PT_STATE_AUTO = 0;
+  PT_STATE_ENABLED = 1;
+  PT_STATE_DISABLED = 2;
 
   AUTOSCAN_AUTO = 0;
   AUTOSCAN_NEW_AND_FAILED = 1;
@@ -282,7 +292,9 @@ const
   PT_TRANSPORTS = 0;
   PT_HANDLER = 1;
   PT_PARAMS = 2;
-  PT_TYPE = 3;
+  PT_PARAMS_STATE = 3;
+  PT_TYPE = 4;
+  PT_STATE = 5;
 
   ROUTER_MIDDLE_ONLY = 1;
   ROUTER_BAD_EXIT = 2;
@@ -433,10 +445,10 @@ type
   TScanPurpose = (spNone, spNew, spFailed, spUserBridges, spUserFallbackDirs, spAll, spNewAndFailed, spNewAndAlive, spNewAndBridges, spBridges, spGuards, spAlive, spNewBridges, spAuto, spSelected);
   TProxyType = (ptNone, ptSocks, ptHttp, ptBoth);
   TBracketsType = (btCurly, btSquare, btRound);
-
   TConfigFlag = (cfAutoAppend, cfAutoSave, cfFindComments, cfExistCheck, cfMultiLine, cfBoolInvert);
   TConfigFlags = set of TConfigFlag;
-
+  TRouterFlag = (rfAuthority, rfBadExit, rfExit, rfFast, rfGuard, rfHSDir, rfStable, rfV2Dir, rfBridge, rfRelay, rfMiddleOnly, rfNoBridgeRelay);
+  TRouterFlags = set of TRouterFlag;
   TProcessFlag = (pfHideWindow, pfReadStdOut);
   TProcessFlags = set of TProcessFlag;
   TProcessInfo = record
@@ -483,7 +495,7 @@ var
     'si','sb','so','sd','sr','us','sl','tj','tw','th','tz','tc','tg','tk','to',
     'tt','tv','tn','tm','tr','ug','uz','ua','wf','uy','fo','fj','ph','fi','fk',
     'fr','pf','tf','hm','hr','cf','td','me','cz','cl','ch','se','sj','lk','ec',
-    'gq','er','ee','et','za','gs','ss','jm','jp','??','eu');
+    'gq','er','ee','et','za','gs','ss','jm','jp','??','eu','ap');
 
   PlotIntervals: array [0..8] of Integer = (
     60, 300, 900, 1800, 3600, 10800, 21600, 43200, 86400
