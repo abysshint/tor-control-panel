@@ -616,305 +616,6 @@ object Tcp: TTcp
       end
     end
   end
-  object paCircuits: TPanel
-    Left = 3
-    Top = 92
-    Width = 765
-    Height = 460
-    BevelInner = bvLowered
-    Color = clWindow
-    DoubleBuffered = True
-    ParentBackground = False
-    ParentDoubleBuffered = False
-    ShowCaption = False
-    TabOrder = 4
-    Visible = False
-    object lbDetailsTime: TLabel
-      Left = 593
-      Top = 10
-      Width = 160
-      Height = 13
-      Alignment = taRightJustify
-      Caption = #1044#1072#1090#1072' '#1089#1086#1079#1076#1072#1085#1080#1103': '#1053#1077' '#1086#1087#1088#1077#1076#1077#1083#1077#1085#1072
-      Transparent = True
-    end
-    object lbCircuitsCount: TLabel
-      Left = 12
-      Top = 10
-      Width = 80
-      Height = 13
-      Caption = #1062#1077#1087#1086#1095#1077#1082': 0 '#1080#1079' 0'
-      Transparent = True
-    end
-    object lbStreamsCount: TLabel
-      Left = 157
-      Top = 10
-      Width = 75
-      Height = 13
-      Alignment = taRightJustify
-      Caption = #1057#1086#1077#1076#1080#1085#1077#1085#1080#1081': 0'
-      Transparent = True
-    end
-    object lbCircuitPurpose: TLabel
-      Left = 261
-      Top = 10
-      Width = 77
-      Height = 13
-      Caption = #1053#1077' '#1086#1087#1088#1077#1076#1077#1083#1077#1085#1086
-      Transparent = True
-    end
-    object imCircuitPurpose: TImage
-      Left = 242
-      Top = 9
-      Width = 16
-      Height = 16
-      ParentShowHint = False
-      ShowHint = True
-    end
-    object sgStreamsInfo: TStringGrid
-      Tag = 8
-      Left = 243
-      Top = 340
-      Width = 510
-      Height = 109
-      ColCount = 6
-      DefaultRowHeight = 16
-      FixedCols = 0
-      RowCount = 2
-      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goDrawFocusSelected, goRowSelect, goThumbTracking, goFixedRowClick]
-      ParentShowHint = False
-      PopupMenu = mnStreamsInfo
-      ScrollBars = ssVertical
-      ShowHint = True
-      TabOrder = 3
-      OnDrawCell = sgStreamsInfoDrawCell
-      OnFixedCellClick = sgStreamsInfoFixedCellClick
-      OnKeyDown = sgStreamsInfoKeyDown
-      OnMouseDown = sgStreamsInfoMouseDown
-      OnMouseMove = sgStreamsInfoMouseMove
-      OnSelectCell = sgStreamsInfoSelectCell
-    end
-    object sgStreams: TStringGrid
-      Tag = 4
-      Left = 243
-      Top = 152
-      Width = 510
-      Height = 177
-      ColCount = 6
-      DefaultRowHeight = 16
-      FixedCols = 0
-      RowCount = 2
-      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goDrawFocusSelected, goRowSelect, goThumbTracking, goFixedRowClick]
-      ParentShowHint = False
-      PopupMenu = mnStreams
-      ScrollBars = ssVertical
-      ShowHint = True
-      TabOrder = 2
-      OnDblClick = sgStreamsDblClick
-      OnDrawCell = sgStreamsDrawCell
-      OnFixedCellClick = sgStreamsFixedCellClick
-      OnKeyDown = sgStreamsKeyDown
-      OnMouseDown = sgStreamsMouseDown
-      OnMouseMove = sgStreamsMouseMove
-      OnSelectCell = sgStreamsSelectCell
-    end
-    object sgCircuitInfo: TStringGrid
-      Tag = 7
-      Left = 243
-      Top = 33
-      Width = 510
-      Height = 108
-      ColCount = 7
-      DefaultRowHeight = 16
-      FixedCols = 0
-      RowCount = 2
-      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goDrawFocusSelected, goRowSelect, goThumbTracking]
-      ParentShowHint = False
-      PopupMenu = mnDetails
-      ScrollBars = ssNone
-      ShowHint = True
-      TabOrder = 1
-      OnDblClick = sgCircuitInfoDblClick
-      OnDrawCell = sgCircuitInfoDrawCell
-      OnKeyDown = sgCircuitInfoKeyDown
-      OnMouseDown = sgCircuitInfoMouseDown
-      OnMouseMove = sgCircuitInfoMouseMove
-      OnSelectCell = sgCircuitInfoSelectCell
-    end
-    object sgCircuits: TStringGrid
-      Tag = 3
-      Left = 12
-      Top = 33
-      Width = 220
-      Height = 416
-      ColCount = 7
-      DefaultRowHeight = 16
-      FixedCols = 0
-      RowCount = 2
-      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goDrawFocusSelected, goRowSelect, goThumbTracking, goFixedRowClick]
-      ParentShowHint = False
-      PopupMenu = mnCircuits
-      ScrollBars = ssVertical
-      ShowHint = True
-      TabOrder = 0
-      OnDrawCell = sgCircuitsDrawCell
-      OnFixedCellClick = sgCircuitsFixedCellClick
-      OnKeyDown = sgCircuitsKeyDown
-      OnMouseDown = sgCircuitsMouseDown
-      OnMouseMove = sgCircuitsMouseMove
-      OnSelectCell = sgCircuitsSelectCell
-    end
-  end
-  object paLog: TPanel
-    Left = 3
-    Top = 92
-    Width = 765
-    Height = 460
-    BevelInner = bvLowered
-    Color = clWindow
-    DoubleBuffered = True
-    ParentBackground = False
-    ParentDoubleBuffered = False
-    ShowCaption = False
-    TabOrder = 2
-    Visible = False
-    object sbAutoScroll: TSpeedButton
-      Left = 4
-      Top = 434
-      Width = 24
-      Height = 23
-      AllowAllUp = True
-      GroupIndex = 1
-      Down = True
-      Flat = True
-      ParentShowHint = False
-      ShowHint = True
-      OnClick = sbAutoScrollClick
-    end
-    object sbWordWrap: TSpeedButton
-      Left = 30
-      Top = 434
-      Width = 24
-      Height = 23
-      AllowAllUp = True
-      GroupIndex = 2
-      Flat = True
-      ParentShowHint = False
-      ShowHint = True
-      OnClick = sbWordWrapClick
-    end
-    object sbUseLinesLimit: TSpeedButton
-      Left = 685
-      Top = 434
-      Width = 24
-      Height = 23
-      AllowAllUp = True
-      GroupIndex = 4
-      Down = True
-      Flat = True
-      ParentShowHint = False
-      ShowHint = True
-      OnClick = sbUseLinesLimitClick
-    end
-    object lbLogLevel: TLabel
-      Left = 499
-      Top = 438
-      Width = 43
-      Height = 13
-      Alignment = taRightJustify
-      Caption = #1059#1088#1086#1074#1077#1085#1100
-      Transparent = True
-    end
-    object sbSafeLogging: TSpeedButton
-      Left = 659
-      Top = 434
-      Width = 24
-      Height = 23
-      AllowAllUp = True
-      GroupIndex = 3
-      Down = True
-      Flat = True
-      ParentShowHint = False
-      ShowHint = True
-      OnClick = sbSafeLoggingClick
-    end
-    object bvLog: TBevel
-      Left = 2
-      Top = 430
-      Width = 762
-      Height = 3
-      Shape = bsBottomLine
-    end
-    object meLog: TMemo
-      Left = 2
-      Top = 2
-      Width = 762
-      Height = 429
-      BorderStyle = bsNone
-      DoubleBuffered = True
-      HideSelection = False
-      ParentDoubleBuffered = False
-      PopupMenu = mnLog
-      ReadOnly = True
-      ScrollBars = ssVertical
-      TabOrder = 0
-      WordWrap = False
-      OnMouseUp = meLogMouseUp
-    end
-    object edLinesLimit: TEdit
-      Left = 711
-      Top = 435
-      Width = 38
-      Height = 21
-      Alignment = taCenter
-      MaxLength = 5
-      NumbersOnly = True
-      PopupMenu = EditMenu
-      TabOrder = 2
-      Text = '32768'
-      OnKeyDown = edLinesLimitKeyDown
-      OnMouseDown = edLinesLimitMouseDown
-    end
-    object udLinesLimit: TUpDown
-      Left = 749
-      Top = 435
-      Width = 13
-      Height = 21
-      HelpContext = 10
-      Associate = edLinesLimit
-      ArrowKeys = False
-      DoubleBuffered = True
-      Min = 1024
-      Max = 65536
-      Increment = 1024
-      ParentDoubleBuffered = False
-      Position = 32768
-      TabOrder = 3
-      Thousands = False
-      OnClick = udLinesLimitClick
-    end
-    object cbxLogLevel: TComboBox
-      Left = 545
-      Top = 435
-      Width = 112
-      Height = 21
-      AutoDropDown = True
-      Style = csDropDownList
-      DoubleBuffered = False
-      DropDownCount = 9
-      ItemIndex = 2
-      ParentDoubleBuffered = False
-      TabOrder = 1
-      Text = #1059#1074#1077#1076#1086#1084#1083#1077#1085#1080#1103
-      OnChange = cbxLogLevelChange
-      Items.Strings = (
-        #1054#1090#1083#1072#1076#1082#1072
-        #1048#1085#1092#1086#1088#1084#1072#1094#1080#1103
-        #1059#1074#1077#1076#1086#1084#1083#1077#1085#1080#1103
-        #1055#1088#1077#1076#1091#1087#1088#1077#1078#1076#1077#1085#1080#1103
-        #1054#1096#1080#1073#1082#1080)
-    end
-  end
   object paRouters: TPanel
     Left = 3
     Top = 92
@@ -1219,6 +920,306 @@ object Tcp: TTcp
       TabOrder = 6
       OnChange = edRoutersQueryChange
       OnKeyDown = edRoutersQueryKeyDown
+    end
+  end
+  object paLog: TPanel
+    Left = 3
+    Top = 92
+    Width = 765
+    Height = 460
+    BevelInner = bvLowered
+    Color = clWindow
+    DoubleBuffered = True
+    ParentBackground = False
+    ParentDoubleBuffered = False
+    ShowCaption = False
+    TabOrder = 2
+    Visible = False
+    object sbAutoScroll: TSpeedButton
+      Left = 4
+      Top = 434
+      Width = 24
+      Height = 23
+      AllowAllUp = True
+      GroupIndex = 1
+      Down = True
+      Flat = True
+      ParentShowHint = False
+      ShowHint = True
+      OnClick = sbAutoScrollClick
+    end
+    object sbWordWrap: TSpeedButton
+      Left = 30
+      Top = 434
+      Width = 24
+      Height = 23
+      AllowAllUp = True
+      GroupIndex = 2
+      Flat = True
+      ParentShowHint = False
+      ShowHint = True
+      OnClick = sbWordWrapClick
+    end
+    object sbUseLinesLimit: TSpeedButton
+      Left = 685
+      Top = 434
+      Width = 24
+      Height = 23
+      AllowAllUp = True
+      GroupIndex = 4
+      Down = True
+      Flat = True
+      ParentShowHint = False
+      ShowHint = True
+      OnClick = sbUseLinesLimitClick
+    end
+    object lbLogLevel: TLabel
+      Left = 499
+      Top = 438
+      Width = 43
+      Height = 13
+      Alignment = taRightJustify
+      Caption = #1059#1088#1086#1074#1077#1085#1100
+      Transparent = True
+    end
+    object sbSafeLogging: TSpeedButton
+      Left = 659
+      Top = 434
+      Width = 24
+      Height = 23
+      AllowAllUp = True
+      GroupIndex = 3
+      Down = True
+      Flat = True
+      ParentShowHint = False
+      ShowHint = True
+      OnClick = sbSafeLoggingClick
+    end
+    object bvLog: TBevel
+      Left = 2
+      Top = 430
+      Width = 762
+      Height = 3
+      Shape = bsBottomLine
+    end
+    object edLinesLimit: TEdit
+      Left = 711
+      Top = 435
+      Width = 38
+      Height = 21
+      Alignment = taCenter
+      MaxLength = 5
+      NumbersOnly = True
+      PopupMenu = EditMenu
+      TabOrder = 2
+      Text = '32768'
+      OnKeyDown = edLinesLimitKeyDown
+      OnMouseDown = edLinesLimitMouseDown
+    end
+    object udLinesLimit: TUpDown
+      Left = 749
+      Top = 435
+      Width = 13
+      Height = 21
+      HelpContext = 10
+      Associate = edLinesLimit
+      ArrowKeys = False
+      DoubleBuffered = True
+      Min = 1024
+      Max = 65536
+      Increment = 1024
+      ParentDoubleBuffered = False
+      Position = 32768
+      TabOrder = 3
+      Thousands = False
+      OnClick = udLinesLimitClick
+    end
+    object cbxLogLevel: TComboBox
+      Left = 545
+      Top = 435
+      Width = 112
+      Height = 21
+      AutoDropDown = True
+      Style = csDropDownList
+      DoubleBuffered = False
+      DropDownCount = 9
+      ItemIndex = 2
+      ParentDoubleBuffered = False
+      TabOrder = 1
+      Text = #1059#1074#1077#1076#1086#1084#1083#1077#1085#1080#1103
+      OnChange = cbxLogLevelChange
+      Items.Strings = (
+        #1054#1090#1083#1072#1076#1082#1072
+        #1048#1085#1092#1086#1088#1084#1072#1094#1080#1103
+        #1059#1074#1077#1076#1086#1084#1083#1077#1085#1080#1103
+        #1055#1088#1077#1076#1091#1087#1088#1077#1078#1076#1077#1085#1080#1103
+        #1054#1096#1080#1073#1082#1080)
+    end
+    object meLog: TMemo
+      Left = 4
+      Top = 2
+      Width = 760
+      Height = 429
+      BorderStyle = bsNone
+      DoubleBuffered = True
+      HideSelection = False
+      ParentDoubleBuffered = False
+      PopupMenu = mnLog
+      ReadOnly = True
+      ScrollBars = ssVertical
+      TabOrder = 0
+      WordWrap = False
+      OnMouseUp = meLogMouseUp
+    end
+  end
+  object paCircuits: TPanel
+    Left = 3
+    Top = 92
+    Width = 765
+    Height = 460
+    BevelInner = bvLowered
+    Color = clWindow
+    DoubleBuffered = True
+    ParentBackground = False
+    ParentDoubleBuffered = False
+    ShowCaption = False
+    TabOrder = 4
+    Visible = False
+    object lbDetailsTime: TLabel
+      Left = 593
+      Top = 10
+      Width = 160
+      Height = 13
+      Alignment = taRightJustify
+      Caption = #1044#1072#1090#1072' '#1089#1086#1079#1076#1072#1085#1080#1103': '#1053#1077' '#1086#1087#1088#1077#1076#1077#1083#1077#1085#1072
+      Transparent = True
+    end
+    object lbCircuitsCount: TLabel
+      Left = 12
+      Top = 10
+      Width = 80
+      Height = 13
+      Caption = #1062#1077#1087#1086#1095#1077#1082': 0 '#1080#1079' 0'
+      Transparent = True
+    end
+    object lbStreamsCount: TLabel
+      Left = 157
+      Top = 10
+      Width = 75
+      Height = 13
+      Alignment = taRightJustify
+      Caption = #1057#1086#1077#1076#1080#1085#1077#1085#1080#1081': 0'
+      Transparent = True
+    end
+    object lbCircuitPurpose: TLabel
+      Left = 261
+      Top = 10
+      Width = 77
+      Height = 13
+      Caption = #1053#1077' '#1086#1087#1088#1077#1076#1077#1083#1077#1085#1086
+      Transparent = True
+    end
+    object imCircuitPurpose: TImage
+      Left = 242
+      Top = 9
+      Width = 16
+      Height = 16
+      ParentShowHint = False
+      ShowHint = True
+    end
+    object sgStreamsInfo: TStringGrid
+      Tag = 8
+      Left = 243
+      Top = 340
+      Width = 510
+      Height = 109
+      ColCount = 6
+      DefaultRowHeight = 16
+      FixedCols = 0
+      RowCount = 2
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goDrawFocusSelected, goRowSelect, goThumbTracking, goFixedRowClick]
+      ParentShowHint = False
+      PopupMenu = mnStreamsInfo
+      ScrollBars = ssVertical
+      ShowHint = True
+      TabOrder = 3
+      OnDrawCell = sgStreamsInfoDrawCell
+      OnFixedCellClick = sgStreamsInfoFixedCellClick
+      OnKeyDown = sgStreamsInfoKeyDown
+      OnMouseDown = sgStreamsInfoMouseDown
+      OnMouseMove = sgStreamsInfoMouseMove
+      OnSelectCell = sgStreamsInfoSelectCell
+    end
+    object sgStreams: TStringGrid
+      Tag = 4
+      Left = 243
+      Top = 152
+      Width = 510
+      Height = 177
+      ColCount = 6
+      DefaultRowHeight = 16
+      FixedCols = 0
+      RowCount = 2
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goDrawFocusSelected, goRowSelect, goThumbTracking, goFixedRowClick]
+      ParentShowHint = False
+      PopupMenu = mnStreams
+      ScrollBars = ssVertical
+      ShowHint = True
+      TabOrder = 2
+      OnDblClick = sgStreamsDblClick
+      OnDrawCell = sgStreamsDrawCell
+      OnFixedCellClick = sgStreamsFixedCellClick
+      OnKeyDown = sgStreamsKeyDown
+      OnKeyUp = sgStreamsKeyUp
+      OnMouseDown = sgStreamsMouseDown
+      OnMouseMove = sgStreamsMouseMove
+      OnSelectCell = sgStreamsSelectCell
+    end
+    object sgCircuitInfo: TStringGrid
+      Tag = 7
+      Left = 243
+      Top = 33
+      Width = 510
+      Height = 108
+      ColCount = 7
+      DefaultRowHeight = 16
+      FixedCols = 0
+      RowCount = 2
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goDrawFocusSelected, goRowSelect, goThumbTracking]
+      ParentShowHint = False
+      PopupMenu = mnDetails
+      ScrollBars = ssNone
+      ShowHint = True
+      TabOrder = 1
+      OnDblClick = sgCircuitInfoDblClick
+      OnDrawCell = sgCircuitInfoDrawCell
+      OnKeyDown = sgCircuitInfoKeyDown
+      OnMouseDown = sgCircuitInfoMouseDown
+      OnMouseMove = sgCircuitInfoMouseMove
+      OnSelectCell = sgCircuitInfoSelectCell
+    end
+    object sgCircuits: TStringGrid
+      Tag = 3
+      Left = 12
+      Top = 33
+      Width = 220
+      Height = 416
+      ColCount = 7
+      DefaultRowHeight = 16
+      FixedCols = 0
+      RowCount = 2
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goDrawFocusSelected, goRowSelect, goThumbTracking, goFixedRowClick]
+      ParentShowHint = False
+      PopupMenu = mnCircuits
+      ScrollBars = ssVertical
+      ShowHint = True
+      TabOrder = 0
+      OnDrawCell = sgCircuitsDrawCell
+      OnFixedCellClick = sgCircuitsFixedCellClick
+      OnKeyDown = sgCircuitsKeyDown
+      OnMouseDown = sgCircuitsMouseDown
+      OnMouseMove = sgCircuitsMouseMove
+      OnSelectCell = sgCircuitsSelectCell
     end
   end
   object pcOptions: TPageControl
@@ -2805,7 +2806,7 @@ object Tcp: TTcp
         DefaultRowHeight = 16
         FixedCols = 0
         RowCount = 2
-        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goDrawFocusSelected, goRowSelect, goThumbTracking, goFixedRowClick]
+        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goDrawFocusSelected, goRowSelect, goThumbTracking, goFixedRowClick]
         ParentShowHint = False
         PopupMenu = mnFilter
         ScrollBars = ssVertical
@@ -3575,7 +3576,7 @@ object Tcp: TTcp
         DefaultRowHeight = 16
         FixedCols = 0
         RowCount = 2
-        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goDrawFocusSelected, goRowSelect, goThumbTracking]
+        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goDrawFocusSelected, goRowSelect, goThumbTracking]
         ParentShowHint = False
         PopupMenu = mnHs
         ScrollBars = ssVertical
@@ -3597,7 +3598,7 @@ object Tcp: TTcp
         DefaultRowHeight = 16
         FixedCols = 0
         RowCount = 2
-        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goDrawFocusSelected, goRowSelect, goThumbTracking]
+        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goDrawFocusSelected, goRowSelect, goThumbTracking]
         ParentShowHint = False
         PopupMenu = mnHs
         ScrollBars = ssVertical
@@ -4775,7 +4776,7 @@ object Tcp: TTcp
           DefaultRowHeight = 16
           FixedCols = 0
           RowCount = 2
-          Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goDrawFocusSelected, goRowSelect, goThumbTracking]
+          Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goDrawFocusSelected, goRowSelect, goThumbTracking]
           ParentShowHint = False
           PopupMenu = mnTransports
           ScrollBars = ssVertical
@@ -4919,42 +4920,6 @@ object Tcp: TTcp
           Width = 18
           Height = 13
           Caption = #1096#1090'.'
-          Transparent = True
-        end
-        object lbAutoSelEntry: TLabel
-          Left = 22
-          Top = 23
-          Width = 45
-          Height = 13
-          Alignment = taRightJustify
-          Caption = #1042#1093#1086#1076#1085#1099#1077
-          Transparent = True
-        end
-        object lbAutoSelMiddle: TLabel
-          Left = 23
-          Top = 47
-          Width = 44
-          Height = 13
-          Alignment = taRightJustify
-          Caption = #1057#1088#1077#1076#1085#1080#1077
-          Transparent = True
-        end
-        object lbAutoSelExit: TLabel
-          Left = 14
-          Top = 71
-          Width = 53
-          Height = 13
-          Alignment = taRightJustify
-          Caption = #1042#1099#1093#1086#1076#1085#1099#1077
-          Transparent = True
-        end
-        object lbAutoSelFallbackDir: TLabel
-          Left = 19
-          Top = 95
-          Width = 48
-          Height = 13
-          Alignment = taRightJustify
-          Caption = #1050#1072#1090#1072#1083#1086#1075#1080
           Transparent = True
         end
         object lbAutoSelMaxPing: TLabel
@@ -5189,44 +5154,56 @@ object Tcp: TTcp
         end
         object cbAutoSelEntryEnabled: TCheckBox
           Tag = 1
-          Left = 70
+          Left = 3
           Top = 22
-          Width = 15
+          Width = 80
           Height = 17
+          BiDiMode = bdRightToLeft
+          Caption = #1042#1093#1086#1076#1085#1099#1077
           Checked = True
+          ParentBiDiMode = False
           State = cbChecked
           TabOrder = 0
           OnClick = AutoSelOptionsUpdate
         end
         object cbAutoSelMiddleEnabled: TCheckBox
           Tag = 2
-          Left = 70
+          Left = 3
           Top = 46
-          Width = 15
+          Width = 80
           Height = 17
+          BiDiMode = bdRightToLeft
+          Caption = #1057#1088#1077#1076#1085#1080#1077
           Checked = True
+          ParentBiDiMode = False
           State = cbChecked
           TabOrder = 3
           OnClick = AutoSelOptionsUpdate
         end
         object cbAutoSelExitEnabled: TCheckBox
           Tag = 4
-          Left = 70
+          Left = 3
           Top = 70
-          Width = 15
+          Width = 80
           Height = 17
+          BiDiMode = bdRightToLeft
+          Caption = #1042#1099#1093#1086#1076#1085#1099#1077
           Checked = True
+          ParentBiDiMode = False
           State = cbChecked
           TabOrder = 6
           OnClick = AutoSelOptionsUpdate
         end
         object cbAutoSelFallbackDirEnabled: TCheckBox
           Tag = 8
-          Left = 70
+          Left = 3
           Top = 94
-          Width = 15
+          Width = 80
           Height = 17
+          BiDiMode = bdRightToLeft
+          Caption = #1050#1072#1090#1072#1083#1086#1075#1080
           Checked = True
+          ParentBiDiMode = False
           State = cbChecked
           TabOrder = 9
           OnClick = AutoSelOptionsUpdate
@@ -5324,7 +5301,7 @@ object Tcp: TTcp
   object tiTray: TTrayIcon
     Icons = lsTray
     PopupMenu = mnTray
-    OnClick = tiTrayClick
+    OnMouseDown = tiTrayMouseDown
     Left = 721
     Top = 336
   end
@@ -5557,6 +5534,7 @@ object Tcp: TTcp
       object miOpenLogsFolder: TMenuItem
         Caption = #1055#1077#1088#1077#1081#1090#1080' '#1074' '#1082#1072#1090#1072#1083#1086#1075' '#1078#1091#1088#1085#1072#1083#1086#1074
         ImageIndex = 39
+        ShortCut = 16452
         OnClick = miOpenLogsFolderClick
       end
     end
@@ -6027,20 +6005,20 @@ object Tcp: TTcp
       end
       object miRequestObfuscatedBridges: TMenuItem
         Tag = 2
-        Caption = 'OBFS4 ('#1054#1073#1092#1091#1089#1094#1080#1088#1091#1102#1097#1080#1077' '#1090#1088#1072#1092#1080#1082')'
+        Caption = #1054#1073#1092#1091#1089#1094#1080#1088#1091#1102#1097#1080#1077' '#1090#1088#1072#1092#1080#1082
         Checked = True
         RadioItem = True
         OnClick = SetRequestBridgesType
       end
       object miRequestVanillaBridges: TMenuItem
         Tag = 1
-        Caption = 'VANILLA ('#1041#1077#1079' '#1087#1086#1076#1082#1083#1102#1095#1072#1077#1084#1099#1093' '#1090#1088#1072#1085#1089#1087#1086#1088#1090#1086#1074')'
+        Caption = #1041#1077#1079' '#1087#1086#1076#1082#1083#1102#1095#1072#1077#1084#1099#1093' '#1090#1088#1072#1085#1089#1087#1086#1088#1090#1086#1074
         RadioItem = True
         OnClick = SetRequestBridgesType
       end
       object miRequestWebTunnelBridges: TMenuItem
         Tag = 3
-        Caption = 'WEBTUNNEL ('#1048#1084#1080#1090#1080#1088#1091#1102#1097#1080#1077' '#1074#1077#1073'-'#1072#1082#1090#1080#1074#1085#1086#1089#1090#1100')'
+        Caption = #1048#1084#1080#1090#1080#1088#1091#1102#1097#1080#1077' '#1074#1077#1073'-'#1072#1082#1090#1080#1074#1085#1086#1089#1090#1100
         RadioItem = True
         OnClick = SetRequestBridgesType
       end
@@ -6266,9 +6244,18 @@ object Tcp: TTcp
     OnPopup = mnHsPopup
     Left = 403
     Top = 1
+    object miHsOpenInBrowser: TMenuItem
+      Caption = #1054#1090#1082#1088#1099#1090#1100' '#1074' '#1073#1088#1072#1091#1079#1077#1088#1077
+      ImageIndex = 25
+      OnClick = miHsOpenInBrowserClick
+    end
+    object miDelimiter71: TMenuItem
+      Caption = '-'
+    end
     object miHsOpenDir: TMenuItem
       Caption = #1050#1072#1090#1072#1083#1086#1075' '#1089#1077#1088#1074#1080#1089#1072
       ImageIndex = 39
+      ShortCut = 16452
       Visible = False
       OnClick = miHsOpenDirClick
     end
@@ -6288,11 +6275,13 @@ object Tcp: TTcp
     object miHsInsert: TMenuItem
       Caption = #1044#1086#1073#1072#1074#1080#1090#1100
       ImageIndex = 19
+      ShortCut = 45
       OnClick = miHsInsertClick
     end
     object miHsDelete: TMenuItem
       Caption = #1059#1076#1072#1083#1080#1090#1100
       ImageIndex = 17
+      ShortCut = 46
       OnClick = miHsDeleteClick
     end
     object miDelimiter9: TMenuItem
@@ -6301,6 +6290,7 @@ object Tcp: TTcp
     object miHsClear: TMenuItem
       Caption = #1054#1095#1080#1089#1090#1080#1090#1100
       ImageIndex = 13
+      ShortCut = 8238
       OnClick = miHsClearClick
     end
   end
@@ -6684,6 +6674,10 @@ object Tcp: TTcp
     OnPopup = mnCircuitsPopup
     Left = 562
     Top = 1
+    object miCircuitsDestroyLock: TMenuItem
+      Caption = #1059#1085#1080#1095#1090#1086#1078#1080#1090#1100
+      ImageIndex = 3
+    end
     object miCircuitsDestroy: TMenuItem
       Caption = #1059#1085#1080#1095#1090#1086#1078#1080#1090#1100
       ImageIndex = 3
@@ -7025,6 +7019,10 @@ object Tcp: TTcp
     object miDelimiter28: TMenuItem
       Caption = '-'
     end
+    object miStreamsExtractData: TMenuItem
+      Caption = #1048#1079#1074#1083#1077#1095#1100' '#1076#1072#1085#1085#1099#1077
+      ImageIndex = 71
+    end
     object miStreamsSort: TMenuItem
       Caption = #1057#1086#1088#1090#1080#1088#1086#1074#1082#1072
       ImageIndex = 10
@@ -7093,6 +7091,10 @@ object Tcp: TTcp
     object miDelimiter42: TMenuItem
       Caption = '-'
     end
+    object miStreamsInfoExtractData: TMenuItem
+      Caption = #1048#1079#1074#1083#1077#1095#1100' '#1076#1072#1085#1085#1099#1077
+      ImageIndex = 71
+    end
     object miStreamsInfoSort: TMenuItem
       Caption = #1057#1086#1088#1090#1080#1088#1086#1074#1082#1072
       ImageIndex = 10
@@ -7154,11 +7156,13 @@ object Tcp: TTcp
     object miTransportsInsert: TMenuItem
       Caption = #1044#1086#1073#1072#1074#1080#1090#1100
       ImageIndex = 19
+      ShortCut = 45
       OnClick = miTransportsInsertClick
     end
     object miTransportsDelete: TMenuItem
       Caption = #1059#1076#1072#1083#1080#1090#1100
       ImageIndex = 17
+      ShortCut = 46
       OnClick = miTransportsDeleteClick
     end
     object miDelimiter52: TMenuItem
@@ -7167,6 +7171,7 @@ object Tcp: TTcp
     object miTransportsOpenDir: TMenuItem
       Caption = #1050#1072#1090#1072#1083#1086#1075' '#1090#1088#1072#1085#1089#1087#1086#1088#1090#1086#1074
       ImageIndex = 39
+      ShortCut = 16452
       OnClick = miTransportsOpenDirClick
     end
     object miTransportsReset: TMenuItem
@@ -7180,6 +7185,7 @@ object Tcp: TTcp
     object miTransportsClear: TMenuItem
       Caption = #1054#1095#1080#1089#1090#1080#1090#1100
       ImageIndex = 13
+      ShortCut = 8238
       OnClick = miTransportsClearClick
     end
   end
@@ -7291,5 +7297,12 @@ object Tcp: TTcp
   object OpenDialog: TOpenDialog
     Left = 677
     Top = 377
+  end
+  object Timer1: TTimer
+    Enabled = False
+    Interval = 2000
+    OnTimer = Timer1Timer
+    Left = 674
+    Top = 430
   end
 end

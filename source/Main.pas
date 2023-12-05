@@ -773,7 +773,6 @@ type
     miLogSeparateDay: TMenuItem;
     miDelimiter58: TMenuItem;
     miReverseConditions: TMenuItem;
-    miStopScan: TMenuItem;
     miStartScan: TMenuItem;
     miScanNewNodes: TMenuItem;
     miScanCachedBridges: TMenuItem;
@@ -782,7 +781,6 @@ type
     miManualDetectAliveNodes: TMenuItem;
     miManualPingMeasure: TMenuItem;
     gbAutoSelectRouters: TGroupBox;
-    miDelimiter61: TMenuItem;
     miClearMenuCached: TMenuItem;
     miClearBridgeCacheUnnecessary: TMenuItem;
     miDelimiter62: TMenuItem;
@@ -975,10 +973,6 @@ type
     cbAutoSelMiddleEnabled: TCheckBox;
     cbAutoSelExitEnabled: TCheckBox;
     cbAutoSelFallbackDirEnabled: TCheckBox;
-    lbAutoSelEntry: TLabel;
-    lbAutoSelMiddle: TLabel;
-    lbAutoSelExit: TLabel;
-    lbAutoSelFallbackDir: TLabel;
     lbAutoSelMaxPing: TLabel;
     lbAutoSelMinWeight: TLabel;
     lbSpeed5: TLabel;
@@ -1034,6 +1028,14 @@ type
     miDelimiter46: TMenuItem;
     miRequestVanillaBridges: TMenuItem;
     miRequestWebTunnelBridges: TMenuItem;
+    miHsOpenInBrowser: TMenuItem;
+    miDelimiter71: TMenuItem;
+    miDelimiter61: TMenuItem;
+    miStopScan: TMenuItem;
+    Timer1: TTimer;
+    miStreamsExtractData: TMenuItem;
+    miCircuitsDestroyLock: TMenuItem;
+    miStreamsInfoExtractData: TMenuItem;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1068,8 +1070,7 @@ type
     procedure CalculateTotalNodes(AlwaysUpdate: Boolean = True);
     function CloseCircuitInternal(CircuitID: string): Boolean;
     procedure CloseCircuit(CircuitID: string; AutoUpdate: Boolean = True);
-    procedure CloseStream(StreamID: string);
-    procedure CloseStreams(CircuitID: string; FindTarget: Boolean = False; TargetID: string = '');
+    procedure CloseStreams(CircuitID: string; CloseType: TCloseType);
     function CheckFilesChanged: Boolean;
     procedure LoadNetworkCache;
     procedure SaveNetworkCache(AutoSave: Boolean = True);
@@ -1087,6 +1088,8 @@ type
     procedure InsertRelayOperationsMenu(ParentMenu: TMenuItem; ExtractMenu: TMenuItem; DataID: Integer = 0);
     procedure ChangeFilter;
     procedure ChangeRouters;
+    function RoutersNeedUpdate: Boolean;
+    function GetOnionLink(Preview: Boolean): string;
     procedure UpdateRoutersAfterFilterUpdate;
     procedure UpdateOptionsAfterRoutersUpdate;
     procedure UpdateRoutersAfterBridgesUpdate;
@@ -1202,14 +1205,14 @@ type
     procedure SetButtonsProp(Btn: TSpeedButton; LeftSmall, LeftBig: Integer);
     procedure ShowBalloon(Msg: string; Title: string = ''; Notice: Boolean = False; MsgType: TMsgType = mtInfo);
     procedure ShowCircuits(AlwaysUpdate: Boolean = True);
-    procedure ShowStreams(CircID: string);
-    procedure ShowStreamsInfo(CircID, TargetStr: string);
+    procedure ShowStreams(CircID: string; AlwaysUpdate: Boolean = True);
+    procedure ShowStreamsInfo(CircID: string);
     procedure ShowCircuitInfo(CircID: string);
-    procedure ShowRouters;
+    procedure ShowRouters(BlockUpdate: Boolean = False);
     function FindSelectedBridge(RouterID: string; Router: TRouterInfo): Boolean;
     procedure CheckNodesListState(NodeTypeID: Integer);
     procedure CheckCircuitExists(CircID: string; UpdateStreamsCount: Boolean = False);
-    procedure CheckCircuitStreams(CircID: string; TargetStreams: Integer);
+    procedure CheckCircuitStreams(CircID: string; var Targets: TDictionary<string, Integer>);
     procedure SelectRowPopup(aSg: TStringGrid; aPopup: TPopupMenu);
     procedure SaveTrackHostExits(ini: TMemIniFile; UseDic: Boolean = False);
     procedure SaveServerOptions(ini: TMemIniFile);
@@ -1227,10 +1230,10 @@ type
     procedure FastAndStableEnable(State: Boolean; AutoCheck: Boolean = True);
     procedure HsControlsEnable(State: Boolean);
     procedure CheckLogAutoScroll(AlwaysUpdate: Boolean = False);
-    procedure UpdateHs;
-    procedure UpdateHsPorts;
+    procedure UpdateHs(EmptyData: Boolean = False);
+    procedure UpdateHsPorts(EmptyData: Boolean = False);
     procedure UpdateUsedProxyTypes(ini: TMemIniFile);
-    procedure UpdateTransports;
+    procedure UpdateTransports(EmptyData: Boolean = False);
     procedure SaveSortData;
     procedure UpdateScaleFactor;
     procedure UpdateImagesPosition(ImageObject: TImage; TextObject: TLabel);
@@ -1239,6 +1242,8 @@ type
     procedure UpdateSelectedRouter(aSg: TStringGrid);
     procedure UpdateTrayHint;
     procedure UpdateRoutersData;
+    procedure UpdateCircuitsData(AlwaysUpdate: Boolean = True);
+    procedure SetCaptionByDataCount(Caption: string; MenuItem: TMenuItem; aSg: TStringGrid; IsBrowserLinks: Boolean = False);
     procedure CheckFallbackDirsUpdateState;
     procedure CheckBridgesUpdateState;
     function GetTransportStateID(StateStr: string): Integer;
@@ -1358,7 +1363,6 @@ type
     procedure sgHsPortsMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure sgHsPortsSelectCell(Sender: TObject; ACol, ARow: Integer; var CanSelect: Boolean);
     procedure sgHsSelectCell(Sender: TObject; ACol, ARow: Integer; var CanSelect: Boolean);
-    procedure tiTrayClick(Sender: TObject);
     procedure tmUpdateIpTimer(Sender: TObject);
     procedure udHsMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure miHsClearClick(Sender: TObject);
@@ -1533,13 +1537,13 @@ type
     procedure cbUsePreferredBridgeClick(Sender: TObject);
     procedure miDisableSelectionUnSuitableAsBridgeClick(Sender: TObject);
     procedure DisableBridges(Sender: TObject);
+    procedure DisablePreferredBridge(Sender: TObject);
     procedure edPreferredBridgeChange(Sender: TObject);
     procedure btnFindPreferredBridgeClick(Sender: TObject);
     procedure ClearBridgesCache(Sender: TObject);
     procedure miResetTotalsCounterClick(Sender: TObject);
     procedure miResetScannerScheduleClick(Sender: TObject);
     procedure miDisableFiltersOnUserQueryClick(Sender: TObject);
-    procedure miStopScanClick(Sender: TObject);
     procedure miDisableFiltersOnAuthorityOrBridgeClick(Sender: TObject);
     procedure miClearUnusedNetworkCacheClick(Sender: TObject);
     procedure miEnableConvertNodesOnIncorrectClearClick(Sender: TObject);
@@ -1631,6 +1635,13 @@ type
     procedure cbHandlerParamsStateClick(Sender: TObject);
     procedure cbxTransportStateChange(Sender: TObject);
     procedure cbxBridgesTypeCloseUp(Sender: TObject);
+    procedure miHsOpenInBrowserClick(Sender: TObject);
+    procedure tiTrayMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+    procedure miStopScanClick(Sender: TObject);
+    procedure Timer1Timer(Sender: TObject);
+    procedure sgStreamsKeyUp(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
     procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -1702,7 +1713,8 @@ var
   LastFullScanDate, LastPartialScanDate, TotalStartDate, LastSaveStats: Int64;
   LastPartialScansCounts: Integer;
   LockCircuits, LockCircuitInfo, LockStreams, LockStreamsInfo, UpdateTraffic: Boolean;
-  CircuitsUpdated, SortUpdated, SelNodeState: Boolean;
+  LockTransportControls, LockHsControls, LockHsPortsControls: Boolean;
+  CircuitsUpdated, StreamsUpdated, SortUpdated, SelNodeState: Boolean;
   FindObject: TMemo;
   ScanStage, AutoScanStage: Byte;
   CurrentScanType, InitScanType: TScanType;
@@ -1855,7 +1867,7 @@ begin
         ls.Delete(i);
       end;
       Inc(DelLength, DeleteLines * 2);
-      Tcp.meLog.Text := ls.Text;
+      Tcp.meLog.SetTextData(ls.Text);
       if (SelStart - DelLength) > 0 then
       begin
         Tcp.meLog.SelStart := SelStart - DelLength;
@@ -1889,7 +1901,6 @@ begin
         Tcp.meLog.SelLength := - SelLength;
       end;
     end;
-
   finally
     ls.Free;
   end;
@@ -2082,6 +2093,7 @@ procedure TScanThread.UpdateControls;
 begin
   Tcp.pbScanProgress.Position := 0;
   Tcp.pbScanProgress.ProgressText := '0 %';
+  Tcp.pbScanProgress.Hint := '';
   Tcp.UpdateScannerControls;
 end;
 
@@ -2427,6 +2439,12 @@ begin
     Result := FAVERR_CHAR;
 end;
 
+procedure TTcp.UpdateCircuitsData(AlwaysUpdate: Boolean = True);
+begin
+  ShowCircuits(AlwaysUpdate);
+  ShowStreams(sgCircuits.Cells[CIRC_ID, sgCircuits.Row], AlwaysUpdate);
+end;
+
 procedure TTcp.UpdateRoutersData;
 var
   ini: TMemIniFile;
@@ -2463,7 +2481,7 @@ begin
     LoadRoutersCountries;
     ShowFilter;
     ShowRouters;
-    ShowCircuits;
+    UpdateCircuitsData;
   end
   else
     InfoStage := 1;
@@ -2484,6 +2502,11 @@ procedure TTcp.TDescriptorsThreadTerminate(Sender: TObject);
 begin
   Descriptors := nil;
   UpdateRoutersData;
+end;
+
+procedure TTcp.Timer1Timer(Sender: TObject);
+begin
+  ShowRouters;
 end;
 
 procedure TConsensusThread.Execute;
@@ -2606,6 +2629,8 @@ begin
           if Pos('V2Dir', ParseStr[j]) = 1 then
             Include(Router.Flags, rfV2Dir);
         end;
+        if not (rfStable in Router.Flags) then
+          Inc(Router.Params, ROUTER_UNSTABLE);
         Continue;
       end;
       if Pos('v ', ls[i]) = 1 then
@@ -3526,6 +3551,7 @@ begin
           end;
         end;
         StreamsDic.AddOrSetValue(StreamID, StreamInfo);
+        StreamsUpdated := True;
         if Tcp.cbUseBridges.Checked and Tcp.cbExcludeUnsuitableBridges.Checked and (CircuitID = '0') then
           CheckDirFetches(StreamInfo, 0);
         Exit;
@@ -3536,6 +3562,7 @@ begin
         begin
           StreamInfo.CircuitID := CircuitID;
           StreamsDic.AddOrSetValue(StreamID, StreamInfo);
+          StreamsUpdated := True;
           if (Circuit <> CircuitID) and (StreamInfo.PurposeID = USER) then
           begin
             if CircuitsDic.TryGetValue(CircuitID, CircuitInfo) then
@@ -3586,6 +3613,7 @@ begin
         begin
           StreamInfo.DestAddr := ParseStr[5];
           StreamsDic.AddOrSetValue(StreamID, StreamInfo);
+          StreamsUpdated := True;
         end;
         Exit;
       end;
@@ -3601,6 +3629,7 @@ begin
           begin
             Dec(CircuitInfo.Streams);
             StreamsDic.Remove(StreamID);
+            StreamsUpdated := True;
           end;
         end;
         CircuitsDic.AddOrSetValue(CircuitID, CircuitInfo);
@@ -3617,6 +3646,7 @@ begin
             Tcp.SendDataThroughProxy;
         end;
         StreamsDic.Remove(StreamID);
+        StreamsUpdated := True;
       end;
     end;
     Exit;
@@ -3690,6 +3720,7 @@ begin
         Inc(StreamInfo.BytesWritten, StrToInt64Def(SeparateRight(ParseStr[3], '='), 0));
         Inc(StreamInfo.BytesRead, StrToInt64Def(SeparateRight(ParseStr[4], '='), 0));
         StreamsDic.AddOrSetValue(StreamID, StreamInfo);
+        StreamsUpdated := True;
       end;
       Exit;
     end;
@@ -3778,7 +3809,7 @@ procedure TTcp.sgCircuitInfoKeyDown(Sender: TObject; var Key: Word;
 begin
   GridKeyDown(sgCircuitInfo, Shift, Key);
   case Key of
-    VK_F5: ShowCircuits;
+    VK_F5: UpdateCircuitsData;
   end;
 end;
 
@@ -3797,7 +3828,7 @@ begin
   GridSetFocus(sgCircuitInfo);
   GridShowHints(sgCircuitInfo);
   GridCheckAutoPopup(sgCircuitInfo, sgCircuitInfo.MovRow);
-  if (sgCircuitInfo.MovCol in [CIRC_INFO_IP..CIRC_INFO_COUNTRY]) and (sgCircuitInfo.MovRow > 0) and not IsEmptyRow(sgCircuitInfo, sgCircuitInfo.MovRow) then
+  if (sgCircuitInfo.MovCol in [CIRC_INFO_IP..CIRC_INFO_COUNTRY]) and (sgCircuitInfo.MovRow > 0) and not sgCircuitInfo.IsEmptyRow(sgCircuitInfo.MovRow) then
     sgCircuitInfo.Cursor := crHandPoint
   else
     sgCircuitInfo.Cursor := crDefault;
@@ -3919,6 +3950,7 @@ procedure TTcp.sgCircuitsSelectCell(Sender: TObject; ACol, ARow: Integer;
 begin
   GridSelectCell(sgCircuits, ACol, ARow);
   ShowCircuitInfo(sgCircuits.Cells[CIRC_ID, ARow]);
+  ShowStreams(sgCircuits.Cells[CIRC_ID, ARow]);
 end;
 
 procedure TTcp.sgFilterDrawCell(Sender: TObject; ACol, ARow: Integer;
@@ -3953,7 +3985,7 @@ begin
     SaveBridgesData;
   if BridgesUpdated then
   begin
-    ShowRouters;
+    ShowRouters(RoutersNeedUpdate);
     BridgesUpdated := False;
   end;
 end;
@@ -3965,9 +3997,15 @@ begin
   if FallbackDirsUpdated then
   begin
     if not BridgesUpdated then
-      ShowRouters;
+      ShowRouters(RoutersNeedUpdate);
     FallbackDirsUpdated := False;
   end;
+end;
+
+function TTcp.RoutersNeedUpdate: Boolean;
+begin
+  Result := FilterUpdated and ((cbxRoutersCountry.Tag = -2) or ExcludeUpdated) and
+    ((LastPlace = LP_ROUTERS) or not (BridgesUpdated or FallbackDirsUpdated));
 end;
 
 procedure TTcp.UpdateRoutersAfterFilterUpdate;
@@ -3978,7 +4016,7 @@ begin
       SaveFallbackDirsData;
     if BridgesRecalculate then
       SaveBridgesData;
-    if (cbxRoutersCountry.Tag = -2) or ExcludeUpdated then
+    if RoutersNeedUpdate then
       ShowRouters;
     if ExcludeUpdated then
     begin
@@ -4199,6 +4237,25 @@ begin
     end;
   end;
   GridScrollCheck(sgHs, HS_NAME, 184);
+
+  if ACol = sgHs.SelCol then
+  begin
+    if sgHs.IsMultiRow then
+      UpdateHs(True)
+    else
+    begin
+      if LockHsControls then
+      begin
+        if sgHs.IsEmpty then
+          Exit
+        else
+        begin
+          HsControlsEnable(True);
+          SelectHs;
+        end;
+      end;
+    end;
+  end;
 end;
 
 procedure TTcp.sgHsEnter(Sender: TObject);
@@ -4209,6 +4266,11 @@ end;
 procedure TTcp.sgHsKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   GridKeyDown(sgHs, Shift, Key);
+  if Key = VK_RETURN then
+  begin
+    if edHsName.CanFocus then
+      edHsName.SetFocus;
+  end;
 end;
 
 procedure TTcp.sgHsPortsDrawCell(Sender: TObject; ACol, ARow: Integer;
@@ -4217,6 +4279,24 @@ begin
   if ARow = 0 then
     DrawText(sgHsPorts.Canvas.Handle, PChar(HsPortsHeader[ACol]), Length(HsPortsHeader[ACol]), Rect, DT_CENTER);
   GridScrollCheck(sgHsPorts, HSP_INTERFACE, 163);
+  if ACol = sgHsPorts.SelCol then
+  begin
+    if sgHsPorts.IsMultiRow then
+      UpdateHsPorts(True)
+    else
+    begin
+      if LockHsPortsControls then
+      begin
+        if sgHsPorts.IsEmpty then
+          Exit
+        else
+        begin
+          HsPortsEnable(True);
+          SelectHsPorts;
+        end;
+      end;
+    end;
+  end;
 end;
 
 procedure TTcp.sgHsPortsEnter(Sender: TObject);
@@ -4246,9 +4326,9 @@ begin
   GridCheckAutoPopup(sgHsPorts, sgHsPorts.MovRow, True);
 end;
 
-procedure TTcp.UpdateTransports;
+procedure TTcp.UpdateTransports(EmptyData: Boolean = False);
 begin
-  if IsEmptyGrid(sgTransports) then
+  if (EmptyData and not LockTransportControls) or sgTransports.IsEmpty then
   begin
     edTransports.Text := '';
     edTransportsHandler.Text := '';
@@ -4259,11 +4339,11 @@ begin
   end;
 end;
 
-procedure TTcp.UpdateHs;
+procedure TTcp.UpdateHs(EmptyData: Boolean = False);
 begin
-  if IsEmptyGrid(sgHs) then
+  if (EmptyData and not LockHsControls) or sgHs.IsEmpty then
   begin
-    ClearGrid(sgHsPorts);
+    sgHsPorts.Clear;
     edHsName.Text := '';
     cbxHsVersion.ItemIndex := HS_VERSION_3;
     cbxHsState.ItemIndex := HS_STATE_DISABLED;
@@ -4276,13 +4356,12 @@ begin
   end;
 end;
 
-procedure TTcp.UpdateHsPorts;
+procedure TTcp.UpdateHsPorts(EmptyData: Boolean = False);
 var
   i: Integer;
   Ports: string;
 begin
-  Ports := '';
-  if IsEmptyGrid(sgHsPorts) then
+  if (EmptyData and not LockHsPortsControls) or sgHsPorts.IsEmpty then
   begin
     sgHs.Cells[HS_PORTS_DATA, sgHs.SelRow] := '';
     cbxHsAddress.ItemIndex := 0;
@@ -4292,11 +4371,14 @@ begin
   end
   else
   begin
+    Ports := '';
     for i := 1 to sgHsPorts.RowCount - 1 do
+    begin
       Ports := Ports + '|' +
         sgHsPorts.Cells[HSP_INTERFACE, i] + ',' +
         sgHsPorts.Cells[HSP_REAL_PORT, i] + ',' +
         sgHsPorts.Cells[HSP_VIRTUAL_PORT, i];
+    end;
     Delete(Ports, 1, 1);
     sgHs.Cells[HS_PORTS_DATA, sgHs.SelRow] := Ports;
   end;
@@ -4388,6 +4470,7 @@ begin
           DrawFlagIcon(ROUTER_ALIVE, 56);
           DrawFlagIcon(ROUTER_REACHABLE_IPV6, 34);
           DrawFlagIcon(ROUTER_HS_DIR, 53);
+          DrawFlagIcon(ROUTER_UNSTABLE, 78);
           DrawFlagIcon(ROUTER_NOT_RECOMMENDED, 44);
           DrawFlagIcon(ROUTER_BAD_EXIT, 43);
           DrawFlagIcon(ROUTER_MIDDLE_ONLY, 61);
@@ -4404,9 +4487,7 @@ procedure TTcp.UpdateSelectedRouter(aSg: TStringGrid);
 begin
   if aSg.Tag <> GRID_ROUTERS then
     Exit;
-  if aSg.SelectAllState then
-    Exit;
-  lbSelectedRouters.Caption := IntToStr(aSg.Selection.Bottom - aSg.Selection.Top + 1);
+  lbSelectedRouters.Caption := IntToStr(aSg.GetSelRowCount);
 end;
 
 procedure TTcp.sgRoutersFixedCellClick(Sender: TObject; ACol, ARow: Integer);
@@ -4687,7 +4768,7 @@ var
   end;
 begin
   Fail := True;
-  if not IsEmptyRow(sgCircuits, sgCircuits.MovRow) then
+  if not sgCircuits.IsEmptyRow(sgCircuits.MovRow) then
   begin
     Params := sgCircuits.Cells[CIRC_PARAMS, sgCircuits.MovRow];
     if Params <> '' then
@@ -4774,7 +4855,7 @@ var
 
 begin
   Fail := True;
-  if not IsEmptyRow(sgRouters, sgRouters.MovRow) then
+  if not sgRouters.IsEmptyRow(sgRouters.MovRow) then
   begin
     if RoutersDic.TryGetValue(sgRouters.Cells[ROUTER_ID, sgRouters.MovRow], RouterInfo) then
     begin
@@ -4787,6 +4868,7 @@ begin
         CheckMask(ROUTER_ALIVE);
         CheckMask(ROUTER_REACHABLE_IPV6);
         CheckMask(ROUTER_HS_DIR);
+        CheckMask(ROUTER_UNSTABLE);
         CheckMask(ROUTER_NOT_RECOMMENDED);
         CheckMask(ROUTER_BAD_EXIT);
         CheckMask(ROUTER_MIDDLE_ONLY);
@@ -4815,6 +4897,7 @@ begin
             ROUTER_ALIVE: sgRouters.Hint := TransStr('386');
             ROUTER_REACHABLE_IPV6: sgRouters.Hint := TransStr('387');
             ROUTER_HS_DIR: sgRouters.Hint := TransStr('388');
+            ROUTER_UNSTABLE: sgRouters.Hint := TransStr('695');
             ROUTER_NOT_RECOMMENDED: sgRouters.Hint := TransStr('390');
             ROUTER_BAD_EXIT: sgRouters.Hint := TransStr('391');
             ROUTER_MIDDLE_ONLY: sgRouters.Hint := TransStr('640');
@@ -4847,7 +4930,7 @@ begin
   else
     GridShowHints(sgRouters);
   GridCheckAutoPopup(sgRouters, sgRouters.MovRow, True);
-  if (sgRouters.MovCol in [ROUTER_FLAG, ROUTER_COUNTRY]) and (sgRouters.MovRow > 0) and not IsEmptyRow(sgRouters, sgRouters.MovRow) then
+  if (sgRouters.MovCol in [ROUTER_FLAG, ROUTER_COUNTRY]) and (sgRouters.MovRow > 0) and not sgRouters.IsEmptyRow(sgRouters.MovRow) then
     sgRouters.Cursor := crHandPoint
   else
     sgRouters.Cursor := crDefault;
@@ -4890,7 +4973,7 @@ procedure TTcp.sgStreamsInfoKeyDown(Sender: TObject; var Key: Word;
 begin
   GridKeyDown(sgStreamsInfo, Shift, Key);
   case Key of
-    VK_F5: ShowCircuits;
+    VK_F5: UpdateCircuitsData;
   end;
 end;
 
@@ -4948,15 +5031,25 @@ procedure TTcp.sgStreamsKeyDown(Sender: TObject; var Key: Word;
 begin
   GridKeyDown(sgStreams, Shift, Key);
   case Key of
-    VK_F5: ShowCircuits;
+    VK_F5: UpdateCircuitsData;
+  end;
+end;
+
+procedure TTcp.sgStreamsKeyUp(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  case Key of
+    VK_PRIOR, VK_NEXT, VK_END, VK_HOME, VK_UP, VK_DOWN: ShowStreamsInfo(sgCircuits.Cells[CIRC_ID, sgCircuits.SelRow]);
   end;
 end;
 
 procedure TTcp.sgStreamsMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
-  if Button = mbRight then
-    sgStreams.MouseToCell(X, Y, sgStreams.MovCol, sgStreams.MovRow);
+  case Button of
+    mbRight: sgStreams.MouseToCell(X, Y, sgStreams.MovCol, sgStreams.MovRow);
+    mbLeft: ShowStreamsInfo(sgCircuits.Cells[CIRC_ID, sgCircuits.SelRow]);
+  end;
 end;
 
 procedure TTcp.sgStreamsMouseMove(Sender: TObject; Shift: TShiftState; X,
@@ -4966,17 +5059,26 @@ begin
   GridSetFocus(sgStreams);
   GridShowHints(sgStreams);
   GridCheckAutoPopup(sgStreams, sgStreams.MovRow, True);
-  if (sgStreams.MovCol = STREAMS_TARGET) and (sgStreams.MovRow > 0) and not IsEmptyRow(sgStreams, sgStreams.MovRow) then
+  if (sgStreams.MovCol = STREAMS_TARGET) and (sgStreams.MovRow > 0) and not sgStreams.IsEmptyRow(sgStreams.MovRow) then
     sgStreams.Cursor := crHandPoint
   else
     sgStreams.Cursor := crDefault;
+  if sgStreams.SelectState then
+  begin
+    if sgStreams.GetSelRowCount <> sgStreams.LastSelCount then
+    begin
+      sgStreams.LastSelCount := sgStreams.GetSelRowCount;
+      ShowStreamsInfo(sgCircuits.Cells[CIRC_ID, sgCircuits.SelRow])
+    end;
+  end;
 end;
 
 procedure TTcp.sgStreamsSelectCell(Sender: TObject; ACol, ARow: Integer;
   var CanSelect: Boolean);
 begin
   GridSelectCell(sgStreams, ACol, ARow);
-  ShowStreamsInfo(sgCircuits.Cells[CIRC_ID, sgCircuits.SelRow], sgStreams.Cells[STREAMS_TARGET, sgStreams.SelRow]);
+  if not sgStreams.SelectState then
+    ShowStreamsInfo(sgCircuits.Cells[CIRC_ID, sgCircuits.SelRow]);
 end;
 
 procedure TTcp.sgTransportsDrawCell(Sender: TObject; ACol, ARow: Integer;
@@ -4992,12 +5094,35 @@ begin
     end;
   end;
   GridScrollCheck(sgTransports, PT_TRANSPORTS, 180);
+  if ACol = sgTransports.SelCol then
+  begin
+    if sgTransports.IsMultiRow then
+      UpdateTransports(True)
+    else
+    begin
+      if LockTransportControls then
+      begin
+        if sgTransports.IsEmpty then
+          Exit
+        else
+        begin
+          TransportsEnable(True);
+          SelectTransports;
+        end;
+      end;
+    end;
+  end;
 end;
 
 procedure TTcp.sgTransportsKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
   GridKeyDown(sgTransports, Shift, Key);
+  if Key = VK_RETURN then
+  begin
+    if edTransports.CanFocus then
+      edTransports.SetFocus;
+  end;
 end;
 
 procedure TTcp.sgTransportsMouseMove(Sender: TObject; Shift: TShiftState; X,
@@ -5029,7 +5154,9 @@ var
 begin
   if sgHs.SelRow = 0 then
     sgHs.SelRow := 1;
-  if IsEmptyRow(sgHs, sgHs.SelRow) then
+  if sgHs.IsEmptyRow(sgHs.SelRow) then
+    Exit;
+  if sgHs.IsMultiRow then
     Exit;
   edHsName.Text := sgHs.Cells[HS_NAME, sgHs.SelRow];
   case StrToIntDef(sgHs.Cells[HS_VERSION, sgHs.SelRow], HS_VERSION_3) of
@@ -5065,7 +5192,7 @@ begin
   end
   else
   begin
-    ClearGrid(sgHsPorts);
+    sgHsPorts.Clear;
     HsPortsEnable(False);
   end;
 end;
@@ -5074,7 +5201,7 @@ procedure TTcp.SelectHsPorts;
 begin
   if sgHsPorts.SelRow = 0 then
     sgHsPorts.SelRow := 1;
-  if IsEmptyRow(sgHsPorts, sgHsPorts.SelRow) then
+  if sgHsPorts.IsEmptyRow(sgHsPorts.SelRow) then
     Exit;
   cbxHsAddress.ItemIndex := cbxHsAddress.Items.IndexOf(sgHsPorts.Cells[HSP_INTERFACE, sgHsPorts.SelRow]);
   udHsRealPort.Position := StrToInt(sgHsPorts.Cells[HSP_REAL_PORT, sgHsPorts.SelRow]);
@@ -5090,9 +5217,11 @@ procedure TTcp.SelectTransports;
 begin
   if sgTransports.SelRow = 0 then
     sgTransports.SelRow := 1;
+  if sgTransports.IsMultiRow then
+    Exit;
   edTransports.Text := sgTransports.Cells[PT_TRANSPORTS, sgTransports.SelRow];
   edTransportsHandler.Text := sgTransports.Cells[PT_HANDLER, sgTransports.SelRow];
-  meHandlerParams.Text := sgTransports.Cells[PT_PARAMS, sgTransports.SelRow];
+  meHandlerParams.SetTextData(sgTransports.Cells[PT_PARAMS, sgTransports.SelRow]);
   cbxTransportType.ItemIndex := GetTransportID(sgTransports.Cells[PT_TYPE, sgTransports.SelRow]);
   cbxTransportState.ItemIndex := GetTransportStateID(sgTransports.Cells[PT_STATE, sgTransports.SelRow]);
   cbHandlerParamsState.Checked := StrToBoolDef(sgTransports.Cells[PT_PARAMS_STATE, sgTransports.SelRow], False);
@@ -5136,15 +5265,15 @@ procedure TTcp.ShowBalloon(Msg: string; Title: string = ''; Notice: Boolean = Fa
 var
   MsgIcon: TBalloonFlags;
 begin
-  MsgIcon := bfNone;
-  case MsgType of
-    mtInfo: MsgIcon := bfInfo;
-    mtWarning: MsgIcon := bfWarning;
-    mtError: MsgIcon := bfError;
-  end;
   if (Notice or ((cbShowBalloonHint.Checked) and (not cbShowBalloonOnlyWhenHide.Checked or
     (cbShowBalloonOnlyWhenHide.Checked and Visible = False)))) and not Closing then
   begin
+    MsgIcon := bfNone;
+    case MsgType of
+      mtInfo: MsgIcon := bfInfo;
+      mtWarning: MsgIcon := bfWarning;
+      mtError: MsgIcon := bfError;
+    end;
     tiTray.BalloonFlags := MsgIcon;
     tiTray.BalloonTitle := GetMsgCaption(Title, MsgType);
     tiTray.BalloonHint := Msg;
@@ -5434,7 +5563,7 @@ var
   i: Integer;
 begin
   Result := '';
-  if not IsEmptyGrid(sgTransports) then
+  if not sgTransports.IsEmpty then
   begin
     for i := 1 to sgTransports.RowCount - 1 do
       Result := Result + GetFileID(TransportsDir + sgTransports.Cells[PT_HANDLER, i]).Data;
@@ -5560,7 +5689,7 @@ begin
       StopCode := STOP_NORMAL;
       if miAutoClear.Checked then
       begin
-        meLog.Clear;
+        meLog.ClearText;
         LogHasSel := False;
       end;
       ConfluxLinks.Clear;
@@ -5570,7 +5699,7 @@ begin
       LockCircuitInfo := False;
       LockStreams := False;
       LockStreamsInfo := False;
-      ShowCircuits;
+      UpdateCircuitsData;
       Circuit := '';
       ExitNodeID := '';
       DLSpeed := 0;
@@ -6280,6 +6409,13 @@ begin
         end;
         ConfigVersion := 11;
       end;
+      if (ConfigVersion = 11) and IsDirectoryWritable(ProgramDir) then
+      begin
+        DeleteFile(ProgramDir + 'Tor\tor-gencert.exe');
+        if CheckFileVersion(TorVersion, '0.4.7.12') then
+          DeleteFiles(ProgramDir + 'Tor\*.dll');
+        ConfigVersion := 12;
+      end;
     end
     else
       ConfigVersion := CURRENT_CONFIG_VERSION;
@@ -6463,8 +6599,7 @@ begin
   Result := 0;
   Min := 0;
   Max := 0;
-
-  BeginUpdateTable(sgHs);
+  sgHs.BeginUpdateRows;
   HsList := TStringList.Create;
   PortList := TStringList.Create;
   try
@@ -6541,8 +6676,7 @@ begin
       sgHs.RowCount := Result + 1
     else
       sgHs.RowCount := 2;
-
-    EndUpdateTable(sgHs);
+    sgHs.EndUpdateRows;
   finally
     HsList.Free;
     PortList.Free;
@@ -6571,7 +6705,7 @@ begin
     HsToDelete := nil;
   end;
 
-  if not IsEmptyGrid(sgHs) then
+  if not sgHs.IsEmpty then
   begin
     if not DirectoryExists(UserDir + 'services') then
       ForceDirectories(UserDir + 'services');
@@ -6659,7 +6793,7 @@ begin
     T.ServerOptions := Options;
     TransportsDic.AddOrSetValue(Key, T);
     if UpdateControls then
-      meServerTransportOptions.Text := Options;
+      meServerTransportOptions.SetTextData(Options);
   end;
   ServerTransportOptionsUpdated := False;
 end;
@@ -6678,7 +6812,7 @@ begin
     if Data = '' then
       cbUseServerTransportOptions.Checked := False;
   end;
-  meServerTransportOptions.Text := Data;
+  meServerTransportOptions.SetTextData(Data);
 end;
 
 procedure TTcp.LoadServerTransportOptionsData(Data: TStringList);
@@ -6740,9 +6874,9 @@ var
 begin
   FilesID := '';
   TotalTransports := 0;
-  sgTransports.RowID := sgTransports.Cells[PT_HANDLER, sgTransports.SelRow];
-  BeginUpdateTable(sgTransports);
-  ClearGrid(sgTransports);
+  sgTransports.SaveRowID;
+  sgTransports.BeginUpdateRows;
+  sgTransports.Clear;
   TransportsDic.Clear;
 
   for i := 0 to Data.Count - 1 do
@@ -6838,8 +6972,8 @@ begin
   end
   else
     UpdateTransports;
-  SetGridLastCell(sgTransports, True, False, False, -1, -1, PT_HANDLER);
-  EndUpdateTable(sgTransports);
+  SetGridLastCell(sgTransports);
+  sgTransports.EndUpdateRows;
 end;
 
 procedure TTcp.SaveTransportsData(ini: TMemIniFile; ReloadServerTransport: Boolean);
@@ -6863,7 +6997,7 @@ begin
     ServerTransport := cbxBridgeType.Text;
   cbxBridgeType.Clear;
   cbxBridgeType.Items.Insert(0, TransStr('206'));
-  if not IsEmptyGrid(sgTransports) then
+  if not sgTransports.IsEmpty then
   begin
     for i := 1 to sgTransports.RowCount - 1 do
     begin
@@ -6959,7 +7093,7 @@ begin
             Bridges.Delete(i);
         end;
         SortList(Bridges, ltBridge, meBridges.SortType);
-        meBridges.Text := Bridges.Text;
+        meBridges.SetTextData(Bridges.Text);
         NeedUpdate := False;
       end;
     finally
@@ -6967,7 +7101,7 @@ begin
     end;
   end;
   if NeedUpdate then
-    meBridges.Clear;
+    meBridges.ClearText(False);
   BridgesFileUpdated := False;
 end;
 
@@ -6992,7 +7126,7 @@ begin
             Bridges.Delete(i);
         end;
         SortList(Bridges, ltBridge, meBridges.SortType);
-        meBridges.Text := Bridges.Text;
+        meBridges.SetTextData(Bridges.Text);
         NeedUpdate := False;
       end;
     finally
@@ -7000,7 +7134,7 @@ begin
     end;
   end;
   if NeedUpdate then
-    meBridges.Clear; 
+    meBridges.ClearText(False);
 end;
 
 procedure TTcp.LoadFallbackDirs(ini: TMemIniFile; Default: Boolean);
@@ -7029,7 +7163,7 @@ begin
             ls.Delete(i);
         end;
         SortList(ls, ltFallbackDir, meFallbackDirs.SortType);
-        meFallbackDirs.Text := ls.Text;
+        meFallbackDirs.SetTextData(ls.Text);
         NeedUpdate := False;
       end;
     finally
@@ -7037,7 +7171,7 @@ begin
     end;
   end;
   if NeedUpdate then
-    meFallbackDirs.Text := '';
+    meFallbackDirs.ClearText(False);
 end;
 
 procedure TTcp.LoadBuiltinBridges(ini: TMemIniFile; UpdateBridges, UpdateList: Boolean; ListName: string = '');
@@ -7050,7 +7184,7 @@ var
   Bridges: TDictionary<string, string>;
 begin
   if UpdateBridges then
-    meBridges.Clear;
+    meBridges.ClearText(False);
   if FileExists(DefaultsFile) then
   begin
     ls := TStringList.Create;
@@ -7616,7 +7750,7 @@ begin
   edProxyAddress.Text := ExtractDomain(Trim(edProxyAddress.Text));
   edProxyUser.Text := Trim(edProxyUser.Text);
   edProxyPassword.Text := Trim(edProxyPassword.Text);
-  if (cbUseProxy.Checked) and ValidHost(edProxyAddress.Text) then
+  if cbUseProxy.Checked and (ValidHost(edProxyAddress.Text) <> htNone) then
   begin
     case cbxProxyType.ItemIndex of
       PROXY_TYPE_SOCKS4:
@@ -8167,7 +8301,7 @@ begin
       try
         ini.ReadSectionValues('Transports', Transports);
         LoadTransportsData(Transports);
-        if IsEmptyGrid(sgTransports) then
+        if sgTransports.IsEmpty then
           ResetTransports(inidef);
       finally
         Transports.Free;
@@ -8332,8 +8466,8 @@ begin
     CheckCachedFiles;
 
     HsToDelete := nil;
-    ClearGrid(sgHs);
-    ClearGrid(sgHsPorts);
+    sgHs.Clear;
+    sgHsPorts.Clear;
     GetLocalInterfaces(cbxHsAddress);
     if LoadHiddenServices(ini) = 0 then
       UpdateHs
@@ -8372,7 +8506,7 @@ begin
       LoadRoutersCountries;
       ShowFilter;
       ShowRouters;
-      ShowCircuits;
+      UpdateCircuitsData;
       CheckTorAutoStart;
     end
     else
@@ -8386,7 +8520,7 @@ begin
         ShowFilter;
         ShowRouters;
         if ConnectState = 0 then
-          ShowCircuits;
+          UpdateCircuitsData;
       end;
       BridgesUpdated := False;
       RoutersUpdated := False;
@@ -8688,7 +8822,7 @@ begin
   try
     edTransports.Text := StringReplace(edTransports.Text, ' ', '', [rfReplaceAll]);
     edTransportsHandler.Text := StringReplace(edTransportsHandler.Text, ' ', '', [rfReplaceAll]);
-    meHandlerParams.Text := Trim(meHandlerParams.Text);
+    meHandlerParams.SetTextData(Trim(meHandlerParams.Text));
     Msg := TTabSheet(gbTransports.GetParentComponent).Caption + ' - ' + gbTransports.Caption + BR + BR;
     for i := 1 to sgTransports.RowCount - 1 do
     begin
@@ -8865,14 +8999,14 @@ end;
 
 function TTcp.CheckHsPorts: Boolean;
 var
-  Duplicate: Boolean;
+  Duplicate: Integer;
   i, j, k, ResultCode: Integer;
-  Msg: string;
+  Msg, PortStr: string;
   ParseStr: ArrOfStr;
 begin
   ResultCode := 0;
   Result := True;
-  Duplicate := False;
+  Duplicate := 0;
   if not sgHsPorts.Enabled then
     Exit;
   Msg := TTabSheet(sgHs.GetParentComponent).Caption + ' - ' + TransStr('250') + BR + BR;
@@ -8889,20 +9023,29 @@ begin
     begin
       for j := 0 to Length(ParseStr) - 1 do
       begin
+        PortStr := Copy(ParseStr[j], RPos(',', ParseStr[j]));
         for k := j + 1 to Length(ParseStr) - 1 do
         begin
           if ParseStr[j] = ParseStr[k] then
           begin
-            Duplicate := True;
+            Duplicate := 2;
             Break;
+          end
+          else
+          begin
+            if PortStr = Copy(ParseStr[k], RPos(',', ParseStr[k])) then
+            begin
+              Duplicate := 3;
+              Break;
+            end;
           end;
         end;
-        if Duplicate then
+        if Duplicate > 0 then
           Break;
       end;
-      if Duplicate then
+      if Duplicate > 0 then
       begin
-        ResultCode := 2;
+        ResultCode := Duplicate;
         Break;
       end;
     end;
@@ -8913,7 +9056,7 @@ begin
     Result := False;
     sgHs.Row := i;
     SelectHs;
-    if Duplicate then
+    if Duplicate > 0 then
     begin
       sgHsPorts.Row := k + 1;
       SelectHsPorts;
@@ -8921,6 +9064,7 @@ begin
     case ResultCode of
       1: GoToInvalidOption(tsHs, Msg + TransStr('251'));
       2: GoToInvalidOption(tsHs, Msg + TransStr('252'));
+      3: GoToInvalidOption(tsHs, Msg + TransStr('692'));
     end;
   end;
 end;
@@ -9328,11 +9472,11 @@ begin
     SaveProxyData(ini);
 
     Temp := GetFileID(DefaultsFile).Data;
-    if (DefaultsFileID <> Temp) or IsEmptyGrid(sgTransports) then
+    if (DefaultsFileID <> Temp) or sgTransports.IsEmpty then
     begin
       inidef := TMemIniFile.Create(DefaultsFile, TEncoding.UTF8);
       try
-        if IsEmptyGrid(sgTransports) then
+        if sgTransports.IsEmpty then
           ResetTransports(inidef);
         if DefaultsFileID <> Temp then
         begin
@@ -9444,7 +9588,7 @@ begin
         ShowFilter;
         ShowRouters;
         if ConnectState = 0 then
-          ShowCircuits;
+          UpdateCircuitsData;
       end
       else
       begin
@@ -10367,7 +10511,7 @@ begin
   begin
     SelectRowPopup(sgCircuitInfo, mnDetails);
     SelectedNode := sgCircuitInfo.Cells[CIRC_INFO_ID, sgCircuitInfo.SelRow];
-    SingleRow := sgCircuitInfo.Selection.Top = sgCircuitInfo.Selection.Bottom;
+    SingleRow := not sgCircuitInfo.IsMultiRow;
     if RoutersDic.ContainsKey(SelectedNode) then
       RouterID := ''
     else
@@ -10463,14 +10607,20 @@ begin
 end;
 
 procedure TTcp.mnCircuitsPopup(Sender: TObject);
+var
+  State: Boolean;
 begin
   SetSortMenuData(sgCircuits);
   SelectRowPopup(sgCircuits, mnCircuits);
   MenuSelectPrepare(miCircSA, miCircUA);
 
-  miCircuitsDestroy.Enabled := ConnectState = 2;
-  miCircuitsUpdateNow.Enabled := ConnectState = 2;
-  if IsEmptyRow(sgCircuits, sgCircuits.SelRow) or (ConnectState <> 2) then
+  State := ConnectState <> 0;
+  miCircuitsDestroyLock.Enabled := State;
+  miCircuitsDestroyLock.Visible := not State;
+  miCircuitsDestroy.Enabled := State;
+  miCircuitsDestroy.Visible := State;
+  miCircuitsUpdateNow.Enabled := State;
+  if sgCircuits.IsEmptyRow(sgCircuits.SelRow) or not State then
   begin
     miDestroyCircuit.Enabled := False;
     miDestroyStreams.Enabled := False;    
@@ -10509,8 +10659,8 @@ begin
     aSg.SelCol := 0;
   if aSg.SelCol >= aSg.ColCount then
     aSg.SelCol := aSg.ColCount - 1;
-  if aSg.Selection.Top = aSg.Selection.Bottom then
-    TUserGrid(aSg).MoveColRow(aSg.SelCol, aSg.SelRow, True, True)
+  if not aSg.IsMultiRow then
+    TUserGrid(aSg).MoveColRow(aSg.SelCol, aSg.SelRow, True, True);
 end;
 
 procedure TTcp.mnFilterPopup(Sender: TObject);
@@ -10524,8 +10674,8 @@ var
   State, SingleRow: Boolean;
 begin
   SelectRowPopup(sgFilter, mnFilter);
-  SingleRow := sgFilter.Selection.Top = sgFilter.Selection.Bottom;
-  State := SingleRow and not IsEmptyGrid(sgFilter);
+  SingleRow := not sgFilter.IsMultiRow;
+  State := SingleRow and not sgFilter.IsEmpty;
 
   miStatCountry.Visible := State;
   if State then
@@ -10614,52 +10764,78 @@ begin
   end;
 end;
 
+function TTcp.GetOnionLink(Preview: Boolean): string;
+var
+  i, DataCount: Integer;
+  FileName, DataStr: string;
+begin
+  Result := '';
+  DataCount := 0;
+  for i := sgHs.Selection.Top to sgHs.Selection.Bottom do
+  begin
+    FileName := HsDir + sgHs.Cells[HS_NAME, i] + '\hostname';
+    if FileExists(FileName) then
+    begin
+      if (Preview and (DataCount = 0)) or not Preview  then
+      begin
+        DataStr := Trim(FileGetString(FileName));
+        if ValidHost(DataStr, False, False, False, False) <> htNone then
+        begin
+          Inc(DataCount);
+          Result := Result + BR + DataStr;
+        end;
+      end
+      else
+        Inc(DataCount);
+    end;
+  end;
+  Delete(Result, 1, Length(BR));
+  if DataCount > 1 then
+  begin
+    if Preview then
+      Result := Result + ' (' + IntToStr(DataCount) + ')'
+    else
+      Result := Result + BR;
+  end;
+end;
+
 procedure TTcp.mnHsPopup(Sender: TObject);
+var
+  State: Boolean;
+  Url: string;
 begin
   if tsHs.Tag = 1 then
   begin
     SelectRowPopup(sgHs, mnHs);
-    if DirectoryExists(HsDir + sgHs.Cells[HS_NAME, sgHs.SelRow]) and (sgHs.Cells[HS_NAME, sgHs.SelRow] <> '') then
-      miHsOpenDir.Visible := True
-    else
-      miHsOpenDir.Visible := False;
-
-    if FileExists(HsDir + sgHs.Cells[HS_NAME, sgHs.SelRow] + '\hostname') then
-    begin
-      miHsCopyOnion.Caption := Trim(FileGetString(HsDir + sgHs.Cells[HS_NAME, sgHs.SelRow] + '\hostname'));
-      miHsCopy.Visible := True;
-    end
-    else
-      miHsCopy.Visible := False;
-
-    if IsEmptyGrid(sgHs) then
-    begin
-      miHsDelete.Enabled := False;
-      miHsClear.Enabled := False;
-    end
-    else
-    begin
-      miHsDelete.Enabled := True;
-      miHsClear.Enabled := True;
-    end;
+    SetCaptionByDataCount(TransStr('280'), miHsDelete, sgHs);
+    miHsOpenInBrowser.Caption := '';
+    miHsOpenInBrowser.Visible := False;
+    Url := GetOnionLink(True);
+    miHsOpenDir.Visible := Url <> '';
+    miHsCopyOnion.Caption := Url;
+    miHsCopy.Visible := Url <> '';
+    State := not sgHs.IsEmpty;
+    miHsDelete.Enabled := State;
+    miHsClear.Enabled := State;
     SelectHs;
   end;
 
   if tsHs.Tag = 2 then
   begin
     SelectRowPopup(sgHsPorts, mnHs);
+    SetCaptionByDataCount(TransStr('280'), miHsDelete, sgHsPorts);
+    SetCaptionByDataCount(TransStr('542'), miHsOpenInBrowser, sgHsPorts, True);
+    if sgHs.IsMultiRow then
+      Url := ''
+    else
+      Url := GetOnionLink(True);
     miHsOpenDir.Visible := False;
     miHsCopy.Visible := False;
-    if IsEmptyGrid(sgHsPorts) then
-    begin
-      miHsDelete.Enabled := False;
-      miHsClear.Enabled := False;
-    end
-    else
-    begin
-      miHsDelete.Enabled := True;
-      miHsClear.Enabled := True;
-    end;
+    State := not sgHsPorts.IsEmpty;
+    miHsOpenInBrowser.Hint := Url;
+    miHsOpenInBrowser.Visible := State and (Url <> '');
+    miHsDelete.Enabled := State;
+    miHsClear.Enabled := State;
     SelectHsPorts;
   end;
 end;
@@ -10782,7 +10958,7 @@ end;
 
 function TTcp.ShowRelayInfo(aSg: TStringGrid; Handle: Boolean): Boolean;
 var
-  SelCount, i: Integer;
+  i: Integer;
 begin
   Result := False;
   if (aSg.Tag = GRID_CIRC_INFO) and SelNodeState then
@@ -10792,8 +10968,7 @@ begin
   end
   else
   begin
-    SelCount := aSg.Selection.Bottom - aSg.Selection.Top + 1;
-    if SelCount > MAX_RELAY_INFO_QUERY then
+    if aSg.GetSelRowCount > MAX_URLS_TO_OPEN then
       Exit;
     if Handle then
     begin
@@ -10810,9 +10985,9 @@ var
   RouterID: string;
 begin
   SelectRowPopup(sgRouters, mnRouters);
-  SingleRow := sgRouters.Selection.Top = sgRouters.Selection.Bottom;
+  SingleRow := not sgRouters.IsMultiRow;
   NotStarting := ConnectState <> 1;
-  State := not IsEmptyRow(sgRouters, sgRouters.SelRow);
+  State := not sgRouters.IsEmptyRow(sgRouters.SelRow);
 
   miRtExtractData.Visible := State;
   miRtAddToNodesList.Visible := State and SingleRow;
@@ -10859,7 +11034,7 @@ var
 begin
   Result := '';
   Host := ExtractDomain(Host, True);
-  if ValidHost(Host, True, True) then
+  if ValidHost(Host, True, True) <> htNone then
   begin
     DotIndex := 1;
     while DotIndex > 0 do
@@ -10890,12 +11065,19 @@ end;
 
 procedure TTcp.mnStreamsInfoPopup(Sender: TObject);
 var
-  Flag: Boolean;
+  State: Boolean;
 begin
   SelectRowPopup(sgStreamsInfo, mnStreamsInfo);
   SetSortMenuData(sgStreamsInfo);
-  Flag := (ConnectState = 2) and not IsEmptyRow(sgStreamsInfo, sgStreamsInfo.SelRow);
-  miStreamsInfoDestroyStream.Enabled := Flag and (sgStreams.Cells[STREAMS_COUNT, sgStreams.SelRow] <> EXCLUDE_CHAR);
+  State := not sgStreamsInfo.IsEmpty;
+
+  SetCaptionByDataCount(TransStr('524'), miStreamsInfoDestroyStream, sgStreamsInfo);
+  miStreamsInfoDestroyStream.Enabled := State and (ConnectState <> 0);
+
+  miStreamsInfoExtractData.Visible := State;
+  if State then
+    InsertExtractMenu(miStreamsInfoExtractData, CONTROL_TYPE_GRID, GRID_STREAM_INFO, EXTRACT_PREVIEW);
+
   miStreamsInfoSortDL.Enabled := miShowStreamsTraffic.Checked;
   miStreamsInfoSortUL.Enabled := miShowStreamsTraffic.Checked;
 end;
@@ -10903,28 +11085,32 @@ end;
 procedure TTcp.mnStreamsPopup(Sender: TObject);
 var
   i: Integer;
-  Flag, Search: Boolean;
+  State, Search: Boolean;
   ParseStr: ArrOfStr;
   HostMenu: TMenuItem;
   Domains: string;
 begin
-  SetSortMenuData(sgStreams);
   SelectRowPopup(sgStreams, mnStreams);
-  Flag := IsEmptyRow(sgStreams, sgStreams.SelRow);
-  if Flag or (ConnectState <> 2) or (sgStreams.Cells[STREAMS_COUNT, sgStreams.SelRow] = EXCLUDE_CHAR) then
-    miStreamsDestroyStream.Enabled := False
-  else
-    miStreamsDestroyStream.Enabled := True;
-  miStreamsOpenInBrowser.Enabled := not Flag;
-  miStreamsBindToExitNode.Enabled := False;
-  miStreamsBindToExitNode.Clear;
+  SetSortMenuData(sgStreams);
+  State := not sgStreams.IsEmpty;
+
+  SetCaptionByDataCount(TransStr('524'), miStreamsDestroyStream, sgStreams);
+  miStreamsDestroyStream.Enabled := State and miStreamsDestroyStream.Enabled and (ConnectState <> 0);
+  SetCaptionByDataCount(TransStr('542'), miStreamsOpenInBrowser, sgStreams, True);
+  miStreamsOpenInBrowser.Enabled := State and miStreamsOpenInBrowser.Enabled;
+
+  miStreamsExtractData.Visible := State;
+  if State then
+    InsertExtractMenu(miStreamsExtractData, CONTROL_TYPE_GRID, GRID_STREAMS, EXTRACT_PREVIEW);
+
   miStreamsSortDL.Enabled := miShowStreamsTraffic.Checked;
   miStreamsSortUL.Enabled := miShowStreamsTraffic.Checked;
 
+  miStreamsBindToExitNode.Clear;
   miStreamsBindToExitNode.Caption := TransStr('351');
+  miStreamsBindToExitNode.Enabled := False;
   miStreamsBindToExitNode.ImageIndex := 21;
-
-  if not Flag then
+  if State and not sgStreams.IsMultiRow then
   begin
     Search := sgStreams.Cells[STREAMS_TRACK, sgStreams.SelRow] <> NONE_CHAR;
     if Search then
@@ -10955,21 +11141,50 @@ begin
   miResetTotalsCounter.Enabled := (ConnectState <> 1) and ((TotalDL <> 0) or (TotalUL <> 0));
 end;
 
-procedure TTcp.mnTransportsPopup(Sender: TObject);
+procedure TTcp.SetCaptionByDataCount(Caption: string; MenuItem: TMenuItem; aSg: TStringGrid; IsBrowserLinks: Boolean = False);
+var
+  DataCount: Integer;
+  State: Boolean;
+  Str: string;
 begin
-  SelectRowPopup(sgTransports, mnTransports);
-  miTransportsOpenDir.Enabled := DirectoryExists(TransportsDir);
-  miTransportsReset.Enabled := FileExists(DefaultsFile);
-  if IsEmptyGrid(sgTransports) then
-  begin
-    miTransportsDelete.Enabled := False;
-    miTransportsClear.Enabled := False;
-  end
+  if IsBrowserLinks then
+    DataCount := aSg.GetSelRowCount
   else
   begin
-    miTransportsDelete.Enabled := True;
-    miTransportsClear.Enabled := True;
+    case aSg.Tag of
+      GRID_STREAMS: DataCount := aSg.GetSelRowCount(STREAMS_COUNT);
+      else
+        DataCount := aSg.GetSelRowCount;
+    end;
   end;
+  State := DataCount > 0;
+  if DataCount > 1 then
+  begin
+    Str := Caption + ' (' + IntToStr(DataCount) + ')';
+    if IsBrowserLinks then
+    begin
+      State := not (DataCount > MAX_URLS_TO_OPEN);
+      if not State then
+        Str := Caption + ' (' + INFINITY_CHAR + ')';
+    end;
+  end
+  else
+    Str := Caption;
+  MenuItem.Enabled := State;
+  MenuItem.Caption := Str;
+end;
+
+procedure TTcp.mnTransportsPopup(Sender: TObject);
+var
+  State: Boolean;
+begin
+  SelectRowPopup(sgTransports, mnTransports);
+  SetCaptionByDataCount(TransStr('280'), miTransportsDelete, sgTransports);
+  miTransportsOpenDir.Enabled := DirectoryExists(TransportsDir);
+  miTransportsReset.Enabled := FileExists(DefaultsFile);
+  State := not sgTransports.IsEmpty;
+  miTransportsDelete.Enabled := State;
+  miTransportsClear.Enabled := State;
 end;
 
 procedure TTcp.mnChangeCircuitPopup(Sender: TObject);
@@ -11023,16 +11238,22 @@ var
   BridgesCount, FallbackDirCount, MemoID, i: Integer;
 begin
   if Screen.ActiveControl is TMemo then
-    Control := TMemo(Screen.ActiveControl)
+  begin
+    Control := TMemo(Screen.ActiveControl);
+    MemoID := Control.Tag;
+  end
   else
+  begin
     Control := nil;
+    MemoID := MEMO_NONE;
+  end;
 
   BridgesCount := meBridges.Lines.Count;
-  IsBridgeEdit := Control = meBridges;
+  IsBridgeEdit := MemoID = MEMO_BRIDGES;
   IsUserBridges := IsBridgeEdit and (cbxBridgesType.ItemIndex <> BRIDGES_TYPE_BUILTIN) and (BridgesCount > 0);
 
   FallbackDirCount := meFallbackDirs.Lines.Count;
-  IsFallbackDirEdit := Control = meFallbackDirs;
+  IsFallbackDirEdit := MemoID = MEMO_FALLBACK_DIRS;
   IsUserFallbackDirs := IsFallbackDirEdit and (cbxFallbackDirsType.ItemIndex <> FALLBACK_TYPE_BUILTIN) and (FallbackDirCount > 0);
 
   BridgesState := IsUserBridges and not tmScanner.Enabled;
@@ -11057,12 +11278,6 @@ begin
     (FallbackState and cbExcludeUnsuitableFallbackDirs.Checked and (SuitableFallbackDirsCount < FallbackDirCount)) or
     (BridgesState and cbExcludeUnsuitableBridges.Checked and (SuitableBridgesCount < BridgesCount));
 
-  MemoID := MEMO_NONE;
-  if IsBridgeEdit then
-    MemoID := MEMO_BRIDGES;
-  if IsFallbackDirEdit then
-    MemoID := MEMO_FALLBACK_DIRS;
-
   miClearMenu.Tag := MemoID;
 
   if IsUserBridges then
@@ -11084,7 +11299,7 @@ begin
   EditMenuEnableCheck(miDelete, emDelete);
   EditMenuEnableCheck(miFind, emFind);
 
-  if IsBridgeEdit or IsFallbackDirEdit then
+  if MemoID <> MEMO_NONE then
     miExtractData.Visible := InsertExtractMenu(miExtractData, CONTROL_TYPE_MEMO, MemoID, EXTRACT_PREVIEW)
   else
     miExtractData.Visible := False;
@@ -11203,15 +11418,19 @@ var
   i: Integer;
   PreviewState, ValidateData: Boolean;
   FallbackDir: TFallbackDir;
+  Target: TTarget;
+  SocketType: TSocketType;
   Router: TRouterInfo;
   Bridge: TBridge;
   BridgeInfo: TBridgeInfo;
   DataStr, Delimiter, PortData: string;
   UniqueList: TDictionary<string, Byte>;
   PortStr, IPv4Str, IPv6Str, HashStr, IPv4BridgesStr, IPv6BridgesStr,
-  FallbackDirsStr, NicknameStr, CountryCodeStr, CsvStr, IPv4SocketStr, IPv6SocketStr: string;
+  FallbackDirsStr, NicknameStr, CountryCodeStr, CsvStr, IPv4SocketStr, IPv6SocketStr, HostStr,
+  HostSocketStr, HostRootStr, IPv4CidrStr: string;
   PortCount, IPv4Count, IPv6Count, HashCount, IPv4BridgesCount, IPv6BridgesCount,
-  FallbackDirsCount, NicknameCount, CountryCodeCount, CsvCount, IPv4SocketCount, IPv6SocketCount: Integer;
+  FallbackDirsCount, NicknameCount, CountryCodeCount, CsvCount, IPv4SocketCount, IPv6SocketCount,
+  HostCount, HostSocketCount, HostRootCount, IPv4CidrCount: Integer;
 
   procedure UpdateMenu(Menu: TMenuItem; DataStr: string; Count: Integer; AlwaysShow: Boolean);
   var
@@ -11222,7 +11441,7 @@ var
       1: Str := DataStr;
       else
       begin
-        Str := (DataStr).Trim(['.']) + '.. (' + IntToStr(Count) + ')';
+        Str := (DataStr).TrimRight(['.']) + '.. (' + IntToStr(Count) + ')';
       end;
     end;
     Menu.Visible := (Count > 0) and (ShowFullMenuOnExtract or AlwaysShow);
@@ -11291,6 +11510,10 @@ begin
   CsvCount := 0;
   IPv4SocketCount := 0;
   IPv6SocketCount := 0;
+  HostCount := 0;
+  HostSocketCount := 0;
+  HostRootCount := 0;
+  IPv4CidrCount := 0;
   PortStr := '';
   IPv4Str := '';
   IPv6Str := '';
@@ -11303,6 +11526,10 @@ begin
   CsvStr := '';
   IPv4SocketStr := '';
   IPv6SocketStr := '';
+  HostStr := '';
+  HostSocketStr := '';
+  HostRootStr := '';
+  IPv4CidrStr := '';
   ParentMenu.Clear;
   ParentMenu.Tag := ControlID;
   ParentMenu.HelpContext := ControlType;
@@ -11311,7 +11538,12 @@ begin
   InsertMenuItem(ParentMenu, EXTRACT_NICKNAME, 32, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, EXTRACT_HASH, 23, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, 0, -1, '-');
+  InsertMenuItem(ParentMenu, EXTRACT_HOST, 30, '', ExtractDataClick);
+  InsertMenuItem(ParentMenu, EXTRACT_HOST_ROOT, 77, '', ExtractDataClick);
+  InsertMenuItem(ParentMenu, EXTRACT_HOST_SOCKET, 77, '', ExtractDataClick);
+  InsertMenuItem(ParentMenu, 0, -1, '-');
   InsertMenuItem(ParentMenu, EXTRACT_IPV4, 33, '', ExtractDataClick);
+  InsertMenuItem(ParentMenu, EXTRACT_IPV4_CIDR, 48, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, EXTRACT_IPV4_SOCKET, 48, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, EXTRACT_IPV4_BRIDGE, 59, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, EXTRACT_FALLBACK_DIR, 54, '', ExtractDataClick);
@@ -11348,14 +11580,19 @@ begin
     begin
       case ControlID of
         MEMO_BRIDGES: ControlMemo := meBridges;
+        MEMO_MY_FAMILY: ControlMemo := meMyFamily;
+        MEMO_TRACK_HOST_EXITS: ControlMemo := meTrackHostExits;
         MEMO_FALLBACK_DIRS: ControlMemo := meFallbackDirs;
+        MEMO_NODES_LIST: ControlMemo := meNodesList;
       end;
     end;
     CONTROL_TYPE_GRID:
     begin
       case ControlID of
         GRID_ROUTERS: ControlGrid := sgRouters;
+        GRID_STREAMS: ControlGrid := sgStreams;
         GRID_CIRC_INFO: ControlGrid := sgCircuitInfo;
+        GRID_STREAM_INFO: ControlGrid := sgStreamsInfo;
       end;
     end;
   end;
@@ -11404,6 +11641,28 @@ begin
                   end;
                 end;
               end;
+              MEMO_MY_FAMILY:
+              begin
+                for i := 0 to ls.Count - 1 do
+                begin
+                  DataStr := Trim(ls[i]);
+                  if ValidHash(DataStr) then
+                    FormatData(HashStr, HashCount, DataStr, EXTRACT_HASH);
+                end;
+              end;
+              MEMO_TRACK_HOST_EXITS:
+              begin
+                for i := 0 to ls.Count - 1 do
+                begin
+                  DataStr := Trim(ls[i]);
+                  case ValidHost(DataStr, True, True) of
+                    htDomain: FormatData(HostStr, HostCount, DataStr, EXTRACT_HOST);
+                    htIPv4: FormatData(IPv4Str, IPv4Count, DataStr, EXTRACT_IPV4);
+                    htIPv6: FormatData(IPv6Str, IPv6Count, FormatHost(DataStr, False), EXTRACT_IPV6);
+                    htRoot: FormatData(HostRootStr, HostRootCount, DataStr, EXTRACT_HOST_ROOT);
+                  end;
+                end;
+              end;
               MEMO_FALLBACK_DIRS:
               begin
                 for i := 0 to ls.Count - 1 do
@@ -11426,22 +11685,35 @@ begin
                   end;
                 end;
               end;
+              MEMO_NODES_LIST:
+              begin
+                for i := 0 to ls.Count - 1 do
+                begin
+                  DataStr := Trim(ls[i]);
+                  case ValidNode(DataStr) of
+                    dtHash: FormatData(HashStr, HashCount, DataStr, EXTRACT_HASH);
+                    dtIPv4: FormatData(IPv4Str, IPv4Count, DataStr, EXTRACT_IPV4);
+                    dtIPv4Cidr: FormatData(IPv4CidrStr, IPv4CidrCount, DataStr, EXTRACT_IPV4_CIDR);
+                    dtCode: FormatData(CountryCodeStr, CountryCodeCount, LowerCase(DataStr), EXTRACT_COUNTRY_CODE);
+                  end;
+                end;
+              end;
             end;
           end;
         end;
         CONTROL_TYPE_GRID:
         begin
-          if ParentMenu.Hint = '' then
-          begin
-            for i := ControlGrid.Selection.Top to ControlGrid.Selection.Bottom do
-              ls.Append(ControlGrid.Cells[0, i]);
-          end
-          else
-            ls.Text := ParentMenu.Hint;
-          if ls.Text <> '' then
-          begin
-            case ControlID of
-              GRID_ROUTERS, GRID_CIRC_INFO:
+          case ControlID of
+            GRID_ROUTERS, GRID_CIRC_INFO:
+            begin
+              if ParentMenu.Hint = '' then
+              begin
+                for i := ControlGrid.Selection.Top to ControlGrid.Selection.Bottom do
+                  ls.Append(ControlGrid.Cells[ControlGrid.Key, i]);
+              end
+              else
+                ls.Text := ParentMenu.Hint;
+              if ls.Text <> '' then
               begin
                 for i := 0 to ls.Count - 1 do
                 begin
@@ -11483,6 +11755,61 @@ begin
                 end;
               end;
             end;
+            GRID_STREAMS:
+            begin
+              for i := ControlGrid.Selection.Top to ControlGrid.Selection.Bottom do
+              begin
+                if TryParseTarget(ControlGrid.Cells[STREAMS_TARGET, i], Target) then
+                begin
+                  FormatData(PortStr, PortCount, Target.Port, EXTRACT_PORT);
+                  if Target.Hash <> '' then
+                    FormatData(HashStr, HashCount, Target.Hash, EXTRACT_HASH);
+                  case ValidAddress(Target.Hostname) of
+                    atIPv4:
+                    begin
+                      FormatData(IPv4Str, IPv4Count, Target.Hostname, EXTRACT_IPV4);
+                      FormatData(IPv4SocketStr, IPv4SocketCount, Target.Hostname + ':' + Target.Port, EXTRACT_IPV4_SOCKET);
+                    end;
+                    atIPv6:
+                    begin
+                      FormatData(IPv6Str, IPv6Count, FormatHost(Target.Hostname, False), EXTRACT_IPV6);
+                      FormatData(IPv6SocketStr, IPv6SocketCount, FormatHost(Target.Hostname, False) + ':' + Target.Port, EXTRACT_IPV6_SOCKET);
+                    end
+                    else
+                    begin
+                      FormatData(HostStr, HostCount, Target.Hostname, EXTRACT_HOST);
+                      FormatData(HostSocketStr, HostSocketCount, Target.Hostname + ':' + Target.Port, EXTRACT_HOST_SOCKET);
+                    end;
+                  end;
+                end;
+              end;
+            end;
+            GRID_STREAM_INFO:
+            begin
+              for i := ControlGrid.Selection.Top to ControlGrid.Selection.Bottom do
+              begin
+                DataStr := ControlGrid.Cells[STREAMS_INFO_DEST_ADDR, i];
+                SocketType := ValidSocket(DataStr);
+                if SocketType <> soNone then
+                begin
+                  PortData := IntToStr(GetPortFromSocket(DataStr));
+                  DataStr := GetAddressFromSocket(DataStr, True);
+                  FormatData(PortStr, PortCount, PortData, EXTRACT_PORT);
+                  case SocketType of
+                    soIPv4:
+                    begin
+                      FormatData(IPv4Str, IPv4Count, DataStr, EXTRACT_IPV4);
+                      FormatData(IPv4SocketStr, IPv4SocketCount, DataStr + ':' + PortData, EXTRACT_IPV4_SOCKET);
+                    end;
+                    soIPv6:
+                    begin
+                      FormatData(IPv6Str, IPv6Count, DataStr, EXTRACT_IPV6);
+                      FormatData(IPv6SocketStr, IPv6SocketCount, DataStr + ':' + PortData, EXTRACT_IPV6_SOCKET);
+                    end;
+                  end;
+                end;
+              end;
+            end;
           end;
         end;
       end;
@@ -11506,6 +11833,10 @@ begin
               EXTRACT_CSV: UpdateMenu(ParentMenu.Items[i], CsvStr, CsvCount, False);
               EXTRACT_IPV4_SOCKET: UpdateMenu(ParentMenu.Items[i], IPv4SocketStr, IPv4SocketCount, False);
               EXTRACT_IPV6_SOCKET: UpdateMenu(ParentMenu.Items[i], IPv6SocketStr, IPv6SocketCount, False);
+              EXTRACT_HOST: UpdateMenu(ParentMenu.Items[i], HostStr, HostCount, True);
+              EXTRACT_HOST_SOCKET: UpdateMenu(ParentMenu.Items[i], HostSocketStr, HostSocketCount, False);
+              EXTRACT_HOST_ROOT: UpdateMenu(ParentMenu.Items[i], HostRootStr, HostRootCount, True);
+              EXTRACT_IPV4_CIDR: UpdateMenu(ParentMenu.Items[i], IPv4CidrStr, IPv4CidrCount, True);
             end;
           end;
         end;
@@ -11526,7 +11857,11 @@ begin
           DataStr := DataStr + Delimiter + lr[i];
         Delete(DataStr, 1, Length(Delimiter));
         if DataStr <> '' then
+        begin
+          if (Delimiter = BR) and (lr.Count > 1) then
+            DataStr := DataStr + BR;
           Clipboard.AsText := DataStr;
+        end;
       end;
     finally
       ls.Free;
@@ -11559,7 +11894,7 @@ procedure TTcp.lbSelectedRoutersMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
   if (Button = mbLeft) and (ssDouble in Shift) then
-    GridSelectAll(sgRouters);
+    sgRouters.SelectAll;
 end;
 
 procedure TTcp.lbServerInfoMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
@@ -12073,7 +12408,7 @@ begin
       for i := 0 to ls.Count - 1 do
         TrackHostExits := TrackHostExits + ',' + ls[i];
       Delete(TrackHostExits, 1, 1);
-      meTrackHostExits.Text := ls.Text;
+      meTrackHostExits.SetTextData(ls.Text);
     finally
       ls.Free;
     end;
@@ -12143,7 +12478,7 @@ begin
   begin
     if cbxExitPolicyType.ItemIndex <> 1 then
       cbxExitPolicyType.ItemIndex := 0;
-    meExitPolicy.Text := StringReplace(DEFAULT_CUSTOM_EXIT_POLICY, ',', BR, [rfReplaceAll]);
+    meExitPolicy.SetTextData(StringReplace(DEFAULT_CUSTOM_EXIT_POLICY, ',', BR, [rfReplaceAll]));
     meExitPolicy.Enabled := False;
   end;
   if cbxServerMode.ItemIndex > SERVER_MODE_NONE then
@@ -12157,7 +12492,7 @@ begin
     for i := 0 to Length(ParseStr) - 1 do
     begin
       ParseStr[i] := ExtractDomain(Trim(ParseStr[i]));
-      if ValidHost(ParseStr[i]) then
+      if ValidHost(ParseStr[i]) <> htNone then
       begin
         if cbUseAddress.Checked then
           TorConfig.Append('Address ' + FormatHost(ParseStr[i]));
@@ -12316,17 +12651,20 @@ end;
 
 procedure TTcp.miStreamsDestroyStreamClick(Sender: TObject);
 begin
-  CloseStreams(sgCircuits.Cells[CIRC_ID, sgCircuits.SelRow], True, sgStreams.Cells[STREAMS_TARGET, sgStreams.SelRow]);
+  CloseStreams(sgCircuits.Cells[CIRC_ID, sgCircuits.SelRow], ctTarget);
 end;
 
 procedure TTcp.miStreamsInfoDestroyStreamClick(Sender: TObject);
 begin
-  CloseStream(sgStreamsInfo.Cells[STREAMS_INFO_ID, sgStreamsInfo.SelRow]);
+  CloseStreams(sgCircuits.Cells[CIRC_ID, sgCircuits.SelRow], ctStream);
 end;
 
 procedure TTcp.miStreamsOpenInBrowserClick(Sender: TObject);
+var
+  i: Integer;
 begin
-  ShellOpen(sgStreams.Cells[STREAMS_TARGET, sgStreams.SelRow]);
+  for i := sgStreams.Selection.Top to sgStreams.Selection.Bottom do
+    ShellOpen(sgStreams.Cells[STREAMS_TARGET, i]);
 end;
 
 procedure TTcp.ScanStart(ScanType: TScanType; ScanPurpose: TScanPurpose);
@@ -12578,7 +12916,7 @@ begin
                 end;
               end;
               if DeleteCount > 0 then
-                CurrentMemo.Text := ls.Text;
+                CurrentMemo.SetTextData(ls.Text);
               case CurrentScanPurpose of
                 spUserBridges: SaveBridgesData;
                 spUserFallbackDirs: SaveFallbackDirsData;
@@ -12684,6 +13022,7 @@ begin
         pbScanProgress.Max := TotalScans;
         pbScanProgress.Position := CurrentScans - ScanThreads;
         pbScanProgress.ProgressText := IntToStr(Round((CurrentScans - ScanThreads) / TotalScans * 100)) + ' %';
+        pbScanProgress.Hint := Format(TransStr('693'), [CurrentScans - ScanThreads, TotalScans]);
       end;
     end;
   end;
@@ -12742,7 +13081,6 @@ begin
     Consensus.OnTerminate := TConsensusThreadTerminate;
     Consensus.Start;
   end;
-  UpdateRoutersData;
 end;
 
 procedure TTcp.LoadDescriptors;
@@ -12768,9 +13106,9 @@ begin
   FilterCount := 0;
   if sgFilter.SelRow = 0 then
     sgFilter.SelRow := 1;
-  sgFilter.RowID := sgFilter.Cells[FILTER_ID, sgFilter.SelRow];
-  BeginUpdateTable(sgFilter);
-  ClearGrid(sgFilter, False);
+  sgFilter.SaveRowID;
+  sgFilter.BeginUpdateRows;
+  sgFilter.Clear(False);
   if (lbFilterEntry.Tag = 0) and (lbFilterMiddle.Tag = 0) and (lbFilterExit.Tag = 0) and (lbFilterExclude.Tag = 0) and not AlreadyStarted then
     HideRow := False
   else
@@ -12868,7 +13206,7 @@ begin
     else
       GridScrollCheck(sgFilter, FILTER_NAME, 380);
   end;
-  EndUpdateTable(sgFilter);
+  sgFilter.EndUpdateRows;
   lbFilterCount.Caption := Format(TransStr('321'), [FilterCount, FilterDic.Count]);
 end;
 
@@ -12912,7 +13250,7 @@ begin
   end;
 end;
 
-procedure TTcp.ShowRouters;
+procedure TTcp.ShowRouters(BlockUpdate: Boolean = False);
 var
   RoutersCount, i, j: Integer;
   cdExit, cdGuard, cdAuthority, cdOther, cdBridge, cdFast, cdStable, cdV2Dir, cdHSDir, cdRecommended, cdAlive, cdConsensus: Boolean;
@@ -12991,6 +13329,8 @@ var
   end;
 
 begin
+  if BlockUpdate then
+    Exit;
   if Assigned(Consensus) or Assigned(Descriptors) then
     Exit;
   WrongQuery := False;
@@ -13076,10 +13416,9 @@ begin
   RoutersCount := 0;
   if sgRouters.SelRow = 0 then
     sgRouters.SelRow := 1;
-
-  sgRouters.RowID := sgRouters.Cells[ROUTER_ID, sgRouters.SelRow];
-  BeginUpdateTable(sgRouters);
-  ClearGrid(sgRouters, False);
+  sgRouters.SaveRowID;
+  sgRouters.BeginUpdateRows;
+  sgRouters.Clear(False);
 
   if not WrongQuery then
   begin
@@ -13319,7 +13658,7 @@ begin
     GridScrollCheck(sgRouters, ROUTER_COUNTRY, 133)
   else
     GridScrollCheck(sgRouters, ROUTER_COUNTRY, 153);
-  EndUpdateTable(sgRouters);
+  sgRouters.EndUpdateRows;
   lbRoutersCount.Caption := Format(TransStr('321'), [RoutersCount, RoutersDic.Count]);
 
   if PortsDic.Count > 0 then
@@ -13327,7 +13666,6 @@ begin
   if TransportsList.Count > 0 then
     TransportsList.Clear;
 end;
-
 
 procedure TTcp.CheckCountryIndexInList;
 var
@@ -13466,9 +13804,9 @@ begin
     PurposeStr := '';
     if sgCircuits.SelRow = 0 then
       sgCircuits.SelRow := 1;
-    sgCircuits.RowID := sgCircuits.Cells[CIRC_ID, sgCircuits.SelRow];
-    BeginUpdateTable(sgCircuits);
-    ClearGrid(sgCircuits, False);
+    sgCircuits.SaveRowID;
+    sgCircuits.BeginUpdateRows;
+    sgCircuits.Clear(False);
 
     for Item in CircuitsDic do
     begin
@@ -13550,7 +13888,8 @@ begin
     else
       SetGridLastCell(sgCircuits, False);
     CheckCircuitsControls(False);
-    EndUpdateTable(sgCircuits);
+    sgCircuits.EndUpdateRows;
+
     lbCircuitsCount.Caption := Format(TransStr('349'), [CircuitsCount, CircuitsDic.Count]);
     lbStreamsCount.Caption := TransStr('350') + ': ' + IntToStr(TotalConnections);
 
@@ -13574,8 +13913,8 @@ begin
     Exit;
   LockCircuitInfo := True;
   NodesCount := 0;
-  BeginUpdateTable(sgCircuitInfo);
-  ClearGrid(sgCircuitInfo, False);
+  sgCircuitInfo.BeginUpdateRows;
+  sgCircuitInfo.Clear(False);
 
   if CircuitsDic.TryGetValue(CircID, CircuitInfo) then
   begin
@@ -13630,8 +13969,7 @@ begin
     sgCircuitInfo.RowCount := NodesCount + 1
   else
     sgCircuitInfo.RowCount := 2;
-  EndUpdateTable(sgCircuitInfo);
-  ShowStreams(CircID);
+  sgCircuitInfo.EndUpdateRows;
   LockCircuitInfo := False;
 end;
 
@@ -13673,51 +14011,18 @@ begin
         end;
       end;
       sgCircuits.Cells[CIRC_STREAMS, Search] := EXCLUDE_CHAR;
-      if (Search = sgCircuits.Row) and not IsEmptyGrid(sgStreams) then
+      if (Search = sgCircuits.Row) and not sgStreams.IsEmpty then
       begin
         for i := 1 to sgStreams.RowCount - 1 do
           sgStreams.Cells[STREAMS_COUNT, i] := EXCLUDE_CHAR;
       end;
     end;
-    if UpdateStreamsCount and not IsEmptyGrid(sgCircuits) then
+    if UpdateStreamsCount and not sgCircuits.IsEmpty then
       lbStreamsCount.Caption := TransStr('350') + ': ' + IntToStr(StreamsDic.Count);
   end;
 end;
 
-procedure TTcp.CheckCircuitStreams(CircID: string; TargetStreams: Integer);
-var
-  CircuitInfo: TCircuitInfo;
-  i: Integer;
-begin
-  if miCircuitsUpdateLow.Checked or miCircuitsUpdateManual.Checked then
-  begin
-    if CircuitsDic.TryGetValue(CircID, CircuitInfo) then
-    begin
-      if CircuitInfo.Streams > 0 then
-        sgCircuits.Cells[CIRC_STREAMS, sgCircuits.SelRow] := IntToStr(CircuitInfo.Streams)
-      else
-      begin
-        sgCircuits.Cells[CIRC_STREAMS, sgCircuits.SelRow] := NONE_CHAR;
-        if not IsEmptyGrid(sgStreams) then
-        begin
-          for i := 1 to sgStreams.RowCount - 1 do
-            sgStreams.Cells[STREAMS_COUNT, i] := EXCLUDE_CHAR;
-        end;
-      end;
-    end;
-    if StrToIntDef(sgStreams.Cells[STREAMS_COUNT, sgStreams.SelRow], 0) > 0 then
-    begin
-      if TargetStreams = 0 then
-        sgStreams.Cells[STREAMS_COUNT, sgStreams.SelRow] := EXCLUDE_CHAR
-      else
-        sgStreams.Cells[STREAMS_COUNT, sgStreams.SelRow] := IntToStr(TargetStreams);
-    end;
-    if not IsEmptyGrid(sgCircuits) then
-      lbStreamsCount.Caption := TransStr('350') + ': ' + IntToStr(StreamsDic.Count);
-  end;
-end;
-
-procedure TTcp.ShowStreams(CircID: string);
+procedure TTcp.ShowStreams(CircID: string; AlwaysUpdate: Boolean = True);
 var
   StreamsCount, Search, i: Integer;
   Item: TPair<string, TStreamInfo>;
@@ -13727,81 +14032,87 @@ var
 begin
   if LockStreams then
     Exit;
-  LockStreams := True;
-  StreamsCount := 0;
-  if sgStreams.SelRow = 0 then
-    sgStreams.SelRow := 1;
-  sgStreams.RowID := sgStreams.Cells[STREAMS_TARGET, sgStreams.SelRow];
-  BeginUpdateTable(sgStreams);
-  ClearGrid(sgStreams, False);
-  if CircuitsDic.TryGetValue(CircID, CircuitInfo) then
+  if AlwaysUpdate or StreamsUpdated then
   begin
-    for Item in StreamsDic do
+    LockStreams := True;
+    StreamsCount := 0;
+    if sgStreams.SelRow = 0 then
+      sgStreams.SelRow := 1;
+    sgStreams.SaveRowID;
+    sgStreams.BeginUpdateRows;
+    sgStreams.Clear(False);
+    if CircuitsDic.TryGetValue(CircID, CircuitInfo) then
     begin
-      if Item.Value.CircuitID = CircID then
+      for Item in StreamsDic do
       begin
-        Target := Item.Value.Target;
-        Search := -1;
-        for i := 1 to StreamsCount do
-          if sgStreams.Cells[STREAMS_TARGET, i] = Target then
+        if Item.Value.CircuitID = CircID then
+        begin
+          Target := Item.Value.Target;
+          Search := -1;
+          for i := 1 to StreamsCount do
           begin
-            Search := i;
-            Break;
+            if sgStreams.Cells[STREAMS_TARGET, i] = Target then
+            begin
+              Search := i;
+              Break;
+            end;
           end;
-        if Search > 0 then
-        begin
-          sgStreams.Cells[STREAMS_ID, Search] := Item.Key;
-          sgStreams.Cells[STREAMS_COUNT, Search] := IntToStr(StrToIntDef(sgStreams.Cells[STREAMS_COUNT, Search], 0) + 1);
-          ReadSum := FormatSizeToBytes(sgStreams.Cells[STREAMS_BYTES_READ, Search]) + Item.Value.BytesRead;
-          WrittenSum := FormatSizeToBytes(sgStreams.Cells[STREAMS_BYTES_WRITTEN, Search]) + Item.Value.BytesWritten;
-          sgStreams.Cells[STREAMS_BYTES_READ, Search] := BytesFormat(ReadSum);
-          sgStreams.Cells[STREAMS_BYTES_WRITTEN, Search] := BytesFormat(WrittenSum);
-        end
-        else
-        begin
-          if FindTrackHost(Target) then
+          if Search > 0 then
           begin
-            if cbUseTrackHostExits.Checked then
-              FoundStr := SELECT_CHAR
-            else
-              FoundStr := FAVERR_CHAR;
+            sgStreams.Cells[STREAMS_ID, Search] := Item.Key;
+            sgStreams.Cells[STREAMS_COUNT, Search] := IntToStr(StrToIntDef(sgStreams.Cells[STREAMS_COUNT, Search], 0) + 1);
+            ReadSum := FormatSizeToBytes(sgStreams.Cells[STREAMS_BYTES_READ, Search]) + Item.Value.BytesRead;
+            WrittenSum := FormatSizeToBytes(sgStreams.Cells[STREAMS_BYTES_WRITTEN, Search]) + Item.Value.BytesWritten;
+            sgStreams.Cells[STREAMS_BYTES_READ, Search] := BytesFormat(ReadSum);
+            sgStreams.Cells[STREAMS_BYTES_WRITTEN, Search] := BytesFormat(WrittenSum);
           end
           else
-            FoundStr := NONE_CHAR;
-          Inc(StreamsCount);
-          sgStreams.Cells[STREAMS_ID, StreamsCount] := Item.Key;
-          sgStreams.Cells[STREAMS_TARGET, StreamsCount] := Target;
-          sgStreams.Cells[STREAMS_TRACK, StreamsCount] := FoundStr;
-          sgStreams.Cells[STREAMS_COUNT, StreamsCount] := '1';
-          sgStreams.Cells[STREAMS_BYTES_READ, StreamsCount] := BytesFormat(Item.Value.BytesRead);
-          sgStreams.Cells[STREAMS_BYTES_WRITTEN, StreamsCount] := BytesFormat(Item.Value.BytesWritten);
+          begin
+            if FindTrackHost(Target) then
+            begin
+              if cbUseTrackHostExits.Checked then
+                FoundStr := SELECT_CHAR
+              else
+                FoundStr := FAVERR_CHAR;
+            end
+            else
+              FoundStr := NONE_CHAR;
+            Inc(StreamsCount);
+            sgStreams.Cells[STREAMS_ID, StreamsCount] := Item.Key;
+            sgStreams.Cells[STREAMS_TARGET, StreamsCount] := Target;
+            sgStreams.Cells[STREAMS_TRACK, StreamsCount] := FoundStr;
+            sgStreams.Cells[STREAMS_COUNT, StreamsCount] := '1';
+            sgStreams.Cells[STREAMS_BYTES_READ, StreamsCount] := BytesFormat(Item.Value.BytesRead);
+            sgStreams.Cells[STREAMS_BYTES_WRITTEN, StreamsCount] := BytesFormat(Item.Value.BytesWritten);
+          end;
         end;
       end;
     end;
+
+    if StreamsCount > 0 then
+      sgStreams.RowCount := StreamsCount + 1
+    else
+      sgStreams.RowCount := 2;
+
+    GridSort(sgStreams);
+    SetGridLastCell(sgStreams, False);
+    if miShowStreamsTraffic.Checked then
+      GridScrollCheck(sgStreams, STREAMS_TARGET, 338)
+    else
+      GridScrollCheck(sgStreams, STREAMS_TARGET, 451);
+    sgStreams.EndUpdateRows;
+    LockStreams := False;
+    StreamsUpdated := False;
+    ShowStreamsInfo(CircID);
   end;
-
-  if StreamsCount > 0 then
-    sgStreams.RowCount := StreamsCount + 1
-  else
-    sgStreams.RowCount := 2;
-
-  GridSort(sgStreams);
-  SetGridLastCell(sgStreams, False, False, False, -1, -1, 1);
-  if miShowStreamsTraffic.Checked then
-    GridScrollCheck(sgStreams, STREAMS_TARGET, 338)
-  else
-    GridScrollCheck(sgStreams, STREAMS_TARGET, 451);
-
-  EndUpdateTable(sgStreams);
-  ShowStreamsInfo(CircID, sgStreams.Cells[STREAMS_TARGET, sgStreams.SelRow]);
-  LockStreams := False;
 end;
 
-procedure TTcp.ShowStreamsInfo(CircID, TargetStr: string);
+procedure TTcp.ShowStreamsInfo(CircID: string);
 var
-  StreamsCount, i: Integer;
+  Targets: TDictionary<string, Integer>;
+  StreamsCount, TargetCount, i: Integer;
   Item: TPair<string, TStreamInfo>;
-  PurposeStr, DestAddr: string;
+  PurposeStr, DestAddr, TargetStr: string;
   Target: TTarget;
   CircuitInfo: TCircuitInfo;
 begin
@@ -13812,93 +14123,149 @@ begin
   DestAddr := '';
   if sgStreamsInfo.SelRow = 0 then
     sgStreamsInfo.SelRow := 1;
-  sgStreamsInfo.RowID := sgStreamsInfo.Cells[STREAMS_INFO_ID, sgStreamsInfo.SelRow];
-  BeginUpdateTable(sgStreamsInfo);
-  ClearGrid(sgStreamsInfo, False);
-
-  if CircuitsDic.TryGetValue(CircID, CircuitInfo) then
-  begin
-    if CircuitInfo.Streams > 0 then
+  Targets := TDictionary<string, Integer>.Create;
+  try
+    if sgStreams.IsMultiRow then
     begin
-      for Item in StreamsDic do
+      for i := sgStreams.Selection.Top to sgStreams.Selection.Bottom do
       begin
-        if (Item.Value.CircuitID = CircID) and (Item.Value.Target = TargetStr) then
+        TargetStr := sgStreams.Cells[STREAMS_TARGET, i];
+        if TargetStr <> '' then
+          Targets.AddOrSetValue(TargetStr, 0);
+      end;
+    end
+    else
+    begin
+      TargetStr := sgStreams.Cells[STREAMS_TARGET, sgStreams.SelRow];
+      if TargetStr <> '' then
+        Targets.AddOrSetValue(TargetStr, 0);
+    end;
+    sgStreamsInfo.SaveRowID;
+    sgStreamsInfo.BeginUpdateRows;
+    sgStreamsInfo.Clear(False);
+    if CircuitsDic.TryGetValue(CircID, CircuitInfo) then
+    begin
+      if CircuitInfo.Streams > 0 then
+      begin
+        for Item in StreamsDic do
         begin
-          Inc(StreamsCount);
-          sgStreamsInfo.Cells[STREAMS_INFO_ID, StreamsCount] := Item.Key;
-          if Item.Value.SourceAddr <> '' then
-            sgStreamsInfo.Cells[STREAMS_INFO_SOURCE_ADDR, StreamsCount] := Item.Value.SourceAddr
-          else
-            sgStreamsInfo.Cells[STREAMS_INFO_SOURCE_ADDR, StreamsCount] := TransStr('376');
+          if (Item.Value.CircuitID = CircID) and Targets.TryGetValue(Item.Value.Target, TargetCount) then
+          begin
+            Inc(StreamsCount);
+            Inc(TargetCount);
+            Targets.AddOrSetValue(Item.Value.Target, TargetCount);
+            sgStreamsInfo.Cells[STREAMS_INFO_ID, StreamsCount] := Item.Key;
+            if Item.Value.SourceAddr <> '' then
+              sgStreamsInfo.Cells[STREAMS_INFO_SOURCE_ADDR, StreamsCount] := Item.Value.SourceAddr
+            else
+              sgStreamsInfo.Cells[STREAMS_INFO_SOURCE_ADDR, StreamsCount] := TransStr('376');
 
-          if Item.Value.DestAddr <> '' then
-          begin
-            DestAddr := Item.Value.DestAddr;
-            sgStreamsInfo.Cells[STREAMS_INFO_DEST_ADDR, StreamsCount] := DestAddr;
-          end
-          else
-          begin
-            if TryParseTarget(TargetStr, Target) then
+            if Item.Value.DestAddr <> '' then
             begin
-              case Target.TargetType of
-                ttExit: sgStreamsInfo.Cells[STREAMS_INFO_DEST_ADDR, StreamsCount] := FormatHost(Target.Hostname) + ':' + Target.Port;
-                ttOnion: sgStreamsInfo.Cells[STREAMS_INFO_DEST_ADDR, StreamsCount] := TransStr('122');
-                else
-                  sgStreamsInfo.Cells[STREAMS_INFO_DEST_ADDR, StreamsCount] := TransStr('401');
-              end;
+              DestAddr := Item.Value.DestAddr;
+              sgStreamsInfo.Cells[STREAMS_INFO_DEST_ADDR, StreamsCount] := DestAddr;
             end
             else
-              sgStreamsInfo.Cells[STREAMS_INFO_DEST_ADDR, StreamsCount] := TransStr('401');
-          end;
-
-          case Item.Value.PurposeID of
-            DIR_FETCH: PurposeStr := TransStr('370');
-            DIR_UPLOAD: PurposeStr := TransStr('371');
-            DIRPORT_TEST: PurposeStr := TransStr('372');
-            DNS_REQUEST: PurposeStr := TransStr('373');
-            USER:
             begin
-              case Item.Value.Protocol of
-                SOCKS4: PurposeStr := TransStr('594');
-                SOCKS5: PurposeStr := TransStr('595');
-                HTTPCONNECT: PurposeStr := TransStr('596');
-                else
-                  PurposeStr := TransStr('374');
-              end;
+              if TryParseTarget(Item.Value.Target, Target) then
+              begin
+                case Target.TargetType of
+                  ttExit: sgStreamsInfo.Cells[STREAMS_INFO_DEST_ADDR, StreamsCount] := FormatHost(Target.Hostname) + ':' + Target.Port;
+                  ttOnion: sgStreamsInfo.Cells[STREAMS_INFO_DEST_ADDR, StreamsCount] := TransStr('122');
+                  else
+                    sgStreamsInfo.Cells[STREAMS_INFO_DEST_ADDR, StreamsCount] := TransStr('401');
+                end;
+              end
+              else
+                sgStreamsInfo.Cells[STREAMS_INFO_DEST_ADDR, StreamsCount] := TransStr('401');
             end;
-            else
-              PurposeStr := TransStr('375');
+
+            case Item.Value.PurposeID of
+              DIR_FETCH: PurposeStr := TransStr('370');
+              DIR_UPLOAD: PurposeStr := TransStr('371');
+              DIRPORT_TEST: PurposeStr := TransStr('372');
+              DNS_REQUEST: PurposeStr := TransStr('373');
+              USER:
+              begin
+                case Item.Value.Protocol of
+                  SOCKS4: PurposeStr := TransStr('594');
+                  SOCKS5: PurposeStr := TransStr('595');
+                  HTTPCONNECT: PurposeStr := TransStr('596');
+                  else
+                    PurposeStr := TransStr('374');
+                end;
+              end;
+              else
+                PurposeStr := TransStr('375');
+            end;
+            sgStreamsInfo.Cells[STREAMS_INFO_PURPOSE, StreamsCount] := PurposeStr;
+            sgStreamsInfo.Cells[STREAMS_INFO_BYTES_READ, StreamsCount] := BytesFormat(Item.Value.BytesRead);
+            sgStreamsInfo.Cells[STREAMS_INFO_BYTES_WRITTEN, StreamsCount] := BytesFormat(Item.Value.BytesWritten);
           end;
-          sgStreamsInfo.Cells[STREAMS_INFO_PURPOSE, StreamsCount] := PurposeStr;
-          sgStreamsInfo.Cells[STREAMS_INFO_BYTES_READ, StreamsCount] := BytesFormat(Item.Value.BytesRead);
-          sgStreamsInfo.Cells[STREAMS_INFO_BYTES_WRITTEN, StreamsCount] := BytesFormat(Item.Value.BytesWritten);
         end;
       end;
     end;
+
+    if StreamsCount > 0 then
+      sgStreamsInfo.RowCount := StreamsCount + 1
+    else
+      sgStreamsInfo.RowCount := 2;
+
+    GridSort(sgStreamsInfo);
+    SetGridLastCell(sgStreamsInfo, False);
+    if miShowStreamsTraffic.Checked then
+      GridScrollCheck(sgStreamsInfo, STREAMS_INFO_PURPOSE, 134)
+    else
+      GridScrollCheck(sgStreamsInfo, STREAMS_INFO_PURPOSE, 177);
+    sgStreamsInfo.EndUpdateRows;
+    CheckCircuitStreams(CircID, Targets);
+    LockStreamsInfo := False;
+  finally
+    Targets.Free;
   end;
+end;
 
-  if StreamsCount > 0 then
+procedure TTcp.CheckCircuitStreams(CircID: string; var Targets: TDictionary<string, Integer>);
+var
+  CircuitInfo: TCircuitInfo;
+  TargetCount, i: Integer;
+begin
+  if miCircuitsUpdateLow.Checked or miCircuitsUpdateManual.Checked then
   begin
-    sgStreamsInfo.RowCount := StreamsCount + 1;
-    if DestAddr <> '' then
+    if CircuitsDic.TryGetValue(CircID, CircuitInfo) then
     begin
-      for i := 1 to sgStreamsInfo.RowCount - 1 do
-        if sgStreamsInfo.Cells[STREAMS_INFO_DEST_ADDR, i] = TransStr('401') then
-          sgStreamsInfo.Cells[STREAMS_INFO_DEST_ADDR, i] := DestAddr;
+      sgStreams.BeginUpdateRows;
+      if CircuitInfo.Streams > 0 then
+      begin
+        sgCircuits.Cells[CIRC_STREAMS, sgCircuits.SelRow] := IntToStr(CircuitInfo.Streams);
+        if not sgStreams.IsEmpty then
+        begin
+          for i := 1 to sgStreams.RowCount - 1 do
+          begin
+            if Targets.TryGetValue(sgStreams.Cells[STREAMS_TARGET, i], TargetCount) then
+            begin
+              if TargetCount = 0 then
+                sgStreams.Cells[STREAMS_COUNT, i] := EXCLUDE_CHAR
+              else
+                sgStreams.Cells[STREAMS_COUNT, i] := IntToStr(TargetCount);
+            end;
+          end;
+        end;
+      end
+      else
+      begin
+        sgCircuits.Cells[CIRC_STREAMS, sgCircuits.SelRow] := NONE_CHAR;
+        if not sgStreams.IsEmpty then
+        begin
+          for i := 1 to sgStreams.RowCount - 1 do
+            sgStreams.Cells[STREAMS_COUNT, i] := EXCLUDE_CHAR;
+        end;
+      end;
     end;
-  end
-  else
-    sgStreamsInfo.RowCount := 2;
-
-  GridSort(sgStreamsInfo);
-  SetGridLastCell(sgStreamsInfo, False);
-  if miShowStreamsTraffic.Checked then
-    GridScrollCheck(sgStreamsInfo, STREAMS_INFO_PURPOSE, 134)
-  else
-    GridScrollCheck(sgStreamsInfo, STREAMS_INFO_PURPOSE, 177);
-  EndUpdateTable(sgStreamsInfo);
-  CheckCircuitStreams(CircID, StreamsCount);
-  LockStreamsInfo := False;
+    sgStreams.EndUpdateRows;
+    if not sgCircuits.IsEmpty then
+      lbStreamsCount.Caption := TransStr('350') + ': ' + IntToStr(StreamsDic.Count);
+  end;
 end;
 
 function TTcp.FindTrackHost(Host: string): Boolean;
@@ -13913,7 +14280,7 @@ begin
   else
   begin
     Host := ExtractDomain(Host, True);
-    if ValidHost(Host, True, True) then
+    if ValidHost(Host, True, True) <> htNone then
     begin
       DotIndex := 1;
       while DotIndex > 0 do
@@ -14341,15 +14708,14 @@ begin
   else
     aSg.SortType := SORT_ASC;
   aSg.SortCol := ACol;
-  aSg.RowID := aSg.Cells[0, aSg.SelRow];
-
-  GridSort(aSg);
   case aSg.Tag of
     GRID_FILTER: ScrollTop := miFilterScrollTop.Checked;
     GRID_ROUTERS: ScrollTop := miRoutersScrollTop.Checked;
     else
       ScrollTop := False;
   end;
+  aSg.SaveRowID;
+  GridSort(aSg);
   SetGridLastCell(aSg, True, ScrollTop, ManualSort);
   SaveSortData;
 end;
@@ -15681,7 +16047,7 @@ procedure TTcp.sbShowCircuitsMouseDown(Sender: TObject; Button: TMouseButton;
 begin
   if (ssDouble in Shift) and (Button = mbLeft) then
   begin
-    ShowCircuits;
+    UpdateCircuitsData;
     FindInCircuits(Circuit, ExitNodeID, True);
   end;
 end;
@@ -15915,7 +16281,7 @@ begin
     1:
     begin
       CheckCircuitsControls;
-      ShowCircuits;
+      UpdateCircuitsData;
       SetConfigBoolean('Circuits', 'ShowCircuitsTraffic', miShowCircuitsTraffic.Checked);
     end;
     2:
@@ -16196,21 +16562,28 @@ end;
 
 procedure TTcp.miTransportsClearClick(Sender: TObject);
 begin
-  ClearGrid(sgTransports);
+  sgTransports.Clear;
   UpdateTransports;
   EnableOptionButtons;
 end;
 
 procedure TTcp.miTransportsDeleteClick(Sender: TObject);
+var
+  i: Integer;
 begin
-  DeleteARow(sgTransports, sgTransports.SelRow);
+  sgTransports.SaveRowID;
+  sgTransports.BeginUpdateRows;
+  for i := sgTransports.Selection.Bottom downto sgTransports.Selection.Top do
+    sgTransports.DeleteARow(i);
+  SetGridLastCell(sgTransports);
+  sgTransports.EndUpdateRows;
   UpdateTransports;
   EnableOptionButtons;
 end;
 
 procedure TTcp.miTransportsInsertClick(Sender: TObject);
 begin
-  if IsEmptyGrid(sgTransports) then
+  if sgTransports.IsEmpty then
     TransportsEnable(True)
   else
   begin
@@ -16291,7 +16664,7 @@ end;
 
 procedure TTcp.miSelectExitCircuitWhenItChangesClick(Sender: TObject);
 begin
-  ShowCircuits;
+  UpdateCircuitsData;
   SetConfigBoolean('Circuits', 'SelectExitCircuitWhenItChanges', miSelectExitCircuitWhenItChanges.Checked);
 end;
 
@@ -16341,7 +16714,8 @@ begin
     Exit;
   if (UsedProxyType <> ptNone) and (ConnectState = 2) and (Circuit <> '') then
   begin
-    btnChangeCircuit.Enabled := False;
+    if DirectClick then
+      btnChangeCircuit.Enabled := False;
     miChangeCircuit.Enabled := False;
     CloseCircuit(Circuit, False);
     CheckCircuitExists(Circuit, True);
@@ -16417,12 +16791,12 @@ end;
 
 procedure TTcp.miCircuitsUpdateNowClick(Sender: TObject);
 begin
-  ShowCircuits;
+  UpdateCircuitsData;
 end;
 
 procedure TTcp.SetCircuitsFilter(Sender: TObject);
 begin
-  ShowCircuits;
+  UpdateCircuitsData;
   SetConfigInteger('Circuits', 'PurposeFilter', MenuToInt(miCircuitFilter));
 end;
 
@@ -16748,6 +17122,7 @@ begin
   lbTransportState.Enabled := State;
   lbTransportType.Enabled := State;
   lbHandlerParams.Enabled := State;
+  LockTransportControls := not State;
 end;
 
 procedure TTcp.HsPortsEnable(State: Boolean);
@@ -16759,6 +17134,7 @@ begin
   cbxHsAddress.Enabled := State;
   lbHsSocket.Enabled := State;
   lbHsVirtualPort.Enabled := State;
+  LockHsPortsControls := not State;
 end;
 
 procedure TTcp.HsControlsEnable(State: Boolean);
@@ -16776,11 +17152,12 @@ begin
   lbHsVersion.Enabled := State;
   lbHsNumIntroductionPoints.Enabled := State;
   lbHsState.Enabled := State;
+  LockHsControls := not State;
 end;
 
 procedure TTcp.miHideCircuitsWithoutStreamsClick(Sender: TObject);
 begin
-  ShowCircuits;
+  UpdateCircuitsData;
   SetConfigBoolean('Circuits', 'HideCircuitsWithoutStreams', miHideCircuitsWithoutStreams.Checked);
 end;
 
@@ -16800,7 +17177,7 @@ begin
           HsToDelete[Length(HsToDelete) - 1] := sgHs.Cells[HS_PREVIOUS_NAME, i];
         end;
       end;
-      ClearGrid(sgHs);
+      sgHs.Clear;
       UpdateHs;
       EnableOptionButtons;
     end;
@@ -16808,7 +17185,7 @@ begin
 
   if tsHs.Tag = 2 then
   begin
-    ClearGrid(sgHsPorts);
+    sgHsPorts.Clear;
     UpdateHsPorts;
     EnableOptionButtons;
   end;
@@ -16816,23 +17193,32 @@ end;
 
 procedure TTcp.miHsCopyOnionClick(Sender: TObject);
 begin
-  Clipboard.AsText := miHsCopyOnion.Caption;
+  Clipboard.AsText := GetOnionLink(False);
 end;
 
 procedure TTcp.miHsDeleteClick(Sender: TObject);
+var
+  i: Integer;
 begin
   mnHs.Tag := 1;
 
   if tsHs.Tag = 1 then
   begin
-    if ShowMsg(Format(TransStr('263'), [TransStr('367') + ' ', sgHs.Cells[HS_NAME, sgHs.SelRow]]), '', mtQuestion, True) then
+    if ShowMsg(Format(TransStr('263'), ['', TransStr('367')]), '', mtQuestion, True) then
     begin
-      if sgHs.Cells[HS_PREVIOUS_NAME, sgHs.SelRow] <> '' then
+      sgHs.SaveRowID;
+      sgHs.BeginUpdateRows;
+      for i := sgHs.Selection.Bottom downto sgHs.Selection.Top do
       begin
-        SetLength(HsToDelete, Length(HsToDelete) + 1);
-        HsToDelete[Length(HsToDelete) - 1] := sgHs.Cells[HS_PREVIOUS_NAME, sgHs.SelRow];
+        if sgHs.Cells[HS_PREVIOUS_NAME, i] <> '' then
+        begin
+          SetLength(HsToDelete, Length(HsToDelete) + 1);
+          HsToDelete[Length(HsToDelete) - 1] := sgHs.Cells[HS_PREVIOUS_NAME, i];
+        end;
+        sgHs.DeleteARow(i);
       end;
-      DeleteARow(sgHs, sgHs.SelRow);
+      SetGridLastCell(sgHs);
+      sgHs.EndUpdateRows;
       UpdateHs;
       EnableOptionButtons;
     end;
@@ -16840,7 +17226,12 @@ begin
 
   if tsHs.Tag = 2 then
   begin
-    DeleteARow(sgHsPorts, sgHsPorts.SelRow);
+    sgHsPorts.SaveRowID;
+    sgHsPorts.BeginUpdateRows;
+    for i := sgHsPorts.Selection.Bottom downto sgHsPorts.Selection.Top do
+      sgHsPorts.DeleteARow(i);
+    SetGridLastCell(sgHsPorts);
+    sgHsPorts.EndUpdateRows;
     UpdateHsPorts;
     EnableOptionButtons;
   end;
@@ -16854,7 +17245,7 @@ begin
 
   if tsHs.Tag = 1 then
   begin
-    if IsEmptyGrid(sgHs) then
+    if sgHs.IsEmpty then
       HsControlsEnable(True)
     else
     begin
@@ -16867,15 +17258,13 @@ begin
     sgHs.Cells[HS_MAX_STREAMS, sgHs.SelRow] := NONE_CHAR;
     sgHs.Cells[HS_STATE, sgHs.SelRow] := GetHsStateChar(HS_STATE_ENABLED);
     sgHs.Cells[HS_PORTS_DATA, sgHs.SelRow] := LOOPBACK_ADDRESS + ',' + DEFAULT_PORT + ',' + DEFAULT_PORT;
-    ClearGrid(sgHsPorts);
+    sgHsPorts.Clear;
     SelectHs;
-    if edHsName.CanFocus then
-      edHsName.SetFocus;
   end;
 
   if tsHs.Tag = 2 then
   begin
-    if IsEmptyGrid(sgHsPorts) then
+    if sgHsPorts.IsEmpty then
       HsControlsEnable(True)
     else
     begin
@@ -16917,7 +17306,7 @@ var
       Result := Copy(DataStr, Search);
       if CheckLimits then
       begin
-        if not ValidInt(RemoveBrackets(Result, btRound), 1, MAX_RELAY_INFO_QUERY) then
+        if not ValidInt(RemoveBrackets(Result, btRound), 1, MAX_URLS_TO_OPEN) then
           Result := ' (' + INFINITY_CHAR + ')';
       end;
     end;
@@ -16976,6 +17365,7 @@ begin
   InsertMenuItem(ParentMenu, EXTRACT_IPV4_BRIDGE, 59, IPv4Bridge, SelectNodeAsBridge, False, False, False, NotStarting, BridgeState and (IPv4Bridge <> ''), 0, RouterID);
   InsertMenuItem(ParentMenu, EXTRACT_IPV6_BRIDGE, 60, IPv6Bridge, SelectNodeAsBridge, False, False, False, NotStarting, BridgeState and (IPv6Bridge <> ''), 0, RouterID);
   InsertMenuItem(ParentMenu, 0, -1, '-', nil, False, False, False, NotStarting, BridgeState);
+  InsertMenuItem(ParentMenu, 0, 47, TransStr('694'), DisablePreferredBridge, False, False, False, NotStarting, cbUseBridges.Checked and cbUsePreferredBridge.Checked and (DataID = GRID_ROUTERS));
   InsertMenuItem(ParentMenu, 0, 43, TransStr('565'), DisableBridges, False, False, False, NotStarting, cbUseBridges.Checked and (DataID = GRID_ROUTERS));
 end;
 
@@ -17515,7 +17905,7 @@ end;
 function TTcp.RoutersAutoSelect: Boolean;
 var
   Router: Tpair<string, TRouterInfo>;
-  cdWeight, cdPing, cdStable, CheckEntryPorts: Boolean;
+  cdWeight, cdPing, CheckEntryPorts: Boolean;
   GeoIpInfo: TGeoIpInfo;
   RouterInfo: TRouterInfo;
   NodeItem: TPair<string, TNodeTypes>;
@@ -17596,7 +17986,7 @@ var
 
     if ((FNodeType in FilterNodeTypes) or NoLimit) and (NodeType in AutoSelNodeTypes) then
     begin
-      if (cdWeight or NoLimit) and cdPing  then
+      if (cdWeight or NoLimit) and cdPing then
       begin
         case PriorityType of
           PRIORITY_BALANCED:
@@ -17693,14 +18083,13 @@ begin
 
       if (rfRelay in Flags) and not RouterInNodesList(Router.Key, Router.Value.IPv4, ntExclude) then
       begin
-        cdStable := rfStable in Flags;
         if cbAutoSelFilterCountriesOnly.Checked and (PingNodesCount > 0) then
         begin
           if FilterDic.TryGetValue(CountryCode, FilterInfo) then
             FilterNodeTypes := FilterInfo.Data;
         end;
 
-        if cdStable or not cbAutoSelStableOnly.Checked then
+        if (rfStable in Flags) or not cbAutoSelStableOnly.Checked then
         begin
           if (Router.Value.Params and ROUTER_ALIVE <> 0) or (AliveNodesCount = 0) then
           begin
@@ -17710,16 +18099,14 @@ begin
               begin
                 if rfGuard in Flags then
                   AddRouterToList(EntryNodes, ntEntry);
-                if (rfFast in Flags) and cdStable then
-                  AddRouterToList(FallbackDirs, ntFallbackDir, cbAutoSelFallbackDirNoLimit.Checked);
+                AddRouterToList(FallbackDirs, ntFallbackDir, cbAutoSelFallbackDirNoLimit.Checked);
               end;
             end
             else
             begin
               if rfGuard in Flags then
                 AddRouterToList(EntryNodes, ntEntry);
-              if cdStable and (rfFast in Flags) and cdStable then
-                AddRouterToList(FallbackDirs, ntFallbackDir, cbAutoSelFallbackDirNoLimit.Checked);
+              AddRouterToList(FallbackDirs, ntFallbackDir, cbAutoSelFallbackDirNoLimit.Checked);
             end;
           end;
 
@@ -17784,7 +18171,8 @@ begin
 
     if cbAutoSelFallbackDirEnabled.Checked then
       Exclude(AutoSelNodeTypes, ntFallbackDir);
-    ClearRouters(AutoSelNodeTypes);
+    if AutoSelNodeTypes <> [] then
+      ClearRouters(AutoSelNodeTypes);
 
     if cbAutoSelEntryEnabled.Checked then
     begin
@@ -17958,7 +18346,7 @@ begin
     end
     else
       MemoToList(meFallbackDirs, meFallbackDirs.SortType, ls);
-    meFallbackDirs.Text := ls.Text;
+    meFallbackDirs.SetTextData(ls.Text);
     if cbExcludeUnsuitableFallbackDirs.Checked then
     begin
       ExcludeUnsuitableFallbackDirs(ls);
@@ -18071,7 +18459,7 @@ end;
 
 procedure TTcp.miAlwaysShowExitCircuitClick(Sender: TObject);
 begin
-  ShowCircuits;
+  UpdateCircuitsData;
   SetConfigBoolean('Circuits', 'AlwaysShowExitCircuit', miAlwaysShowExitCircuit.Checked);
 end;
 
@@ -18145,8 +18533,8 @@ begin
     and not Closing and not WindowsShutdown then
   begin
     CanClose := WindowsShutdown;
-    WindowState := wsMinimized;
     Visible := False;
+    WindowState := wsMinimized;
   end;
 end;
 
@@ -18268,7 +18656,7 @@ begin
   sgStreams.ColWidths[STREAMS_COUNT] := Round(30 * Scale);
   sgStreamsInfo.ColWidths[STREAMS_INFO_ID] := -1;
   sgTransports.ColWidths[PT_HANDLER] := Round(120 * Scale);
-  sgTransports.ColWidths[PT_TYPE] := Round(37 * Scale);
+  sgTransports.ColWidths[PT_TYPE] := Round(36 * Scale);
   sgTransports.ColWidths[PT_PARAMS] := -1;
   sgTransports.ColWidths[PT_PARAMS_STATE] := -1;
   sgTransports.ColWidths[PT_STATE] := Round(24 * Scale);
@@ -18297,8 +18685,8 @@ procedure TTcp.FormMinimize(Sender: TObject);
 begin
   if cbMinimizeToTray.Checked then
   begin
-    WindowState := wsMinimized;
     Visible := False;
+    WindowState := wsMinimized;
   end;
 end;
 
@@ -18507,6 +18895,16 @@ begin
   sgCircuitInfo.Tag := GRID_CIRC_INFO;
   sgStreamsInfo.Tag := GRID_STREAM_INFO;
   sgTransports.Tag := GRID_TRANSPORTS;
+
+  sgFilter.Key := FILTER_ID;
+  sgRouters.Key := ROUTER_ID;
+  sgCircuits.Key := CIRC_ID;
+  sgStreams.Key := STREAMS_TARGET;
+  sgHs.Key := HS_NAME;
+  sgHsPorts.Key := HSP_REAL_PORT;
+  sgCircuitInfo.Key := CIRC_INFO_ID;
+  sgStreamsInfo.Key := STREAMS_INFO_ID;
+  sgTransports.Key := PT_HANDLER;
 
   meBridges.Tag := MEMO_BRIDGES;
   meMyFamily.Tag := MEMO_MY_FAMILY;
@@ -18749,7 +19147,7 @@ begin
         FindInRouters(ExitNodeID)
       else
       begin
-        ShowCircuits;
+        UpdateCircuitsData;
         FindInCircuits(Circuit, ExitNodeID, True);
         sbShowCircuits.Click;
       end;
@@ -18925,21 +19323,33 @@ begin
   tiTray.Hint := Format(TransStr('106'), [DataStr, Tcp.lbUserDir.Caption]);
 end;
 
-procedure TTcp.tiTrayClick(Sender: TObject);
+procedure TTcp.tiTrayMouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
 begin
-  if Tcp.Visible then
+  if Button = mbLeft then
   begin
-    FindDialog.CloseDialog;
-    WindowState := wsMinimized;
-    Visible := False;
-  end
-  else
-    RestoreForm;
+    if ssShift in Shift then
+    begin
+      if miChangeCircuit.Enabled then
+        ChangeCircuit(False)
+    end
+    else
+    begin
+      if Visible then
+      begin
+        FindDialog.CloseDialog;
+        Visible := False;
+        WindowState := wsMinimized;
+      end
+      else
+        RestoreForm;
+    end;
+  end;
 end;
 
 procedure TTcp.tmCircuitsTimer(Sender: TObject);
 begin
-  ShowCircuits(ConnectState <> 2)
+  UpdateCircuitsData(ConnectState = 0);
 end;
 
 procedure TTcp.tmConsensusTimer(Sender: TObject);
@@ -19239,6 +19649,14 @@ begin
   EnableOptionButtons;
 end;
 
+procedure TTcp.DisablePreferredBridge(Sender: TObject);
+begin
+  cbUsePreferredBridge.Checked := False;
+  SaveBridgesData;
+  ShowRouters;
+  EnableOptionButtons;
+end;
+
 procedure TTcp.miRtResetFilterClick(Sender: TObject);
 var
   ini: TMemIniFile;
@@ -19347,8 +19765,8 @@ begin
         CommandStr := CommandStr + BR + 'CLOSECIRCUIT ' + ls[i];
       end;
       Delete(CommandStr, 1, Length(BR));
-      ShowCircuits;
       SendCommand(CommandStr);
+      UpdateCircuitsData;
     end;
   finally
     ls.Free;
@@ -19381,6 +19799,7 @@ begin
               StreamInfo := Stream.Value;
               StreamInfo.CircuitID := LinkedCircID;
               StreamsDic.AddOrSetValue(Stream.Key, StreamInfo);
+              StreamsUpdated := True;
             end;
           end;
           if CircuitsDic.TryGetValue(LinkedCircID, CircuitInfo) then
@@ -19398,12 +19817,12 @@ end;
 
 procedure TTcp.CloseCircuit(CircuitID: string; AutoUpdate: Boolean = True);
 begin
-  if (CircuitID = '') or (ConnectState <> 2) then
+  if (CircuitID = '') or (ConnectState = 0) then
     Exit;
   if CloseCircuitInternal(CircuitID) then
     SendCommand('CLOSECIRCUIT ' + CircuitID);
   if AutoUpdate then
-    ShowCircuits;
+    UpdateCircuitsData;
 end;
 
 procedure TTcp.ClearBridgesCache(Sender: TObject);
@@ -19546,7 +19965,7 @@ begin
         end;
       end;
     end;
-    CurrentMemo.Text := ls.Text;
+    CurrentMemo.SetTextData(ls.Text);
     case MemoID of
       MEMO_BRIDGES: SaveBridgesData;
       MEMO_FALLBACK_DIRS: SaveFallbackDirsData;
@@ -19563,12 +19982,12 @@ begin
   case miClearMenu.Tag of
     MEMO_BRIDGES:
     begin
-      meBridges.Text := '';
+      meBridges.ClearText;
       SaveBridgesData;
     end;
     MEMO_FALLBACK_DIRS:
     begin
-      meFallbackDirs.Text := '';
+      meFallbackDirs.ClearText;
       SaveFallbackDirsData;
     end
     else
@@ -19632,7 +20051,7 @@ begin
         Exit;
     end;
     if LastDataCount <> SuitableDataCount then
-      CurrentMemo.Text := ls.Text;
+      CurrentMemo.SetTextData(ls.Text);
 
     if BridgesUpdated then
       SaveBridgesData;
@@ -19652,88 +20071,123 @@ begin
   CloseCircuit(sgCircuits.Cells[CIRC_ID, sgCircuits.SelRow]);
 end;
 
-procedure TTcp.CloseStream(StreamID: string);
+procedure TTcp.CloseStreams(CircuitID: string; CloseType: TCloseType);
 var
-  CircuitInfo: TCircuitInfo;
-  StreamInfo: TStreamInfo;
-begin
-  if (ConnectState <> 2) or (StreamID = '') then
-    Exit;
-  if StreamsDic.TryGetValue(StreamID, StreamInfo) then
-  begin
-    if CircuitsDic.TryGetValue(StreamInfo.CircuitID, CircuitInfo) then
-    begin
-      if CircuitInfo.Streams > 0 then
-      begin
-        Dec(CircuitInfo.Streams);
-        CircuitsDic.AddOrSetValue(StreamInfo.CircuitID, CircuitInfo);
-      end;
-    end;
-    StreamsDic.Remove(StreamID);
-    SendCommand('CLOSESTREAM ' + StreamID + ' 1');
-    ShowCircuits;
-  end;
-end;
-
-procedure TTcp.CloseStreams(CircuitID: string; FindTarget: Boolean = False; TargetID: string = '');
-var
+  Targets: TDictionary<string, Byte>;
   Item: TPair<string, TStreamInfo>;
   CircuitInfo: TCircuitInfo;
   Temp: string;
   ParseStr: ArrOfStr;
-  i: Integer;
-  Flag: Boolean;
-  StreamsCount: Integer;
+  NeedClose: Boolean;
+  StreamsCount, i: Integer;
 begin
-  if (ConnectState <> 2) or (CircuitID = '') then
-    Exit;
-  if FindTarget and (TargetID = '') then
+  if (ConnectState = 0) or (CircuitID = '') then
     Exit;
   if sgCircuits.Cells[CIRC_STREAMS, sgCircuits.SelRow] = EXCLUDE_CHAR then
     Exit;
-  if CircuitsDic.TryGetValue(CircuitID, CircuitInfo) then
+  if CloseType in [ctTarget, ctStream] then
   begin
-    StreamsCount := 0;
-    Temp := '';
-    for Item in StreamsDic do
+    Targets := TDictionary<string, Byte>.Create;
+    case CloseType of
+      ctTarget:
+      begin
+        for i := sgStreams.Selection.Top to sgStreams.Selection.Bottom do
+        begin
+          if sgStreams.Cells[STREAMS_COUNT, i] <> EXCLUDE_CHAR then
+          begin
+            Temp := sgStreams.Cells[STREAMS_TARGET, i];
+            if Temp <> '' then
+              Targets.AddOrSetValue(Temp, 0);
+          end;
+        end;
+      end;
+      ctStream:
+      begin
+        for i := sgStreamsInfo.Selection.Top to sgStreamsInfo.Selection.Bottom do
+        begin
+          Temp := sgStreamsInfo.Cells[STREAMS_INFO_ID, i];
+          if Temp <> '' then
+            Targets.AddOrSetValue(Temp, 0);
+        end;
+      end;
+    end;
+    if Targets.Count = 0 then
+      Exit;
+  end
+  else
+    Targets := nil;
+  StreamsCount := 0;
+  Temp := '';
+  for Item in StreamsDic do
+  begin
+    if Item.Value.CircuitID = CircuitID then
     begin
-      if TargetID = '' then
-        Flag := Item.Value.CircuitID = CircuitID
-      else
-        Flag := (Item.Value.CircuitID = CircuitID) and (Item.Value.Target = TargetID);
-      if Flag then
+      case CloseType of
+        ctTarget: NeedClose := Targets.ContainsKey(Item.Value.Target);
+        ctStream: NeedClose := Targets.ContainsKey(Item.Key);
+        else
+          NeedClose := True;
+      end;
+      if NeedClose then
       begin
         Temp := Temp + ',' + Item.Key;
         Inc(StreamsCount);
       end;
     end;
-    Delete(Temp, 1, 1);
-    if StreamsCount > 0 then
-    begin
-      ParseStr := Explode(',', Temp);
-      Temp := '';
-      for i := 0 to Length(ParseStr) - 1 do
-      begin
-        StreamsDic.Remove(ParseStr[i]);
-        Temp := Temp + BR + 'CLOSESTREAM ' + ParseStr[i] + ' 1';
-      end;
-      Delete(Temp, 1, Length(BR));
-      Dec(CircuitInfo.Streams, StreamsCount);
-      CircuitsDic.AddOrSetValue(CircuitID, CircuitInfo);
-      SendCommand(Temp);
-      ShowCircuits;
-    end;
   end;
+  Delete(Temp, 1, 1);
+  if StreamsCount > 0 then
+  begin
+    ParseStr := Explode(',', Temp);
+    Temp := '';
+    for i := 0 to Length(ParseStr) - 1 do
+    begin
+      StreamsDic.Remove(ParseStr[i]);
+      Temp := Temp + BR + 'CLOSESTREAM ' + ParseStr[i] + ' 1';
+    end;
+    Delete(Temp, 1, Length(BR));
+    if CircuitsDic.TryGetValue(CircuitID, CircuitInfo) then
+    begin
+      Dec(CircuitInfo.Streams, StreamsCount);
+      if CircuitInfo.Streams < 0 then
+        CircuitInfo.Streams := 0;
+      CircuitsDic.AddOrSetValue(CircuitID, CircuitInfo);
+    end;
+    SendCommand(Temp);
+    UpdateCircuitsData;
+  end;
+  Targets.Free;
 end;
 
 procedure TTcp.miDestroyStreamsClick(Sender: TObject);
 begin
-  CloseStreams(sgCircuits.Cells[CIRC_ID, sgCircuits.SelRow]);
+  CloseStreams(sgCircuits.Cells[CIRC_ID, sgCircuits.SelRow], ctCircuit);
 end;
 
 procedure TTcp.miHsOpenDirClick(Sender: TObject);
+var
+  i: Integer;
+  FolderName: string;
 begin
-  ShellOpen(GetFullFileName(HsDir + sgHs.Cells[HS_NAME, sgHs.SelRow]));
+  for i := sgHs.Selection.Top to sgHs.Selection.Bottom do
+  begin
+    FolderName := GetFullFileName(HsDir + sgHs.Cells[HS_NAME, i]);
+    if DirectoryExists(FolderName) then
+      ShellOpen(FolderName);
+  end;
+end;
+
+procedure TTcp.miHsOpenInBrowserClick(Sender: TObject);
+var
+  i: Integer;
+  Url: string;
+begin
+  Url := miHsOpenInBrowser.Hint;
+  if Url <> '' then
+  begin
+    for i := sgHsPorts.Selection.Top to sgHsPorts.Selection.Bottom do
+      ShellOpen(Url + ':' + sgHsPorts.Cells[HSP_VIRTUAL_PORT, i]);
+  end;
 end;
 
 procedure TTcp.miIgnoreTplLoadParamsOutsideTheFilterClick(Sender: TObject);

@@ -348,7 +348,7 @@ begin
     LoadStr('364', 'Шаблон "%s" успешно загружен');
     LoadStr('365', 'Шаблон "%s" успешно удалён');
     LoadStr('366', 'шаблон');
-    LoadStr('367', 'сервис');
+    LoadStr('367', 'Выбранные сервисы');
     LoadStr('368', 'Выбрать все');
     LoadStr('369', 'Снять все');
     LoadStr('370', 'Запрос каталога');
@@ -389,6 +389,7 @@ begin
     LoadStr('406', 'Удалить все');
     LoadStr('419', 'Список');
     LoadStr('423', 'Найти...');
+    LoadStr('542', 'Открыть в браузере');
     LoadStr('444', 'Сетевой сканер');
     LoadStr('459', 'мс|миллисекунда|миллисекунды|миллисекунд');
     LoadStr('470', 'шт');
@@ -417,7 +418,7 @@ begin
     LoadStr('596', 'HTTP/C-трафик');
     LoadStr('608', 'Вы действительно хотите: "%s"?');
     LoadStr('609', 'Прокси');
-    LoadLns('614', '\n\n\n  Примечание:\n\n           Мосты переопределяют настройки входных узлов');
+    LoadLns('614', '\n\n  Примечание:\n\n           Мосты переопределяют настройки входных узлов');
     LoadStr('615', 'Текстовые файлы|*.txt|Все файлы|*.*');
     LoadStr('626', 'д.|день|дня|дней');
     LoadStr('627', 'нед.|неделя|недели|недель');
@@ -460,6 +461,11 @@ begin
     LoadStr('686', 'Измерить пинг');
     LoadStr('687', 'Определить доступность');
     LoadStr('688', 'Показывать полное меню');
+    LoadStr('692', 'Виртуальный порт должен быть уникальным!');
+    LoadLns('693', 'Выполнено: %d из %d\n\nЩёлкните здесь, чтобы остановить \nсканирование');
+    LoadStr('694', 'Выключить режим предпочитаемого моста');
+    LoadStr('695', 'Нестабильный');
+
 
     TranslateArray(HsHeader, TransStr('230'));
     TranslateArray(HsPortsHeader, TransStr('231'));
@@ -502,7 +508,6 @@ begin
     Tcp.sbShowCircuits.Caption := TransStr('327');
     Tcp.sbShowRouters.Caption := TransStr('323');
     Tcp.sbDecreaseForm.Hint := TransStr('328');
-    Tcp.pbScanProgress.Hint := TransStr('495');
 
     Tcp.lbExitIpCaption.Caption := TransStr('113') + ':';
     Tcp.lbExitCountryCaption.Caption := TransStr('114') + ':';
@@ -733,10 +738,10 @@ begin
     LoadList(Tcp.cbxTransportType, '466', '"Клиент","Сервер","Совмещённый"');
 
     Tcp.gbAutoSelectRouters.Caption := Load('467', 'Автоподбор роутеров');
-    Tcp.lbAutoSelEntry.Caption := TransStr('288');
-    Tcp.lbAutoSelMiddle.Caption := TransStr('289');
-    Tcp.lbAutoSelExit.Caption := TransStr('290');
-    Tcp.lbAutoSelFallbackDir.Caption := TransStr('652');
+    Tcp.cbAutoSelEntryEnabled.Caption := TransStr('288');
+    Tcp.cbAutoSelMiddleEnabled.Caption := TransStr('289');
+    Tcp.cbAutoSelExitEnabled.Caption := TransStr('290');
+    Tcp.cbAutoSelFallbackDirEnabled.Caption := TransStr('652');
 
     Tcp.lbAutoSelMinWeight.Caption := Load('468', 'Вес');
     Tcp.lbAutoSelMaxPing.Caption := Load('469', 'Пинг');
@@ -877,11 +882,11 @@ begin
     Tcp.miGetBridges.Caption := Load('291', 'Получить мосты');
     Tcp.miGetBridgesSite.Caption := Load('501', 'Веб-сайт');
     Tcp.miGetBridgesTelegram.Caption := Load('502', 'Телеграм-канал');
-    Tcp.miGetBridgesEmail.Caption := Load('503', 'Электронная почта');
+    Tcp.miGetBridgesEmail.Caption := Load('503', 'Электронная почта (Riseup/Gmail)');
     Tcp.miPreferWebTelegram.Caption := Load('504', 'Предпочитать веб-версию Телеграма');
-    Tcp.miRequestObfuscatedBridges.Caption := Load('505', 'OBFS4 (обфусцирующие трафик)');
-    Tcp.miRequestVanillaBridges.Caption := Load('690', 'VANILLA (без подключаемых транспортов)');
-    Tcp.miRequestWebTunnelBridges.Caption := Load('691', 'WEBTUNNEL (имитирующие веб-активность)');
+    Tcp.miRequestObfuscatedBridges.Caption := Load('505', 'Обфусцирующие трафик');
+    Tcp.miRequestVanillaBridges.Caption := Load('690', 'Без подключаемых транспортов');
+    Tcp.miRequestWebTunnelBridges.Caption := Load('691', 'Имитирующие веб-активность');
     Tcp.miRequestIPv6Bridges.Caption := Load('506', 'Запрашивать IPv6-мосты');
     Tcp.miCut.Caption := TransStr('276');
     Tcp.miCopy.Caption := TransStr('274');
@@ -977,6 +982,7 @@ begin
     Tcp.miExit.Caption := Load('319', 'Выход');
 
     Tcp.miCircuitsDestroy.Caption := TransStr('524');
+    Tcp.miCircuitsDestroyLock.Caption := TransStr('524');
     Tcp.miDestroyCircuit.Caption := Load('527', 'Цепочку');
     Tcp.miDestroyStreams.Caption := TransStr('528');
     Tcp.miDestroyExitCircuits.Caption := Load('529', 'Все выходные цепочки');
@@ -1026,7 +1032,8 @@ begin
     Tcp.miCircuitsShowFlagsHint.Caption := TransStr('568');
 
     Tcp.miStreamsDestroyStream.Caption := TransStr('524');
-    Tcp.miStreamsOpenInBrowser.Caption := Load('542', 'Открыть в браузере');
+    Tcp.miStreamsOpenInBrowser.Caption := TransStr('542');
+    Tcp.miStreamsExtractData.Caption := TransStr('669');
     Tcp.miStreamsSort.Caption := TransStr('525');
     Tcp.miStreamsSortID.Caption := TransStr('221');
     Tcp.miStreamsSortTarget.Caption := TransStr('330');
@@ -1060,7 +1067,7 @@ begin
     Tcp.miShowNodesUA.Caption := TransStr('369');
 
     Tcp.miRtResetFilter.Caption := Load('563', 'Сброс фильтров');
-    Tcp.miRtAddToNodesList.Caption := TransStr('285');;
+    Tcp.miRtAddToNodesList.Caption := TransStr('285');
     Tcp.miRtExtractData.Caption := TransStr('669');
     Tcp.miRtFilters.Caption := TransStr('526');
     Tcp.miRtFiltersType.Caption := TransStr('547');
@@ -1099,7 +1106,6 @@ begin
     Tcp.miRtRelayOperations.Caption := TransStr('310');
 
     Tcp.miTransportsInsert.Caption := TransStr('279');
-    Tcp.miTransportsDelete.Caption := TransStr('280');
     Tcp.miTransportsOpenDir.Caption := Load('587', 'Каталог транспортов');
     Tcp.miTransportsReset.Caption := Load('588', 'Настройки по умолчанию');
     Tcp.miTransportsClear.Caption := TransStr('278');

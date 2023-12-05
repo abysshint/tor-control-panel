@@ -35,13 +35,13 @@ const
 
   LOOPBACK_ADDRESS = '127.0.0.1';
 
-  CURRENT_CONFIG_VERSION = 11;
+  CURRENT_CONFIG_VERSION = 12;
   MAX_SPEED_DATA_LENGTH = 24 * 60 * 60;
   BUFSIZE = 1024 * 1024;
 
   MAX_COUNTRIES = 252;
   MAX_TOTALS = 7;
-  MAX_RELAY_INFO_QUERY = 5;
+  MAX_URLS_TO_OPEN = 10;
 
   CIRCUIT_FILTER_DEFAULT = 262144;
   CIRCUIT_FILTER_MAX = 262144;
@@ -207,6 +207,10 @@ const
   EXTRACT_CSV = 10;
   EXTRACT_IPV4_SOCKET = 11;
   EXTRACT_IPV6_SOCKET = 12;
+  EXTRACT_HOST = 13;
+  EXTRACT_HOST_SOCKET = 14;
+  EXTRACT_HOST_ROOT = 15;
+  EXTRACT_IPV4_CIDR = 16;
 
   OPTION_FORMAT_IPV6 = 1;
   OPTION_SORT = 2;
@@ -299,12 +303,13 @@ const
   ROUTER_MIDDLE_ONLY = 1;
   ROUTER_BAD_EXIT = 2;
   ROUTER_NOT_RECOMMENDED = 4;
-  ROUTER_HS_DIR = 8;
-  ROUTER_REACHABLE_IPV6 = 16;
-  ROUTER_AUTHORITY = 32;
-  ROUTER_SUPPORT_CONFLUX = 64;
-  ROUTER_ALIVE = 128;
-  ROUTER_BRIDGE = 256;
+  ROUTER_UNSTABLE = 8;
+  ROUTER_HS_DIR = 16;
+  ROUTER_REACHABLE_IPV6 = 32;
+  ROUTER_AUTHORITY = 64;
+  ROUTER_SUPPORT_CONFLUX = 128;
+  ROUTER_ALIVE = 256;
+  ROUTER_BRIDGE = 512;
 
   GENERAL = 0;
   HS_CLIENT_HSDIR = 1;
@@ -431,9 +436,11 @@ type
     ntFallbackDir = FALLBACK_DIR_ID
   );
   TNodeTypes = set of TNodeType;
+  TCloseType = (ctCircuit, ctTarget, ctStream);
   TAddressType = (atNone, atIPv4, atIPv6, atIPv4Cidr, atIPv6Cidr);
   TSocketType = (soNone, soIPv4, soIPv6, soHost);
   TTargetType = (ttNone, ttNormal, ttExit, ttOnion);
+  THostType = (htNone, htDomain, htIPv4, htIPv6, htRoot);
   TEditMenuType = (emCopy, emCut, emPaste, emSelectAll, emClear, emDelete, emFind);
   TNodeDataType = (dtNone, dtHash, dtIPv4, dtIPv4Cidr, dtCode);
   TListType = (ltNone, ltHost, ltHash, ltPolicy, ltBridge, ltNode, ltSocket, ltTransport, ltFallbackDir);

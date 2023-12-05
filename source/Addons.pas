@@ -9,6 +9,10 @@ uses
 
 type
   TColsDataType = (dtInteger, dtText, dtSize, dtParams, dtFlags);
+  TRowID = record
+    Data: string;
+    Selection: TGridRect;
+  end;
 
   TSpeedButton = class(Vcl.Buttons.TSpeedButton)
   public
@@ -56,6 +60,8 @@ type
   public
     SortType: Byte;
     ListType: TListType;
+    procedure ClearText(HandleEvent: Boolean = True);
+    procedure SetTextData(const Data: string);
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
@@ -109,16 +115,31 @@ type
     procedure SetColsDefaultAlignment(ACol: Integer; const Alignment: TAlignment);
     procedure SetColsDataType(ACol: Integer; const ColsDataType: TColsDataType);
   protected
+    procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure DrawCell(ACol, ARow: Longint; ARect: TRect; AState: TGridDrawState); override;
     function DoMouseWheelDown(Shift: TShiftState; MousePos: TPoint): Boolean; override;
     function DoMouseWheelUp(Shift: TShiftState; MousePos: TPoint): Boolean; override;
   public
-    SelCol, SelRow, MovCol, MovRow: Integer;
+    SelCol, SelRow, MovCol, MovRow, LastSelCount: Integer;
     SortType, SortCol: Byte;
-    ScrollKeyDown, SelectAllState: Boolean;
-    RowID: string;
+    ScrollKeyDown, MultiSelState, SelectState, SortState: Boolean;
+    RowID: TRowID;
+    Key: Integer;
+    function IsMultiRow: Boolean;
+    function IsMultiCol: Boolean;
+    function IsEmptyRow(ARow: Integer): Boolean;
+    function IsEmpty: Boolean;
+    function GetSelRowCount(SpecialColIndex: Integer = -1): Integer;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    procedure BeginUpdateRows;
+    procedure EndUpdateRows;
+    procedure Clear(DeleteBlankRows: Boolean = True);
+    procedure ClearRow(ARow: Integer);
+    procedure DeleteARow(ARow: Integer);
+    procedure SaveRowID;
+    procedure SelectAll;
     property CellsAlignment[ACol, ARow: Integer]: TAlignment read GetCellsAlignment write SetCellsAlignment;
     property ColsDefaultAlignment[ACol: Integer]: TAlignment read GetColsDefaultAlignment write SetColsDefaultAlignment;
     property ColsDataType[ACol: Integer]: TColsDataType read GetColsDataType write SetColsDataType;
@@ -156,13 +177,38 @@ end;
 function TStringGrid.DoMouseWheelDown(Shift: TShiftState; MousePos: TPoint): Boolean;
 begin
   Perform(WM_VSCROLL, SB_LINEDOWN, 0);
+  SelectState := True;
   Result := True;
 end;
 
 function TStringGrid.DoMouseWheelUp(Shift: TShiftState; MousePos: TPoint): Boolean;
 begin
   Perform(WM_VSCROLL, SB_LINEUP, 0);
+  SelectState := True;
   Result := True;
+end;
+
+procedure TMemo.SetTextData(const Data: string);
+begin
+  if Data = '' then
+    ClearText(Text <> '')
+  else
+  begin
+    if Text <> Data then
+    begin
+      Lines.BeginUpdate;
+      ClearText(False);
+      Text := Data;
+      Lines.EndUpdate;
+    end;
+  end;
+end;
+
+procedure TMemo.ClearText(HandleEvent: Boolean = True);
+begin
+  Perform(WM_SETTEXT, 0, nil);
+  if HandleEvent then
+    Perform(CM_TEXTCHANGED, 0, 0);
 end;
 
 procedure TComboBox.DropDown;
@@ -485,6 +531,127 @@ begin
   inherited Destroy;
 end;
 
+function TStringGrid.GetSelRowCount(SpecialColIndex: Integer = -1): Integer;
+var
+  i: Integer;
+begin
+  if SpecialColIndex = -1 then
+    Result := (Selection.Bottom - Selection.Top) + 1
+  else
+  begin
+    Result := 0;
+    for i := Selection.Top to Selection.Bottom do
+    begin
+      if Cells[SpecialColIndex, i] = EXCLUDE_CHAR then
+        Continue
+      else
+        Inc(Result, StrToIntDef(Cells[SpecialColIndex, i], 1));
+    end;
+  end;
+end;
+
+function TStringGrid.IsMultiRow: Boolean;
+begin
+  Result := Selection.Top <> Selection.Bottom;
+end;
+
+function TStringGrid.IsMultiCol: Boolean;
+begin
+  Result := Selection.Left <> Selection.Right;
+end;
+
+function TStringGrid.IsEmptyRow(ARow: Integer): Boolean;
+var
+  i: Integer;
+begin
+  for i := 0 to ColCount - 1 do
+  begin
+    if Cells[i, ARow] <> '' then
+    begin
+      Result := False;
+      Exit;
+    end;
+  end;
+  Result := True;
+end;
+
+function TStringGrid.IsEmpty: Boolean;
+begin
+  Result := (RowCount = FixedRows + 1) and IsEmptyRow(FixedRows);
+end;
+
+procedure TStringGrid.SaveRowID;
+begin
+  RowID.Data := Cells[Key, SelRow];
+  RowID.Selection := Selection;
+end;
+
+procedure TStringGrid.BeginUpdateRows;
+var
+  i: Integer;
+begin
+  for i := 0 to ColCount - 1 do
+    Cols[i].BeginUpdate;
+end;
+
+procedure TStringGrid.EndUpdateRows;
+var
+  i: Integer;
+begin
+  for i := 0 to ColCount - 1 do
+    Cols[i].EndUpdate;
+end;
+
+procedure TStringGrid.Clear(DeleteBlankRows: Boolean = True);
+var
+  i, j: Integer;
+begin
+  for i := 1 to RowCount - 1 do
+    for j := 0 to ColCount - 1 do
+      Cells[j, i] := '';
+  if DeleteBlankRows then
+    RowCount := 2;
+end;
+
+procedure TStringGrid.ClearRow(ARow: Integer);
+var
+  i: Integer;
+begin
+  for i := FixedCols to ColCount - 1 do
+    Cells[i, ARow] := '';
+end;
+
+procedure TStringGrid.DeleteARow(ARow: Integer);
+begin;
+  if RowCount = 2 then
+    Clear
+  else
+  begin
+    ClearRow(ARow);
+    DeleteRow(ARow);
+  end;
+end;
+
+procedure TStringGrid.SelectAll;
+var
+  GridRect: TGridRect;
+begin
+  if goRangeSelect in Options then
+  begin
+    if CanFocus and not Focused then
+      SetFocus;
+    if Focused then
+    begin
+        MultiSelState := True;
+        GridRect.Left := FixedCols;
+        GridRect.Top := FixedRows;
+        GridRect.Right := ColCount - 1;
+        GridRect.Bottom := RowCount - 1;
+        Selection := GridRect;
+    end;
+  end;
+end;
+
 procedure TStringGrid.SetCellsAlignment(ACol, ARow: Integer; const Alignment: TAlignment);
 var
   Index: Integer;
@@ -549,6 +716,31 @@ begin
     GetColsDataType := TColsDataType(FColsDataType.Objects[Index])
   else
     GetColsDataType := dtText;
+end;
+
+procedure TStringGrid.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  if Button = mbLeft then
+  begin
+    SelectState := True;
+    LastSelCount := GetSelRowCount;
+    if MultiSelState then
+    begin
+      if ssShift in Shift then
+      begin
+        MoveColRow(MovCol, MovRow, True, True);
+        MultiSelState := False;
+      end;
+    end;
+  end;
+  inherited MouseDown(Button, Shift, X, Y);
+end;
+
+procedure TStringGrid.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  if Button = mbLeft then
+    SelectState := (ssShift in Shift) or (ssCtrl in Shift);
+  inherited MouseUp(Button, Shift, X, Y);
 end;
 
 procedure TStringGrid.DrawCell(ACol, ARow: Longint; ARect: TRect; AState: TGridDrawState);

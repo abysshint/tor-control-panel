@@ -117,8 +117,6 @@ var
   function FormatSizeToBytes(SizeStr: string): Int64;
   function CheckEditSymbols(Key: Char; UserSymbols: AnsiString = ''; EditMsg: string = ''): string;
   function CheckEditString(Str: string; UserSymbols: AnsiString = ''; AllowNumbersFirst: Boolean = True; EditMsg: string = ''; edComponent: TEdit = nil): string;
-  function IsEmptyRow(aSg: TStringGrid; ARow: Integer): Boolean;
-  function IsEmptyGrid(aSg: TStringGrid): Boolean;
   function IsDirectoryWritable(const Dir: string): Boolean;
   function PortTCPIsOpen(Port: Word; IpStr: string; Timeout: Integer): Boolean;
   function GetBridgeCert: string;
@@ -135,7 +133,7 @@ var
   function ValidHash(HashStr: string): Boolean;
   function ValidNode(const NodeStr: string): TNodeDataType;
   function ValidAddress(AddrStr: string; AllowCidr: Boolean = False; ReqBrackets: Boolean = False): TAddressType;
-  function ValidHost(HostStr: string; AllowRootDomain: Boolean = False; AllowIp: Boolean = True; ReqBrackets: Boolean = False): Boolean;
+  function ValidHost(HostStr: string; AllowRootDomain: Boolean = False; AllowIp: Boolean = True; ReqBrackets: Boolean = False; DenySpecialDomains: Boolean = True): THostType;
   function ValidBridge(BridgeStr: string): Boolean;
   function ValidTransport(TransportStr: string): Boolean;
   function ValidSocket(SocketStr: string; AllowHostNames: Boolean = False): TSocketType;
@@ -189,18 +187,13 @@ var
   procedure SaveToLog(str: string; LogFile: string);
   procedure AddUPnPEntry(Port: Integer; Desc, LanIp: string; Test: Boolean; var Msg: string);
   procedure RemoveUPnPEntry(PortList: array of Word);
-  procedure SetGridLastCell(aSg: TStringGrid; Show: Boolean = True; ScrollTop: Boolean = False; ManualSort: Boolean = False; ARow: Integer = -1; ACol: Integer = -1; FindCol: Integer = 0);
-  procedure ClearRow(aSg: TStringGrid; ARow: Integer);
-  procedure ClearGrid(aSg: TStringGrid; DeleteBlankRows: Boolean = True);
+  procedure SetGridLastCell(aSg: TStringGrid; Show: Boolean = True; ScrollTop: Boolean = False; ManualSort: Boolean = False; ARow: Integer = -1; ACol: Integer = -1; FindCol: Integer = -1);
   procedure FindInGridColumn(aSg: TStringGrid; ACol: Integer; Key: Char);
   procedure InitCharUpCaseTable(var Table: TCharUpCaseTable);
-  procedure DeleteARow(aSg: TStringGrid; ARow: Integer);
   procedure CheckFileEncoding(FileName, BackupFile: string);
   procedure Flush(FileName: string);
   procedure UpdateConfigFile(ini: TMemIniFile);
   procedure CheckLabelEndEllipsis(lbComponent: TLabel; MaxWidth: Integer; EllipsisType: TEllipsisPosition; UseHint: Boolean; IgnoreFormSize: Boolean);
-  procedure BeginUpdateTable(aSg: TStringGrid);
-  procedure EndUpdateTable(aSg: TStringGrid);
   procedure sgSort(aSg: TStringGrid; aCol: Integer; aCompare: TStringListSortCompare);
   procedure GetLocalInterfaces(ComboBox: TComboBox; RecentHost: string = '');
   procedure GridDrawIcon(aSg: TStringGrid; Rect: TRect; ls: TImageList; Index: Integer; W: Integer = 16; H: Integer = 16);
@@ -211,13 +204,14 @@ var
   procedure GridScrollCheck(aSg: TStringGrid; ACol, ColWidth: Integer);
   procedure GridSelectCell(aSg: TStringGrid; ACol, ARow: Integer);
   function GetRouterStrFlags(Flags: TRouterFlags): string;
-  function GetRouterStrParams(const Params: Word; Flags: TRouterFlags): string;     
+  function GetRouterStrParams(const Params: Word; Flags: TRouterFlags): string;
+  function GridGetSpecialData(aSg: TStringGrid; ACol, ARow: Integer; KeyStr: string): string;
   procedure GridKeyDown(aSg: TStringGrid; Shift: TShiftState; var Key: Word);
-  procedure GridSelectAll(aSg: TStringGrid);
   procedure GridCheckAutoPopup(aSg: TStringGrid; ARow: Integer; AllowEmptyRows: Boolean = False);
   procedure GoToInvalidOption(PageID: TTabSheet; Msg: string = ''; edComponent: TCustomEdit = nil);
   procedure DeleteDuplicatesFromList(var List: TStringList; ListType: TListType = ltNone);
   procedure SortList(var ls: TStringList; ListType: TListType; SortType: Byte);
+  procedure SortHostsList(var ls: TStringList; SortType: Byte = SORT_ASC);
   procedure SortNodesList(var ls: TStringList; SortType: Byte = SORT_ASC);
   procedure ControlsDisable(Control: TWinControl);
   procedure ControlsEnable(Control: TWinControl);
@@ -682,6 +676,72 @@ begin
   end;
 end;
 
+procedure SetGridLastCell(aSg: TStringGrid; Show: Boolean = True; ScrollTop: Boolean = False; ManualSort: Boolean = False; ARow: Integer = -1; ACol: Integer = -1; FindCol: Integer = -1);
+var
+  RowIndex, ColIndex: Integer;
+  TopState: Boolean;
+begin
+
+  TopState := ScrollTop and ManualSort;
+  if ARow = -1 then
+  begin
+    if TopState then
+      RowIndex := aSg.FixedRows
+    else
+    begin
+      if aSg.RowID.Data <> '' then
+      begin
+        if FindCol = -1 then
+          FindCol := aSg.Key;
+        if (aSg.Cells[FindCol, aSg.RowID.Selection.Top] = aSg.RowID.Data) then
+          RowIndex := aSg.RowID.Selection.Top
+        else
+        begin
+          if (aSg.Cells[FindCol, aSg.RowID.Selection.Bottom] = aSg.RowID.Data) then
+            RowIndex := aSg.RowID.Selection.Bottom
+          else
+            RowIndex := aSg.Cols[FindCol].IndexOf(aSg.RowID.Data);
+        end;
+      end
+      else
+        RowIndex := aSg.FixedRows;
+    end;
+  end
+  else
+    RowIndex := ARow;
+
+  if RowIndex < aSg.FixedRows then
+  begin
+    if InRange(aSg.RowID.Selection.Top, aSg.FixedRows, aSg.RowCount - 1) then
+      RowIndex := aSg.RowID.Selection.Top
+    else
+    begin
+      if InRange(aSg.RowID.Selection.Top - 1, aSg.FixedRows, aSg.RowCount - 1) then
+        RowIndex := aSg.RowID.Selection.Top - 1
+      else
+        RowIndex := aSg.FixedRows;
+    end;
+  end;
+  if RowIndex > aSg.RowCount - 1 then
+    RowIndex := aSg.RowCount - 1;
+
+  if ACol > - 1 then
+    ColIndex := ACol
+  else
+    ColIndex := aSg.SelCol;
+
+  if ((aSg.IsMultiRow or (aSg.IsMultiCol and not (goRowSelect in aSg.Options))) and not TopState) and (ARow = -1) then
+  begin
+    if aSg.SelectState then
+      Exit;
+    aSg.Selection := aSg.RowID.Selection;
+    aSg.MultiSelState := True;
+  end
+  else
+    TUserGrid(aSg).MoveColRow(ColIndex, RowIndex, True, Show);
+  Tcp.UpdateSelectedRouter(aSg);
+end;
+
 procedure GridSelectCell(aSg: TStringGrid; ACol, ARow: Integer);
 begin
   if not aSg.ScrollKeyDown then
@@ -693,38 +753,7 @@ begin
   else
     aSg.ScrollKeyDown := False;
   aSg.SelRow := ARow;
-end;
-
-procedure GridSelectAll(aSg: TStringGrid);
-var
-  GridRect: TGridRect; 
-begin
-  if goRangeSelect in aSg.Options then
-  begin
-    if aSg.CanFocus and not aSg.Focused then
-      aSg.SetFocus;
-    if aSg.Focused then
-    begin
-      aSg.SelectAllState := True;    
-      if goRowSelect in aSg.Options then
-      begin
-        SetGridLastCell(aSg, False, False, False, aSg.RowCount - aSg.FixedRows, aSg.ColCount - 1);    
-        keybd_event(VK_LSHIFT, 0, 0, 0);
-        keybd_event(VK_HOME, 0, 0, 0);
-        keybd_event(VK_HOME, 0, KEYEVENTF_KEYUP, 0);
-        keybd_event(VK_LSHIFT, 0, KEYEVENTF_KEYUP, 0);
-      end                                                        
-      else                                                       
-      begin
-        GridRect.Left := aSg.FixedCols;                          
-        GridRect.Top := aSg.FixedRows;                           
-        GridRect.Right := aSg.ColCount - 1;
-        GridRect.Bottom := aSg.RowCount - 1; 
-        aSg.Selection := GridRect; 
-      end;
-      aSg.SelectAllState := False;  
-    end;
-  end;
+  aSg.MultiSelState := False;
 end;
 
 function GetRouterStrFlags(Flags: TRouterFlags): string;
@@ -766,6 +795,7 @@ begin
   InsertData(ROUTER_ALIVE, ' Alive');
   InsertData(ROUTER_REACHABLE_IPV6, ' IPv6');
   InsertData(ROUTER_HS_DIR, ' HSDir');
+  InsertData(ROUTER_UNSTABLE, ' Unstable');
   InsertData(ROUTER_NOT_RECOMMENDED, ' NotRecommended');
   InsertData(ROUTER_BAD_EXIT, ' BadExit');
   InsertData(ROUTER_MIDDLE_ONLY, ' MiddleOnly');
@@ -773,18 +803,118 @@ begin
   Result := Trim(Result);
 end;
 
+function GridGetSpecialData(aSg: TStringGrid; ACol, ARow: Integer; KeyStr: string): string;
+var
+  RouterInfo: TRouterInfo;
+  StreamInfo: TStreamInfo;
+begin
+  Result := '';
+  case aSg.Tag of
+    GRID_FILTER:
+    begin
+      if ACol = FILTER_FLAG then
+        Result := LowerCase(aSg.Cells[FILTER_ID, ARow]);
+    end;
+    GRID_ROUTERS:
+    begin
+      case ACol of
+        ROUTER_FLAG: Result := CountryCodes[GetCountryValue(aSg.Cells[ROUTER_IP, ARow])];
+        ROUTER_FLAGS:
+        begin
+          if RoutersDic.TryGetValue(KeyStr, RouterInfo) then
+            Result := GetRouterStrParams(RouterInfo.Params, RouterInfo.Flags);
+        end;
+      end;
+    end;
+    GRID_CIRCUITS:
+    begin
+      if ACol = CIRC_FLAGS then
+        Result := aSg.Cells[CIRC_PURPOSE, ARow];
+    end;
+    GRID_CIRC_INFO:
+    begin
+      if ACol = CIRC_INFO_FLAG then
+        Result := CountryCodes[GetCountryValue(aSg.Cells[CIRC_INFO_IP, ARow])];
+    end;
+    GRID_STREAM_INFO:
+    begin
+      if ACol = STREAMS_INFO_SOURCE_ADDR then
+      begin
+        if StreamsDic.TryGetValue(KeyStr, StreamInfo) then
+          Result := StreamInfo.Target
+        else
+          Result := NONE_CHAR;
+        Result := Result + TAB + aSg.Cells[STREAMS_INFO_SOURCE_ADDR, ARow];
+      end;
+    end;
+  end;
+  if Result = '' then
+    Result := aSg.Cells[ACol, ARow];
+end;
+
 procedure GridKeyDown(aSg: TStringGrid; Shift: TShiftState; var Key: Word);
 var
-  i: Integer;
+  i, j: Integer;
   GridRect: TGridRect;
-  MultiSel: Boolean;
+  MultiSel, UseSpecialData, MultiRows, HiddenKey, HandleAction: Boolean;
+  Data, KeyStr: string;
 begin
+  HandleAction := False;
+  HiddenKey := aSg.ColWidths[0] = -1;
+  MultiRows := (goRowSelect in aSg.Options) and (aSg.IsMultiRow or (ssShift in Shift));
   MultiSel := (ssShift in Shift) and (goRangeSelect in aSg.Options) and not (goRowSelect in aSg.Options);
   if ssCtrl in Shift then
   begin
-    case Key of
-      67: Clipboard.AsText := aSg.Cells[aSg.SelCol, aSg.SelRow];
-      65: GridSelectAll(aSg);
+    case Char(Key) of
+      'C':
+      begin
+        Data := '';
+        UseSpecialData := aSg.Tag in [GRID_FILTER, GRID_ROUTERS, GRID_CIRCUITS, GRID_CIRC_INFO, GRID_STREAM_INFO];
+        if MultiRows or ((aSg.IsMultiRow or (aSg.Selection.Left <> aSg.Selection.Right)) and not (goRowSelect in aSg.Options)) then
+        begin
+          for i := aSg.Selection.Top to aSg.Selection.Bottom do
+          begin
+            if UseSpecialData then
+            begin
+              KeyStr := aSg.Cells[0, i];
+              if MultiRows and HiddenKey then
+                Data := Data + KeyStr + TAB;
+            end
+            else
+              KeyStr := '';
+            for j := aSg.Selection.Left to aSg.Selection.Right do
+            begin
+              if aSg.ColWidths[j] > 0 then
+              begin
+                if UseSpecialData then
+                  Data := Data + GridGetSpecialData(aSg, j, i, KeyStr)
+                else
+                  Data := Data + aSg.Cells[j, i];
+                if j < aSg.Selection.Right then
+                  Data := Data + TAB;
+              end;
+            end;
+            Data := Data + BR;
+          end;
+        end
+        else
+        begin
+          if UseSpecialData then
+          begin
+            KeyStr := aSg.Cells[0, aSg.SelRow];
+            Data := GridGetSpecialData(aSg, aSg.SelCol, aSg.SelRow, KeyStr);
+          end
+          else
+            Data := aSg.Cells[aSg.SelCol, aSg.SelRow];
+        end;
+        if Trim(Data) <> '' then
+          Clipboard.AsText := Data;
+      end;
+      'A':
+      begin
+        aSg.SelectAll;
+        HandleAction := True;
+      end;
     end;
   end;
 
@@ -792,6 +922,7 @@ begin
     aSg.ScrollKeyDown := True
   else
     aSg.ScrollKeyDown := False;
+  aSg.SelectState := (ssShift in Shift) or (ssCtrl in Shift);
 
   case Key of
     VK_APPS:
@@ -861,6 +992,12 @@ begin
       GridSetKeyboardLayout(aSg, aSg.SelCol)
     end;
   end;
+  if HandleAction then
+  begin
+    case aSg.Tag of
+      GRID_STREAMS: Tcp.ShowStreamsInfo(Tcp.sgCircuits.Cells[CIRC_ID, Tcp.sgCircuits.SelRow]);
+    end;
+  end;
 end;
 
 procedure CheckLabelEndEllipsis(lbComponent: TLabel; MaxWidth: Integer; EllipsisType: TEllipsisPosition; UseHint: Boolean; IgnoreFormSize: Boolean);
@@ -910,7 +1047,7 @@ procedure GridCheckAutoPopup(aSg: TStringGrid; ARow: Integer; AllowEmptyRows: Bo
 begin
   if not Assigned(aSg.PopupMenu) then
     Exit;
-  if (ARow > 0) and (not IsEmptyRow(aSg, ARow) or AllowEmptyRows) then
+  if (ARow > 0) and (not aSg.IsEmptyRow(ARow) or AllowEmptyRows) then
     aSg.PopupMenu.AutoPopup := True
   else
     aSg.PopupMenu.AutoPopup := False;
@@ -953,46 +1090,6 @@ Fail:
     Inc(Result);
   end;
   Result := 0;
-end;
-
-procedure ClearRow(aSg: TStringGrid; ARow: Integer);
-var
-  i: Integer;
-begin
-  for i := aSg.FixedCols to aSg.ColCount - 1 do
-    aSg.Cells[i, ARow] := '';
-end;
-
-procedure ClearGrid(aSg: TStringGrid; DeleteBlankRows: Boolean = True);
-var
-  i, j: Integer;
-begin
-  for i := 1 to aSg.RowCount - 1 do
-    for j := 0 to aSg.ColCount - 1 do
-      aSg.Cells[j, i] := '';
-  if DeleteBlankRows then
-    aSg.RowCount := 2;
-end;
-
-function IsEmptyRow(aSg: TStringGrid; ARow: Integer): Boolean;
-var
-  i: Integer;
-begin
-  Result := True;
-  for i := 0 to aSg.ColCount - 1 do
-    if aSg.Cells[i, ARow] <> '' then
-    begin
-      Result := False;
-      Break;
-    end;
-end;
-
-function IsEmptyGrid(aSg: TStringGrid): Boolean;
-begin
-  if (aSg.RowCount = 2) and (IsEmptyRow(aSg, 1)) then
-    Result := True
-  else
-    Result := False;
 end;
 
 procedure FindInGridColumn(aSg: TStringGrid; ACol: Integer; Key: Char);
@@ -1997,7 +2094,7 @@ begin
           if ValidSocket(Result, Boolean(MinValue)) = soNone then
             Reset;
         ptHost:
-          if not ValidHost(Result, False, True, Boolean(MinValue)) then
+          if ValidHost(Result, False, True, Boolean(MinValue)) = htNone then
             Reset;
         ptBridge:
           if not ValidBridge(Result) then
@@ -2188,6 +2285,8 @@ var
   end;
 
 begin
+  if List.Count < 2 then
+    Exit;
   ls := TDictionary<string, Byte>.Create;
   try
     if ListType = ltBridge then
@@ -2210,12 +2309,60 @@ begin
   end;
 end;
 
+procedure SortHostsList(var ls: TStringList; SortType: Byte = SORT_ASC);
+var
+  i: Integer;
+  IpV4Addresses, IpV6Addresses, Hosts: TStringList;
+begin
+  if (SortType = SORT_NONE) or (ls.Count < 2)  then
+    Exit;
+  IpV4Addresses := TStringList.Create;
+  IpV6Addresses := TStringList.Create;
+  Hosts := TStringList.Create;
+  try
+    for i := 0 to ls.Count - 1 do
+    begin
+      case ValidAddress(ls[i]) of
+        atIPv4: IpV4Addresses.Append(ls[i]);
+        atIPv6: IpV6Addresses.Append(ls[i]);
+        else
+          Hosts.Append(ls[i]);
+      end;
+    end;
+    ls.Clear;
+    case SortType of
+      SORT_ASC:
+      begin
+        IpV4Addresses.CustomSort(CompTextAsc);
+        IpV6Addresses.CustomSort(CompTextAsc);
+        Hosts.CustomSort(CompTextAsc);
+        ls.AddStrings(IpV4Addresses);
+        ls.AddStrings(IpV6Addresses);
+        ls.AddStrings(Hosts);
+      end;
+      SORT_DESC:
+      begin
+        IpV4Addresses.CustomSort(CompTextDesc);
+        IpV6Addresses.CustomSort(CompTextDesc);
+        Hosts.CustomSort(CompTextDesc);
+        ls.AddStrings(Hosts);
+        ls.AddStrings(IpV6Addresses);
+        ls.AddStrings(IpV4Addresses);
+      end;
+    end;
+  finally
+    IpV4Addresses.Free;
+    IpV6Addresses.Free;
+    Hosts.Free;
+  end;
+end;
+
 procedure SortNodesList(var ls: TStringList; SortType: Byte = SORT_ASC);
 var
   i: Integer;
   Hashes, Addresses, CountryCodes: TStringList;
 begin
-  if SortType = SORT_NONE then
+  if (SortType = SORT_NONE) or (ls.Count < 2) then
     Exit;
   Addresses := TStringList.Create;
   CountryCodes := TStringList.Create;
@@ -2264,7 +2411,7 @@ end;
 function ValidData(Str: string; ListType: TListType): Boolean;
 begin
   case ListType of
-    ltHost: Result := ValidHost(Str, True, True);
+    ltHost: Result := ValidHost(Str, True, True) <> htNone;
     ltHash: Result := ValidHash(Str);
     ltPolicy: Result := ValidPolicy(Str);
     ltBridge: Result := ValidBridge(Str);
@@ -2279,9 +2426,10 @@ end;
 
 procedure SortList(var ls: TStringList; ListType: TListType; SortType: Byte);
 begin
-  if SortType = SORT_NONE then
+  if (SortType = SORT_NONE) or (ls.Count < 2) then
     Exit;
   case ListType of
+    ltHost: SortHostsList(ls, SortType);
     ltNode: SortNodesList(ls, SortType);
     ltHash:
     begin
@@ -2289,7 +2437,7 @@ begin
         SORT_ASC: ls.Sort;
         SORT_DESC: ls.CustomSort(CompDesc);
       end;
-    end
+    end;
     else
     begin
       case SortType of
@@ -2339,7 +2487,7 @@ begin
       DeleteDuplicatesFromList(ls, ListType);
       SortList(ls, ListType, SortType);
     end;
-    Memo.Text := ls.Text;
+    Memo.SetTextData(ls.Text);
   finally
     ls.Free;
   end;
@@ -2407,7 +2555,7 @@ begin
     end;
     DeleteDuplicatesFromList(ls, ListType);
     SortList(ls, ListType, SortType);
-    Memo.Text := ls.Text;
+    Memo.SetTextData(ls.Text);
   end;
 end;
 
@@ -2696,17 +2844,6 @@ begin
     Result := False;
 end;
 
-procedure DeleteARow(aSg: TStringGrid; ARow: Integer);
-begin;
-  if aSg.RowCount = 2 then
-    ClearGrid(aSg)
-  else
-  begin
-    ClearRow(aSg, ARow);
-    TUserGrid(aSg).DeleteRow(ARow);
-  end;
-end;
-
 procedure CheckFileEncoding(FileName, BackupFile: string);
 var
   AStream: TFileStream;
@@ -2880,59 +3017,6 @@ begin
     Inc(j);
   end;
   FreeAndNil(SlSort);
-end;
-
-procedure SetGridLastCell(aSg: TStringGrid; Show: Boolean = True; ScrollTop: Boolean = False; ManualSort: Boolean = False; ARow: Integer = -1; ACol: Integer = -1; FindCol: Integer = 0);
-var
-  RowIndex, ColIndex: Integer;
-begin
-  if ARow = -1 then
-  begin
-    if ScrollTop and ManualSort then
-      RowIndex := 1
-    else
-      RowIndex := aSg.Cols[FindCol].IndexOf(aSg.RowID);
-  end
-  else
-    RowIndex := ARow;
-
-  if not (goRowSelect in aSg.Options) then
-  begin
-    if aSg.Row = RowIndex then
-    begin
-      if (RowIndex = 1) and (aSg.RowCount > 2) then
-        aSg.Row := RowIndex + 1
-      else
-        if aSg.RowCount > 2 then
-          aSg.Row := RowIndex - 1;
-    end;
-  end;
-
-  if (RowIndex > 0) then
-  begin
-    if ACol > -1 then
-      ColIndex := ACol
-    else
-      ColIndex := aSg.SelCol;
-    TUserGrid(aSg).MoveColRow(ColIndex, RowIndex, True, Show);
-  end;
-  Tcp.UpdateSelectedRouter(aSg);
-end;
-
-procedure BeginUpdateTable(aSg: TStringGrid);
-var
-  i: Integer;
-begin
-  for i := 0 to aSg.ColCount - 1 do
-    aSg.Cols[i].BeginUpdate;
-end;
-
-procedure EndUpdateTable(aSg: TStringGrid);
-var
-  i: Integer;
-begin
-  for i := 0 to aSg.ColCount - 1 do
-    aSg.Cols[i].EndUpdate;
 end;
 
 function GetTaskBarPos: TTaskBarPos;
@@ -3424,22 +3508,27 @@ begin
   end;
 end;
 
-function ValidHost(HostStr: string; AllowRootDomain: Boolean = False; AllowIp: Boolean = True; ReqBrackets: Boolean = False): Boolean;
+function ValidHost(HostStr: string; AllowRootDomain: Boolean = False; AllowIp: Boolean = True; ReqBrackets: Boolean = False; DenySpecialDomains: Boolean = True): THostType;
 var
   i, j, SubLen, Count: Integer;
+  AddressType: TAddressType;
   SubDomains: ArrOfStr;
 begin
-  Result := False;
+  Result := htNone;
   if AllowRootDomain and (HostStr = '.') then
   begin
-    Result := True;
+    Result := htRoot;
     Exit;
   end;
-  if ValidAddress(HostStr, False, ReqBrackets) <> atNone then
+  AddressType := ValidAddress(HostStr, False, ReqBrackets);
+  if AddressType <> atNone then
   begin
     if AllowIp then
     begin
-      Result := True;
+      case AddressType of
+        atIPv4: Result := htIPv4;
+        atIPv6: Result := htIPv6;
+      end;
       Exit;
     end
     else
@@ -3472,11 +3561,17 @@ begin
           Exit;
     end;
   end;
-  if SubDomains[Count - 1] = 'exit' then
-    Exit;
-  if SubDomains[Count - 1] = 'onion' then
-    Exit;
-  Result := True;
+  if DenySpecialDomains then
+  begin
+    if SubDomains[Count - 1] = 'exit' then
+      Exit;
+    if SubDomains[Count - 1] = 'onion' then
+      Exit;
+  end;
+  if HostStr[1] = '.' then
+    Result := htRoot
+  else
+    Result := htDomain;
 end;
 
 function ValidSocket(SocketStr: string; AllowHostNames: Boolean = False): TSocketType;
@@ -3489,7 +3584,7 @@ begin
     Exit;
   if AllowHostNames then
   begin
-    if ValidHost(Copy(SocketStr, 1, Search - 1), False, True, True) then
+    if ValidHost(Copy(SocketStr, 1, Search - 1), False, True, True) <> htNone then
       Result := soHost;
   end
   else
@@ -3726,6 +3821,11 @@ function TryParseTarget(TargetStr: string; out Target: TTarget): Boolean;
 var
   PortIndex, ExitIndex, HashIndex, TargetLength: Integer;
 begin
+  Target.TargetType := ttNone;
+  Target.Hash := '';
+  Target.Hostname := '';
+  Target.Port := '0';
+
   PortIndex := RPos(':', TargetStr);
   Result := PortIndex <> 0;
   if Result then
@@ -3752,13 +3852,7 @@ begin
       else
         Target.TargetType := ttNormal;
     end;
-    if Result then
-      Exit;
   end;
-  Target.TargetType := ttNone;
-  Target.Hostname := '';
-  Target.Port := '0';
-  Target.Hash := '';
 end;
 
 function TryParseBridge(BridgeStr: string; out Bridge: TBridge; Validate: Boolean = True; UseFormatHost: Boolean = False): Boolean;
@@ -4024,7 +4118,13 @@ begin
         emCut: Control.CutToClipboard;
         emPaste: Control.PasteFromClipboard;
         emSelectAll: Control.SelectAll;
-        emClear: Control.Text := '';
+        emClear:
+        begin
+          if Control is TMemo then
+            TMemo(Control).ClearText
+          else
+            Control.Text := '';
+        end;
         emDelete: Control.ClearSelection;
         emFind:
         begin
@@ -4118,6 +4218,7 @@ begin
   CheckMask(ROUTER_ALIVE);
   CheckMask(ROUTER_REACHABLE_IPV6);
   CheckMask(ROUTER_HS_DIR);
+  CheckMask(ROUTER_UNSTABLE);
   CheckMask(ROUTER_NOT_RECOMMENDED);
   CheckMask(ROUTER_BAD_EXIT);
   CheckMask(ROUTER_MIDDLE_ONLY);
