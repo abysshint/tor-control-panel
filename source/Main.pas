@@ -1032,10 +1032,10 @@ type
     miDelimiter71: TMenuItem;
     miDelimiter61: TMenuItem;
     miStopScan: TMenuItem;
-    Timer1: TTimer;
     miStreamsExtractData: TMenuItem;
     miCircuitsDestroyLock: TMenuItem;
     miStreamsInfoExtractData: TMenuItem;
+    miFilterExtractData: TMenuItem;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1122,7 +1122,7 @@ type
     procedure UpdateFormSize;
     procedure HsMaxStreamsEnable(State: Boolean);
     procedure HsPortsEnable(State: Boolean);
-    procedure TransportsEnable(State: Boolean);
+    procedure TransportsEnable(State: Boolean; SkipHandler: Boolean = False);
     procedure BridgesCheckControls;
     procedure FallbackDirsCheckControls;
     procedure EnableOptionButtons(State: Boolean = True);
@@ -1639,7 +1639,6 @@ type
     procedure tiTrayMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
     procedure miStopScanClick(Sender: TObject);
-    procedure Timer1Timer(Sender: TObject);
     procedure sgStreamsKeyUp(Sender: TObject; var Key: Word;
       Shift: TShiftState);
   private
@@ -1727,7 +1726,6 @@ var
   LastUserStreamProtocol, LastTrayIconType, ExtractDelimiterType, ConfigVersion: Integer;
   FindBridgesCountries, FindFallbackDirCountries, ScanNewBridges, NeedUpdateFallbackDirs, NeedUpdateBridges: Boolean;
   FormatIPv6OnExtract, RemoveDuplicateOnExtract, SortOnExtract, FormatCodesOnExtract, ShowFullMenuOnExtract: Boolean;
-  Time: Cardinal;
 
 implementation
 
@@ -2502,11 +2500,6 @@ procedure TTcp.TDescriptorsThreadTerminate(Sender: TObject);
 begin
   Descriptors := nil;
   UpdateRoutersData;
-end;
-
-procedure TTcp.Timer1Timer(Sender: TObject);
-begin
-  ShowRouters;
 end;
 
 procedure TConsensusThread.Execute;
@@ -5106,8 +5099,8 @@ begin
           Exit
         else
         begin
-          TransportsEnable(True);
           SelectTransports;
+          TransportsEnable(True, True);
         end;
       end;
     end;
@@ -5221,11 +5214,11 @@ begin
     Exit;
   edTransports.Text := sgTransports.Cells[PT_TRANSPORTS, sgTransports.SelRow];
   edTransportsHandler.Text := sgTransports.Cells[PT_HANDLER, sgTransports.SelRow];
-  meHandlerParams.SetTextData(sgTransports.Cells[PT_PARAMS, sgTransports.SelRow]);
+  cbHandlerParamsState.Checked := StrToBoolDef(sgTransports.Cells[PT_PARAMS_STATE, sgTransports.SelRow], False);
   cbxTransportType.ItemIndex := GetTransportID(sgTransports.Cells[PT_TYPE, sgTransports.SelRow]);
   cbxTransportState.ItemIndex := GetTransportStateID(sgTransports.Cells[PT_STATE, sgTransports.SelRow]);
-  cbHandlerParamsState.Checked := StrToBoolDef(sgTransports.Cells[PT_PARAMS_STATE, sgTransports.SelRow], False);
   CheckTransportsControls;
+  meHandlerParams.SetTextData(sgTransports.Cells[PT_PARAMS, sgTransports.SelRow]);
 end;
 
 procedure TTcp.SelectorMenuClick(Sender: TObject);
@@ -7965,7 +7958,6 @@ var
   FilterEntry, FilterMiddle, FilterExit, Temp: string;
   FavoritesEntry, FavoritesMiddle, FavoritesExit, ExcludeNodes: string;
 begin
-  Time := GetTickCount;
   LoadTorConfig;
   ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
   inidef := TMemIniFile.Create(DefaultsFile, TEncoding.UTF8);
@@ -8131,8 +8123,8 @@ begin
     CurrentTrafficPeriod := GetIntDef(GetSettings('Status', 'CurrentTrafficPeriod', 1, ini), 1, 0, 8);
     miTrafficPeriod.items[CurrentTrafficPeriod].Checked := True;
 
-    LastFullScanDate := GetSettings('Scanner', 'LastFullScanDate', 0, ini);
-    LastPartialScanDate := GetSettings('Scanner', 'LastPartialScanDate', 0, ini);
+    LastFullScanDate := GetSettings('Scanner', 'LastFullScanDate', int64(0), ini);
+    LastPartialScanDate := GetSettings('Scanner', 'LastPartialScanDate', int64(0), ini);
     LastPartialScansCounts := GetSettings('Scanner', 'LastPartialScansCounts', 0, ini);
 
     GeoFileID := GetSettings('Main', 'GeoFileID', '', ini);
@@ -8491,9 +8483,9 @@ begin
         if (cbUseUPnP.Checked) and (cbxServerMode.ItemIndex > SERVER_MODE_NONE) then
           RemoveUPnPEntry([udORPort.Position, udTransportPort.Position]);
       end;
-      TotalDL := GetSettings('Status', 'TotalDL', 0, ini);
-      TotalUL := GetSettings('Status', 'TotalUL', 0, ini);
-      TotalStartDate := GetSettings('Status', 'TotalStartDate', 0, ini);
+      TotalDL := GetSettings('Status', 'TotalDL', int64(0), ini);
+      TotalUL := GetSettings('Status', 'TotalUL', int64(0), ini);
+      TotalStartDate := GetSettings('Status', 'TotalStartDate', int64(0), ini);
       if (TotalStartDate = 0) or ((TotalDL = 0) and (TotalUL = 0)) then
       begin
         TotalStartDate := DateTimeToUnix(Now);
@@ -10671,14 +10663,14 @@ var
   TimeStamp: Int64;
   TemplateList: TStringList;
   TemplateName, TimeStampStr: string;
-  State, SingleRow: Boolean;
+  State, SingleState: Boolean;
 begin
   SelectRowPopup(sgFilter, mnFilter);
-  SingleRow := not sgFilter.IsMultiRow;
-  State := SingleRow and not sgFilter.IsEmpty;
+  State := not sgFilter.IsEmpty;
+  SingleState := State and not sgFilter.IsMultiRow;
 
-  miStatCountry.Visible := State;
-  if State then
+  miStatCountry.Visible := SingleState;
+  if SingleState then
   begin
     miStatCountry.Caption := sgFilter.Cells[FILTER_NAME, sgFilter.SelRow];
     miStatCountry.ImageIndex := FilterDic.Items[LowerCase(sgFilter.Cells[FILTER_ID, sgFilter.SelRow])].cc;
@@ -10688,8 +10680,12 @@ begin
     miStatCountry.Caption := '';
     miStatCountry.ImageIndex := -1;
   end;
-  miStatGuards.Enabled := State;
-  miStatExit.Enabled := State;
+  miStatGuards.Enabled := SingleState;
+  miStatExit.Enabled := SingleState;
+
+  miFilterExtractData.Visible := State;
+  if State then
+    InsertExtractMenu(miFilterExtractData, CONTROL_TYPE_GRID, GRID_FILTER, EXTRACT_PREVIEW);
 
   miClearFilterEntry.Enabled := lbFilterEntry.Tag > 0;
   miClearFilterMiddle.Enabled := lbFilterMiddle.Tag > 0;
@@ -11031,24 +11027,40 @@ end;
 function TTcp.GetTrackHostDomains(Host: string; OnlyExists: Boolean): string;
 var
   DotIndex: Integer;
+  HostType: THostType;
 begin
   Result := '';
   Host := ExtractDomain(Host, True);
-  if ValidHost(Host, True, True) <> htNone then
+  HostType := ValidHost(Host, True, True);
+  if HostType = htNone then
+    Exit;
+  DotIndex := 255;
+  while DotIndex > 0 do
   begin
-    DotIndex := 1;
-    while DotIndex > 0 do
+    if OnlyExists then
     begin
-      if (OnlyExists and TrackHostDic.ContainsKey(Host)) or not OnlyExists then
+      if TrackHostDic.ContainsKey(Host) then
         Result := Result + ';' + Host;
-      DotIndex := Pos('.', Host, 2);
-      if DotIndex <> -1 then
-        Host := Copy(Host, DotIndex);
+    end
+    else
+    begin
+      Result := Result + ';' + Host;
+      if HostType in [htIPv4, htIPv6] then
+        Break;
     end;
-    if OnlyExists and TrackHostDic.ContainsKey('.') then
-      Result := Result + ';' + TransStr('353');
-    Delete(Result, 1, 1);
+    if DotIndex = 255 then
+    begin
+      Host := '.' + Host;
+      if OnlyExists and TrackHostDic.ContainsKey(Host) then
+        Result := Result + ';' + Host;
+    end;
+    DotIndex := Pos('.', Host, 2);
+    if DotIndex <> -1 then
+      Host := Copy(Host, DotIndex);
   end;
+  if OnlyExists and TrackHostDic.ContainsKey('.') then
+    Result := Result + ';' + TransStr('353');
+  Delete(Result, 1, 1);
 end;
 
 procedure TTcp.mnShowNodesChange(Sender: TObject; Source: TMenuItem;
@@ -11118,7 +11130,6 @@ begin
       miStreamsBindToExitNode.Caption := TransStr('352');
       miStreamsBindToExitNode.ImageIndex := 22;
     end;
-
     Domains := GetTrackHostDomains(sgStreams.Cells[STREAMS_TARGET, sgStreams.SelRow], Search);
     if Domains <> '' then
     begin
@@ -11589,6 +11600,7 @@ begin
     CONTROL_TYPE_GRID:
     begin
       case ControlID of
+        GRID_FILTER: ControlGrid := sgFilter;
         GRID_ROUTERS: ControlGrid := sgRouters;
         GRID_STREAMS: ControlGrid := sgStreams;
         GRID_CIRC_INFO: ControlGrid := sgCircuitInfo;
@@ -11704,6 +11716,11 @@ begin
         CONTROL_TYPE_GRID:
         begin
           case ControlID of
+            GRID_FILTER:
+            begin
+              for i := ControlGrid.Selection.Top to ControlGrid.Selection.Bottom do
+                FormatData(CountryCodeStr, CountryCodeCount, LowerCase(ControlGrid.Cells[FILTER_ID, i]), EXTRACT_COUNTRY_CODE);
+            end;
             GRID_ROUTERS, GRID_CIRC_INFO:
             begin
               if ParentMenu.Hint = '' then
@@ -14272,27 +14289,27 @@ function TTcp.FindTrackHost(Host: string): Boolean;
 var
   DotIndex: Integer;
 begin
+  Result := True;
   if TrackHostDic.ContainsKey('.') then
-  begin
-    Result := True;
-    Exit;
-  end
+    Exit
   else
   begin
     Host := ExtractDomain(Host, True);
     if ValidHost(Host, True, True) <> htNone then
     begin
-      DotIndex := 1;
-      while DotIndex > 0 do
+      if TrackHostDic.ContainsKey('.' + Host) then
+        Exit
+      else
       begin
-        if TrackHostDic.ContainsKey(Host) then
+        DotIndex := 1;
+        while DotIndex > 0 do
         begin
-          Result := True;
-          Exit;
+          if TrackHostDic.ContainsKey(Host) then
+            Exit;
+          DotIndex := Pos('.', Host, 2);
+          if DotIndex <> -1 then
+            Host := Copy(Host, DotIndex);
         end;
-        DotIndex := Pos('.', Host, 2);
-        if DotIndex <> -1 then
-          Host := Copy(Host, DotIndex);
       end;
     end;
   end;
@@ -17109,14 +17126,17 @@ begin
   lbHsMaxStreams.Enabled := State;
 end;
 
-procedure TTcp.TransportsEnable(State: Boolean);
+procedure TTcp.TransportsEnable(State: Boolean; SkipHandler: Boolean = False);
 begin
   edTransports.Enabled := State;
   edTransportsHandler.Enabled := State;
   cbxTRansportState.Enabled := State;
   cbxTRansportType.Enabled := State;
+  cbHandlerParamsState.Visible := False;
   cbHandlerParamsState.Enabled := State;
-  meHandlerParams.Enabled := State;
+  cbHandlerParamsState.Visible := True;
+  if not SkipHandler then
+    meHandlerParams.Enabled := State;
   lbTransports.Enabled := State;
   lbTransportsHandler.Enabled := State;
   lbTransportState.Enabled := State;

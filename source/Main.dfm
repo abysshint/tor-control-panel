@@ -3398,6 +3398,7 @@ object Tcp: TTcp
         Height = 17
         Caption = #1048#1089#1087#1086#1083#1100#1079#1086#1074#1072#1090#1100' '#1082#1101#1096' '#1082#1072#1090#1072#1083#1086#1075#1072
         Checked = True
+        Enabled = False
         State = cbChecked
         TabOrder = 28
         OnMouseDown = cbDirCacheMouseDown
@@ -5803,6 +5804,10 @@ object Tcp: TTcp
     object miDelimiter19: TMenuItem
       Caption = '-'
     end
+    object miFilterExtractData: TMenuItem
+      Caption = #1048#1079#1074#1083#1077#1095#1100' '#1076#1072#1085#1085#1099#1077
+      ImageIndex = 71
+    end
     object miFilterOptions: TMenuItem
       Caption = #1053#1072#1089#1090#1088#1086#1081#1082#1080
       ImageIndex = 11
@@ -7297,12 +7302,5 @@ object Tcp: TTcp
   object OpenDialog: TOpenDialog
     Left = 677
     Top = 377
-  end
-  object Timer1: TTimer
-    Enabled = False
-    Interval = 2000
-    OnTimer = Timer1Timer
-    Left = 674
-    Top = 430
   end
 end
