@@ -40,7 +40,7 @@
 * Operating system: Windows 7 and above
 * Tor version: 0.4.0.5 and above
 
-    > Note: The program can run on Windows XP and Vista, but the latest supported version of Tor for these operating systems is 0.4.4.6, and pluggable transports need to be rebuilt in Golang version 1.10 and below.
+    > Note: the program can run on Windows XP and Vista, however tor and pluggable transports from the official Tor Expert Bundle no longer support these operating systems
 <p align="right">[<a href="#readme-top">↑ Up</a>]</p>
 
 ## Program Features
@@ -51,7 +51,8 @@
 * Ability to manage hidden services
 * Ability to use selected Entry nodes as Vanguards
 * Ability to add and configure the launch of pluggable transports
-* Saving/Loading your lists of Entry, Middle, Exit and Exlude nodes
+* Ability to extract displayed data as text lists
+* Saving/Loading your lists of Entry, Middle, Exit and Exсlude nodes
 * Automatic nodes selection based on user settings
 * Running multiple copies of the program with different profiles
 * Showing the Tor message log and saving it to a file
@@ -60,6 +61,7 @@
 * A convenient filtering, searching and sorting system that helps you choose the most suitable nodes
 * Viewing and closing circuits/active connections
 * Displaying traffic statistics in the form of a graph and digital data
+* Convenient bridge management system (caching, exclusion of unsuitable ones, priority selection)
 * The program is portable, installation is not required, where it was launched, it works there
 * Support for visual themes
 * Multilingual interface with the ability to add new localizations
@@ -88,7 +90,7 @@
 <p align="right">[<a href="#readme-top">↑ Up</a>]</p>
 
 ## Project Build
-1. Install the IDE [Delphi 10.4.2 CE](https://www.embarcadero.com/ru/products/delphi/starter/free-download)
+1. Install the IDE [Delphi 11.3 CE](https://www.embarcadero.com/en/products/delphi/starter/free-download)
     > Warning! Building the project in other versions of Delphi has not been tested and may lead to the most unexpected results.
 2. Download and install the Delphi library [Ararat Synapse](https://sourceforge.net/p/synalist/code/HEAD/tree/trunk/)
 
@@ -96,13 +98,11 @@
 	
       `C:\Program Files (x86)\Embarcadero\Studio\21.0\source\Synapse`
 	  
-    * Open the Delphi Options and add the path **$(BDS)\source\Synapse** to the lists **Library path** and **Browsing path**
+    * Open the Delphi Options and add the path **$(BDS)\source\Synapse** to the lists **Library path** and **Browsing path** for platforms: Windows 32-bit and Windows 64-bit
 	
-      `[Tools] → [Options] → [Language] → [Delphi] → [Library] → [Windows 32-bit]/[Windows 64-bit]`
+      `[Tools] → [Options] → [Language] → [Delphi] → [Library]
 	  
 3. Open the file **TorControlPanel.dproj**, select platform and compile the project by pressing the **[Run]** button
-4. Run the file **TCP-RSP-31045-PATCHER.exe** to fix the Delphi 10.4 bug which causes the buttons to be displayed incorrectly in Windows 7 when Aero is enabled.
-    > Warning! The [AT4RE-Patcher-v0.7.6](https://github.com/anomous/AT4RE-Patcher-Windows) program was used to create the patch. The patches created in it are defined by some antiviruses as potentially dangerous applications, since "hacker" methods of modifying executable files are used.
 <p align="right">[<a href="#readme-top">↑ Up</a>]</p>
 
 ## Privacy
@@ -116,5 +116,6 @@ This program is free software and distributed under the [MIT license](https://gi
 * [Tor Specifications and Proposals](https://gitlab.torproject.org/tpo/core/torspec)
 * [Tor Project Distribution Server](https://dist.torproject.org/)
 * [Tor Project File Archive](https://archive.torproject.org/tor-package-archive/)
-* [Fresh GeoIP databases](https://gitlab.torproject.org/tpo/network-health/metrics/geoip-data/-/packages)
+* [Fresh GeoIP databases](https://tpo.pages.torproject.net/network-health/metrics/geoip-data/)
+* [Current version of Tor Expert Bundle](https://www.torproject.org/download/tor/)
 <p align="right">[<a href="#readme-top">↑ Up</a>]</p>
