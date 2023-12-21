@@ -10683,9 +10683,7 @@ begin
   miStatGuards.Enabled := SingleState;
   miStatExit.Enabled := SingleState;
 
-  miFilterExtractData.Visible := State;
-  if State then
-    InsertExtractMenu(miFilterExtractData, CONTROL_TYPE_GRID, GRID_FILTER, EXTRACT_PREVIEW);
+  miFilterExtractData.Visible := State and InsertExtractMenu(miFilterExtractData, CONTROL_TYPE_GRID, GRID_FILTER, EXTRACT_PREVIEW);
 
   miClearFilterEntry.Enabled := lbFilterEntry.Tag > 0;
   miClearFilterMiddle.Enabled := lbFilterMiddle.Tag > 0;
@@ -11846,7 +11844,7 @@ begin
               EXTRACT_IPV6_BRIDGE: UpdateMenu(ParentMenu.Items[i], IPv6BridgesStr, IPv6BridgesCount, False);
               EXTRACT_FALLBACK_DIR: UpdateMenu(ParentMenu.Items[i], FallbackDirsStr, FallbackDirsCount, True);
               EXTRACT_NICKNAME: UpdateMenu(ParentMenu.Items[i], NicknameStr, NicknameCount, False);
-              EXTRACT_COUNTRY_CODE: UpdateMenu(ParentMenu.Items[i], CountryCodeStr, CountryCodeCount, False);
+              EXTRACT_COUNTRY_CODE: UpdateMenu(ParentMenu.Items[i], CountryCodeStr, CountryCodeCount, ((ControlType = CONTROL_TYPE_GRID) and (ControlID = GRID_FILTER)) or ((ControlType = CONTROL_TYPE_MEMO) and (ControlID = MEMO_NODES_LIST)));
               EXTRACT_CSV: UpdateMenu(ParentMenu.Items[i], CsvStr, CsvCount, False);
               EXTRACT_IPV4_SOCKET: UpdateMenu(ParentMenu.Items[i], IPv4SocketStr, IPv4SocketCount, False);
               EXTRACT_IPV6_SOCKET: UpdateMenu(ParentMenu.Items[i], IPv6SocketStr, IPv6SocketCount, False);
