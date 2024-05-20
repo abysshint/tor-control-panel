@@ -2169,7 +2169,22 @@ object Tcp: TTcp
         Height = 20
         Cursor = crHandPoint
         Enabled = False
+        Visible = False
         OnClick = imBridgesFileClick
+      end
+      object sbBridgesFileReadOnly: TSpeedButton
+        Left = 582
+        Top = 124
+        Width = 22
+        Height = 22
+        AllowAllUp = True
+        GroupIndex = 1
+        Down = True
+        Flat = True
+        ParentShowHint = False
+        ShowHint = True
+        Visible = False
+        OnClick = sbBridgesFileReadOnlyClick
       end
       object edBridgesFile: TEdit
         Left = 240
@@ -2181,6 +2196,7 @@ object Tcp: TTcp
         MaxLength = 255
         PopupMenu = EditMenu
         TabOrder = 20
+        Visible = False
         OnChange = edBridgesFileChange
         OnExit = edBridgesFileExit
         OnKeyDown = edBridgesFileKeyDown

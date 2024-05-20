@@ -465,7 +465,7 @@ begin
     LoadLns('693', 'Выполнено: %d из %d\n\nЩёлкните здесь, чтобы остановить \nсканирование');
     LoadStr('694', 'Выключить режим предпочитаемого моста');
     LoadStr('695', 'Нестабильный');
-
+    LoadLns('697', 'Вы собираетесь выключить режим "Только чтение".\n\nЛюбые изменения списка мостов в программе будут перезаписывать выбранный вами файл.\n\nВы действительно хотите это сделать?');
 
     TranslateArray(HsHeader, TransStr('230'));
     TranslateArray(HsPortsHeader, TransStr('231'));
@@ -615,6 +615,7 @@ begin
     Tcp.lbCount5.Caption := TransStr('470');
     Tcp.cbScanNewBridges.Caption := Load('642', 'Сначала сканировать порты');
     Tcp.imBridgesFile.Hint := Load('648', 'Открыть файл');
+    Tcp.sbBridgesFileReadOnly.Hint := Load('696', 'Режим "Только чтение"');
 
     Tcp.lbFilterMode.Caption := Load('162', 'Режим');
     Tcp.lbFilterTotalSelected.Caption := TransStr('643') + ':';

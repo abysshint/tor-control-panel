@@ -1036,6 +1036,7 @@ type
     miCircuitsDestroyLock: TMenuItem;
     miStreamsInfoExtractData: TMenuItem;
     miFilterExtractData: TMenuItem;
+    sbBridgesFileReadOnly: TSpeedButton;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1641,6 +1642,7 @@ type
     procedure miStopScanClick(Sender: TObject);
     procedure sgStreamsKeyUp(Sender: TObject; var Key: Word;
       Shift: TShiftState);
+    procedure sbBridgesFileReadOnlyClick(Sender: TObject);
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
     procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -1807,7 +1809,7 @@ begin
       StopCode := STOP_HALT;
       Tcp.StopTor(AutoResolveErrors);
       if not AutoResolveErrors then
-        ShowMsg('Halt ' + TransStr('238'), '', mtWarning);
+        ShowMsg(TransStr('238'), '', mtWarning);
     end;
   end;
 end;
@@ -6024,6 +6026,8 @@ begin
   SetButtonGlyph(lsMain, 24, sbSafeLogging);
   SetButtonGlyph(lsMain, 25, sbUseLinesLimit);
 
+  SetButtonGlyph(lsMain, 11, sbBridgesFileReadOnly);
+
   btnSwitchTor.ImageIndex := ConnectState;
   btnSwitchTor.Refresh;
   btnChangeCircuit.Refresh;
@@ -7070,6 +7074,7 @@ var
   Bridges: TStringList;
   i: Integer;
   NeedUpdate: Boolean;
+  Str: string;
 begin
   NeedUpdate := True;
   if FileExists(BridgesFileName) then
@@ -7081,7 +7086,10 @@ begin
       begin
         for i := Bridges.Count - 1 downto 0 do
         begin
-          Bridges[i] := Trim(Bridges[i]);
+          Str := Trim(Bridges[i]);
+          if InsensPosEx('Bridge ', Str) = 1 then
+            Str := Copy(Str, 8);
+          Bridges[i] := Str;
           if not ValidBridge(Bridges[i]) then
             Bridges.Delete(i);
         end;
@@ -7699,7 +7707,7 @@ begin
         if BridgesFileNeedSave then
         begin
           try
-            if ForceDirectories(ExtractFileDir(ExpandFileName(BridgesFileName))) then
+            if ForceDirectories(ExtractFileDir(ExpandFileName(BridgesFileName))) and not sbBridgesFileReadOnly.Down then
               meBridges.Lines.SaveToFile(BridgesFileName);
           except
           end;
@@ -8330,6 +8338,7 @@ begin
     GetSettings('Network', udBridgesQueueSize, ini);
     GetSettings('Network', cbxBridgesPriority, ini);
     GetSettings('Network', edPreferredBridge, ini);
+    GetSettings('Network', sbBridgesFileReadOnly, ini);
 
     BridgesFileName := GetSettings('Network', 'BridgesFileName', '', ini);
     LoadBuiltinBridges(inidef, cbxBridgesType.ItemIndex = BRIDGES_TYPE_BUILTIN, True, GetSettings('Network', 'BridgesList', '', ini));
@@ -11243,7 +11252,7 @@ end;
 procedure TTcp.EditMenuPopup(Sender: TObject);
 var
   Control: TMemo;
-  IsBridgeEdit, IsUserBridges, IsFallbackDirEdit, IsUserFallbackDirs, BridgesState, FallbackState: Boolean;
+  IsBridgeEdit, IsUserBridges, IsFileBridges, IsFallbackDirEdit, IsUserFallbackDirs, BridgesState, FallbackState: Boolean;
   BridgesCount, FallbackDirCount, MemoID, i: Integer;
 begin
   if Screen.ActiveControl is TMemo then
@@ -11259,18 +11268,19 @@ begin
 
   BridgesCount := meBridges.Lines.Count;
   IsBridgeEdit := MemoID = MEMO_BRIDGES;
-  IsUserBridges := IsBridgeEdit and (cbxBridgesType.ItemIndex <> BRIDGES_TYPE_BUILTIN) and (BridgesCount > 0);
+  IsUserBridges := IsBridgeEdit and (cbxBridgesType.ItemIndex = BRIDGES_TYPE_USER) and (BridgesCount > 0);
+  IsFileBridges := IsBridgeEdit and (cbxBridgesType.ItemIndex = BRIDGES_TYPE_FILE) and (BridgesCount > 0) and not sbBridgesFileReadOnly.Down;
 
   FallbackDirCount := meFallbackDirs.Lines.Count;
   IsFallbackDirEdit := MemoID = MEMO_FALLBACK_DIRS;
   IsUserFallbackDirs := IsFallbackDirEdit and (cbxFallbackDirsType.ItemIndex <> FALLBACK_TYPE_BUILTIN) and (FallbackDirCount > 0);
 
-  BridgesState := IsUserBridges and not tmScanner.Enabled;
+  BridgesState := (IsUserBridges or IsFileBridges) and not tmScanner.Enabled;
   FallbackState := IsUserFallbackDirs and not tmScanner.Enabled;
 
   miGetBridges.Visible := IsBridgeEdit;
-  miClear.Visible := not (IsUserBridges or IsUserFallbackDirs);
-  miClearMenu.Visible := IsUserBridges or IsUserFallbackDirs;
+  miClear.Visible := not (IsUserBridges or IsFileBridges or IsUserFallbackDirs);
+  miClearMenu.Visible := IsUserBridges or IsFileBridges or IsUserFallbackDirs;
 
   miGetBridgesEmail.Enabled := IsBridgeEdit and (RequestBridgesType <> REQUEST_TYPE_WEBTUNNEL) and
     RegistryFileExists(HKEY_CLASSES_ROOT, 'mailto\shell\open\command', '');
@@ -11289,7 +11299,7 @@ begin
 
   miClearMenu.Tag := MemoID;
 
-  if IsUserBridges then
+  if IsUserBridges or IsFileBridges then
   begin
     miClearMenuAll.Caption := TransStr('510');
     miClearMenuUnsuitable.Caption := TransStr('634');
@@ -14971,7 +14981,7 @@ begin
   udMaxDirFails.Enabled := UnsuitableState;
   udBridgesCheckDelay.Enabled := UnsuitableState;
   meBridges.Enabled := BuiltinState or (State and not BridgeIsBuiltin);
-  meBridges.ReadOnly := BridgeIsBuiltin;
+  meBridges.ReadOnly := BridgeIsBuiltin or (BridgeIsFile and sbBridgesFileReadOnly.Down);
   btnFindPreferredBridge.Enabled := PreferredState and PreferredBridgeFound;
   lbBridgesType.Enabled := State;
   lbBridgesSubType.Enabled := BuiltinState or FileState;
@@ -14992,6 +15002,7 @@ begin
   imBridgesFile.Visible := BridgeIsFile;
   imBridgesFile.Enabled := FileState;
   imBridgesFile.ShowHint := BridgeIsFile and cbUseBridges.Checked;
+  sbBridgesFileReadOnly.Visible := BridgeIsFile;
   if not PreferredState then
     LastPreferBridgeID := '';
 end;
@@ -16039,6 +16050,20 @@ procedure TTcp.sbAutoScrollClick(Sender: TObject);
 begin
   CheckLogAutoScroll;
   SetConfigBoolean('Log', 'AutoScroll', sbAutoScroll.Down);
+end;
+
+procedure TTcp.sbBridgesFileReadOnlyClick(Sender: TObject);
+begin
+  if not sbBridgesFileReadOnly.Down then
+  begin
+    if not ShowMsg(TransStr('697'), '', mtWarning, True) then
+    begin
+      sbBridgesFileReadOnly.Down := True;
+      Exit;
+    end;
+  end;
+  BridgesCheckControls;
+  SetConfigBoolean('Network', 'BridgesFileReadOnly', sbBridgesFileReadOnly.Down);
 end;
 
 procedure TTcp.sbSafeLoggingClick(Sender: TObject);
@@ -18440,7 +18465,7 @@ begin
   [
     TransStr('105'),
     GetFileVersionStr(Paramstr(0)) + BitStr,
-    'Copyright © 2020-2023, abysshint',
+    'Copyright © 2020-2024, abysshint',
     TransStr('357')
   ]), TransStr('355'), mtInfo, True) then
   begin
