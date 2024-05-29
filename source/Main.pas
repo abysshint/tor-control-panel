@@ -18470,7 +18470,7 @@ begin
     BitStr := '';
   if ShowMsg(Format(TransStr('356'),
   [
-    TransStr('105'),
+    'Tor Control Panel',
     GetFileVersionStr(Paramstr(0)) + BitStr,
     'Copyright © 2020-2024, abysshint',
     TransStr('357')

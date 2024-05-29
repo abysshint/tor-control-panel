@@ -102,7 +102,8 @@ begin
       end;
 
     end;
-    ls.AddObject('Русский', TObject(Integer(1049)));
+    if ls.IndexOfObject(TObject(Integer(1049))) < 0 then
+      ls.AddObject('Русский', TObject(Integer(1049)));
     Tcp.cbxLanguage.Items := ls;
   finally
     ls.Free;
