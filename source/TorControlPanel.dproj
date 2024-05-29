@@ -67,18 +67,18 @@
         <SanitizedProjectName>TorControlPanel</SanitizedProjectName>
         <DCC_Namespace>Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;System;Xml;Data;Datasnap;Web;Soap;FMXTee.Chart;$(DCC_Namespace)</DCC_Namespace>
         <VerInfo_Locale>1049</VerInfo_Locale>
-        <VerInfo_Keys>FileDescription=GUI for Tor Expert Bundle;FileVersion=2.4.5.20;LegalCopyright=Copyright © 2020-2024, abysshint;OriginalFilename=TorControlPanel.exe;ProductName=Tor Control Panel;ProductVersion=2.4.5.20;CFBundleName=</VerInfo_Keys>
+        <VerInfo_Keys>FileDescription=GUI for Tor Expert Bundle;FileVersion=2.4.5.29;LegalCopyright=Copyright © 2020-2024, abysshint;OriginalFilename=TorControlPanel.exe;ProductName=Tor Control Panel;ProductVersion=2.4.5.29;CFBundleName=</VerInfo_Keys>
         <DCC_DcuOutput>.\__Temp\$(Platform)-$(Config)</DCC_DcuOutput>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_MajorVer>2</VerInfo_MajorVer>
         <VerInfo_MinorVer>4</VerInfo_MinorVer>
         <VerInfo_Release>5</VerInfo_Release>
-        <VerInfo_Build>20</VerInfo_Build>
+        <VerInfo_Build>29</VerInfo_Build>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win32)'!=''">
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>
         <BT_BuildType>Debug</BT_BuildType>
-        <VerInfo_Keys>FileDescription=GUI for Tor Expert Bundle;FileVersion=2.4.5.20;LegalCopyright=Copyright © 2020-2024, abysshint;OriginalFilename=TorControlPanel.exe;ProductName=Tor Control Panel;ProductVersion=2.4.5.20;ProgramID={D2FF7A62-ADDB-4AF8-98EA-04980D0CD3C2}</VerInfo_Keys>
+        <VerInfo_Keys>FileDescription=GUI for Tor Expert Bundle;FileVersion=2.4.5.29;LegalCopyright=Copyright © 2020-2024, abysshint;OriginalFilename=TorControlPanel.exe;ProductName=Tor Control Panel;ProductVersion=2.4.5.29;ProgramID={D2FF7A62-ADDB-4AF8-98EA-04980D0CD3C2}</VerInfo_Keys>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
         <Icon_MainIcon>TorControlPanel_Icon.ico</Icon_MainIcon>
@@ -93,7 +93,7 @@
         <UWP_DelphiLogo150>$(BDS)\bin\Artwork\Windows\UWP\delphi_UwpDefault_150.png</UWP_DelphiLogo150>
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
         <BT_BuildType>Debug</BT_BuildType>
-        <VerInfo_Keys>FileDescription=GUI for Tor Expert Bundle;FileVersion=2.4.5.20;LegalCopyright=Copyright © 2020-2024, abysshint;OriginalFilename=TorControlPanel.exe;ProductName=Tor Control Panel;ProductVersion=2.4.5.20;ProgramID={D2FF7A62-ADDB-4AF8-98EA-04980D0CD3C2}</VerInfo_Keys>
+        <VerInfo_Keys>FileDescription=GUI for Tor Expert Bundle;FileVersion=2.4.5.29;LegalCopyright=Copyright © 2020-2024, abysshint;OriginalFilename=TorControlPanel.exe;ProductName=Tor Control Panel;ProductVersion=2.4.5.29;ProgramID={D2FF7A62-ADDB-4AF8-98EA-04980D0CD3C2}</VerInfo_Keys>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <AppDPIAwarenessMode>PerMonitorV2</AppDPIAwarenessMode>
     </PropertyGroup>
@@ -105,26 +105,27 @@
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <VerInfo_Keys>FileDescription=GUI for Tor Expert Bundle;FileVersion=2.4.5.20;LegalCopyright=Copyright © 2020-2024, abysshint;OriginalFilename=TorControlPanel.exe;ProductName=Tor Control Panel;ProductVersion=2.4.5.20;ProgramID={D2FF7A62-ADDB-4AF8-98EA-04980D0CD3C2}</VerInfo_Keys>
+        <VerInfo_Keys>FileDescription=GUI for Tor Expert Bundle;FileVersion=2.4.5.29;LegalCopyright=Copyright © 2020-2024, abysshint;OriginalFilename=TorControlPanel.exe;ProductName=Tor Control Panel;ProductVersion=2.4.5.29;ProgramID={D2FF7A62-ADDB-4AF8-98EA-04980D0CD3C2}</VerInfo_Keys>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Win64)'!=''">
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <VerInfo_Keys>FileDescription=GUI for Tor Expert Bundle;FileVersion=2.4.5.20;LegalCopyright=Copyright © 2020-2024, abysshint;OriginalFilename=TorControlPanel.exe;ProductName=Tor Control Panel;ProductVersion=2.4.5.20;ProgramID={D2FF7A62-ADDB-4AF8-98EA-04980D0CD3C2}</VerInfo_Keys>
+        <VerInfo_Keys>FileDescription=GUI for Tor Expert Bundle;FileVersion=2.4.5.29;LegalCopyright=Copyright © 2020-2024, abysshint;OriginalFilename=TorControlPanel.exe;ProductName=Tor Control Panel;ProductVersion=2.4.5.29;ProgramID={D2FF7A62-ADDB-4AF8-98EA-04980D0CD3C2}</VerInfo_Keys>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
         <DCC_Optimize>false</DCC_Optimize>
         <DCC_GenerateStackFrames>true</DCC_GenerateStackFrames>
         <VerInfo_Debug>true</VerInfo_Debug>
+        <DCC_IntegerOverflowCheck>true</DCC_IntegerOverflowCheck>
+        <DCC_RangeChecking>true</DCC_RangeChecking>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2_Win32)'!=''">
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <VerInfo_Keys>FileDescription=GUI for Tor Expert Bundle;FileVersion=2.4.5.20;LegalCopyright=Copyright © 2020-2024, abysshint;OriginalFilename=TorControlPanel.exe;ProductName=Tor Control Panel;ProductVersion=2.4.5.20;ProgramID={D2FF7A62-ADDB-4AF8-98EA-04980D0CD3C2}</VerInfo_Keys>
+        <VerInfo_Keys>FileDescription=GUI for Tor Expert Bundle;FileVersion=2.4.5.29;LegalCopyright=Copyright © 2020-2024, abysshint;OriginalFilename=TorControlPanel.exe;ProductName=Tor Control Panel;ProductVersion=2.4.5.29;ProgramID={D2FF7A62-ADDB-4AF8-98EA-04980D0CD3C2}</VerInfo_Keys>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2_Win64)'!=''">
         <VerInfo_Locale>1033</VerInfo_Locale>
-        <VerInfo_Keys>FileDescription=GUI for Tor Expert Bundle;FileVersion=2.4.5.20;LegalCopyright=Copyright © 2020-2024, abysshint;OriginalFilename=TorControlPanel.exe;ProductName=Tor Control Panel;ProductVersion=2.4.5.20;ProgramID={D2FF7A62-ADDB-4AF8-98EA-04980D0CD3C2}</VerInfo_Keys>
-        <VerInfo_Debug>true</VerInfo_Debug>
+        <VerInfo_Keys>FileDescription=GUI for Tor Expert Bundle;FileVersion=2.4.5.29;LegalCopyright=Copyright © 2020-2024, abysshint;OriginalFilename=TorControlPanel.exe;ProductName=Tor Control Panel;ProductVersion=2.4.5.29;ProgramID={D2FF7A62-ADDB-4AF8-98EA-04980D0CD3C2}</VerInfo_Keys>
     </PropertyGroup>
     <ItemGroup>
         <DelphiCompile Include="$(MainSource)">

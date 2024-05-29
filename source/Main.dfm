@@ -7,7 +7,6 @@ object Tcp: TTcp
   ClientHeight = 556
   ClientWidth = 772
   Color = clBtnFace
-  CustomTitleBar.CaptionAlignment = taCenter
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -11
@@ -39,6 +38,8 @@ object Tcp: TTcp
       Height = 35
       GroupIndex = 1
       Caption = #1046#1091#1088#1085#1072#1083
+      ImageIndex = 5
+      Images = lsButtons
       Spacing = 8
       OnClick = sbShowLogClick
       OnMouseDown = sbShowLogMouseDown
@@ -50,6 +51,8 @@ object Tcp: TTcp
       Height = 35
       GroupIndex = 1
       Caption = #1053#1072#1089#1090#1088#1086#1081#1082#1080
+      ImageIndex = 4
+      Images = lsButtons
       Spacing = 6
       OnClick = sbShowOptionsClick
       OnMouseDown = sbShowOptionsMouseDown
@@ -61,6 +64,8 @@ object Tcp: TTcp
       Height = 35
       GroupIndex = 1
       Caption = #1057#1090#1072#1090#1091#1089
+      ImageIndex = 7
+      Images = lsButtons
       Spacing = 8
       OnClick = sbShowStatusClick
     end
@@ -123,6 +128,8 @@ object Tcp: TTcp
       Height = 35
       GroupIndex = 1
       Caption = #1062#1077#1087#1086#1095#1082#1080
+      ImageIndex = 8
+      Images = lsButtons
       Spacing = 8
       OnClick = sbShowCircuitsClick
       OnMouseDown = sbShowCircuitsMouseDown
@@ -134,6 +141,8 @@ object Tcp: TTcp
       Height = 35
       GroupIndex = 1
       Caption = #1056#1086#1091#1090#1077#1088#1099
+      ImageIndex = 6
+      Images = lsButtons
       Spacing = 8
       OnClick = sbShowRoutersClick
       OnMouseDown = sbShowRoutersMouseDown
@@ -143,6 +152,8 @@ object Tcp: TTcp
       Top = 53
       Width = 40
       Height = 35
+      ImageIndex = 9
+      Images = lsButtons
       ParentShowHint = False
       ShowHint = True
       OnClick = sbDecreaseFormClick
@@ -943,6 +954,8 @@ object Tcp: TTcp
       AllowAllUp = True
       GroupIndex = 1
       Down = True
+      ImageIndex = 23
+      Images = lsMain
       Flat = True
       ParentShowHint = False
       ShowHint = True
@@ -955,6 +968,8 @@ object Tcp: TTcp
       Height = 23
       AllowAllUp = True
       GroupIndex = 2
+      ImageIndex = 22
+      Images = lsMain
       Flat = True
       ParentShowHint = False
       ShowHint = True
@@ -968,6 +983,8 @@ object Tcp: TTcp
       AllowAllUp = True
       GroupIndex = 4
       Down = True
+      ImageIndex = 25
+      Images = lsMain
       Flat = True
       ParentShowHint = False
       ShowHint = True
@@ -990,6 +1007,8 @@ object Tcp: TTcp
       AllowAllUp = True
       GroupIndex = 3
       Down = True
+      ImageIndex = 24
+      Images = lsMain
       Flat = True
       ParentShowHint = False
       ShowHint = True
@@ -1299,14 +1318,16 @@ object Tcp: TTcp
           Enabled = False
           Transparent = True
         end
-        object imGeneratePassword: TImage
-          Left = 369
-          Top = 40
-          Width = 16
-          Height = 16
-          Cursor = crHandPoint
-          Enabled = False
-          OnClick = imGeneratePasswordClick
+        object sbGeneratePassword: TSpeedButton
+          Left = 366
+          Top = 37
+          Width = 22
+          Height = 22
+          ImageIndex = 21
+          Images = lsMain
+          Flat = True
+          Transparent = False
+          OnClick = sbGeneratePasswordClick
         end
         object edControlPort: TEdit
           Left = 36
@@ -2106,12 +2127,12 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbMaxDirFails: TLabel
-        Left = 534
+        Left = 511
         Top = 355
-        Width = 140
+        Width = 163
         Height = 13
         Alignment = taRightJustify
-        Caption = #1052#1072#1082#1089#1080#1084#1091#1084' '#1086#1096#1080#1073#1086#1082' '#1082#1072#1090#1072#1083#1086#1075#1072
+        Caption = #1052#1072#1082#1089#1080#1084#1091#1084' '#1086#1096#1080#1073#1086#1082' '#1087#1086#1076#1082#1083#1102#1095#1077#1085#1080#1103
         Enabled = False
         Transparent = True
       end
@@ -2162,29 +2183,30 @@ object Tcp: TTcp
         Enabled = False
         Transparent = True
       end
-      object imBridgesFile: TImage
-        Left = 563
-        Top = 126
-        Width = 20
-        Height = 20
-        Cursor = crHandPoint
-        Enabled = False
-        Visible = False
-        OnClick = imBridgesFileClick
-      end
       object sbBridgesFileReadOnly: TSpeedButton
-        Left = 582
+        Left = 584
         Top = 124
         Width = 22
         Height = 22
         AllowAllUp = True
-        GroupIndex = 1
+        GroupIndex = 2
         Down = True
+        ImageIndex = 11
+        Images = lsMain
         Flat = True
-        ParentShowHint = False
-        ShowHint = True
         Visible = False
         OnClick = sbBridgesFileReadOnlyClick
+      end
+      object sbBridgesFile: TSpeedButton
+        Left = 561
+        Top = 124
+        Width = 22
+        Height = 22
+        ImageIndex = 15
+        Images = lsMenus
+        Flat = True
+        Transparent = False
+        OnClick = sbBridgesFileClick
       end
       object edBridgesFile: TEdit
         Left = 240
@@ -2991,14 +3013,6 @@ object Tcp: TTcp
         Enabled = False
         Transparent = True
       end
-      object imUPnPTest: TImage
-        Left = 734
-        Top = 124
-        Width = 16
-        Height = 16
-        Cursor = crHandPoint
-        OnClick = imUPnPTestClick
-      end
       object lbTotalMyFamily: TLabel
         Left = 711
         Top = 299
@@ -3056,6 +3070,17 @@ object Tcp: TTcp
         Caption = #1050#1041'/c'
         Enabled = False
         Transparent = True
+      end
+      object sbUPnPTest: TSpeedButton
+        Left = 731
+        Top = 125
+        Width = 22
+        Height = 22
+        ImageIndex = 20
+        Images = lsMain
+        Flat = True
+        Transparent = False
+        OnClick = sbUPnPTestClick
       end
       object edNickname: TEdit
         Left = 120
@@ -6107,6 +6132,31 @@ object Tcp: TTcp
       OnClick = EditMenuClick
     end
     object miDelimiter11: TMenuItem
+      Caption = '-'
+    end
+    object miBridgesFileFormat: TMenuItem
+      Caption = #1060#1086#1088#1084#1072#1090' '#1092#1072#1081#1083#1072' '#1084#1086#1089#1090#1086#1074
+      ImageIndex = 19
+      object miBridgesFileFormatAuto: TMenuItem
+        Caption = #1040#1074#1090#1086#1086#1087#1088#1077#1076#1077#1083#1077#1085#1080#1077' '
+        Checked = True
+        RadioItem = True
+        OnClick = SetBridgesFileFormat
+      end
+      object miBridgesFileFormatCompat: TMenuItem
+        Tag = 1
+        Caption = #1057#1086#1074#1084#1077'c'#1090#1080#1084#1099#1081' '#1089' torrc'
+        RadioItem = True
+        OnClick = SetBridgesFileFormat
+      end
+      object miBridgesFileFormatNormal: TMenuItem
+        Tag = 2
+        Caption = #1054#1073#1099#1095#1085#1099#1081
+        RadioItem = True
+        OnClick = SetBridgesFileFormat
+      end
+    end
+    object miDelimiter72: TMenuItem
       Caption = '-'
     end
     object miExtractData: TMenuItem

@@ -115,6 +115,10 @@ const
   BRIDGES_TYPE_USER = 1;
   BRIDGES_TYPE_FILE = 2;
 
+  BRIDGE_FILE_FORMAT_AUTO = 0;
+  BRIDGE_FILE_FORMAT_COMPAT = 1;
+  BRIDGE_FILE_FORMAT_NORMAL = 2;
+
   REQUEST_TYPE_VANILLA = 1;
   REQUEST_TYPE_OBFUSCATED = 2;
   REQUEST_TYPE_WEBTUNNEL = 3;
@@ -452,7 +456,7 @@ type
   TScanPurpose = (spNone, spNew, spFailed, spUserBridges, spUserFallbackDirs, spAll, spNewAndFailed, spNewAndAlive, spNewAndBridges, spBridges, spGuards, spAlive, spNewBridges, spAuto, spSelected);
   TProxyType = (ptNone, ptSocks, ptHttp, ptBoth);
   TBracketsType = (btCurly, btSquare, btRound);
-  TConfigFlag = (cfAutoAppend, cfAutoSave, cfFindComments, cfExistCheck, cfMultiLine, cfBoolInvert);
+  TConfigFlag = (cfAutoAppend, cfAutoSave, cfFindComments, cfExistCheck, cfMultiLine, cfBoolInvert, cfDeleteBlankLines, cfTrimLines);
   TConfigFlags = set of TConfigFlag;
   TRouterFlag = (rfAuthority, rfBadExit, rfExit, rfFast, rfGuard, rfHSDir, rfStable, rfV2Dir, rfBridge, rfRelay, rfMiddleOnly, rfNoBridgeRelay);
   TRouterFlags = set of TRouterFlag;

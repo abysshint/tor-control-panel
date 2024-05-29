@@ -554,7 +554,7 @@ begin
     Tcp.lbAuthMetod.Caption := Load('128', 'Аутентификация');
     LoadList(Tcp.cbxAuthMetod, '129', '"Cookie-файл","Пароль"');
     Tcp.lbControlPassword.Caption := TransStr('130');
-    Tcp.imGeneratePassword.Hint := Load('131', 'Сгенерировать случайный пароль');
+    Tcp.sbGeneratePassword.Hint := Load('131', 'Сгенерировать случайный пароль');
 
     Tcp.gbInterface.Caption := Load('411', 'Интерфейс');
     Tcp.cbConnectOnStartup.Caption := Load('139', 'Подключаться при запуске программы');
@@ -606,7 +606,7 @@ begin
     Tcp.lbBridgesLimit.Caption := TransStr('175');
     Tcp.lbBridgesPriority.Caption := TransStr('471');
     LoadList(Tcp.cbxBridgesPriority, '636', '"Порядок в списке","Скорость канала","Пинг до моста","Случайный"');
-    Tcp.lbMaxDirFails.Caption := Load('638', 'Максимум ошибок каталога');
+    Tcp.lbMaxDirFails.Caption := Load('638', 'Максимум ошибок подключения');
     Tcp.cbCacheNewBridges.Caption := Load('637', 'Кэшировать новые');
     Tcp.lbBridgesCheckDelay.Caption := Load('639', 'Задержка между проверками');
     Tcp.lbCount4.Caption := TransStr('470');
@@ -614,7 +614,7 @@ begin
     Tcp.lbBridgesQueueSize.Caption := Load('641', 'Размер очереди');
     Tcp.lbCount5.Caption := TransStr('470');
     Tcp.cbScanNewBridges.Caption := Load('642', 'Сначала сканировать порты');
-    Tcp.imBridgesFile.Hint := Load('648', 'Открыть файл');
+    Tcp.sbBridgesFile.Hint := Load('648', 'Открыть файл');
     Tcp.sbBridgesFileReadOnly.Hint := Load('696', 'Режим "Только чтение"');
 
     Tcp.lbFilterMode.Caption := Load('162', 'Режим');
@@ -642,7 +642,7 @@ begin
     Tcp.lbSpeed2.Caption := Prefixes[1] + '/' + TransStr('180');
     Tcp.lbMaxMemInQueues.Caption := TransStr('175');
     Tcp.lbRelayBandwidthBurst.Caption := TransStr('175');
-    Tcp.imUPnPTest.Hint := TransStr('181');
+    Tcp.sbUPnPTest.Hint := TransStr('181');
     Tcp.cbUseUPnP.Caption := Load('182', 'Пытаться автоматически настроить переадресацию портов');
     Tcp.cbPublishServerDescriptor.Caption := Load('183', 'Публиковать сервер в каталоге ретрансляторов');
     Tcp.cbDirReqStatistics.Caption := Load('185', 'Собирать статистику запросов каталога');
@@ -905,6 +905,10 @@ begin
     Tcp.miSortDataAsc.Caption := Load('305', 'По возрастанию');
     Tcp.miSortDataDesc.Caption := Load('306', 'По убыванию');
     Tcp.miSortDataNone.Caption := Load('307', 'Отключена');
+    Tcp.miBridgesFileFormat.Caption := Load('698', 'Формат файла мостов');
+    Tcp.miBridgesFileFormatAuto.Caption := Load('699', 'Автоопределение');
+    Tcp.miBridgesFileFormatCompat.Caption := Load('700', 'Совмеcтимый с torrc');
+    Tcp.miBridgesFileFormatNormal.Caption := Load('701', 'Обычный');
 
     Tcp.miLogOptions.Caption := TransStr('107');
     Tcp.miWriteLogFile.Caption := Load('292', 'Записывать в файл');

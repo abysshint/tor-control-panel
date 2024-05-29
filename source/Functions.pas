@@ -58,6 +58,12 @@ type
     Hash: string;
   end;
 
+  TConfigFile = record
+    FileName: string;
+    Encoding: TEncoding;
+    Data: TStringList;
+  end;
+
   TCharUpCaseTable = array [Char] of Char;
   TUserGrid = class(TCustomGrid);
 
@@ -134,8 +140,8 @@ var
   function ValidNode(const NodeStr: string): TNodeDataType;
   function ValidAddress(AddrStr: string; AllowCidr: Boolean = False; ReqBrackets: Boolean = False): TAddressType;
   function ValidHost(HostStr: string; AllowRootDomain: Boolean = False; AllowIp: Boolean = True; ReqBrackets: Boolean = False; DenySpecialDomains: Boolean = True): THostType;
-  function ValidBridge(BridgeStr: string): Boolean;
-  function ValidTransport(TransportStr: string): Boolean;
+  function ValidBridge(BridgeStr: string; StrictTransport: Boolean = False): Boolean;
+  function ValidTransport(TransportStr: string; StrictTransport: Boolean = False): Boolean;
   function ValidSocket(SocketStr: string; AllowHostNames: Boolean = False): TSocketType;
   function ValidPolicy(PolicyStr: string): Boolean;
   function ValidFallbackDir(FallbackStr: string): Boolean;
@@ -238,6 +244,7 @@ var
   procedure GetSettings(MenuControl: TMenuItem; Flags: TConfigFlags = []; Default: Boolean = True); overload;
   procedure SetSettings(Section: string; UpDownControl: TUpDown; ini: TMemIniFile); overload;
   procedure SetSettings(Section: string; CheckBoxControl: TCheckBox; ini: TMemIniFile); overload;
+  procedure SetSettings(Section: string; SpeedButtonControl: TSpeedButton; ini: TMemIniFile); overload;
   procedure SetSettings(Section: string; MenuControl: TMenuItem; ini: TMemIniFile); overload;
   procedure SetSettings(Section: string; ComboBoxControl: TComboBox; ini: TMemIniFile; SaveIndex: Boolean = True; UseFormatHost: Boolean = False); overload;
   procedure SetSettings(Section: string; EditControl: TEdit; ini: TMemIniFile; UseFormatHost: Boolean = False); overload;
@@ -263,6 +270,12 @@ var
     FCaption: string = ''; FOnClick: TNotifyEvent = nil; FChecked: Boolean = False;
     FAutoCheck: Boolean = False; FRadioItem: Boolean = False; FEnabled: Boolean = True;
     FVisible: Boolean = True; FHelpContext: THelpContext = 0; FHint: string = ''): TMenuItem;
+  function GetConfig(var Config: TConfigFile; const Param, Default: string; Flags: TConfigFlags = []; ParamType: TParamType = ptString; MinValue: Integer = 0; MaxValue: Integer = 0; Prefix: string = ''): string;
+  procedure SetConfig(var Config: TConfigFile; const Param, Value: string; Flags: TConfigFlags = []); overload;
+  procedure SetConfig(var Config: TConfigFile; const Param: string; Values: TStringList; Flags: TConfigFlags = []); overload;
+  procedure DeleteConfig(var Config: TConfigFile; const Param: string; Flags: TConfigFlags = []);
+  procedure LoadConfig(var Config: TConfigFile; Flags: TConfigFlags = []);
+  procedure SaveConfig(var Config: TConfigFile; Flags: TConfigFlags = []);
 
 implementation
 
@@ -1912,6 +1925,11 @@ begin
   ini.WriteBool(Section, StringReplace(CheckBoxControl.Name, 'cb', '', [rfIgnoreCase]), CheckBoxControl.Checked);
 end;
 
+procedure SetSettings(Section: string; SpeedButtonControl: TSpeedButton; ini: TMemIniFile);
+begin
+  ini.WriteBool(Section, StringReplace(SpeedButtonControl.Name, 'sb', '', [rfIgnoreCase]), SpeedButtonControl.Down);
+end;
+
 procedure GetSettings(CheckBoxControl: TCheckBox; Flags: TConfigFlags = []);
 begin
   if FirstLoad then
@@ -1993,36 +2011,54 @@ begin
   Result := ini.ReadBool(Section, Ident, Default)
 end;
 
-procedure LoadTorConfig;
+procedure LoadConfig(var Config: TConfigFile; Flags: TConfigFlags = []);
 var
   i: Integer;
 begin
-  if Assigned(TorConfig) then
+  if Assigned(Config.Data) then
     Exit
   else
   begin
-    TorConfig := TStringList.Create;
-    if FileExists(TorConfigFile) then
-      TorConfig.LoadFromFile(TorConfigFile, EncodingNoBom);
-    for i := 0 to TorConfig.Count - 1 do
-      TorConfig[i] := Trim(TorConfig[i]);
+    Config.Data := TStringList.Create;
+    if FileExists(Config.FileName) then
+    begin
+      Config.Data.LoadFromFile(Config.FileName, Config.Encoding);
+      if cfTrimLines in Flags then
+      begin
+        for i := 0 to Config.Data.Count - 1 do
+          Config.Data[i] := Trim(Config.Data[i]);
+      end;
+    end;
   end;
 end;
 
-procedure SaveTorConfig;
+procedure LoadTorConfig;
+begin
+  LoadConfig(tc, [cfTrimLines]);
+end;
+
+procedure SaveConfig(var Config: TConfigFile; Flags: TConfigFlags = []);
 var
   i: Integer;
 begin
-  LoadTorConfig;
-  for i := TorConfig.Count - 1 downto 0 do
-    if (i <> 1) and (TorConfig[i] = '') then
-      TorConfig.Delete(i);
-  TorConfig.SaveToFile(TorConfigFile, EncodingNoBom);
-  FreeAndNil(TorConfig);
-  TorrcFileID := GetFileID(TorConfigFile, True).Data;
+  LoadConfig(Config);
+  if cfDeleteBlankLines in Flags then
+  begin
+    for i := Config.Data.Count - 1 downto 0 do
+      if (i <> 1) and (Config.Data[i] = '') then
+        Config.Data.Delete(i);
+  end;
+  Config.Data.SaveToFile(Config.FileName, Config.Encoding);
+  FreeAndNil(Config.Data);
 end;
 
-function GetTorConfig(const Param, Default: string; Flags: TConfigFlags = []; ParamType: TParamType = ptString; MinValue: Integer = 0; MaxValue: Integer = 0; Prefix: string = ''): string;
+procedure SaveTorConfig;
+begin
+  SaveConfig(tc, [cfDeleteBlankLines]);
+  TorrcFileID := GetFileID(tc.FileName, True).Data;
+end;
+
+function GetConfig(var Config: TConfigFile; const Param, Default: string; Flags: TConfigFlags = []; ParamType: TParamType = ptString; MinValue: Integer = 0; MaxValue: Integer = 0; Prefix: string = ''): string;
 var
   i, p, ParamSize, CommentPos: Integer;
   ls: TStringList;
@@ -2032,14 +2068,14 @@ var
   procedure Reset;
   begin
     if (Default <> '') and (GetDefaultsValue(Param) <> Default) then
-      TorConfig[i] := Param + ' ' + Default
+      Config.Data[i] := Param + ' ' + Default
     else
-      TorConfig[i] := '';
+      Config.Data[i] := '';
     Result := Default;
   end;
 
 begin
-  LoadTorConfig;
+  LoadConfig(Config);
 
   if cfFindComments in Flags then
     Values := [1,2,3]
@@ -2052,9 +2088,9 @@ begin
   else
     ls := nil;
 
-  for i := 0 to TorConfig.Count - 1 do
+  for i := 0 to Config.Data.Count - 1 do
   begin
-    p := InsensPosEx(Param + ' ', TorConfig[i]);
+    p := InsensPosEx(Param + ' ', Config.Data[i]);
     Search := p in Values;
     if Search then
     begin
@@ -2064,11 +2100,11 @@ begin
         Exit;
       end;
       ParamSize := Length(Param);
-      CommentPos := Pos('#', TorConfig[i]);
+      CommentPos := Pos('#', Config.Data[i]);
       if CommentPos > p + ParamSize then
-        Result := Trim(copy(TorConfig[i], p + ParamSize + 1, CommentPos - ParamSize - 2))
+        Result := Trim(copy(Config.Data[i], p + ParamSize + 1, CommentPos - ParamSize - 2))
       else
-        Result := Trim(copy(TorConfig[i], p + ParamSize + 1, Length(TorConfig[i]) - ParamSize - 1));
+        Result := Trim(copy(Config.Data[i], p + ParamSize + 1, Length(Config.Data[i]) - ParamSize - 1));
       case ParamType of
         ptString:
           if (MinValue > 0) or (MaxValue > 0) then
@@ -2099,7 +2135,7 @@ begin
         ptBridge:
           if not ValidBridge(Result) then
           begin
-            TorConfig[i] := '';
+            Config.Data[i] := '';
             Continue;
           end;
       end;
@@ -2133,93 +2169,113 @@ begin
     begin
       Result := Default;
       if cfAutoAppend in Flags then
-        TorConfig.Append(Param + ' ' + Default);
+        Config.Data.Append(Param + ' ' + Default);
     end;
   end;
 
   if cfAutoSave in Flags then
-    SaveTorConfig;
+    SaveConfig(Config);
 end;
 
-procedure SetTorConfig(const Param: string; Values: TStringList; Flags: TConfigFlags = []);
+function GetTorConfig(const Param, Default: string; Flags: TConfigFlags = []; ParamType: TParamType = ptString; MinValue: Integer = 0; MaxValue: Integer = 0; Prefix: string = ''): string;
+begin
+  Result := GetConfig(tc, Param, Default, Flags, ParamType, MinValue, MaxValue, Prefix);
+end;
+
+procedure SetConfig(var Config: TConfigFile; const Param: string; Values: TStringList; Flags: TConfigFlags = []);
 var
   DataCount, i: Integer;
 begin
-  LoadTorConfig;
+  LoadConfig(Config);
   DataCount := Values.Count;
   if DataCount > 0 then
   begin
     for i := 0 to DataCount - 1 do
     begin
       if Values[i] <> '' then
-        TorConfig.Append(Param + ' ' + Values[i]);
+        Config.Data.Append(Param + ' ' + Values[i]);
     end;
   end
   else
-    DeleteTorConfig(Param, [cfMultiLine]);
+    DeleteConfig(Config, Param, [cfMultiLine]);
   if cfAutoSave in Flags then
-    SaveTorConfig;
+    SaveConfig(Config);
 end;
 
-procedure SetTorConfig(const Param, Value: string; Flags: TConfigFlags = []);
+procedure SetTorConfig(const Param: string; Values: TStringList; Flags: TConfigFlags = []);
+begin
+  SetConfig(tc, Param, Values, Flags);
+end;
+
+procedure SetConfig(var Config: TConfigFile; const Param, Value: string; Flags: TConfigFlags = []);
 var
   i, p: Integer;
   Values: set of Byte;
 begin
-  LoadTorConfig;
+  LoadConfig(Config);
   p := 0;
   if cfFindComments in Flags then
     Values := [1,2,3]
   else
     Values := [1];
-  for i := TorConfig.Count - 1 downto 0 do
+  for i := Config.Data.Count - 1 downto 0 do
   begin
-    p := InsensPosEx(Param + ' ', TorConfig[i]);
+    p := InsensPosEx(Param + ' ', Config.Data[i]);
     if p in Values then
       Break;
   end;
   if p in Values then
   begin
     if (Value <> '') and (GetDefaultsValue(Param) <> Value) then
-      TorConfig[i] := Param + ' ' + Value
+      Config.Data[i] := Param + ' ' + Value
     else
-      TorConfig.Delete(i);
+      Config.Data.Delete(i);
   end
   else
   begin
     if (Value <> '') and (GetDefaultsValue(Param) <> Value) then
-      TorConfig.Append(Param + ' ' + Value);
+      Config.Data.Append(Param + ' ' + Value);
   end;
   if cfAutoSave in Flags then
-    SaveTorConfig;
+    SaveConfig(Config);
 end;
 
-procedure DeleteTorConfig(const Param: string; Flags: TConfigFlags = []);
+procedure SetTorConfig(const Param, Value: string; Flags: TConfigFlags = []);
+begin
+  SetConfig(tc, Param, Value, Flags);
+end;
+
+procedure DeleteConfig(var Config: TConfigFile; const Param: string; Flags: TConfigFlags = []);
 var
   i,j: Integer;
   Values: set of Byte;
   ParseStr: ArrOfStr;
 begin
-  LoadTorConfig;
+  LoadConfig(Config);
   if cfFindComments in Flags then
     Values := [1,2,3]
   else
     Values := [1];
   ParseStr := Explode(',', Param);
-  for i := TorConfig.Count - 1 downto 0 do
+  for i := Config.Data.Count - 1 downto 0 do
   begin
     for j := 0 to Length(ParseStr) - 1 do
     begin
-      if InsensPosEx(ParseStr[j] + ' ', TorConfig[i]) in Values then
+      if InsensPosEx(ParseStr[j] + ' ', Config.Data[i]) in Values then
       begin
-        TorConfig.Delete(i);
+        Config.Data.Delete(i);
         if not (cfMultiLine in Flags) then
           Break;
       end;
     end;
   end;
   if cfAutoSave in Flags then
-    SaveTorConfig;
+    SaveConfig(Config);
+end;
+
+procedure DeleteTorConfig(const Param: string; Flags: TConfigFlags = []);
+begin
+  DeleteConfig(tc, Param, Flags);
 end;
 
 procedure SetConfigBoolean(Section, Ident: string; Value: Boolean);
@@ -2777,7 +2833,7 @@ begin
     Bridgeline := UserDir + 'pt_state\obfs4_bridgeline.txt';
     if FileExists(Bridgeline) then
     begin
-      ls.LoadFromFile(Bridgeline, EncodingNoBom);
+      ls.LoadFromFile(Bridgeline);
       for i := ls.Count - 1 downto 0 do
       begin
         p := Pos('cert=', ls[i]);
@@ -3400,7 +3456,7 @@ begin
         if n <> 0 then
           Exit
         else
-          if ParseStr[i][2] = '0' then
+          if Length(ParseStr[i]) > 1 then
             Exit;
       end;
     end
@@ -3912,15 +3968,20 @@ begin
   end;
 end;
 
-function ValidTransport(TransportStr: string): Boolean;
+function ValidTransport(TransportStr: string; StrictTransport: Boolean = False): Boolean;
 begin
   if TransportStr = '' then
     Result := False
   else
-    Result := CheckEditString(TransportStr, '_', False) = '';
+  begin
+    if StrictTransport then
+      Result := TransportsDic.ContainsKey(TransportStr)
+    else
+      Result := CheckEditString(TransportStr, '_', False) = '';
+  end;
 end;
 
-function ValidBridge(BridgeStr: string): Boolean;
+function ValidBridge(BridgeStr: string; StrictTransport: Boolean = False): Boolean;
 var
   ParseStr: ArrOfStr;
   ParamCount: Integer;
@@ -3933,7 +3994,7 @@ begin
   ParamCount := Length(ParseStr);
   if ParamCount > 1 then
   begin
-    if ValidTransport(ParseStr[0]) then
+    if ValidTransport(ParseStr[0], StrictTransport) then
     begin
       if ValidSocket(ParseStr[1]) <> soNone then
       begin
