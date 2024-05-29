@@ -3875,7 +3875,7 @@ end;
 
 function TryParseTarget(TargetStr: string; out Target: TTarget): Boolean;
 var
-  PortIndex, ExitIndex, HashIndex, TargetLength: Integer;
+  PortIndex, ExitIndex, TargetLength: Integer;
 begin
   Target.TargetType := ttNone;
   Target.Hash := '';
@@ -3891,13 +3891,11 @@ begin
     if ExitIndex <> 0 then
     begin
       Target.TargetType := ttExit;
-      HashIndex := Pos('.$', TargetStr);
-      Result := HashIndex <> 0;
-      if Result then
-      begin
-        Target.Hostname := Copy(TargetStr, 1, HashIndex - 1);
-        Target.Hash := Copy(TargetStr, HashIndex + 2, 40);
-      end;
+      Target.Hash := Copy(TargetStr, ExitIndex - 40, 40);
+      if Pos('.$', TargetStr) = 0 then
+        Target.Hostname := Copy(TargetStr, 1, ExitIndex - 42)
+      else
+        Target.Hostname := Copy(TargetStr, 1, ExitIndex - 43);
     end
     else
     begin

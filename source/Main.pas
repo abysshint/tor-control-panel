@@ -11091,9 +11091,7 @@ begin
   SetCaptionByDataCount(TransStr('524'), miStreamsInfoDestroyStream, sgStreamsInfo);
   miStreamsInfoDestroyStream.Enabled := State and (ConnectState <> 0);
 
-  miStreamsInfoExtractData.Visible := State;
-  if State then
-    InsertExtractMenu(miStreamsInfoExtractData, CONTROL_TYPE_GRID, GRID_STREAM_INFO, EXTRACT_PREVIEW);
+  miStreamsInfoExtractData.Visible := State and InsertExtractMenu(miStreamsInfoExtractData, CONTROL_TYPE_GRID, GRID_STREAM_INFO, EXTRACT_PREVIEW);
 
   miStreamsInfoSortDL.Enabled := miShowStreamsTraffic.Checked;
   miStreamsInfoSortUL.Enabled := miShowStreamsTraffic.Checked;
@@ -11116,9 +11114,7 @@ begin
   SetCaptionByDataCount(TransStr('542'), miStreamsOpenInBrowser, sgStreams, True);
   miStreamsOpenInBrowser.Enabled := State and miStreamsOpenInBrowser.Enabled;
 
-  miStreamsExtractData.Visible := State;
-  if State then
-    InsertExtractMenu(miStreamsExtractData, CONTROL_TYPE_GRID, GRID_STREAMS, EXTRACT_PREVIEW);
+  miStreamsExtractData.Visible := State and InsertExtractMenu(miStreamsExtractData, CONTROL_TYPE_GRID, GRID_STREAMS, EXTRACT_PREVIEW);
 
   miStreamsSortDL.Enabled := miShowStreamsTraffic.Checked;
   miStreamsSortUL.Enabled := miShowStreamsTraffic.Checked;
@@ -11439,7 +11435,6 @@ var
   PreviewState, ValidateData: Boolean;
   FallbackDir: TFallbackDir;
   Target: TTarget;
-  SocketType: TSocketType;
   Router: TRouterInfo;
   Bridge: TBridge;
   BridgeInfo: TBridgeInfo;
@@ -11781,16 +11776,20 @@ begin
                 end;
               end;
             end;
-            GRID_STREAMS:
+            GRID_STREAMS, GRID_STREAM_INFO:
             begin
               for i := ControlGrid.Selection.Top to ControlGrid.Selection.Bottom do
               begin
-                if TryParseTarget(ControlGrid.Cells[STREAMS_TARGET, i], Target) then
+                case ControlID of
+                  GRID_STREAMS: DataStr := ControlGrid.Cells[STREAMS_TARGET, i];
+                  GRID_STREAM_INFO: DataStr := ControlGrid.Cells[STREAMS_INFO_DEST_ADDR, i];
+                end;
+                if TryParseTarget(DataStr, Target) then
                 begin
                   FormatData(PortStr, PortCount, Target.Port, EXTRACT_PORT);
                   if Target.Hash <> '' then
                     FormatData(HashStr, HashCount, Target.Hash, EXTRACT_HASH);
-                  case ValidAddress(Target.Hostname) of
+                  case ValidAddress(Target.Hostname, False, ControlID = GRID_STREAM_INFO) of
                     atIPv4:
                     begin
                       FormatData(IPv4Str, IPv4Count, Target.Hostname, EXTRACT_IPV4);
@@ -11803,34 +11802,11 @@ begin
                     end
                     else
                     begin
-                      FormatData(HostStr, HostCount, Target.Hostname, EXTRACT_HOST);
-                      FormatData(HostSocketStr, HostSocketCount, Target.Hostname + ':' + Target.Port, EXTRACT_HOST_SOCKET);
-                    end;
-                  end;
-                end;
-              end;
-            end;
-            GRID_STREAM_INFO:
-            begin
-              for i := ControlGrid.Selection.Top to ControlGrid.Selection.Bottom do
-              begin
-                DataStr := ControlGrid.Cells[STREAMS_INFO_DEST_ADDR, i];
-                SocketType := ValidSocket(DataStr);
-                if SocketType <> soNone then
-                begin
-                  PortData := IntToStr(GetPortFromSocket(DataStr));
-                  DataStr := GetAddressFromSocket(DataStr, True);
-                  FormatData(PortStr, PortCount, PortData, EXTRACT_PORT);
-                  case SocketType of
-                    soIPv4:
-                    begin
-                      FormatData(IPv4Str, IPv4Count, DataStr, EXTRACT_IPV4);
-                      FormatData(IPv4SocketStr, IPv4SocketCount, DataStr + ':' + PortData, EXTRACT_IPV4_SOCKET);
-                    end;
-                    soIPv6:
-                    begin
-                      FormatData(IPv6Str, IPv6Count, DataStr, EXTRACT_IPV6);
-                      FormatData(IPv6SocketStr, IPv6SocketCount, DataStr + ':' + PortData, EXTRACT_IPV6_SOCKET);
+                      if ControlID = GRID_STREAMS then
+                      begin
+                        FormatData(HostStr, HostCount, Target.Hostname, EXTRACT_HOST);
+                        FormatData(HostSocketStr, HostSocketCount, Target.Hostname + ':' + Target.Port, EXTRACT_HOST_SOCKET);
+                      end;
                     end;
                   end;
                 end;
