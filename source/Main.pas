@@ -533,7 +533,6 @@ type
     cbxAuthMetod: TComboBox;
     edControlPassword: TEdit;
     gbInterface: TGroupBox;
-    cbStayOnTop: TCheckBox;
     cbShowBalloonOnlyWhenHide: TCheckBox;
     cbShowBalloonHint: TCheckBox;
     cbConnectOnStartup: TCheckBox;
@@ -1046,6 +1045,7 @@ type
     miRoutersShowIPv6CountryFlag: TMenuItem;
     miCircuitsShowIPv6CountryFlag: TMenuItem;
     miDelimiter74: TMenuItem;
+    sbStayOnTop: TSpeedButton;
     function GetGridByIndex(GridIndex: Integer): TStringGrid;
     function GetMemoByIndex(MemoIndex: Integer): TMemo;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
@@ -1174,6 +1174,7 @@ type
     procedure ProxyParamCheck;
     function CheckRequiredFiles(AutoSave: Boolean = False): Boolean;
     function ReachablePortsExists: Boolean;
+    procedure UpdateStayOnTop;
     procedure SetIconsColor;
     procedure SaveHiddenServices(var ini: TMemIniFile);
     procedure SavePaddingOptions(var ini: TMemIniFile);
@@ -1332,7 +1333,6 @@ type
     procedure cbHsMaxStreamsClick(Sender: TObject);
     procedure cbLearnCircuitBuildTimeoutClick(Sender: TObject);
     procedure cbShowBalloonHintClick(Sender: TObject);
-    procedure cbStayOnTopClick(Sender: TObject);
     procedure cbUseTrackHostExitsClick(Sender: TObject);
     procedure cbUseBridgesClick(Sender: TObject);
     procedure cbUseProxyClick(Sender: TObject);
@@ -1661,6 +1661,7 @@ type
     procedure cbxAutoScanTypeChange(Sender: TObject);
     procedure miRoutersShowIPv6CountryFlagClick(Sender: TObject);
     procedure miCircuitsShowIPv6CountryFlagClick(Sender: TObject);
+    procedure sbStayOnTopClick(Sender: TObject);
 
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
@@ -8293,7 +8294,7 @@ begin
     GetSettings('Main', cbxMinimizeOnEvent, ini, MINIMIZE_ON_CLOSE);
     GetSettings('Main', cbShowBalloonHint, ini);
     GetSettings('Main', cbShowBalloonOnlyWhenHide, ini);
-    GetSettings('Main', cbStayOnTop, ini);
+    GetSettings('Main', sbStayOnTop, ini);
     GetSettings('Main', cbNoDesktopBorders, ini);
     GetSettings('Main', cbNoDesktopBordersOnlyEnlarged, ini);
     GetSettings('Main', cbHideIPv6Addreses, ini);
@@ -8776,6 +8777,7 @@ begin
       ShowRouters;
       UpdateCircuitsData;
       CheckTorAutoStart;
+      UpdateStayOnTop;
     end
     else
     begin
@@ -9617,7 +9619,7 @@ begin
     SetSettings('Main', cbxMinimizeOnEvent, ini);
     SetSettings('Main', cbShowBalloonHint, ini);
     SetSettings('Main', cbShowBalloonOnlyWhenHide, ini);
-    SetSettings('Main', cbStayOnTop, ini);
+    SetSettings('Main', sbStayOnTop, ini);
     SetSettings('Main', cbNoDesktopBorders, ini);
     SetSettings('Main', cbNoDesktopBordersOnlyEnlarged, ini);
     SetSettings('Main', cbHideIPv6Addreses, ini);
@@ -15238,15 +15240,6 @@ begin
   EnableOptionButtons;
 end;
 
-procedure TTcp.cbStayOnTopClick(Sender: TObject);
-begin
-  if cbStayOnTop.Checked then
-    FormStyle := fsStayOnTop
-  else
-    FormStyle := fsNormal;
-  EnableOptionButtons;
-end;
-
 procedure TTcp.cbUseTrackHostExitsClick(Sender: TObject);
 var
   State: Boolean;
@@ -16384,6 +16377,19 @@ begin
   LastPlace := LP_STATUS;
   IncreaseFormSize;
   ResetFocus;
+end;
+
+procedure TTcp.UpdateStayOnTop;
+begin
+  if sbStayOnTop.Down then
+    FormStyle := fsStayOnTop
+  else
+    FormStyle := fsNormal;
+end;
+
+procedure TTcp.sbStayOnTopClick(Sender: TObject);
+begin
+  UpdateStayOnTop;
 end;
 
 procedure TTcp.CheckLinesLimitControls;
@@ -19749,6 +19755,7 @@ begin
     SetSettings('Main', 'OptionsPage', pcOptions.TabIndex, ini);
     SetSettings('Main', 'LastPlace', LastPlace, ini);
     SetSettings('Main', 'Terminated', False, ini);
+    SetSettings('Main', sbStayOnTop, ini);
     SetSettings('Status', 'TotalDL', TotalDL, ini);
     SetSettings('Status', 'TotalUL', TotalUL, ini);
     SetSettings('Routers', 'CurrentFilter', LastRoutersFilter, ini);

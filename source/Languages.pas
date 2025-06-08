@@ -510,6 +510,7 @@ begin
     Tcp.sbShowCircuits.Caption := TransStr('327');
     Tcp.sbShowRouters.Caption := TransStr('323');
     Tcp.sbDecreaseForm.Hint := TransStr('328');
+    Tcp.sbStayOnTop.Hint := Load('145', 'Оставаться поверх всех окон');
 
     Tcp.lbExitIpCaption.Caption := TransStr('113') + ':';
     Tcp.lbExitCountryCaption.Caption := TransStr('114') + ':';
@@ -565,7 +566,6 @@ begin
     LoadList(Tcp.cbxMinimizeOnEvent, '142', '"Отключено","Все события","Закрытие окна","Запуск программы"');
     Tcp.cbShowBalloonHint.Caption := Load('143', 'Показывать всплывающие сообщения');
     Tcp.cbShowBalloonOnlyWhenHide.Caption := Load('144', 'Только когда программа свёрнута');
-    Tcp.cbStayOnTop.Caption := Load('145', 'Оставаться поверх всех окон');
     Tcp.cbNoDesktopBorders.Caption := Load('414', 'Разрешить окну выходить за границы экрана');
     Tcp.cbNoDesktopBordersOnlyEnlarged.Caption := Load('415', 'Только при увеличенном окне программы');
     Tcp.cbRememberEnlargedPosition.Caption := Load('416', 'Запоминать позицию увеличенного окна');
