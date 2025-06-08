@@ -166,7 +166,8 @@ type
     Data, AuthParam: string;
     Ip, Temp, CircuitID, StreamID, NodeID, LinkedCircID: string;
     ParseStr: ArrOfStr;
-    SearchPos, InfoCount: Integer;
+    SearchPos, InfoCount, CommandSize: Integer;
+    DataOverflow: Boolean;
     CountryCode: Byte;
     AddressType: TAddressType;
     function AuthStageReady(AuthMethod: Integer): Boolean;
@@ -243,9 +244,9 @@ type
     miDelimiter10: TMenuItem;
     miGetBridges: TMenuItem;
     btnApplyOptions: TButton;
-    mnDetails: TPopupMenu;
-    miDetailsUpdateIp: TMenuItem;
-    miDetailsSelectTemplate: TMenuItem;
+    mnCircuitInfo: TPopupMenu;
+    miCircuitInfoUpdateIp: TMenuItem;
+    miCircuitInfoSelectTemplate: TMenuItem;
     miDelimiter8: TMenuItem;
     paStatus: TPanel;
     gbSpeedGraph: TGroupBox;
@@ -263,7 +264,7 @@ type
     miServerCopy: TMenuItem;
     miServerCopyIPv4: TMenuItem;
     miServerCopyFingerprint: TMenuItem;
-    miDetailsAddToNodesList: TMenuItem;
+    miCircuitInfoAddToNodesList: TMenuItem;
     miServerInfo: TMenuItem;
     gbTraffic: TGroupBox;
     lbDownloadSpeedCaption: TLabel;
@@ -456,7 +457,7 @@ type
     miRoutersScrollTop: TMenuItem;
     sgStreams: TStringGrid;
     sgCircuitInfo: TStringGrid;
-    lbDetailsTime: TLabel;
+    lbCircuitInfoTime: TLabel;
     lbNodesListTypeCaption: TLabel;
     sgCircuits: TStringGrid;
     miCircuitsDestroy: TMenuItem;
@@ -674,7 +675,6 @@ type
     edTransports: TEdit;
     lbTransportsHandler: TLabel;
     edTransportsHandler: TEdit;
-    lbHandlerParams: TLabel;
     meHandlerParams: TMemo;
     mnTransports: TPopupMenu;
     miTransportsInsert: TMenuItem;
@@ -999,7 +999,7 @@ type
     lbTrayIconType: TLabel;
     cbxTrayIconType: TComboBox;
     miRtExtractData: TMenuItem;
-    miDetailsExtractData: TMenuItem;
+    miCircuitInfoExtractData: TMenuItem;
     imSelectedRouters: TImage;
     lbSelectedRouters: TLabel;
     cbUseServerTransportOptions: TCheckBox;
@@ -1018,7 +1018,7 @@ type
     miDelimiter70: TMenuItem;
     miResetFilterCountries: TMenuItem;
     miRtRelayOperations: TMenuItem;
-    miDetailsRelayOperations: TMenuItem;
+    miCircuitInfoRelayOperations: TMenuItem;
     cbHandlerParamsState: TCheckBox;
     lbTransportState: TLabel;
     cbxTransportState: TComboBox;
@@ -1042,6 +1042,12 @@ type
     miBridgesFileFormatAuto: TMenuItem;
     miBridgesFileFormatCompat: TMenuItem;
     miBridgesFileFormatNormal: TMenuItem;
+    miDelimiter73: TMenuItem;
+    miRoutersShowIPv6CountryFlag: TMenuItem;
+    miCircuitsShowIPv6CountryFlag: TMenuItem;
+    miDelimiter74: TMenuItem;
+    function GetGridByIndex(GridIndex: Integer): TStringGrid;
+    function GetMemoByIndex(MemoIndex: Integer): TMemo;
     function CheckCacheOpConfirmation(OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
@@ -1067,6 +1073,7 @@ type
     function GetBridgeStr(RouterID: string; RouterInfo: TRouterInfo; UseIPv6: Boolean; Preview: Boolean = False): string;
     function GetFallbackStr(RouterID: string; RouterInfo: TRouterInfo; Preview: Boolean = False): string;
     function CheckRouterFlags(NodeTypeID: Integer; RouterInfo: TRouterInfo): Boolean;
+    procedure LoadSortData(var ini: TMemIniFile; const StaticData: array of TStaticData; ControlType: Integer);
     procedure SaveScanData;
     procedure UpdateBridgesControls(UpdateList: Boolean; UpdateUserBridges: Boolean);
     procedure UpdateFallbackDirControls;
@@ -1116,6 +1123,8 @@ type
     procedure CheckOpenPorts(PortSpin: TUpDown; IP: string; var PortStr: string);
     procedure CheckServerControls;
     procedure CheckScannerControls;
+    procedure CircuitInfoScrollCheck;
+    procedure RoutersScrollCheck;
     procedure CheckShowRouters;
     procedure CheckCachedFiles;
     procedure ClearFilter(NodeType: TNodeType; Silent: Boolean = True);
@@ -1158,7 +1167,7 @@ type
     procedure CheckFavoritesState(FavoritesID: Integer = -1);
     procedure LoadNodesList(UseDic: Boolean = True; NodesStr: string = '');
     procedure SaveNodesList(NodesID: Integer);
-    procedure UpdateGeoFileID(ini: TMeminiFile = nil);
+    procedure UpdateGeoFileID(ini: TMeminiFile);
     procedure LoadFilterTotals;
     procedure LoadRoutersCountries;
     procedure OpenMetricsUrl(Page, Query: string);
@@ -1352,7 +1361,7 @@ type
     procedure miShowStatusClick(Sender: TObject);
     procedure miSwitchTorClick(Sender: TObject);
     procedure miWriteLogFileClick(Sender: TObject);
-    procedure mnDetailsPopup(Sender: TObject);
+    procedure mnCircuitInfoPopup(Sender: TObject);
     procedure mnFilterPopup(Sender: TObject);
     procedure mnHsPopup(Sender: TObject);
     procedure mnLogPopup(Sender: TObject);
@@ -1435,7 +1444,7 @@ type
     procedure miRtSaveDefaultClick(Sender: TObject);
     procedure miRtResetFilterClick(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
-    procedure miDetailsUpdateIpClick(Sender: TObject);
+    procedure miCircuitInfoUpdateIpClick(Sender: TObject);
     procedure ShowFavoritesRouters(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure cbDirCacheMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure cbUseOpenDNSClick(Sender: TObject);
@@ -1649,6 +1658,9 @@ type
     procedure sbGeneratePasswordClick(Sender: TObject);
     procedure sbUPnPTestClick(Sender: TObject);
     procedure SetBridgesFileFormat(Sender: TObject);
+    procedure cbxAutoScanTypeChange(Sender: TObject);
+    procedure miRoutersShowIPv6CountryFlagClick(Sender: TObject);
+    procedure miCircuitsShowIPv6CountryFlagClick(Sender: TObject);
 
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
@@ -1688,10 +1700,10 @@ var
 
   ProgramDir, UserDir, HsDir, ThemesDir, TransportsDir, OnionAuthDir, LogsDir: string;
   DefaultsFile, UserConfigFile, UserBackupFile, TorConfigFile, TorStateFile, TorLogFile,
-  TorExeFile, GeoIpFile, GeoIpv6File, NetworkCacheFile, BridgesCacheFile, BridgesFileName,
+  TorExeFile, GeoIPv4File, GeoIPv6File, NetworkCacheFile, BridgesCacheFile, BridgesFileName,
   UserProfile, LangFile, ConsensusFile, DescriptorsFile, NewDescriptorsFile, TrayIconFile: string;
   ControlPassword, SelectedNode, SearchStr, UPnPMsg,
-  GeoFileID, TorFileID, BridgeFileID, TorrcFileID, DefaultsFileID, TransportFilesID: string;
+  GeoIPv4FileID, GeoIPv6FileID, TorFileID, BridgeFileID, TorrcFileID, DefaultsFileID, TransportFilesID: string;
   Circuit, LastRoutersFilter, LastPreferBridgeID, ExitNodeID, ServerIPv4, ServerIPv6, TorVersion: string;
   jLimit: TJobObjectExtendedLimitInformation;
   TorVersionProcess, TorMainProcess: TProcessInfo;
@@ -1703,8 +1715,9 @@ var
   SearchTimer, LastCountriesHash, LastFallbackDirsHash, LastBridgesHash: Cardinal;
   DecFormPos, IncFormPos, IncFormSize: TPoint;
   RoutersCustomFilter, LastRoutersCustomFilter, RoutersFilters, LastFilters: Integer;
-  GeoIpExists, FirstLoad, Restarting, Closing, WindowsShutdown, CursorShow, GeoIpUpdating, GeoIpModified, ServerIsObfs4: Boolean;
+  GeoIPv4Exists, GeoIPv6Exists, FirstLoad, Restarting, Closing, WindowsShutdown, CursorShow, GeoIpModified, ServerIsObfs4: Boolean;
   CursorStop, StartTimer, RestartTimeout, ShowTimer: TTimer;
+  GeoIpUpdateType: TGeoIpType;
   Controller: TControlThread;
   Consensus: TConsensusThread;
   Descriptors: TDescriptorsThread;
@@ -1733,9 +1746,11 @@ var
   SuitableFallbackDirsCount, UsedFallbackDirsCount, UnknownFallbackDirCountriesCount, MissingFallbackDirCount: Integer;
   Scanner: TScanThread;
   UsedProxyType: TProxyType;
+  RoutersIPv6Count, RoutersDifferentCountriesCount, CircuitsIPv6Count, CircuitsDifferentCountriesCount: Integer;
   LastUserStreamProtocol, LastTrayIconType, ExtractDelimiterType, ConfigVersion: Integer;
   FindBridgesCountries, FindFallbackDirCountries, ScanNewBridges, NeedUpdateFallbackDirs, NeedUpdateBridges: Boolean;
   FormatIPv6OnExtract, RemoveDuplicateOnExtract, SortOnExtract, FormatCodesOnExtract, ShowFullMenuOnExtract: Boolean;
+  CircuitInfoHintGeoIpType, RoutersHintGeoIpType: TGeoIpType;
 
 implementation
 
@@ -2591,7 +2606,7 @@ begin
       end;
       if Pos('a ', ls[i]) = 1 then
       begin
-        Router.IPv6 := Copy(ls[i], 3, RPos(':', ls[i]) - 3);
+        Router.IPv6 := Copy(ls[i], 4, RPos(':', ls[i]) - 5);
         Inc(Router.Params, ROUTER_REACHABLE_IPV6);
         Continue;
       end;
@@ -2820,9 +2835,7 @@ var
         else
         begin
           if UserBridges.TryGetValue(SourceAddr, Bridge) then
-          begin
             Update
-          end
           else
           begin
             if BridgesDic.TryGetValue(RouterID, BridgeInfoDic) then
@@ -2843,7 +2856,7 @@ var
     DifferSource := False;
     case ValidAddress(SourceAddr) of
       atIPv4: DifferSource := SourceAddr <> RouterInfo.IPv4;
-      atIPv6: DifferSource := SourceAddr <> RemoveBrackets(RouterInfo.IPv6, btSquare);
+      atIPv6: DifferSource := SourceAddr <> RouterInfo.IPv6;
     end;
     if DifferSource and IpInRanges(SourceAddr, DocRanges) then
     begin
@@ -2858,7 +2871,7 @@ var
     if ConnectState <> 0 then
     begin
       UpdateBridgeData(BridgeInfo.Router.IPv4, IntToStr(BridgeInfo.Router.Port), True);
-      UpdateBridgeData(RemoveBrackets(BridgeInfo.Router.IPv6, btSquare), IntToStr(BridgeInfo.Router.Port));
+      UpdateBridgeData(BridgeInfo.Router.IPv6, IntToStr(BridgeInfo.Router.Port));
       UpdateBridgeData(BridgeInfo.Source, IntToStr(BridgeInfo.Router.Port));
     end;
   end;
@@ -2935,8 +2948,8 @@ begin
 
         if Pos('or-address ', ls[i]) = 1 then
         begin
-          Temp := Copy(ls[i], 12, RPos(':', ls[i]) - 12);
-          if ValidAddress(Temp, False, True) = atIPv6 then
+          Temp := Copy(ls[i], 13, RPos(':', ls[i]) - 14);
+          if ValidAddress(Temp) = atIPv6 then
           begin
             DescRouter.IPv6 := Temp;
             Inc(DescRouter.Params, ROUTER_REACHABLE_IPV6);
@@ -3225,8 +3238,11 @@ var
   FallbackDir: TFallbackDir;
   Str: string;
 
-  procedure CheckCountryUpdate(IpStr: string; FindData: Boolean = True);
+  function CheckCountryUpdate(const IpStr: string; FindData: Boolean = True): Boolean;
+  var
+    DataStr: string;
   begin
+    Result := False;
     if Duplicates.ContainsKey(IpStr) then
       Exit;
     if FindData then
@@ -3236,10 +3252,27 @@ var
         if GeoIpInfo.cc <> DEFAULT_COUNTRY_ID then
           Exit;
       end;
+    end
+    else
+    begin
+      case GetAddressType(IpStr) of
+        atIPv4: if GeoIpUpdateType = gitIPv6 then Exit;
+        atIPv6: if GeoIpUpdateType = gitIPv4 then Exit;
+      end;
     end;
-    Duplicates.AddOrSetValue(IpStr, 0);
-    Inc(InfoCount);
-    Temp := Temp + ' ip-to-country/' + IpStr;
+    if CommandSize < (BUFSIZE - 64) then
+    begin
+      Duplicates.AddOrSetValue(IpStr, 0);
+      DataStr := ' ip-to-country/' + IpStr;
+      Inc(CommandSize, Length(DataStr));
+      Inc(InfoCount);
+      Temp := Temp + DataStr;
+    end
+    else
+    begin
+      DataOverflow := True;
+      Result := True;
+    end;
   end;
 
 begin
@@ -3249,56 +3282,76 @@ begin
     begin
       Temp := '';
       InfoCount := 0;
+      CommandSize := 0;
+      DataOverflow := False;
 
-      if GeoIpExists then
+      if FindBridgesCountries or FindFallbackDirCountries or (GeoIpUpdateType <> gitNone) then
       begin
-        if FindBridgesCountries or FindFallbackDirCountries or GeoIpUpdating then
-        begin
-          ls := TStringList.Create;
-          try
-            if GeoIpUpdating then
+        ls := TStringList.Create;
+        try
+          if GeoIpUpdateType <> gitNone then
+          begin
+            for GeoIpItem in GeoIpDic do
             begin
-              for GeoIpItem in GeoIpDic do
-                CheckCountryUpdate(GeoIpItem.Key, False);
+              if CheckCountryUpdate(GeoIpItem.Key, False) then
+                Break;
             end;
-            if FindBridgesCountries then
+          end;
+          if FindBridgesCountries and not DataOverflow then
+          begin
+            ls.Text := Tcp.meBridges.Text;
+            ls.Append(Tcp.edPreferredBridge.Text);
+            for i := 0 to ls.Count - 1 do
             begin
-              ls.Text := Tcp.meBridges.Text;
-              ls.Append(Tcp.edPreferredBridge.Text);
-              for i := 0 to ls.Count - 1 do
+              if TryParseBridge(ls[i], Bridge, False) then
               begin
-                if TryParseBridge(ls[i], Bridge, False) then
+                Str := GetBridgeIp(Bridge);
+                if Str = '' then
+                  Continue;
+                if CheckCountryUpdate(Str) then
+                  Break;
+              end;
+            end;
+          end;
+          if FindFallbackDirCountries and not DataOverflow then
+          begin
+            ls.Text := Tcp.meFallbackDirs.Text;
+            for i := 0 to ls.Count - 1 do
+            begin
+              if TryParseFallbackDir(ls[i], FallbackDir, False) then
+              begin
+                if CheckCountryUpdate(FallbackDir.IPv4) then
+                  Break;
+                if FallbackDir.IPv6 <> '' then
                 begin
-                  Str := GetBridgeIp(Bridge);
-                  if Str = '' then
-                    Continue;
-                  CheckCountryUpdate(Str);
+                  if CheckCountryUpdate(FallbackDir.IPv6) then
+                    Break;
                 end;
               end;
             end;
-            if FindFallbackDirCountries then
-            begin
-              ls.Text := Tcp.meFallbackDirs.Text;
-              for i := 0 to ls.Count - 1 do
-              begin
-                if TryParseFallbackDir(ls[i], FallbackDir, False) then
-                  CheckCountryUpdate(FallbackDir.IPv4);
-              end;
-            end;
-          finally
-            ls.Free;
           end;
-        end
-        else
+        finally
+          ls.Free;
+        end;
+      end
+      else
+      begin
+        for Router in RoutersDic do
         begin
-          for Router in RoutersDic do
-            CheckCountryUpdate(Router.Value.IPv4);
+          if CheckCountryUpdate(Router.Value.IPv4) then
+            Break;
+          if Router.Value.IPv6 <> '' then
+          begin
+            if CheckCountryUpdate(Router.Value.IPv6) then
+              Break;
+          end;
         end;
       end;
 
       if InfoCount > 0 then
       begin
-        Duplicates.Clear;
+        if not DataOverflow then
+          Duplicates.Clear;
         SendData('GETINFO' + Temp);
         InfoStage := 2;
       end
@@ -3330,7 +3383,15 @@ begin
         Dec(InfoCount);
 
         if InfoCount = 0 then
-          InfoStage := 3
+        begin
+          if DataOverflow then
+          begin
+            InfoStage := 1;
+            Exit;
+          end
+          else
+            InfoStage := 3
+        end
         else
           Exit;
       end;
@@ -3339,7 +3400,7 @@ begin
     if InfoStage = 3 then
     begin
       InfoStage := 0;
-      if FindBridgesCountries or FindFallbackDirCountries or GeoIpUpdating then
+      if FindBridgesCountries or FindFallbackDirCountries or (GeoIpUpdateType <> gitNone) then
       begin
         FindBridgesCountries := False;
         FindFallbackDirCountries := False;
@@ -3773,35 +3834,75 @@ begin
   if sgCircuitInfo.MovRow > 0 then
   begin
     case sgCircuitInfo.MovCol of
-      CIRC_INFO_IP: FindInRouters(sgCircuitInfo.Cells[CIRC_INFO_ID, sgCircuitInfo.MovRow]);
-      CIRC_INFO_FLAG, CIRC_INFO_COUNTRY:
-        FindInFilter(sgCircuitInfo.Cells[CIRC_INFO_IP, sgCircuitInfo.MovRow]);
+      CIRC_INFO_ADDR_IPV4, CIRC_INFO_ADDR_IPV6:
+      begin
+        if sgCircuitInfo.Cells[sgCircuitInfo.MovCol, sgCircuitInfo.MovRow] <> '' then
+          FindInRouters(sgCircuitInfo.Cells[CIRC_INFO_ID, sgCircuitInfo.MovRow]);
+      end;
+      CIRC_INFO_COUNTRY_FLAG:
+      begin
+        if miCircuitsShowIPv6CountryFlag.Checked then
+        begin
+          case CircuitInfoHintGeoIpType of
+            gitIPv4: FindInFilter(sgCircuitInfo.Cells[CIRC_INFO_ADDR_IPV4, sgCircuitInfo.MovRow]);
+            gitIPv6: FindInFilter(sgCircuitInfo.Cells[CIRC_INFO_ADDR_IPV6, sgCircuitInfo.MovRow]);
+          end;
+        end
+        else
+          FindInFilter(sgCircuitInfo.Cells[CIRC_INFO_ADDR_IPV4, sgCircuitInfo.MovRow]);
+      end;
+      CIRC_INFO_COUNTRY_NAME: FindInFilter(sgCircuitInfo.Cells[CIRC_INFO_ADDR_IPV4, sgCircuitInfo.MovRow]);
     end;
   end;
 end;
 
 procedure TTcp.sgCircuitInfoDrawCell(Sender: TObject; ACol, ARow: Integer; Rect: TRect; State: TGridDrawState);
 var
-  IpStr: string;
+  IPv4Str, IPv6Str: string;
+  CountryCodeIPv4, CountryCodeIPv6: Byte;
 begin
   if (ARow = 0) and (ACol > 0) then
   begin
     case ACol of
-      CIRC_INFO_FLAG: GridDrawIcon(sgCircuitInfo, Rect, lsMain, 6);
+      CIRC_INFO_COUNTRY_FLAG: GridDrawIcon(sgCircuitInfo, Rect, lsMain, 6);
       else
-        DrawText(sgCircuitInfo.Canvas.Handle, PChar(DetailsHeader[ACol - 1]), Length(DetailsHeader[ACol - 1]), Rect, DT_CENTER);
+        DrawText(sgCircuitInfo.Canvas.Handle, PChar(CircuitInfoHeader[ACol - 1]), Length(CircuitInfoHeader[ACol - 1]), Rect, DT_CENTER);
     end;
   end;
   if ARow > 0 then
   begin
-    if ACol = CIRC_INFO_FLAG then
+    if ACol = CIRC_INFO_COUNTRY_FLAG then
     begin
-      IpStr := sgCircuitInfo.Cells[CIRC_INFO_IP, ARow];
-      if IpStr <> '' then
+      IPv4Str := sgCircuitInfo.Cells[CIRC_INFO_ADDR_IPV4, ARow];
+      if IPv4Str <> '' then
       begin
         if miShowPortAlongWithIp.Checked then
-          IpStr := GetAddressFromSocket(IpStr);
-        GridDrawIcon(sgCircuitInfo, Rect, lsFlags,  GetCountryValue(IpStr), 20, 13);
+          IPv4Str := GetAddressFromSocket(IPv4Str, True);
+        CountryCodeIPv4 := GetCountryValue(IPv4Str);
+        IPv6Str := sgCircuitInfo.Cells[CIRC_INFO_ADDR_IPV6, ARow];
+        if miCircuitsShowIPv6CountryFlag.Checked and (IPv6Str <> '') then
+        begin
+          if miShowPortAlongWithIp.Checked then
+            IPv6Str := GetAddressFromSocket(IPv6Str);
+          CountryCodeIPv6 := GetCountryValue(IPv6Str);
+          if CountryCodeIPv6 <> CountryCodeIPv4 then
+          begin
+            lsFlags.Draw(sgCircuitInfo.Canvas, Rect.Left + (Rect.Width - 44) div 2, Rect.Top + (Rect.Height - 13) div 2, CountryCodeIPv4, True);
+            lsFlags.Draw(sgCircuitInfo.Canvas, Rect.Left + (Rect.Width - 44) div 2 + 22, Rect.Top + (Rect.Height - 13) div 2, CountryCodeIPv6, True);
+          end
+          else
+            GridDrawIcon(sgCircuitInfo, Rect, lsFlags, CountryCodeIPv4, 20, 13);
+        end
+        else
+          GridDrawIcon(sgCircuitInfo, Rect, lsFlags, CountryCodeIPv4, 20, 13);
+      end;
+    end;
+    if Acol = CIRC_INFO_ADDR_IPV6 then
+    begin
+      if miCircuitsShowIPv6CountryFlag.Checked then
+      begin
+        if (sgCircuitInfo.Cells[CIRC_INFO_ADDR_IPV6, ARow] = '') and (sgCircuitInfo.Cells[CIRC_INFO_ADDR_IPV4, ARow] <> '') then
+          DrawText(sgCircuitInfo.Canvas.Handle, PChar(NONE_CHAR), 1, Rect, DT_CENTER);
       end;
     end;
   end;
@@ -3823,15 +3924,24 @@ begin
     sgCircuitInfo.MouseToCell(X, Y, sgCircuitInfo.MovCol, sgCircuitInfo.MovRow);
 end;
 
-procedure TTcp.sgCircuitInfoMouseMove(Sender: TObject; Shift: TShiftState; X,
-  Y: Integer);
+procedure TTcp.sgCircuitInfoMouseMove(Sender: TObject; Shift: TShiftState;
+  X, Y: Integer);
 begin
   SelNodeState := False;
   sgCircuitInfo.MouseToCell(X, Y, sgCircuitInfo.MovCol, sgCircuitInfo.MovRow);
   GridSetFocus(sgCircuitInfo);
-  GridShowHints(sgCircuitInfo);
+  case sgCircuitInfo.MovCol of
+    CIRC_INFO_COUNTRY_FLAG: if miCircuitsShowIPv6CountryFlag.Checked then GridShowCountryHint(sgCircuitInfo, CIRC_INFO_ADDR_IPV4, CIRC_INFO_ADDR_IPV6, CIRC_INFO_COUNTRY_FLAG, miShowPortAlongWithIp.Checked, CircuitInfoHintGeoIpType);
+    else
+      GridShowHints(sgCircuitInfo);
+  end;
   GridCheckAutoPopup(sgCircuitInfo, sgCircuitInfo.MovRow);
-  if (sgCircuitInfo.MovCol in [CIRC_INFO_IP..CIRC_INFO_COUNTRY]) and (sgCircuitInfo.MovRow > 0) and not sgCircuitInfo.IsEmptyRow(sgCircuitInfo.MovRow) then
+
+  if (sgCircuitInfo.MovRow > 0) and not sgCircuitInfo.IsEmptyRow(sgCircuitInfo.MovRow) and
+     (((sgCircuitInfo.MovCol in [CIRC_INFO_COUNTRY_FLAG, CIRC_INFO_COUNTRY_NAME]) and ((miCircuitsShowIPv6CountryFlag.Checked and (CircuitInfoHintGeoIpType in [gitIPv4, gitIPv6])) or not miCircuitsShowIPv6CountryFlag.Checked)) or
+      ((sgCircuitInfo.MovCol in [CIRC_INFO_ADDR_IPV4, CIRC_INFO_ADDR_IPV6]) and
+       ((sgCircuitInfo.Cells[sgCircuitInfo.MovCol, sgCircuitInfo.MovRow] <> '') and
+        (sgCircuitInfo.Cells[sgCircuitInfo.MovCol, sgCircuitInfo.MovRow] <> TransStr('260'))))) then
     sgCircuitInfo.Cursor := crHandPoint
   else
     sgCircuitInfo.Cursor := crDefault;
@@ -4239,7 +4349,7 @@ begin
           DrawText(sgHs.Canvas.Handle, PChar(HsHeader[ACol]), Length(HsHeader[ACol]), Rect, DT_CENTER);
     end;
   end;
-  GridScrollCheck(sgHs, HS_NAME, 184);
+  GridScrollCheck(sgHs, HS_NAME, 212);
 
   if ACol = sgHs.SelCol then
   begin
@@ -4395,8 +4505,24 @@ end;
 
 procedure TTcp.sgRoutersDblClick(Sender: TObject);
 begin
-  if (sgRouters.MovCol in [ROUTER_FLAG, ROUTER_COUNTRY]) and (sgRouters.MovRow > 0) then
-    FindInFilter(sgRouters.Cells[ROUTER_IP, sgRouters.MovRow]);
+  if  sgRouters.MovRow > 0 then
+  begin
+    if miRoutersShowIPv6CountryFlag.Checked then
+    begin
+      if (sgRouters.MovCol = ROUTER_COUNTRY_FLAG) then
+      begin
+        case RoutersHintGeoIpType of
+          gitIPv4: FindInFilter(sgRouters.Cells[ROUTER_ADDR_IPV4, sgRouters.MovRow]);
+          gitIPv6: FindInFilter(sgRouters.Cells[ROUTER_ADDR_IPV6, sgRouters.MovRow]);
+        end;
+      end;
+    end
+    else
+    begin
+      if sgRouters.MovCol in [ROUTER_COUNTRY_FLAG, ROUTER_COUNTRY_NAME] then
+        FindInFilter(sgRouters.Cells[ROUTER_ADDR_IPV4, sgRouters.MovRow]);
+    end;
+  end;
 end;
 
 procedure TTcp.sgRoutersDrawCell(Sender: TObject; ACol, ARow: Integer;
@@ -4405,6 +4531,7 @@ var
   RouterID: string;
   RouterInfo: TRouterInfo;
   Indent, Mask, Interval, ImageIndex: Integer;
+  CountryCodeIPv4, CountryCodeIPv6: Byte;
 
   procedure DrawFlagIcon(Flag: Word; Index: Integer);
   begin
@@ -4426,7 +4553,7 @@ begin
     if ACol = ROUTER_WEIGHT then
       Rect.Right := Rect.Right + 2;
     case ACol of
-      ROUTER_FLAG: GridDrawIcon(sgRouters, Rect, lsMain, 6);
+      ROUTER_COUNTRY_FLAG: GridDrawIcon(sgRouters, Rect, lsMain, 6);
       ROUTER_ENTRY_NODES: GridDrawIcon(sgRouters, Rect, lsMain, 7);
       ROUTER_MIDDLE_NODES: GridDrawIcon(sgRouters, Rect, lsMain, 8);
       ROUTER_EXIT_NODES: GridDrawIcon(sgRouters, Rect, lsMain, 9);
@@ -4439,11 +4566,36 @@ begin
   end;
   if ARow > 0 then
   begin
-    if ACol = ROUTER_FLAG then
+    if ACol = ROUTER_COUNTRY_FLAG then
     begin
-      if sgRouters.Cells[ROUTER_IP, ARow] <> '' then
-        GridDrawIcon(sgRouters, Rect, lsFlags, GetCountryValue(sgRouters.Cells[ROUTER_IP, ARow]), 20, 13);
+      if sgRouters.Cells[ROUTER_ADDR_IPV4, ARow] <> '' then
+      begin
+        CountryCodeIPv4 := GetCountryValue(sgRouters.Cells[ROUTER_ADDR_IPV4, ARow]);
+        if miRoutersShowIPv6CountryFlag.Checked and (sgRouters.Cells[ROUTER_ADDR_IPV6, ARow] <> '') then
+        begin
+          CountryCodeIPv6 := GetCountryValue(sgRouters.Cells[ROUTER_ADDR_IPV6, ARow]);
+          if CountryCodeIPv6 <> CountryCodeIPv4 then
+          begin
+            lsFlags.Draw(sgRouters.Canvas, Rect.Left + (Rect.Width - 44) div 2, Rect.Top + (Rect.Height - 13) div 2, CountryCodeIPv4, True);
+            lsFlags.Draw(sgRouters.Canvas, Rect.Left + (Rect.Width - 44) div 2 + 22, Rect.Top + (Rect.Height - 13) div 2, CountryCodeIPv6, True);
+          end
+          else
+            GridDrawIcon(sgRouters, Rect, lsFlags, CountryCodeIPv4, 20, 13);
+        end
+        else
+          GridDrawIcon(sgRouters, Rect, lsFlags, CountryCodeIPv4, 20, 13);
+      end;
     end;
+
+    if Acol = ROUTER_ADDR_IPV6 then
+    begin
+      if miRoutersShowIPv6CountryFlag.Checked then
+      begin
+        if (sgRouters.Cells[ROUTER_ADDR_IPV6, ARow] = '') and (sgRouters.Cells[ROUTER_ADDR_IPV4, ARow] <> '') then
+          DrawText(sgRouters.Canvas.Handle, PChar(NONE_CHAR), 1, Rect, DT_CENTER);
+      end;
+    end;
+
     if ACol = ROUTER_FLAGS then
     begin
       RouterID := sgRouters.Cells[ROUTER_ID, ARow];
@@ -4495,7 +4647,7 @@ end;
 
 procedure TTcp.sgRoutersFixedCellClick(Sender: TObject; ACol, ARow: Integer);
 begin
-  if ACol = ROUTER_FLAG then
+  if ACol = ROUTER_COUNTRY_FLAG then
     Exit;
   SortPrepare(sgRouters, ACol, True);
 end;
@@ -4553,12 +4705,12 @@ end;
 procedure TTcp.ChangeRouters;
 var
   i: Integer;
-  Key, CountryCode, FindCidr, NodeStr, SelData, ConvertMsg: string;
+  Key, IPv4CountryCode, IPv6CountryCode, FindCidr, NodeStr, SelData, ConvertMsg: string;
   FNodeTypes: TNodeTypes;
   NodeTypeID: TNodeType;
   RouterInfo: TRouterInfo;
   NodesList: TStringList;
-  HashMode, FindCountry, ConvertNodes: Boolean;
+  HashMode, FindCountry, DoubleCountry, ConvertNodes: Boolean;
   NodeDataType: TNodeDataType;
   Nodes: ArrOfNodes;
 
@@ -4605,7 +4757,9 @@ var
         FindNode(ParseStr[i], NodeType);
       SortNodesList(NodesList, SORT_DESC);
     end;
-    FindNode(CountryCode, NodeType, True);
+    FindNode(IPv4CountryCode, NodeType, True);
+    if DoubleCountry then
+      FindNode(IPv6CountryCode, NodeType, True);
   end;
 
 begin
@@ -4617,11 +4771,17 @@ begin
     Exit;
   if RoutersDic.TryGetValue(Key, RouterInfo) then
   begin
-
+    DoubleCountry := False;
     FindCountry := False;
     NodeTypeID := TNodeType(sgRouters.SelCol);
-    CountryCode := CountryCodes[GetCountryValue(RouterInfo.IPv4)];
-
+    IPv4CountryCode := CountryCodes[GetCountryValue(RouterInfo.IPv4)];
+    IPv6CountryCode := '';
+    if RouterInfo.IPv6 <> '' then
+    begin
+      IPv6CountryCode := CountryCodes[GetCountryValue(RouterInfo.IPv6)];
+      if IPv4CountryCode <> IPv6CountryCode then
+        DoubleCountry := True;
+    end;
     NodesList := TStringList.Create;
     try
       NodesList.QuoteChar := #0;
@@ -4928,12 +5088,17 @@ begin
   sgRouters.MouseToCell(X, Y, sgRouters.MovCol, sgRouters.MovRow);
   if not (edRoutersQuery.Focused or edRoutersWeight.Focused) then
     GridSetFocus(sgRouters);
-  if miRoutersShowFlagsHint.Checked and (sgRouters.MovCol = ROUTER_FLAGS) then
-    ShowRoutersParamsHint
-  else
-    GridShowHints(sgRouters);
+
+  case sgRouters.MovCol of
+    ROUTER_COUNTRY_FLAG: if miRoutersShowIPv6CountryFlag.Checked then GridShowCountryHint(sgRouters, ROUTER_ADDR_IPV4, ROUTER_ADDR_IPV6, ROUTER_COUNTRY_FLAG, False, RoutersHintGeoIpType);
+    ROUTER_FLAGS: if miRoutersShowFlagsHint.Checked then ShowRoutersParamsHint;
+    else
+      GridShowHints(sgRouters);
+  end;
   GridCheckAutoPopup(sgRouters, sgRouters.MovRow, True);
-  if (sgRouters.MovCol in [ROUTER_FLAG, ROUTER_COUNTRY]) and (sgRouters.MovRow > 0) and not sgRouters.IsEmptyRow(sgRouters.MovRow) then
+
+  if (sgRouters.MovCol in [ROUTER_COUNTRY_FLAG, ROUTER_COUNTRY_NAME]) and (sgRouters.MovRow > 0) and not sgRouters.IsEmptyRow(sgRouters.MovRow) and
+     ((miRoutersShowIPv6CountryFlag.Checked and (RoutersHintGeoIpType in [gitIPv4, gitIPv6])) or not miRoutersShowIPv6CountryFlag.Checked) then
     sgRouters.Cursor := crHandPoint
   else
     sgRouters.Cursor := crDefault;
@@ -5096,7 +5261,7 @@ begin
           DrawText(sgTransports.Canvas.Handle, PChar(TransportsHeader[ACol]), Length(TransportsHeader[ACol]), Rect, DT_CENTER);
     end;
   end;
-  GridScrollCheck(sgTransports, PT_TRANSPORTS, 180);
+  GridScrollCheck(sgTransports, PT_TRANSPORTS, 194);
   if ACol = sgTransports.SelCol then
   begin
     if sgTransports.IsMultiRow then
@@ -5614,7 +5779,7 @@ var
   TorFileData: TFileID;
   TorFileExists, TorFileChanged, GeoIpState: Boolean;
 begin
-  GeoIpState := False;
+  GeoIpUpdateType := gitNone;
   StartMsg := 0;
   TorFileExists := FileExists(TorExeFile);
   TorFileData := GetFileID(TorExeFile, TorFileExists, TorVersion);
@@ -5673,16 +5838,27 @@ begin
     if LogAutoDelHours >= 0 then
       DeleteFiles(LogsDir + '*.log', LogAutoDelHours * 3600);
 
-    if GeoIpExists then
+    if GeoIPv4Exists then
     begin
-      if GeoFileID <> GetFileID(GeoIpFile, True).Data then
-        GeoIpUpdating := True;
-      if UnknownBridgesCountriesCount > 0 then
-        FindBridgesCountries := True;
-      if UnknownFallbackDirCountriesCount > 0 then
-        FindFallbackDirCountries := True;
-      GeoIpState := FindBridgesCountries or FindFallbackDirCountries or GeoIpUpdating;
+      if GeoIPv4FileID <> GetFileID(GeoIPv4File, True).Data then
+        GeoIpUpdateType := gitIPv4;
     end;
+    if GeoIPv6Exists then
+    begin
+      if GeoIPv6FileID <> GetFileID(GeoIPv6File, True).Data then
+      begin
+        if GeoIpUpdateType <> gitNone  then
+          GeoIpUpdateType := gitBoth
+        else
+          GeoIpUpdateType := gitIPv6
+      end;
+    end;
+    if UnknownBridgesCountriesCount > 0 then
+      FindBridgesCountries := True;
+    if UnknownFallbackDirCountriesCount > 0 then
+      FindFallbackDirCountries := True;
+    GeoIpState := FindBridgesCountries or FindFallbackDirCountries or (GeoIpUpdateType <> gitNone);
+
     SetTorConfig('DisableNetwork', BoolToStrDef(GeoIpState or ScanNewBridges), [cfAutoSave]);
     TorMainProcess := ExecuteProcess(TorExeFile + ' -f "' + TorConfigFile + '"', [pfHideWindow, pfReadStdOut], hJob);
     if TorMainProcess.hProcess <> INVALID_HANDLE_VALUE then
@@ -5833,7 +6009,7 @@ begin
   LockCircuitInfo := False;
   LockStreams := False;
   LockStreamsInfo := False;
-  GeoIpUpdating := False;
+  GeoIpUpdateType := gitNone;
   FindBridgesCountries := False;
   FindFallbackDirCountries := False;
   tmUpdateIp.Enabled := False;
@@ -5924,20 +6100,22 @@ function TTcp.CheckRequiredFiles(AutoSave: Boolean = False): Boolean;
   end;
 begin
   Result := True;
-  CheckPathChanges(GeoIpFile, GetDirFromArray(GeoIpDirs, 'geoip', True));
-  CheckPathChanges(GeoIpv6File, GetDirFromArray(GeoIpDirs, 'geoip6', True));
+  CheckPathChanges(GeoIPv4File, GetDirFromArray(GeoIpDirs, 'geoip', True));
+  CheckPathChanges(GeoIPv6File, GetDirFromArray(GeoIpDirs, 'geoip6', True));
   CheckPathChanges(TransportsDir, GetDirFromArray(TransportDirs));
-  GeoIpExists := FileExists(GeoIpFile);
+  GeoIPv4Exists := FileExists(GeoIPv4File);
+  GeoIPv6Exists := FileExists(GeoIPv6File);
+
   if AutoSave then
   begin
     SetTorConfig('DataDirectory', ExcludeTrailingPathDelimiter(UserDir));
     SetTorConfig('ClientOnionAuthDir', ExcludeTrailingPathDelimiter(OnionAuthDir));
-    if GeoIpExists then
-      SetTorConfig('GeoIPFile', GeoIpFile)
+    if GeoIPv4Exists then
+      SetTorConfig('GeoIPFile', GeoIPv4File)
     else
       DeleteTorConfig('GeoIPFile');
-    if FileExists(GeoIpv6File) then
-      SetTorConfig('GeoIPv6File', GeoIpv6File)
+    if GeoIPv6Exists then
+      SetTorConfig('GeoIPv6File', GeoIPv6File)
     else
       DeleteTorConfig('GeoIPv6File');
     DeleteTorConfig('DisableNetwork');
@@ -6013,11 +6191,27 @@ procedure TTcp.UpdateConfigVersion;
 var
   ini, inidef: TMemIniFile;
   TemplateList, ls: TStringlist;
-  TemplateName, Temp, OldPath, NewPath: string;
+  TemplateName, DataStr, OldPath, NewPath: string;
   ParseStr: ArrOfStr;
   FirstRun: Boolean;
   i: Integer;
   SearchRec: TSearchRec;
+
+  procedure UpdateSettingsParsedData(Section, Ident: string; Delimiter: Char; Index, MinValue, MaxValue, Modifier: Integer; var ini: TMemIniFile);
+  var
+    Data: ArrOfStr;
+    Str: string;
+  begin
+    Data := Explode(Delimiter, GetSettings(Section, Ident, '', ini));
+    if TryGetStrFromIndex(Data, Str, Index) then
+    begin
+      if ValidInt(Str, MinValue, MaxValue) then
+      begin
+        Data[Index] := IntToStr(StrToInt(Str) + Modifier);
+        SetSettings(Section, Ident, ParsedDataToStr(Data, Delimiter), ini);
+      end;
+    end;
+  end;
 
   procedure UpdateGeoIpDir(FileName: string);
   begin
@@ -6113,7 +6307,7 @@ begin
   ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
   try
     ConfigVersion := GetSettings('Main', 'ConfigVersion', 1, ini);
-    if ConfigVersion = CURRENT_CONFIG_VERSION then
+    if ConfigVersion >= CURRENT_CONFIG_VERSION then
       Exit;
     if not FirstRun then
     begin
@@ -6145,34 +6339,34 @@ begin
         SetTorConfig('ExitNodes', ParseStr[4], [cfFindComments]);
         DeleteTorConfig('ExcludeExitNodes', [cfFindComments]);
 
-        Temp := GetTorConfig('ExcludeNodes', '', [cfFindComments]);
-        SetSettings('Routers', 'ExcludeNodes', Temp, ini);
+        DataStr := GetTorConfig('ExcludeNodes', '', [cfFindComments]);
+        SetSettings('Routers', 'ExcludeNodes', DataStr, ini);
         if GetTorConfig('ExcludeNodes', '0', [cfExistCheck]) = '1' then
           SetSettings('Lists', 'UseExcludeNodes', True, ini)
         else
           DeleteTorConfig('ExcludeNodes', [cfFindComments]);
 
-        Temp := GetTorConfig('TrackHostExits', '', [cfFindComments]);
-        SetSettings('Lists', 'TrackHostExits', Temp, ini);
+        DataStr := GetTorConfig('TrackHostExits', '', [cfFindComments]);
+        SetSettings('Lists', 'TrackHostExits', DataStr, ini);
         if GetTorConfig('TrackHostExits', '0', [cfExistCheck]) = '1' then
           SetSettings('Lists', 'UseTrackHostExits', True, ini)
         else
           DeleteTorConfig('TrackHostExits', [cfFindComments]);
 
-        Temp := GetTorConfig('TrackHostExitsExpire', '1800', [cfFindComments], ptInteger, Tcp.udTrackHostExitsExpire.Min, Tcp.udTrackHostExitsExpire.Max);
-        SetSettings('Lists', 'TrackHostExitsExpire', StrToInt(Temp), ini);
+        DataStr := GetTorConfig('TrackHostExitsExpire', '1800', [cfFindComments], ptInteger, Tcp.udTrackHostExitsExpire.Min, Tcp.udTrackHostExitsExpire.Max);
+        SetSettings('Lists', 'TrackHostExitsExpire', StrToInt(DataStr), ini);
         if GetTorConfig('TrackHostExitsExpire', '0', [cfExistCheck]) = '0' then
           DeleteTorConfig('TrackHostExitsExpire', [cfFindComments]);
 
-        Temp := GetTorConfig('HashedControlPassword', '', [cfFindComments]);
-        SetSettings('Main', 'HashedControlPassword', Temp, ini);
+        DataStr := GetTorConfig('HashedControlPassword', '', [cfFindComments]);
+        SetSettings('Main', 'HashedControlPassword', DataStr, ini);
         if GetTorConfig('HashedControlPassword', '0', [cfExistCheck]) = '0' then
           DeleteTorConfig('HashedControlPassword', [cfFindComments]);
 
-        Temp := GetTorConfig('Bridge', '', [cfMultiLine, cfFindComments]);
-        if Temp <> '' then
+        DataStr := GetTorConfig('Bridge', '', [cfMultiLine, cfFindComments]);
+        if DataStr <> '' then
         begin
-          ParseStr := Explode('|', Temp);
+          ParseStr := Explode('|', DataStr);
           for i := 0 to Length(ParseStr) - 1 do
             SetSettings('Bridges', IntToStr(i), ParseStr[i], ini);
           SetSettings('Network', 'UseBridges', StrToBool(GetTorConfig('UseBridges', '0', [], ptBoolean)), ini);
@@ -6357,9 +6551,7 @@ begin
             begin
               ini.EraseSection('Transports');
               for i := 0 to ls.Count - 1 do
-              begin
                 SetSettings('Transports', IntToStr(i), SeparateRight(ls[i], '='), ini);
-              end;
             end;
           finally
             ls.Free;
@@ -6374,6 +6566,19 @@ begin
         if CheckFileVersion(TorVersion, '0.4.7.12') then
           DeleteFiles(ProgramDir + 'Tor\*.dll');
         ConfigVersion := 12;
+      end;
+      if ConfigVersion = 12 then
+      begin
+        SetSettings('Main', 'GeoIPv4FileID', GetSettings('Main', 'GeoFileID', '', ini), ini);
+        SetSettings('Main', 'SortGridData', GetSettings('Main', 'SortData', '', ini), ini);
+        DeleteSettings('Main', 'GeoFileID', ini);
+        DeleteSettings('Main', 'SortData', ini);
+        UpdateSettingsParsedData('Main', 'SortGridData', ',', 3, 5, 13, 1, ini);
+        UpdateSettingsParsedData('Routers', 'CurrentFilter', ';', RF_CURRENT_CUSTOM, 4, 16, 1, ini);
+        UpdateSettingsParsedData('Routers', 'CurrentFilter', ';', RF_PREVIOUS_CUSTOM, 4, 16, 1, ini);
+        UpdateSettingsParsedData('Routers', 'DefaultFilter', ';', RF_CURRENT_CUSTOM, 4, 16, 1, ini);
+        UpdateSettingsParsedData('Routers', 'DefaultFilter', ';', RF_PREVIOUS_CUSTOM, 4, 16, 1, ini);
+        ConfigVersion := 13;
       end;
     end
     else
@@ -7294,7 +7499,7 @@ begin
             FindCountry := True;
             cdAlive := False;
           end;
-          if AutoSave and FindCountry and GeoIpExists then
+          if AutoSave and FindCountry and GeoIPv4Exists then
             Inc(UnknownBridgesCountriesCount);
           SpecialAddr := False;
         end
@@ -7322,7 +7527,7 @@ begin
           begin
             case Bridge.SocketType of
               soIPv4: cdRelay := (RouterInfo.Port = Bridge.Port) and (Bridge.Ip = RouterInfo.IPv4);
-              soIPv6: cdRelay := (RouterInfo.Port = Bridge.Port) and (Bridge.Ip = RemoveBrackets(RouterInfo.IPv6, btSquare));
+              soIPv6: cdRelay := (RouterInfo.Port = Bridge.Port) and (Bridge.Ip = RouterInfo.IPv6);
               else
                 cdRelay := False;
             end;
@@ -7951,6 +8156,98 @@ begin
   DefaultsDic.AddOrSetValue('MetricsUrl', GetSettings('UserOverrides', 'MetricsUrl', METRICS_URL, ini));
 end;
 
+function TTcp.GetMemoByIndex(MemoIndex: Integer): TMemo;
+begin
+  case MemoIndex of
+    MEMO_BRIDGES: Result := meBridges;
+    MEMO_MY_FAMILY: Result := meMyFamily;
+    MEMO_TRACK_HOST_EXITS: Result := meTrackHostExits;
+    MEMO_FALLBACK_DIRS: Result := meFallbackDirs;
+    MEMO_NODES_LIST: Result := meNodesList;
+    MEMO_EXIT_POLICY: Result := meExitPolicy;
+    else
+      Result := nil;
+  end;
+end;
+
+function TTcp.GetGridByIndex(GridIndex: Integer): TStringGrid;
+begin
+  case GridIndex of
+    GRID_FILTER: Result := sgFilter;
+    GRID_ROUTERS: Result := sgRouters;
+    GRID_CIRCUITS: Result := sgCircuits;
+    GRID_STREAMS: Result := sgStreams;
+    GRID_HS: Result := sgHs;
+    GRID_HS_PORTS: Result := sgHsPorts;
+    GRID_CIRC_INFO: Result := sgCircuitInfo;
+    GRID_STREAMS_INFO: Result := sgStreamsInfo;
+    GRID_TRANSPORTS: Result := sgTransports;
+    else
+      Result := nil;
+  end;
+end;
+
+procedure TTcp.LoadSortData(var ini: TMemIniFile; const StaticData: array of TStaticData; ControlType: Integer);
+var
+  ParseStr: ArrOfStr;
+  Data, DataCount, MinValue, MaxValue, i: Integer;
+  ControlGrid: TStringGrid;
+  ControlMemo: TMemo;
+  SortDataID: Integer;
+  DataStr: string;
+begin
+  ControlMemo := nil;
+  ControlGrid := nil;
+  case ControlType of
+    CONTROL_TYPE_MEMO: DataStr := 'SortListData';
+    CONTROL_TYPE_GRID: DataStr := 'SortGridData';
+    else
+      DataStr := '';
+  end;
+  ParseStr := Explode(',', GetSettings('Main', DataStr, '', ini));
+  DataCount := Length(ParseStr);
+  for i := 0 to Length(StaticData) - 1 do
+  begin
+    Data := -1;
+    SortDataID := -1;
+    case ControlType of
+      CONTROL_TYPE_MEMO:
+      begin
+        SortDataID := SORT_DATA_TYPE;
+        ControlMemo := GetMemoByIndex(StaticData[i].Key);
+      end;
+      CONTROL_TYPE_GRID:
+      begin
+        SortDataID := i mod 2;
+        ControlGrid := GetGridByIndex(StaticData[i].Key);
+      end;
+    end;
+    if DataCount > i then
+    begin
+      MinValue := 0;
+      MaxValue := 0;
+      case SortDataID of
+        SORT_DATA_TYPE: begin MinValue := SORT_NONE; MaxValue := SORT_DESC; end;
+        SORT_DATA_COL: begin MinValue := 0; MaxValue := ControlGrid.ColCount - 1; end;
+      end;
+      if ValidInt(ParseStr[i], MinValue, MaxValue) then
+        Data := StrToIntDef(ParseStr[i], StaticData[i].Value);
+    end;
+    if Data < 0 then
+      Data := StaticData[i].Value;
+    case ControlType of
+      CONTROL_TYPE_MEMO: ControlMemo.SortType := Data;
+      CONTROL_TYPE_GRID:
+      begin
+        case SortDataID of
+          SORT_DATA_TYPE: ControlGrid.SortType := Data;
+          SORT_DATA_COL: ControlGrid.SortCol := Data;
+        end;
+      end;
+    end;
+  end;
+end;
+
 procedure TTcp.ResetOptions;
 var
   i, LogID, AutoSelNodesType: Integer;
@@ -8069,6 +8366,7 @@ begin
     GetSettings('Routers', miConvertCountryNodes, ini);
     GetSettings('Routers', miIgnoreConvertExcludeNodes, ini);
     GetSettings('Routers', miAvoidAddingIncorrectNodes, ini);
+    GetSettings('Routers', miRoutersShowIPv6CountryFlag, ini);
 
     GetSettings('Circuits', miHideCircuitsWithoutStreams, ini, False);
     GetSettings('Circuits', miAlwaysShowExitCircuit, ini);
@@ -8078,6 +8376,7 @@ begin
     GetSettings('Circuits', miShowStreamsInfo, ini);
     GetSettings('Circuits', miShowPortAlongWithIp, ini);
     GetSettings('Circuits', miCircuitsShowFlagsHint, ini);
+    GetSettings('Circuits', miCircuitsShowIPv6CountryFlag, ini);
 
     GetSettings('Scanner', cbEnablePingMeasure, ini);
     GetSettings('Scanner', cbEnableDetectAliveNodes, ini);
@@ -8130,11 +8429,20 @@ begin
     LastPartialScanDate := GetSettings('Scanner', 'LastPartialScanDate', int64(0), ini);
     LastPartialScansCounts := GetSettings('Scanner', 'LastPartialScansCounts', 0, ini);
 
-    GeoFileID := GetSettings('Main', 'GeoFileID', '', ini);
-    if (GeoFileID = '') and GeoIpExists and not FileExists(NetworkCacheFile) then
+    GeoIPv4FileID := GetSettings('Main', 'GeoIPv4FileID', '', ini);
+    GeoIPv6FileID := GetSettings('Main', 'GeoIPv6FileID', '', ini);
+    if not FileExists(NetworkCacheFile) then
     begin
-      GeoFileID := GetFileID(GeoIpFile, True).Data;
-      SetSettings('Main', 'GeoFileID', GeoFileID, ini);
+      if GeoIPv4Exists and (GeoIPv4FileID = '') then
+      begin
+        GeoIPv4FileID := GetFileID(GeoIPv4File, True).Data;
+        SetSettings('Main', 'GeoIPv4FileID', GeoIPv4FileID, ini);
+      end;
+      if GeoIPv6Exists and (GeoIPv6FileID = '') then
+      begin
+        GeoIPv6FileID := GetFileID(GeoIPv6File, True).Data;
+        SetSettings('Main', 'GeoIPv6FileID', GeoIPv6FileID, ini);
+      end;
     end;
 
     tmCircuits.Interval := GetIntDef(GetSettings('Circuits', 'UpdateInterval', 1000, ini), 1000, 0, 4000);
@@ -8157,46 +8465,8 @@ begin
     CheckSelectRowOptions(sgFilter, miFilterSelectRow.Checked);
     CheckSelectRowOptions(sgRouters, miRoutersSelectRow.Checked);
 
-    ParseStr := Explode(',', GetSettings('Main', 'SortData',
-      Format('%d,%d,%d,%d,%d,%d,%d,%d,%d,%d', [
-        SORT_DESC, FILTER_TOTAL,
-        SORT_DESC, ROUTER_WEIGHT,
-        SORT_DESC, CIRC_ID,
-        SORT_DESC, STREAMS_ID,
-        SORT_DESC, STREAMS_INFO_ID
-      ]),
-    ini));
-    for i := 0 to Length(ParseStr) - 1 do
-    begin
-      case i of
-        0: sgFilter.SortType := StrToIntDef(ParseStr[i], SORT_DESC);
-        1: sgFilter.SortCol := StrToIntDef(ParseStr[i], FILTER_TOTAL);
-        2: sgRouters.SortType := StrToIntDef(ParseStr[i], SORT_DESC);
-        3: sgRouters.SortCol := StrToIntDef(ParseStr[i], ROUTER_WEIGHT);
-        4: sgCircuits.SortType := StrToIntDef(ParseStr[i], SORT_DESC);
-        5: sgCircuits.SortCol := StrToIntDef(ParseStr[i], CIRC_ID);
-        6: sgStreams.SortType := StrToIntDef(ParseStr[i], SORT_DESC);
-        7: sgStreams.SortCol := StrToIntDef(ParseStr[i], STREAMS_ID);
-        8: sgStreamsInfo.SortType := StrToIntDef(ParseStr[i], SORT_DESC);
-        9: sgStreamsInfo.SortCol := StrToIntDef(ParseStr[i], STREAMS_INFO_ID);
-      end;
-    end;
-
-    ParseStr := Explode(',', GetSettings('Main', 'SortListData',
-      Format('%d,%d,%d,%d,%d', [
-        SORT_NONE, SORT_ASC, SORT_ASC, SORT_ASC, SORT_ASC
-      ]),
-    ini));
-    for i := 0 to Length(ParseStr) - 1 do
-    begin
-      case i of
-        0: meBridges.SortType := StrToIntDef(ParseStr[i], SORT_NONE);
-        1: meMyFamily.SortType := StrToIntDef(ParseStr[i], SORT_ASC);
-        2: meTrackHostExits.SortType := StrToIntDef(ParseStr[i], SORT_ASC);
-        3: meNodesList.SortType := StrToIntDef(ParseStr[i], SORT_ASC);
-        4: meFallbackDirs.SortType := StrToIntDef(ParseStr[i], SORT_ASC);
-      end;
-    end;
+    LoadSortData(ini, DEFAULT_GRID_SORT_DATA, CONTROL_TYPE_GRID);
+    LoadSortData(ini, DEFAULT_MEMO_SORT_DATA, CONTROL_TYPE_MEMO);
 
     GetSettings('Network', cbUseProxy, ini);
     GetSettings('Network', cbxProxyType, ini, PROXY_TYPE_SOCKS5);
@@ -8627,7 +8897,7 @@ var
   BridgesCache: TStringList;
   BridgeInfo: TBridgeInfo;
   ParseStr, IpStr: ArrOfStr;
-  BridgeStr: string;
+  BridgeStr, Data: string;
 begin
   if FileExists(BridgesCacheFile) then
   begin
@@ -8649,13 +8919,19 @@ begin
           IpStr := Explode(',', ParseStr[2]);
           for j := 0 to Length(IpStr) - 1 do
           begin
-            case ValidAddress(IpStr[j], False, True) of
+            case GetAddressType(IpStr[j]) of
               atIPv4: BridgeInfo.Router.IPv4 := IpStr[j];
-              atIPv6: BridgeInfo.Router.IPv6 := IpStr[j];
-            end;  
+              atIPv6:
+              begin
+                Data := RemoveBrackets(IpStr[j], btSquare);
+                if IsIPv6(Data) then
+                begin
+                  BridgeInfo.Router.IPv6 := Data;
+                  Inc(BridgeInfo.Router.Params, ROUTER_REACHABLE_IPV6);
+                end;
+              end;
+            end;
           end;
-          if BridgeInfo.Router.IPv6 <> '' then
-            Inc(BridgeInfo.Router.Params, ROUTER_REACHABLE_IPV6);
           BridgeInfo.Router.Port := StrToIntDef(ParseStr[3], 0);
           BridgeInfo.Router.Bandwidth := StrToIntDef(ParseStr[4], 0);  
           BridgeInfo.Router.Version := ParseStr[5];
@@ -8709,7 +8985,7 @@ begin
       if Item.Value.Router.IPv6 = '' then
         Address := Item.Value.Router.IPv4
       else
-        Address := Item.Value.Router.IPv4 + ',' + Item.Value.Router.IPv6;
+        Address := Item.Value.Router.IPv4 + ',' + FormatHost(Item.Value.Router.IPv6, False);
 
       if Item.Value.Transport = '' then
         Transport := ''
@@ -8779,7 +9055,7 @@ begin
     FMode := FILTER_MODE_COUNTRIES;
   if (FMode = FILTER_MODE_COUNTRIES) and (lbFilterEntry.Tag = 0) and (lbFilterMiddle.Tag = 0) and (lbFilterExit.Tag = 0) then
     FMode := FILTER_MODE_NONE;
-  if (FMode = FILTER_MODE_COUNTRIES) and not GeoIpExists then
+  if (FMode = FILTER_MODE_COUNTRIES) and not GeoIPv4Exists then
     FMode := FILTER_MODE_NONE;
   cbxFilterMode.ItemIndex := FMode;
 end;
@@ -10213,7 +10489,7 @@ begin
     begin
       AddToIpList(Router.Value.IPv4, IntToStr(Router.Value.Port));
       if Router.Value.IPv6 <> '' then
-        AddToIpList(RemoveBrackets(Router.Value.IPv6, btSquare), IntToStr(Router.Value.Port));
+        AddToIpList(Router.Value.IPv6, IntToStr(Router.Value.Port));
     end;
 
     BridgesList.Text := meBridges.Text;
@@ -10489,7 +10765,7 @@ begin
     Clipboard.AsText := TMenuItem(Sender).Hint;
 end;
 
-procedure TTcp.mnDetailsPopup(Sender: TObject);
+procedure TTcp.mnCircuitInfoPopup(Sender: TObject);
 var
   ini: TMemIniFile;
   SelectMenu: TMenuItem;
@@ -10508,7 +10784,7 @@ begin
   end
   else
   begin
-    SelectRowPopup(sgCircuitInfo, mnDetails);
+    SelectRowPopup(sgCircuitInfo, mnCircuitInfo);
     SelectedNode := sgCircuitInfo.Cells[CIRC_INFO_ID, sgCircuitInfo.SelRow];
     SingleRow := not sgCircuitInfo.IsMultiRow;
     if RoutersDic.ContainsKey(SelectedNode) then
@@ -10516,21 +10792,21 @@ begin
     else
       RouterID := SelectedNode;
   end;
-  miDetailsExtractData.Hint := RouterID;
+  miCircuitInfoExtractData.Hint := RouterID;
 
-  Search := InsertExtractMenu(miDetailsExtractData, CONTROL_TYPE_GRID, GRID_CIRC_INFO, EXTRACT_PREVIEW);
-  miDetailsUpdateIp.Enabled := ConnectState = 2;
-  miDetailsExtractData.Enabled := Search;
-  miDetailsRelayOperations.Enabled := Search;
-  miDetailsAddToNodesList.Visible := Search and SingleRow and NotStarting;
+  Search := InsertExtractMenu(miCircuitInfoExtractData, CONTROL_TYPE_GRID, GRID_CIRC_INFO, EXTRACT_PREVIEW);
+  miCircuitInfoUpdateIp.Enabled := ConnectState = 2;
+  miCircuitInfoExtractData.Enabled := Search;
+  miCircuitInfoRelayOperations.Enabled := Search;
+  miCircuitInfoAddToNodesList.Visible := Search and SingleRow and NotStarting;
 
-  InsertNodesMenu(miDetailsAddToNodesList, SelectedNode);
-  InsertRelayOperationsMenu(miDetailsRelayOperations, miDetailsExtractData, GRID_CIRC_INFO);
+  InsertNodesMenu(miCircuitInfoAddToNodesList, SelectedNode);
+  InsertRelayOperationsMenu(miCircuitInfoRelayOperations, miCircuitInfoExtractData, GRID_CIRC_INFO);
 
-  miDetailsSelectTemplate.Enabled := False;
+  miCircuitInfoSelectTemplate.Enabled := False;
   if ConnectState = 1 then
     Exit;
-  miDetailsSelectTemplate.Clear;
+  miCircuitInfoSelectTemplate.Clear;
   ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
   try
     TemplateList := TStringList.Create;
@@ -10538,7 +10814,7 @@ begin
       ini.ReadSectionValues('Templates', TemplateList);
       if TemplateList.Count > 0 then
       begin
-        miDetailsSelectTemplate.Enabled := True;
+        miCircuitInfoSelectTemplate.Enabled := True;
         for i := 0 to TemplateList.Count - 1 do
         begin
           TimeStampIndex := Pos('=', TemplateList[i]);
@@ -10559,7 +10835,7 @@ begin
           SelectMenu.Tag := TimeStamp;
           SelectMenu.Hint := 'ApplyOptions';
           SelectMenu.OnClick := FilterLoadClick;
-          miDetailsSelectTemplate.Add(SelectMenu);
+          miCircuitInfoSelectTemplate.Add(SelectMenu);
         end;
       end;
     finally
@@ -10589,7 +10865,7 @@ begin
   case aSg.Tag of
     GRID_CIRCUITS: SortMenu := miCircuitsSort;
     GRID_STREAMS: SortMenu := miStreamsSort;
-    GRID_STREAM_INFO: SortMenu := miStreamsInfoSort;
+    GRID_STREAMS_INFO: SortMenu := miStreamsInfoSort;
     else
       SortMenu := nil;
   end;
@@ -10860,7 +11136,7 @@ var
 begin
   Result := '';
   if UseIPv6 then
-    IpStr := RouterInfo.IPv6
+    IpStr := FormatHost(RouterInfo.IPv6, False)
   else
     IpStr := RouterInfo.IPv4;
   if IpStr = '' then
@@ -10875,7 +11151,8 @@ begin
     begin
       if UseIPv6 and IpInRanges(BridgeInfo.Source, DocRanges) then
         Exit;
-      IpStr := FormatHost(BridgeInfo.Source);
+      if GetAddressType(IpStr) = atIPv6 then
+        IpStr := FormatHost(BridgeInfo.Source, False);
     end;
     Result := Trim(BridgeInfo.Transport + ' ' + IpStr + ':' + IntToStr(BridgeInfo.Router.Port) + ' ' + HashStr + ' ' + BridgeInfo.Params);
     if Preview and (BridgeInfo.Params <> '') then
@@ -10887,24 +11164,34 @@ end;
 
 function TTcp.GetRouterCsvData(RouterID: string; RouterInfo: TRouterInfo; Preview: Boolean = False): string;
 var
-  HashStr, IPv6Str, CountryStr, PingStr, FlagsStr, TypeStr, AliveStr: string;
+  HashStr, IPv6Str, IPv4CountryStr, IPv6CountryStr, CountryData, PingStr, FlagsStr, TypeStr, AliveStr: string;
   GeoIpInfo: TGeoIpInfo;
   PingData: Integer;
 begin
   if GeoIpDic.TryGetValue(RouterInfo.IPv4, GeoIpInfo) then
   begin
     PingData := GeoIpInfo.ping;
-    CountryStr := CountryCodes[GeoIpInfo.cc]
+    IPv4CountryStr := CountryCodes[GeoIpInfo.cc]
   end
   else
   begin
     PingData := 0;
-    CountryStr := CountryCodes[DEFAULT_COUNTRY_ID];
+    IPv4CountryStr := CountryCodes[DEFAULT_COUNTRY_ID];
   end;
-  if PingData > 0 then
-    PingStr := IntToStr(PingData)
-  else
-    PingStr := NONE_CHAR;
+  PingStr := IntToStr(PingData);
+  CountryData := IPv4CountryStr + ',' + TransStr(IPv4CountryStr);
+
+  if RouterInfo.IPv6 <> '' then
+  begin
+    if GeoIpDic.TryGetValue(RouterInfo.IPv6, GeoIpInfo) then
+      IPv6CountryStr := CountryCodes[GeoIpInfo.cc]
+    else
+      IPv6CountryStr := CountryCodes[DEFAULT_COUNTRY_ID];
+
+    if IPv4CountryStr <> IPv6CountryStr then
+      CountryData := IPv4CountryStr + '/' + IPv6CountryStr + ',' + TransStr(IPv4CountryStr) + '/' + TransStr(IPv6CountryStr);
+  end;
+
   if Preview then
   begin
     HashStr := Copy(RouterID, 1, 10) + '..';
@@ -10918,9 +11205,9 @@ begin
   begin
     HashStr := RouterID;
     if FormatIPv6OnExtract then
-      IPv6Str := RouterInfo.IPv6 + ','
+      IPv6Str := FormatHost(RouterInfo.IPv6, False) + ','
     else
-      IPv6Str := RemoveBrackets(RouterInfo.IPv6, btSquare) + ',';
+      IPv6Str := RouterInfo.IPv6 + ',';
     PingStr := PingStr + ',';
     if rfRelay in RouterInfo.Flags then
       TypeStr := 'Relay,'
@@ -10929,13 +11216,13 @@ begin
     if RouterInfo.Params and ROUTER_ALIVE <> 0 then
       AliveStr := 'Alive,'
     else
-      AliveStr := NONE_CHAR + ',';
+      AliveStr := 'Dead' + ',';
     FlagsStr := GetRouterStrFlags(RouterInfo.Flags);
   end;
   Result := HashStr + ',' +
     RouterInfo.Name + ',' +
     RouterInfo.IPv4 + ',' + IPv6Str +
-    CountryStr + ',' + TransStr(CountryStr) + ',' +
+    CountryData + ',' +
     IntToStr(RouterInfo.Bandwidth) + ',' +
     IntToStr(RouterInfo.Port) + ',' +
     RouterInfo.Version + ',' +
@@ -10953,7 +11240,7 @@ begin
     if Preview then
       Result := Result + ' ipv6=..'
     else
-      Result := Result + ' ipv6=' + RouterInfo.IPv6 + ':' + IntToStr(RouterInfo.Port);
+      Result := Result + ' ipv6=' + FormatHost(RouterInfo.IPv6, False) + ':' + IntToStr(RouterInfo.Port);
   end;
 end;
 
@@ -11091,7 +11378,7 @@ begin
   SetCaptionByDataCount(TransStr('524'), miStreamsInfoDestroyStream, sgStreamsInfo);
   miStreamsInfoDestroyStream.Enabled := State and (ConnectState <> 0);
 
-  miStreamsInfoExtractData.Visible := State and InsertExtractMenu(miStreamsInfoExtractData, CONTROL_TYPE_GRID, GRID_STREAM_INFO, EXTRACT_PREVIEW);
+  miStreamsInfoExtractData.Visible := State and InsertExtractMenu(miStreamsInfoExtractData, CONTROL_TYPE_GRID, GRID_STREAMS_INFO, EXTRACT_PREVIEW);
 
   miStreamsInfoSortDL.Enabled := miShowStreamsTraffic.Checked;
   miStreamsInfoSortUL.Enabled := miShowStreamsTraffic.Checked;
@@ -11441,10 +11728,10 @@ var
   DataStr, Delimiter, PortData: string;
   UniqueList: TDictionary<string, Byte>;
   PortStr, IPv4Str, IPv6Str, HashStr, IPv4BridgesStr, IPv6BridgesStr,
-  FallbackDirsStr, NicknameStr, CountryCodeStr, CsvStr, IPv4SocketStr, IPv6SocketStr, HostStr,
+  FallbackDirsStr, NicknameStr, CountryCodeStr, IPv4CountryCodeStr, IPv6CountryCodeStr, CsvStr, IPv4SocketStr, IPv6SocketStr, HostStr,
   HostSocketStr, HostRootStr, IPv4CidrStr: string;
   PortCount, IPv4Count, IPv6Count, HashCount, IPv4BridgesCount, IPv6BridgesCount,
-  FallbackDirsCount, NicknameCount, CountryCodeCount, CsvCount, IPv4SocketCount, IPv6SocketCount,
+  FallbackDirsCount, NicknameCount, CountryCodeCount, IPv4CountryCodeCount, IPv6CountryCodeCount, CsvCount, IPv4SocketCount, IPv6SocketCount,
   HostCount, HostSocketCount, HostRootCount, IPv4CidrCount: Integer;
 
   procedure UpdateMenu(Menu: TMenuItem; DataStr: string; Count: Integer; AlwaysShow: Boolean);
@@ -11467,8 +11754,8 @@ var
   procedure FormatData(var Str: string; var Count: Integer; Data: string; CurrentType: Integer);
   begin
     case CurrentType of
-      EXTRACT_COUNTRY_CODE: if FormatCodesOnExtract then Data := '{' + Data + '}';
-      EXTRACT_IPV6: if not FormatIPv6OnExtract then Data := RemoveBrackets(Data, btSquare);
+      EXTRACT_COUNTRY_CODE, EXTRACT_IPV4_COUNTRY_CODE, EXTRACT_IPV6_COUNTRY_CODE: if FormatCodesOnExtract then Data := '{' + Data + '}';
+      EXTRACT_IPV6: if FormatIPv6OnExtract then Data := FormatHost(Data, False);
     end;
     if PreviewState then
     begin
@@ -11476,6 +11763,8 @@ var
         Str := Data;
       if RemoveDuplicateOnExtract then
       begin
+        if CurrentType = EXTRACT_IPV6_COUNTRY_CODE  then
+          Data := Data + '6';
         if UniqueList.ContainsKey(Data) then
           Exit
         else
@@ -11522,6 +11811,8 @@ begin
   FallbackDirsCount := 0;
   NicknameCount := 0;
   CountryCodeCount := 0;
+  IPv4CountryCodeCount := 0;
+  IPv6CountryCodeCount := 0;
   CsvCount := 0;
   IPv4SocketCount := 0;
   IPv6SocketCount := 0;
@@ -11538,6 +11829,8 @@ begin
   FallbackDirsStr := '';
   NicknameStr := '';
   CountryCodeStr := '';
+  IPv4CountryCodeStr := '';
+  IPv6CountryCodeStr := '';
   CsvStr := '';
   IPv4SocketStr := '';
   IPv6SocketStr := '';
@@ -11557,12 +11850,14 @@ begin
   InsertMenuItem(ParentMenu, EXTRACT_HOST_ROOT, 77, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, EXTRACT_HOST_SOCKET, 77, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, 0, -1, '-');
+  InsertMenuItem(ParentMenu, EXTRACT_IPV4_COUNTRY_CODE, 79, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, EXTRACT_IPV4, 33, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, EXTRACT_IPV4_CIDR, 48, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, EXTRACT_IPV4_SOCKET, 48, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, EXTRACT_IPV4_BRIDGE, 59, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, EXTRACT_FALLBACK_DIR, 54, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, 0, -1, '-');
+  InsertMenuItem(ParentMenu, EXTRACT_IPV6_COUNTRY_CODE, 80, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, EXTRACT_IPV6, 34, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, EXTRACT_IPV6_SOCKET, 49, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, EXTRACT_IPV6_BRIDGE, 60, '', ExtractDataClick);
@@ -11580,7 +11875,7 @@ begin
   InsertMenuItem(DelimiterMenu, DELIM_NEW_LINE, -1, TransStr('675'), SetExtractDelimiter, ExtractDelimiterType = DELIM_NEW_LINE , False, True);
   InsertMenuItem(DelimiterMenu, DELIM_COMMA, -1, TransStr('676'), SetExtractDelimiter, ExtractDelimiterType = DELIM_COMMA, False, True);
 
-  if ((ExtractDelimiterType = DELIM_AUTO) and not (ExtractType in [EXTRACT_PORT, EXTRACT_COUNTRY_CODE]))
+  if ((ExtractDelimiterType = DELIM_AUTO) and not (ExtractType in [EXTRACT_PORT, EXTRACT_COUNTRY_CODE, EXTRACT_IPV4_COUNTRY_CODE, EXTRACT_IPV6_COUNTRY_CODE]))
     or (ExtractDelimiterType = DELIM_NEW_LINE) or (ExtractType = EXTRACT_CSV) then
       Delimiter := BR
   else
@@ -11589,28 +11884,9 @@ begin
   PreviewState := ExtractType = EXTRACT_PREVIEW;
   ControlMemo := nil;
   ControlGrid := nil;
-
   case ControlType of
-    CONTROL_TYPE_MEMO:
-    begin
-      case ControlID of
-        MEMO_BRIDGES: ControlMemo := meBridges;
-        MEMO_MY_FAMILY: ControlMemo := meMyFamily;
-        MEMO_TRACK_HOST_EXITS: ControlMemo := meTrackHostExits;
-        MEMO_FALLBACK_DIRS: ControlMemo := meFallbackDirs;
-        MEMO_NODES_LIST: ControlMemo := meNodesList;
-      end;
-    end;
-    CONTROL_TYPE_GRID:
-    begin
-      case ControlID of
-        GRID_FILTER: ControlGrid := sgFilter;
-        GRID_ROUTERS: ControlGrid := sgRouters;
-        GRID_STREAMS: ControlGrid := sgStreams;
-        GRID_CIRC_INFO: ControlGrid := sgCircuitInfo;
-        GRID_STREAM_INFO: ControlGrid := sgStreamsInfo;
-      end;
-    end;
+    CONTROL_TYPE_MEMO: ControlMemo := GetMemoByIndex(ControlID);
+    CONTROL_TYPE_GRID: ControlGrid := GetGridByIndex(ControlID);
   end;
   if Assigned(ControlMemo) or Assigned(ControlGrid) then
   begin
@@ -11641,7 +11917,7 @@ begin
                       FormatData(HashStr, HashCount, Bridge.Hash, EXTRACT_HASH);
                     if Bridge.SocketType = soIPv4 then
                     begin
-                      FormatData(CountryCodeStr, CountryCodeCount, CountryCodes[GetCountryValue(Bridge.Ip)], EXTRACT_COUNTRY_CODE);
+                      FormatData(IPv4CountryCodeStr, IPv4CountryCodeCount, CountryCodes[GetCountryValue(Bridge.Ip)], EXTRACT_IPV4_COUNTRY_CODE);
                       FormatData(IPv4Str, IPv4Count, Bridge.Ip, EXTRACT_IPV4);
                       FormatData(IPv4SocketStr, IPv4SocketCount, Bridge.Ip + ':' + PortData, EXTRACT_IPV4_SOCKET);
                       if (Bridge.Transport = '') and (Bridge.Hash <> '') then
@@ -11649,8 +11925,7 @@ begin
                     end
                     else
                     begin
-                      if RoutersDic.TryGetValue(Bridge.Hash, Router) then
-                        FormatData(CountryCodeStr, CountryCodeCount, CountryCodes[GetCountryValue(Router.IPv4)], EXTRACT_COUNTRY_CODE);
+                      FormatData(IPv6CountryCodeStr, IPv6CountryCodeCount, CountryCodes[GetCountryValue(RemoveBrackets(Bridge.Ip, btSquare))], EXTRACT_IPV6_COUNTRY_CODE);
                       FormatData(IPv6Str, IPv6Count, Bridge.Ip, EXTRACT_IPV6);
                       FormatData(IPv6SocketStr, IPv6SocketCount, FormatHost(Bridge.Ip, False) + ':' + PortData, EXTRACT_IPV6_SOCKET);
                     end;
@@ -11686,7 +11961,7 @@ begin
                   if TryParseFallbackDir(Trim(ls[i]), FallbackDir, ValidateData, FormatIPv6OnExtract) then
                   begin
                     PortData := IntToStr(FallbackDir.OrPort);
-                    FormatData(CountryCodeStr, CountryCodeCount, CountryCodes[GetCountryValue(FallbackDir.IPv4)], EXTRACT_COUNTRY_CODE);
+                    FormatData(IPv4CountryCodeStr, IPv4CountryCodeCount, CountryCodes[GetCountryValue(FallbackDir.IPv4)], EXTRACT_IPV4_COUNTRY_CODE);
                     FormatData(PortStr, PortCount, PortData, EXTRACT_PORT);
                     FormatData(HashStr, HashCount, FallbackDir.Hash, EXTRACT_HASH);
                     FormatData(IPv4Str, IPv4Count, FallbackDir.IPv4, EXTRACT_IPV4);
@@ -11697,6 +11972,7 @@ begin
                       FormatData(IPv6Str, IPv6Count, FallbackDir.IPv6, EXTRACT_IPV6);
                       FormatData(IPv6SocketStr, IPv6SocketCount, FormatHost(FallbackDir.IPv6, False) + ':' + PortData, EXTRACT_IPV6_SOCKET);
                       FormatData(IPv6BridgesStr, IPv6BridgesCount, FormatHost(FallbackDir.IPv6, False) + ':' + PortData + ' ' + FallbackDir.Hash, EXTRACT_IPV6_BRIDGE);
+                      FormatData(IPv6CountryCodeStr, IPv6CountryCodeCount, CountryCodes[GetCountryValue(RemoveBrackets(FallbackDir.IPv6, btSquare))], EXTRACT_IPV6_COUNTRY_CODE);
                     end;
                   end;
                 end;
@@ -11741,7 +12017,7 @@ begin
                   if RoutersDic.TryGetValue(ls[i], Router) then
                   begin
                     PortData := IntToStr(Router.Port);
-                    FormatData(CountryCodeStr, CountryCodeCount, CountryCodes[GetCountryValue(Router.IPv4)], EXTRACT_COUNTRY_CODE);
+                    FormatData(IPv4CountryCodeStr, IPv4CountryCodeCount, CountryCodes[GetCountryValue(Router.IPv4)], EXTRACT_IPV4_COUNTRY_CODE);
                     FormatData(PortStr, PortCount, PortData, EXTRACT_PORT);
                     FormatData(NicknameStr, NicknameCount, Router.Name, EXTRACT_NICKNAME);
                     FormatData(HashStr, HashCount, ls[i], EXTRACT_HASH);
@@ -11751,7 +12027,8 @@ begin
                     if Router.IPv6 <> '' then
                     begin
                       FormatData(IPv6Str, IPv6Count, Router.IPv6, EXTRACT_IPV6);
-                      FormatData(IPv6SocketStr, IPv6SocketCount, Router.IPv6 + ':' + PortData, EXTRACT_IPV6_SOCKET);
+                      FormatData(IPv6CountryCodeStr, IPv6CountryCodeCount, CountryCodes[GetCountryValue(Router.IPv6)], EXTRACT_IPV6_COUNTRY_CODE);
+                      FormatData(IPv6SocketStr, IPv6SocketCount, FormatHost(Router.IPv6, False) + ':' + PortData, EXTRACT_IPV6_SOCKET);
                       DataStr := GetBridgeStr(ls[i], Router, True, PreviewState);
                       if DataStr <> ''then
                         FormatData(IPv6BridgesStr, IPv6BridgesCount, DataStr, EXTRACT_IPV6_BRIDGE);
@@ -11776,20 +12053,20 @@ begin
                 end;
               end;
             end;
-            GRID_STREAMS, GRID_STREAM_INFO:
+            GRID_STREAMS, GRID_STREAMS_INFO:
             begin
               for i := ControlGrid.Selection.Top to ControlGrid.Selection.Bottom do
               begin
                 case ControlID of
                   GRID_STREAMS: DataStr := ControlGrid.Cells[STREAMS_TARGET, i];
-                  GRID_STREAM_INFO: DataStr := ControlGrid.Cells[STREAMS_INFO_DEST_ADDR, i];
+                  GRID_STREAMS_INFO: DataStr := ControlGrid.Cells[STREAMS_INFO_DEST_ADDR, i];
                 end;
                 if TryParseTarget(DataStr, Target) then
                 begin
                   FormatData(PortStr, PortCount, Target.Port, EXTRACT_PORT);
                   if Target.Hash <> '' then
                     FormatData(HashStr, HashCount, Target.Hash, EXTRACT_HASH);
-                  case ValidAddress(Target.Hostname, False, ControlID = GRID_STREAM_INFO) of
+                  case ValidAddress(Target.Hostname, False, ControlID = GRID_STREAMS_INFO) of
                     atIPv4:
                     begin
                       FormatData(IPv4Str, IPv4Count, Target.Hostname, EXTRACT_IPV4);
@@ -11831,7 +12108,9 @@ begin
               EXTRACT_IPV6_BRIDGE: UpdateMenu(ParentMenu.Items[i], IPv6BridgesStr, IPv6BridgesCount, False);
               EXTRACT_FALLBACK_DIR: UpdateMenu(ParentMenu.Items[i], FallbackDirsStr, FallbackDirsCount, True);
               EXTRACT_NICKNAME: UpdateMenu(ParentMenu.Items[i], NicknameStr, NicknameCount, False);
-              EXTRACT_COUNTRY_CODE: UpdateMenu(ParentMenu.Items[i], CountryCodeStr, CountryCodeCount, ((ControlType = CONTROL_TYPE_GRID) and (ControlID = GRID_FILTER)) or ((ControlType = CONTROL_TYPE_MEMO) and (ControlID = MEMO_NODES_LIST)));
+              EXTRACT_COUNTRY_CODE: UpdateMenu(ParentMenu.Items[i], CountryCodeStr, CountryCodeCount, True);
+              EXTRACT_IPV4_COUNTRY_CODE: UpdateMenu(ParentMenu.Items[i], IPv4CountryCodeStr, IPv4CountryCodeCount, False);
+              EXTRACT_IPV6_COUNTRY_CODE: UpdateMenu(ParentMenu.Items[i], IPv6CountryCodeStr, IPv6CountryCodeCount, False);
               EXTRACT_CSV: UpdateMenu(ParentMenu.Items[i], CsvStr, CsvCount, False);
               EXTRACT_IPV4_SOCKET: UpdateMenu(ParentMenu.Items[i], IPv4SocketStr, IPv4SocketCount, False);
               EXTRACT_IPV6_SOCKET: UpdateMenu(ParentMenu.Items[i], IPv6SocketStr, IPv6SocketCount, False);
@@ -12216,8 +12495,8 @@ begin
   end
   else
   begin
-    H := Round(556 * Scale);
-    W := Round(772 * Scale);
+    H := Round(604 * Scale);
+    W := Round(800 * Scale);
   end;
   if ClientHeight <> H then
     ClientHeight := H;
@@ -13200,13 +13479,13 @@ begin
   GridSort(sgFilter);
   SetGridLastCell(sgFilter, True, miFilterScrollTop.Checked);
   if cbEnablePingMeasure.Checked and cbEnableDetectAliveNodes.Checked then
-    GridScrollCheck(sgFilter, FILTER_NAME, 268)
+    GridScrollCheck(sgFilter, FILTER_NAME, 296)
   else
   begin
     if cbEnablePingMeasure.Checked or cbEnableDetectAliveNodes.Checked then
-      GridScrollCheck(sgFilter, FILTER_NAME, 324)
+      GridScrollCheck(sgFilter, FILTER_NAME, 352)
     else
-      GridScrollCheck(sgFilter, FILTER_NAME, 380);
+      GridScrollCheck(sgFilter, FILTER_NAME, 408);
   end;
   sgFilter.EndUpdateRows;
   lbFilterCount.Caption := Format(TransStr('321'), [FilterCount, FilterDic.Count]);
@@ -13239,14 +13518,14 @@ begin
     Result := True
   else
   begin
-    if UsedBridgesList.ContainsKey(RemoveBrackets(Router.IPv6, btSquare) + IntToStr(Router.Port)) then
+    if UsedBridgesList.ContainsKey(Router.IPv6 + IntToStr(Router.Port)) then
       Result := True
     else
     begin
       if BridgesDic.TryGetValue(RouterID, BridgeInfo) then
       begin
         if BridgeInfo.Source <> '' then
-          Result := UsedBridgesList.ContainsKey(RemoveBrackets(BridgeInfo.Source, btSquare) + IntToStr(Router.Port));
+          Result := UsedBridgesList.ContainsKey(BridgeInfo.Source + IntToStr(Router.Port));
       end;
     end;
   end;
@@ -13259,9 +13538,9 @@ var
   cdRouterType, cdCountry, cdWeight, cdQuery, cdFavorites: Boolean;
   Item: TPair<string, TRouterInfo>;
   Transport: TPair<string, TTransportInfo>;
-  CountryCode: string;
-  CountryID: Byte;
-  FindCountry, FindHash, FindIPv4, IsExclude, IsNativeBridge, IsSelectedBridge, WrongQuery, SelectedBridgeFound: Boolean;
+  CountryCodeIPv4Str, CountryCodeIPv6Str: string;
+  CountryCodeIPv4, CountryCodeIPv6: Byte;
+  FindIPv4Country, FindHash, FindIPv4, IsExclude, IsNativeBridge, IsSelectedBridge, WrongQuery, SelectedBridgeFound: Boolean;
   FindIPv4Cidr, Query, Temp: string;
   ParseStr, RangeStr: ArrOfStr;
   GeoIpInfo: TGeoIpInfo;
@@ -13384,7 +13663,7 @@ begin
       end;
       USER_QUERY_TRANSPORT:
       begin
-        if Query <> '-' then
+        if Query <> NONE_CHAR then
         begin
           WrongQuery := True;
           TransportsList.Clear;
@@ -13414,7 +13693,9 @@ begin
     if Query = '' then
       WrongQuery := True;
   end;
-  
+
+  RoutersIPv6Count := 0;
+  RoutersDifferentCountriesCount := 0;
   RoutersCount := 0;
   if sgRouters.SelRow = 0 then
     sgRouters.SelRow := 1;
@@ -13428,15 +13709,15 @@ begin
     begin
       SelectedBridgeFound := False;
       FindIPv4Cidr := '';
-      CountryID := GetCountryValue(Item.Value.IPv4);
-      CountryCode := CountryCodes[CountryID];
+      CountryCodeIPv4 := GetCountryValue(Item.Value.IPv4);
+      CountryCodeIPv4Str := CountryCodes[CountryCodeIPv4];
       if miRtFiltersCountry.Checked then
       begin
         case cbxRoutersCountry.Tag of
           -1: cdCountry := True;
-          -2: cdCountry := FilterDic.Items[CountryCode].Data <> [];
+          -2: cdCountry := FilterDic.Items[CountryCodeIPv4Str].Data <> [];
           else
-            cdCountry := CountryID = cbxRoutersCountry.Tag;
+            cdCountry := CountryCodeIPv4 = cbxRoutersCountry.Tag;
         end;
       end
       else
@@ -13453,7 +13734,13 @@ begin
           USER_QUERY_HASH: cdQuery := FindStr(Query, Item.Key);
           USER_QUERY_NICKNAME: cdQuery := FindStr(Query, Item.Value.Name);
           USER_QUERY_IPV4: cdQuery := FindStr(Query, Item.Value.IPv4);
-          USER_QUERY_IPV6: cdQuery := FindStr(RemoveBrackets(Query, btSquare), RemoveBrackets(Item.Value.IPv6, btSquare));
+          USER_QUERY_IPV6:
+          begin
+            if Query <> NONE_CHAR then
+              cdQuery := FindStr(RemoveBrackets(Query, btSquare), Item.Value.IPv6)
+            else
+              cdQuery := Item.Value.IPv6 = '';
+          end;
           USER_QUERY_PORT: cdQuery := PortsDic.ContainsKey(Item.Value.Port);
           USER_QUERY_VERSION: cdQuery := FindStr(Query, Item.Value.Version);
           USER_QUERY_PING:
@@ -13474,7 +13761,7 @@ begin
           begin
             if BridgesDic.TryGetValue(Item.Key, BridgeInfo) then
             begin
-              if Query <> '-' then
+              if Query <> NONE_CHAR then
                 cdQuery := TransportsList.ContainsKey(BridgeInfo.Transport)
               else
                 cdQuery := BridgeInfo.Transport = '';
@@ -13520,7 +13807,7 @@ begin
               cdFavorites := True
             else
             begin
-              if CheckNodesDic(CountryCode) then
+              if CheckNodesDic(CountryCodeIPv4Str) then
                 cdFavorites := True
               else
               begin
@@ -13552,10 +13839,18 @@ begin
       if cdRouterType and cdWeight and cdCountry and cdFavorites and cdQuery then
       begin
         Inc(RoutersCount);
+        if Item.Value.IPv6 <> '' then
+        begin
+          Inc(RoutersIPv6Count);
+          CountryCodeIPv6:= GetCountryValue(Item.Value.IPv6);
+          if CountryCodeIPv6 <> CountryCodeIPv4 then
+            Inc(RoutersDifferentCountriesCount);
+        end;
         sgRouters.Cells[ROUTER_ID, RoutersCount] := Item.Key;
         sgRouters.Cells[ROUTER_NAME, RoutersCount] := Item.Value.Name;
-        sgRouters.Cells[ROUTER_IP, RoutersCount] := Item.Value.IPv4;
-        sgRouters.Cells[ROUTER_COUNTRY, RoutersCount] := TransStr(CountryCode);
+        sgRouters.Cells[ROUTER_ADDR_IPV4, RoutersCount] := Item.Value.IPv4;
+        sgRouters.Cells[ROUTER_COUNTRY_NAME, RoutersCount] := TransStr(CountryCodeIPv4Str);
+        sgRouters.Cells[ROUTER_ADDR_IPV6, RoutersCount] := Item.Value.IPv6;
         sgRouters.Cells[ROUTER_WEIGHT, RoutersCount] := BytesFormat(Item.Value.Bandwidth * 1024) + '/' + TransStr('180');
         sgRouters.Cells[ROUTER_PORT, RoutersCount] := IntToStr(Item.Value.Port);
         if Item.Value.Version <> '' then
@@ -13591,7 +13886,7 @@ begin
           sgRouters.Cells[ROUTER_MIDDLE_NODES, RoutersCount] := NONE_CHAR;
 
         FindHash := NodesDic.ContainsKey(Item.Key);
-        FindCountry := NodesDic.ContainsKey(CountryCode);
+        FindIPv4Country := NodesDic.ContainsKey(CountryCodeIPv4Str);
         FindIPv4 := NodesDic.ContainsKey(Item.Value.IPv4);
         FindIPv4Cidr := FindInRanges(Item.Value.IPv4, atIPv4Cidr);
         IsExclude := False;
@@ -13599,8 +13894,8 @@ begin
         if FindHash then
           if ntExclude in NodesDic.Items[Item.Key] then
             IsExclude := True;
-        if FindCountry then
-          if ntExclude in NodesDic.Items[CountryCode] then
+        if FindIPv4Country then
+          if ntExclude in NodesDic.Items[CountryCodeIPv4Str] then
             IsExclude := True;
         if FindIPv4 then
           if ntExclude in NodesDic.Items[Item.Value.IPv4] then
@@ -13633,8 +13928,8 @@ begin
 
         if FindHash then
           SelectNodes(Item.Key, IsExclude);
-        if FindCountry then
-          SelectNodes(CountryCode, IsExclude);
+        if FindIPv4Country then
+          SelectNodes(CountryCodeIPv4Str, IsExclude);
         if FindIPv4 then
           SelectNodes(Item.Value.IPv4, IsExclude);
         if FindIPv4Cidr <> '' then
@@ -13656,10 +13951,7 @@ begin
 
   GridSort(sgRouters);
   SetGridLastCell(sgRouters, True, miRoutersScrollTop.Checked);
-  if cbEnablePingMeasure.Checked then
-    GridScrollCheck(sgRouters, ROUTER_COUNTRY, 133)
-  else
-    GridScrollCheck(sgRouters, ROUTER_COUNTRY, 153);
+  RoutersScrollCheck;
   sgRouters.EndUpdateRows;
   lbRoutersCount.Caption := Format(TransStr('321'), [RoutersCount, RoutersDic.Count]);
 
@@ -13683,16 +13975,21 @@ begin
     cbxRoutersCountry.ItemIndex := Index;
 end;
 
-procedure TTcp.UpdateGeoFileID(ini: TMeminiFile = nil);
+procedure TTcp.UpdateGeoFileID(ini: TMeminiFile);
 begin
-  if GeoIpUpdating then
+  if GeoIpUpdateType <> gitNone then
   begin
-    GeoFileID := GetFileID(GeoIpFile).Data;
-    if Assigned(ini) then
-      SetSettings('Main', 'GeoFileID', GeoFileID, ini)
-    else
-      SetConfigString('Main', 'GeoFileID', GeoFileID);
-    GeoIpUpdating := False;
+    if GeoIpUpdateType in [gitIPv4, gitBoth] then
+    begin
+      GeoIPv4FileID := GetFileID(GeoIPv4File).Data;
+      SetSettings('Main', 'GeoIPv4FileID', GeoIPv4FileID, ini);
+    end;
+    if GeoIpUpdateType in [gitIPv6, gitBoth] then
+    begin
+      GeoIPv6FileID := GetFileID(GeoIPv6File).Data;
+      SetSettings('Main', 'GeoIPv6FileID', GeoIPv6FileID, ini);
+    end;
+    GeoIpUpdateType := gitNone;
   end;
 end;
 
@@ -13906,7 +14203,7 @@ var
   NodesCount, i: Integer;
   Router: TRouterInfo;
   NodesData: ArrOfStr;
-  CountryCode: Byte;
+  CountryCodeIPv4, CountryCodeIPv6: Byte;
   CircuitInfo: TCircuitInfo;
   GeoIpInfo: TGeoIpInfo;
   PingData: string;
@@ -13915,6 +14212,8 @@ begin
     Exit;
   LockCircuitInfo := True;
   NodesCount := 0;
+  CircuitsIPv6Count := 0;
+  CircuitsDifferentCountriesCount := 0;
   sgCircuitInfo.BeginUpdateRows;
   sgCircuitInfo.Clear(False);
 
@@ -13927,14 +14226,30 @@ begin
       inc(NodesCount);
       if RoutersDic.TryGetValue(NodesData[i], Router) then
       begin
-        CountryCode := GetCountryValue(Router.IPv4);
+        CountryCodeIPv4 := GetCountryValue(Router.IPv4);
+        if Router.IPv6 <> '' then
+        begin
+          Inc(CircuitsIPv6Count);
+          CountryCodeIPv6:= GetCountryValue(Router.IPv6);
+          if CountryCodeIPv6 <> CountryCodeIPv4 then
+            Inc(CircuitsDifferentCountriesCount);
+        end;
         sgCircuitInfo.Cells[CIRC_INFO_ID, NodesCount] := NodesData[i];
         sgCircuitInfo.Cells[CIRC_INFO_NAME, NodesCount] := Router.Name;
         if miShowPortAlongWithIp.Checked then
-          sgCircuitInfo.Cells[CIRC_INFO_IP, NodesCount] := Router.IPv4 + ':' + IntToStr(Router.Port)
+        begin
+          sgCircuitInfo.Cells[CIRC_INFO_ADDR_IPV4, NodesCount] := Router.IPv4 + ':' + IntToStr(Router.Port);
+          if Router.IPv6 <> '' then
+            sgCircuitInfo.Cells[CIRC_INFO_ADDR_IPV6, NodesCount] := FormatHost(Router.IPv6, False) + ':' + IntToStr(Router.Port)
+          else
+            sgCircuitInfo.Cells[CIRC_INFO_ADDR_IPV6, NodesCount] := Router.IPv6;
+        end
         else
-          sgCircuitInfo.Cells[CIRC_INFO_IP, NodesCount] := Router.IPv4;
-        sgCircuitInfo.Cells[CIRC_INFO_COUNTRY, NodesCount] := TransStr(CountryCodes[CountryCode]);
+        begin
+          sgCircuitInfo.Cells[CIRC_INFO_ADDR_IPV4, NodesCount] := Router.IPv4;
+          sgCircuitInfo.Cells[CIRC_INFO_ADDR_IPV6, NodesCount] := Router.IPv6;
+        end;
+        sgCircuitInfo.Cells[CIRC_INFO_COUNTRY_NAME, NodesCount] := TransStr(CountryCodes[CountryCodeIPv4]);
         sgCircuitInfo.Cells[CIRC_INFO_WEIGHT, NodesCount] := BytesFormat(Router.Bandwidth * 1024) + '/' + TransStr('180');
         if GeoIpDic.TryGetValue(Router.IPv4, GeoIpInfo) then
         begin
@@ -13951,19 +14266,20 @@ begin
       begin
         sgCircuitInfo.Cells[CIRC_INFO_ID, NodesCount] := NodesData[i];
         sgCircuitInfo.Cells[CIRC_INFO_NAME, NodesCount] := TransStr('260');
-        sgCircuitInfo.Cells[CIRC_INFO_IP, NodesCount] := TransStr('260');
-        sgCircuitInfo.Cells[CIRC_INFO_COUNTRY, NodesCount] := TransStr(CountryCodes[DEFAULT_COUNTRY_ID]);
+        sgCircuitInfo.Cells[CIRC_INFO_ADDR_IPV4, NodesCount] := TransStr('260');
+        sgCircuitInfo.Cells[CIRC_INFO_COUNTRY_NAME, NodesCount] := TransStr(CountryCodes[DEFAULT_COUNTRY_ID]);
+        sgCircuitInfo.Cells[CIRC_INFO_ADDR_IPV6, NodesCount] := TransStr('260');
         sgCircuitInfo.Cells[CIRC_INFO_WEIGHT, NodesCount] := BytesFormat(0) + '/' + TransStr('180');
       end;
       sgCircuitInfo.Cells[CIRC_INFO_PING, NodesCount] := PingData;
     end;
     lbCircuitPurpose.Caption := sgCircuits.Cells[CIRC_PURPOSE, sgCircuits.SelRow];
-    lbDetailsTime.Caption := TransStr('221') + ': ' + DateTimeToStr(CircuitInfo.Date);
+    lbCircuitInfoTime.Caption := TransStr('221') + ': ' + DateTimeToStr(CircuitInfo.Date);
   end
   else
   begin
     lbCircuitPurpose.Caption := TransStr('662');
-    lbDetailsTime.Caption := TransStr('221') + ': ' + TransStr('110');
+    lbCircuitInfoTime.Caption := TransStr('221') + ': ' + TransStr('110');
     CheckCircuitExists(CircID);
   end;
 
@@ -13971,6 +14287,7 @@ begin
     sgCircuitInfo.RowCount := NodesCount + 1
   else
     sgCircuitInfo.RowCount := 2;
+  CircuitInfoScrollCheck;
   sgCircuitInfo.EndUpdateRows;
   LockCircuitInfo := False;
 end;
@@ -14099,9 +14416,9 @@ begin
     GridSort(sgStreams);
     SetGridLastCell(sgStreams, False);
     if miShowStreamsTraffic.Checked then
-      GridScrollCheck(sgStreams, STREAMS_TARGET, 338)
+      GridScrollCheck(sgStreams, STREAMS_TARGET, 366)
     else
-      GridScrollCheck(sgStreams, STREAMS_TARGET, 451);
+      GridScrollCheck(sgStreams, STREAMS_TARGET, 479);
     sgStreams.EndUpdateRows;
     LockStreams := False;
     StreamsUpdated := False;
@@ -14452,7 +14769,7 @@ begin
   begin
     sgFilter.ColWidths[FILTER_ALIVE] := Round(55 * Scale);
     sgFilter.ColWidths[FILTER_PING] := Round(55 * Scale);
-    GridScrollCheck(sgFilter, FILTER_NAME, 268);
+    GridScrollCheck(sgFilter, FILTER_NAME, 296);
   end
   else
   begin
@@ -14460,7 +14777,7 @@ begin
     begin
       sgFilter.ColWidths[FILTER_ALIVE] := -1;
       sgFilter.ColWidths[FILTER_PING] := Round(55 * Scale);
-      GridScrollCheck(sgFilter, FILTER_NAME, 324);
+      GridScrollCheck(sgFilter, FILTER_NAME, 352);
     end
     else
     begin
@@ -14468,38 +14785,104 @@ begin
       begin
         sgFilter.ColWidths[FILTER_ALIVE] := Round(55 * Scale);
         sgFilter.ColWidths[FILTER_PING] := -1;
-        GridScrollCheck(sgFilter, FILTER_NAME, 324);
+        GridScrollCheck(sgFilter, FILTER_NAME, 352);
       end
       else
       begin
         sgFilter.ColWidths[FILTER_ALIVE] := -1;
         sgFilter.ColWidths[FILTER_PING] := -1;
-        GridScrollCheck(sgFilter, FILTER_NAME, 380);
+        GridScrollCheck(sgFilter, FILTER_NAME, 408);
       end;
     end;
   end;
 
   if PingState then
   begin
-    sgCircuitInfo.ColWidths[CIRC_INFO_NAME] := Round(120 * Scale);
-    sgCircuitInfo.ColWidths[CIRC_INFO_IP] := Round(130 * Scale);
-    sgCircuitInfo.ColWidths[CIRC_INFO_COUNTRY] := Round(114 * Scale);
-    sgCircuitInfo.ColWidths[CIRC_INFO_PING] := Round(48 * Scale);
+    sgCircuitInfo.ColWidths[CIRC_INFO_NAME] := Round(108 * Scale);
+    sgCircuitInfo.ColWidths[CIRC_INFO_ADDR_IPV4] := Round(122 * Scale);
+    sgCircuitInfo.ColWidths[CIRC_INFO_PING] := Round(44 * Scale);
+    CircuitInfoScrollCheck;
     sgRouters.ColWidths[ROUTER_NAME] := Round(106 * Scale);
-    sgRouters.ColWidths[ROUTER_IP] := Round(88 * Scale);
+    sgRouters.ColWidths[ROUTER_ADDR_IPV4] := Round(88 * Scale);
     sgRouters.ColWidths[ROUTER_PING] := Round(44 * Scale);
-    GridScrollCheck(sgRouters, ROUTER_COUNTRY, 133);
+    RoutersScrollCheck;
   end
   else
   begin
-    sgCircuitInfo.ColWidths[CIRC_INFO_NAME] := Round(135 * Scale);
-    sgCircuitInfo.ColWidths[CIRC_INFO_IP] := Round(145 * Scale);
-    sgCircuitInfo.ColWidths[CIRC_INFO_COUNTRY] := Round(134 * Scale);
+    sgCircuitInfo.ColWidths[CIRC_INFO_NAME] := Round(123 * Scale);
+    sgCircuitInfo.ColWidths[CIRC_INFO_ADDR_IPV4] := Round(137 * Scale);
     sgCircuitInfo.ColWidths[CIRC_INFO_PING] := -1;
+    CircuitInfoScrollCheck;
     sgRouters.ColWidths[ROUTER_NAME] := Round(121 * Scale);
-    sgRouters.ColWidths[ROUTER_IP] := Round(98 * Scale);
+    sgRouters.ColWidths[ROUTER_ADDR_IPV4] := Round(98 * Scale);
     sgRouters.ColWidths[ROUTER_PING] := Round(-1 * Scale);
-    GridScrollCheck(sgRouters, ROUTER_COUNTRY, 153);
+    RoutersScrollCheck;
+  end;
+end;
+
+procedure TTcp.CircuitInfoScrollCheck;
+begin
+  if miCircuitsShowIPv6CountryFlag.Checked and (CircuitsIPv6Count > 0) then
+  begin
+    sgCircuitInfo.ColWidths[CIRC_INFO_COUNTRY_NAME] := -1;
+    if CircuitsDifferentCountriesCount > 0 then
+    begin
+      sgCircuitInfo.ColWidths[CIRC_INFO_COUNTRY_FLAG] := Round(46 * Scale);
+      if cbEnablePingMeasure.Checked then
+        GridScrollCheck(sgCircuitInfo, CIRC_INFO_ADDR_IPV6, 143)
+      else
+        GridScrollCheck(sgCircuitInfo, CIRC_INFO_ADDR_IPV6, 163);
+    end
+    else
+    begin
+      sgCircuitInfo.ColWidths[CIRC_INFO_COUNTRY_FLAG] := Round(23 * Scale);
+      if cbEnablePingMeasure.Checked then
+        GridScrollCheck(sgCircuitInfo, CIRC_INFO_ADDR_IPV6, 166)
+      else
+        GridScrollCheck(sgCircuitInfo, CIRC_INFO_ADDR_IPV6, 186);
+    end;
+  end
+  else
+  begin
+    sgCircuitInfo.ColWidths[CIRC_INFO_COUNTRY_FLAG] := Round(23 * Scale);
+    sgCircuitInfo.ColWidths[CIRC_INFO_ADDR_IPV6] := -1;
+    if cbEnablePingMeasure.Checked then
+      GridScrollCheck(sgCircuitInfo, CIRC_INFO_COUNTRY_NAME, 166)
+    else
+      GridScrollCheck(sgCircuitInfo, CIRC_INFO_COUNTRY_NAME, 186);
+  end;
+end;
+
+procedure TTcp.RoutersScrollCheck;
+begin
+  if miRoutersShowIPv6CountryFlag.Checked and (RoutersIPv6Count > 0) then
+  begin
+    sgRouters.ColWidths[ROUTER_COUNTRY_NAME] := -1;
+    if RoutersDifferentCountriesCount > 0 then
+    begin
+      sgRouters.ColWidths[ROUTER_COUNTRY_FLAG] := Round(46 * Scale);
+      if cbEnablePingMeasure.Checked then
+        GridScrollCheck(sgRouters, ROUTER_ADDR_IPV6, 138)
+      else
+        GridScrollCheck(sgRouters, ROUTER_ADDR_IPV6, 158);
+    end
+    else
+    begin
+      sgRouters.ColWidths[ROUTER_COUNTRY_FLAG] := Round(23 * Scale);
+      if cbEnablePingMeasure.Checked then
+        GridScrollCheck(sgRouters, ROUTER_ADDR_IPV6, 161)
+      else
+        GridScrollCheck(sgRouters, ROUTER_ADDR_IPV6, 181);
+    end;
+  end
+  else
+  begin
+    sgRouters.ColWidths[ROUTER_COUNTRY_FLAG] := Round(23 * Scale);
+    sgRouters.ColWidths[ROUTER_ADDR_IPV6] := -1;
+    if cbEnablePingMeasure.Checked then
+      GridScrollCheck(sgRouters, ROUTER_COUNTRY_NAME, 161)
+    else
+      GridScrollCheck(sgRouters, ROUTER_COUNTRY_NAME, 181);
   end;
 end;
 
@@ -14524,7 +14907,7 @@ begin
     CheckScannerControls;
     CheckStatusControls;
     if cbEnableDetectAliveNodes.Checked and (RoutersDic.Count > 0) then
-      ConsensusUpdated := True;     
+      ConsensusUpdated := True;
     EnableOptionButtons;
   end;
 end;
@@ -14661,7 +15044,7 @@ end;
 
 procedure TTcp.SaveSortData;
 begin
-  SetConfigString('Main', 'SortData',
+  SetConfigString('Main', 'SortGridData',
     IntToStr(sgFilter.SortType) + ',' + IntToStr(sgFilter.SortCol) + ',' +
     IntToStr(sgRouters.SortType) + ',' + IntToStr(sgRouters.SortCol) + ',' +
     IntToStr(sgCircuits.SortType) + ',' + IntToStr(sgCircuits.SortCol) + ',' +
@@ -15127,6 +15510,12 @@ end;
 procedure TTcp.cbxAuthMetodChange(Sender: TObject);
 begin
   CheckAuthMetodContols;
+  EnableOptionButtons;
+end;
+
+procedure TTcp.cbxAutoScanTypeChange(Sender: TObject);
+begin
+  CheckScannerControls;
   EnableOptionButtons;
 end;
 
@@ -16023,7 +16412,7 @@ end;
 
 procedure TTcp.sbWordWrapClick(Sender: TObject);
 begin
-  meLog.WordWrap := sbWordWrap.Down;
+ meLog.WordWrap := sbWordWrap.Down;
   CheckLogAutoScroll(True);
   SetConfigBoolean('Log', 'WordWrap', sbWordWrap.Down);
 end;
@@ -16315,6 +16704,12 @@ begin
   sbShowCircuits.Click;
 end;
 
+procedure TTcp.miRoutersShowIPv6CountryFlagClick(Sender: TObject);
+begin
+  ShowRouters;
+  SetConfigBoolean('Routers', 'RoutersShowIPv6CountryFlag', miRoutersShowIPv6CountryFlag.Checked);
+end;
+
 procedure TTcp.miRoutersShowFlagsHintClick(Sender: TObject);
 begin
   SetConfigBoolean('Routers', 'RoutersShowFlagsHint', miRoutersShowFlagsHint.Checked);
@@ -16492,7 +16887,6 @@ begin
   LastRoutersFilter := Data;
 
   ParseStr := Explode(';', Data);
-
   for i := 0 to Length(ParseStr) - 1 do
   begin
     case i of
@@ -16836,6 +17230,12 @@ begin
   SetConfigBoolean('Circuits', 'CircuitsShowFlagsHint', miCircuitsShowFlagsHint.Checked);
 end;
 
+procedure TTcp.miCircuitsShowIPv6CountryFlagClick(Sender: TObject);
+begin
+  ShowCircuitInfo(sgCircuits.Cells[CIRC_ID, sgCircuits.SelRow]);
+  SetConfigBoolean('Circuits', 'CircuitsShowIPv6CountryFlag', miCircuitsShowIPv6CountryFlag.Checked);
+end;
+
 procedure TTcp.miCircuitsUpdateNowClick(Sender: TObject);
 begin
   UpdateCircuitsData;
@@ -17018,7 +17418,7 @@ var
   Transport, IPv6: string;
 begin
   case RequestBridgesType of
-    REQUEST_TYPE_VANILLA: Transport := '?transport=0';
+    REQUEST_TYPE_VANILLA: Transport := '?transport=vanilla';
     REQUEST_TYPE_OBFUSCATED: Transport := '?transport=obfs4';
     REQUEST_TYPE_WEBTUNNEL: Transport := '?transport=webtunnel';
     else
@@ -17048,7 +17448,7 @@ var
   GeoIpInfo: TGeoIpInfo;
   IpStr: string;
 begin
-  IpStr := GetAddressFromSocket(IpAddr);
+  IpStr := ExtractDomain(IpAddr);
   if ValidAddress(IpStr) <> atNone then
   begin
     pcOptions.ActivePage := tsFilter;
@@ -17141,7 +17541,7 @@ begin
     Index := sgRouters.Cols[FILTER_ID].IndexOf(RouterID);
     if Index < 0 then
       Index := 1;
-    SetGridLastCell(sgRouters, True, False, False, Index, ROUTER_IP);
+    SetGridLastCell(sgRouters, True, False, False, Index, ROUTER_ADDR_IPV4);
     sbShowRouters.Click;
     SaveRoutersFilterdata;
   end;
@@ -17171,7 +17571,6 @@ begin
   lbTransportsHandler.Enabled := State;
   lbTransportState.Enabled := State;
   lbTransportType.Enabled := State;
-  lbHandlerParams.Enabled := State;
   LockTransportControls := not State;
 end;
 
@@ -17478,12 +17877,12 @@ var
   SubMenu: TMenuItem;
   ls, lr: TStringList;
   i: Integer;
-  CountryID: Byte;
+  Ipv4CountryCode, Ipv6CountryCode: string;
   Router: TRouterInfo;
   RangesStr, NodeStr: string;
   ParseStr: ArrOfStr;
   NodeDataType: TNodeDataType;
-  FindRouter: Boolean;
+  FindRouter, DoubleCountry: Boolean;
 
   function IpToMask(IpStr: string; Mask: Byte): string;
   var
@@ -17502,13 +17901,13 @@ var
   end;
 
 begin
+  DoubleCountry := False;
   ls := TStringList.Create;
   try
     ls.Add(NodeID);
     if RoutersDic.TryGetValue(NodeID, Router) then
     begin
       FindRouter := True;
-      CountryID := GetCountryValue(Router.IPv4);
       ls.Add(Router.IPv4);
       ls.Add('-');
       ls.Add(IpToMask(Router.IPv4, 24));
@@ -17531,7 +17930,17 @@ begin
         end;
       end;
       ls.Add('-');
-      ls.Add(UpperCase(CountryCodes[CountryID]) + ' (' + TransStr(CountryCodes[CountryID]) + ')');
+      Ipv4CountryCode := CountryCodes[GetCountryValue(Router.IPv4)];
+      ls.Add(UpperCase(Ipv4CountryCode) + ' (' + TransStr(Ipv4CountryCode) + ')');
+      if Router.IPv6 <> '' then
+      begin
+        Ipv6CountryCode := CountryCodes[GetCountryValue(Router.IPv6)];
+        if Ipv6CountryCode <> Ipv4CountryCode then
+        begin
+          DoubleCountry := True;
+          ls.Add(UpperCase(Ipv6CountryCode) + ' (' + TransStr(Ipv6CountryCode) + ')');
+        end;
+      end;
     end
     else
       FindRouter := False;
@@ -17566,7 +17975,18 @@ begin
           dtHash: SubMenu.ImageIndex := 23;
           dtIPv4: SubMenu.ImageIndex := 33;
           dtIPv4Cidr: SubMenu.ImageIndex := 48;
-          dtCode: SubMenu.ImageIndex := 57;
+          dtCode:
+          begin
+            if DoubleCountry then
+            begin
+              if NodeStr = Ipv4CountryCode then
+                SubMenu.ImageIndex := 79
+              else
+                SubMenu.ImageIndex := 80;
+            end
+            else
+              SubMenu.ImageIndex := 57;
+          end;
         end;
         if SubMenu.Enabled then
           SubMenu.OnClick := AddToNodesListClick;
@@ -17584,13 +18004,14 @@ var
   ls: TStringList;
   i: Integer;
   NodeDataType: TNodeDataType;
-  RangesStr, NodeStr, DeleteList, CountryCode: string;
+  RangesStr, NodeStr, DeleteList, Ipv4CountryCode, Ipv6CountryCode: string;
   ParseStr: ArrOfStr;
   SubMenu: TMenuItem;
+  DoubleCountry: Boolean;
 begin
   if RoutersDic.TryGetValue(NodeID, Router) then
   begin
-    CountryCode := CountryCodes[GetCountryValue(Router.IPv4)];
+    DoubleCountry := False;
     ls := TStringList.Create;
     try
       ls.Add(NodeID);
@@ -17603,7 +18024,18 @@ begin
           ls.Add(ParseStr[i]);
       end;
       SortNodesList(ls, SORT_DESC);
-      ls.Add(UpperCase(CountryCode) + ' (' + TransStr(CountryCode) + ')');
+
+      Ipv4CountryCode := CountryCodes[GetCountryValue(Router.IPv4)];
+      ls.Add(UpperCase(Ipv4CountryCode) + ' (' + TransStr(Ipv4CountryCode) + ')');
+      if Router.IPv6 <> '' then
+      begin
+        Ipv6CountryCode := CountryCodes[GetCountryValue(Router.IPv6)];
+        if Ipv6CountryCode <> Ipv4CountryCode then
+        begin
+          DoubleCountry := True;
+          ls.Add(UpperCase(Ipv6CountryCode) + ' (' + TransStr(Ipv6CountryCode) + ')');
+        end;
+      end;
 
       DeleteList := '';
       for i := 0 to ls.Count - 1 do
@@ -17623,7 +18055,18 @@ begin
               dtHash: SubMenu.ImageIndex := 23;
               dtIPv4: SubMenu.ImageIndex := 33;
               dtIPv4Cidr: SubMenu.ImageIndex := 48;
-              dtCode: SubMenu.ImageIndex := 57;
+              dtCode:
+              begin
+                if DoubleCountry then
+                begin
+                  if NodeStr = Ipv4CountryCode then
+                    SubMenu.ImageIndex := 79
+                  else
+                    SubMenu.ImageIndex := 80;
+                end
+                else
+                  SubMenu.ImageIndex := 57;
+              end;
             end;
             SubMenu.Caption := ls[i];
             SubMenu.Hint := '';
@@ -18344,7 +18787,7 @@ begin
         FindCountry := True;
       end;
 
-      if FindCountry and GeoIpExists then
+      if FindCountry and GeoIPv4Exists then
         Inc(UnknownFallbackDirCountriesCount);
 
       CountryStr := CountryCodes[CountryID];
@@ -18637,16 +19080,16 @@ procedure TTcp.CheckStreamsControls;
 begin
   sgStreamsInfo.Visible := miShowStreamsInfo.Checked;
   if miShowStreamsInfo.Checked then
-    sgStreams.Height := Round(177 * Scale)
+    sgStreams.Height := Round(209 * Scale)
   else
-    sgStreams.Height := Round(297 * Scale);
+    sgStreams.Height := Round(345 * Scale);
   if miShowStreamsTraffic.Checked then
   begin
     sgStreams.ColWidths[STREAMS_BYTES_READ] := Round(55 * Scale);
     sgStreams.ColWidths[STREAMS_BYTES_WRITTEN] := Round(55 * Scale);
-    GridScrollCheck(sgStreams, STREAMS_TARGET, 338);
-    sgStreamsInfo.ColWidths[STREAMS_INFO_SOURCE_ADDR] := Round(129 * Scale);
-    sgStreamsInfo.ColWidths[STREAMS_INFO_DEST_ADDR] := Round(129 * Scale);
+    GridScrollCheck(sgStreams, STREAMS_TARGET, 366);
+    sgStreamsInfo.ColWidths[STREAMS_INFO_SOURCE_ADDR] := Round(143 * Scale);
+    sgStreamsInfo.ColWidths[STREAMS_INFO_DEST_ADDR] := Round(143 * Scale);
     sgStreamsInfo.ColWidths[STREAMS_INFO_BYTES_READ] := Round(55 * Scale);
     sgStreamsInfo.ColWidths[STREAMS_INFO_BYTES_WRITTEN] := Round(55 * Scale);
     GridScrollCheck(sgStreamsInfo, STREAMS_INFO_PURPOSE, 134);
@@ -18655,9 +19098,9 @@ begin
   begin
     sgStreams.ColWidths[STREAMS_BYTES_READ] := -1;
     sgStreams.ColWidths[STREAMS_BYTES_WRITTEN] := -1;
-    GridScrollCheck(sgStreams, STREAMS_TARGET, 451);
-    sgStreamsInfo.ColWidths[STREAMS_INFO_SOURCE_ADDR] := Round(164 * Scale);
-    sgStreamsInfo.ColWidths[STREAMS_INFO_DEST_ADDR] := Round(164 * Scale);
+    GridScrollCheck(sgStreams, STREAMS_TARGET, 479);
+    sgStreamsInfo.ColWidths[STREAMS_INFO_SOURCE_ADDR] := Round(178 * Scale);
+    sgStreamsInfo.ColWidths[STREAMS_INFO_DEST_ADDR] := Round(178 * Scale);
     sgStreamsInfo.ColWidths[STREAMS_INFO_BYTES_READ] := -1;
     sgStreamsInfo.ColWidths[STREAMS_INFO_BYTES_WRITTEN] := -1;
     GridScrollCheck(sgStreamsInfo, STREAMS_INFO_PURPOSE, 177);
@@ -18699,7 +19142,7 @@ begin
   sgFilter.ColWidths[FILTER_EXIT_NODES] := Round(23 * Scale);
   sgFilter.ColWidths[FILTER_EXCLUDE_NODES] := Round(23 * Scale);
   sgRouters.ColWidths[ROUTER_ID] := -1;
-  sgRouters.ColWidths[ROUTER_FLAG] := Round(23 * Scale);
+  sgRouters.ColWidths[ROUTER_ADDR_IPV4] := -1;
   sgRouters.ColWidths[ROUTER_WEIGHT] := Round(63 * Scale);
   sgRouters.ColWidths[ROUTER_PORT] := Round(43 * Scale);
   sgRouters.ColWidths[ROUTER_VERSION] := Round(60 * Scale);
@@ -18712,7 +19155,6 @@ begin
   sgCircuits.ColWidths[CIRC_PARAMS] := -1;
   sgCircuits.ColWidths[CIRC_STREAMS] := Round(30 * Scale);
   sgCircuitInfo.ColWidths[CIRC_INFO_ID] := -1;
-  sgCircuitInfo.ColWidths[CIRC_INFO_FLAG] := Round(23 * Scale);
   sgCircuitInfo.ColWidths[CIRC_INFO_WEIGHT] := Round(66 * Scale);
   sgStreams.ColWidths[STREAMS_ID] := -1;
   sgStreams.ColWidths[STREAMS_TRACK] := Round(24 * Scale);
@@ -18958,9 +19400,9 @@ begin
   sgCircuits.Tag := GRID_CIRCUITS;
   sgStreams.Tag := GRID_STREAMS;
   sgHs.Tag := GRID_HS;
-  sgHsPorts.Tag := GRID_HSP;
+  sgHsPorts.Tag := GRID_HS_PORTS;
   sgCircuitInfo.Tag := GRID_CIRC_INFO;
-  sgStreamsInfo.Tag := GRID_STREAM_INFO;
+  sgStreamsInfo.Tag := GRID_STREAMS_INFO;
   sgTransports.Tag := GRID_TRANSPORTS;
 
   sgFilter.Key := FILTER_ID;
@@ -19234,7 +19676,7 @@ begin
     else
       Application.CancelHint;
   end;
-  mnDetails.AutoPopup := State and (ExitNodeID <> '');
+  mnCircuitInfo.AutoPopup := State and (ExitNodeID <> '');
 end;
 
 procedure TTcp.ShowFavoritesRouters(Sender: TObject; Button: TMouseButton;
@@ -19783,7 +20225,7 @@ begin
   EnableOptionButtons;
 end;
 
-procedure TTcp.miDetailsUpdateIpClick(Sender: TObject);
+procedure TTcp.miCircuitInfoUpdateIpClick(Sender: TObject);
 begin
   SendDataThroughProxy;
 end;

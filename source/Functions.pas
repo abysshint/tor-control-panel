@@ -207,6 +207,7 @@ var
   procedure GridSetKeyboardLayout(aSg: TStringGrid; ACol: Integer);
   procedure GridSetFocus(aSg: TStringGrid);
   procedure GridShowHints(aSg: TStringGrid);
+  procedure GridShowCountryHint(aSg: TStringGrid; IPv4Col, IPv6Col, FlagCol: Integer; UseSocket: Boolean; out HintGeoIpType: TGeoIpType);
   procedure GridScrollCheck(aSg: TStringGrid; ACol, ColWidth: Integer);
   procedure GridSelectCell(aSg: TStringGrid; ACol, ARow: Integer);
   function GetRouterStrFlags(Flags: TRouterFlags): string;
@@ -276,11 +277,32 @@ var
   procedure DeleteConfig(var Config: TConfigFile; const Param: string; Flags: TConfigFlags = []);
   procedure LoadConfig(var Config: TConfigFile; Flags: TConfigFlags = []);
   procedure SaveConfig(var Config: TConfigFile; Flags: TConfigFlags = []);
+  function TryGetStrFromIndex(var Data: ArrOfStr; out Str: string; Index: Integer): Boolean;
+  function ParsedDataToStr(var Data: ArrOfStr; Delimiter: Char = ','): string;
 
 implementation
 
 uses
   Main, Languages;
+
+function TryGetStrFromIndex(var Data: ArrOfStr; out Str: string; Index: Integer): Boolean;
+begin
+  Result := Length(Data) > Index;
+  if Result then
+    Str := Data[Index]
+  else
+    Str := '';
+end;
+
+function ParsedDataToStr(var Data: ArrOfStr; Delimiter: Char = ','): string;
+var
+  i: Integer;
+begin
+  Result := '';
+  for i := 0 to Length(Data) - 1 do
+    Result := Result + Delimiter + Data[i];
+  Delete(Result, 1, 1);
+end;
 
 function InsertMenuItem(ParentMenu: TMenuItem; FTag, FImageIndex: Integer;
   FCaption: string = ''; FOnClick: TNotifyEvent = nil; FChecked: Boolean = False;
@@ -528,13 +550,12 @@ begin
   begin
     if Bridge.Port = BridgeInfo.Router.Port then
     begin
-      Result := BridgeInfo.Router.IPv4;
+      case Bridge.SocketType of
+        soIPv4: Result := BridgeInfo.Router.IPv4;
+        soIPv6: Result := BridgeInfo.Router.IPv6;
+      end;
       if BridgeInfo.Source <> '' then
         Exit;
-      case Bridge.SocketType of
-        soIPv4: if Bridge.Ip = BridgeInfo.Router.IPv4 then Exit;
-        soIPv6: if Bridge.Ip = RemoveBrackets(BridgeInfo.Router.IPv6, btSquare) then Exit;
-      end;
     end;
   end
   else
@@ -543,14 +564,15 @@ begin
     begin
       if (Bridge.Port = RouterInfo.Port) and (rfRelay in RouterInfo.Flags) then
       begin
-        Result := RouterInfo.IPv4;
         case Bridge.SocketType of
-          soIPv4: if Bridge.Ip = RouterInfo.IPv4 then Exit;
-          soIPv6: if Bridge.Ip = RemoveBrackets(RouterInfo.IPv6, btSquare) then Exit;
+          soIPv4: Result := RouterInfo.IPv4;
+          soIPv6: Result := RouterInfo.IPv6;
         end;
       end;
     end;
   end;
+  if Result = Bridge.Ip then
+    Exit;
   Result := Bridge.Ip;
   if GeoIpDic.TryGetValue(Bridge.Ip, GeoIpInfo) then
   begin
@@ -820,6 +842,7 @@ function GridGetSpecialData(aSg: TStringGrid; ACol, ARow: Integer; KeyStr: strin
 var
   RouterInfo: TRouterInfo;
   StreamInfo: TStreamInfo;
+  StrData: string;
 begin
   Result := '';
   case aSg.Tag of
@@ -831,7 +854,23 @@ begin
     GRID_ROUTERS:
     begin
       case ACol of
-        ROUTER_FLAG: Result := CountryCodes[GetCountryValue(aSg.Cells[ROUTER_IP, ARow])];
+        ROUTER_COUNTRY_FLAG:
+        begin
+          Result := CountryCodes[GetCountryValue(aSg.Cells[ROUTER_ADDR_IPV4, ARow])];
+          if Tcp.miRoutersShowIPv6CountryFlag.Checked and (aSg.Cells[ROUTER_ADDR_IPV6, ARow] <> '') then
+          begin
+            StrData := CountryCodes[GetCountryValue(aSg.Cells[ROUTER_ADDR_IPV6, ARow])];
+            if Result <> StrData then
+              Result := Result + ',' + StrData;
+          end;
+        end;
+        ROUTER_ADDR_IPV6:
+        begin
+          if aSg.Cells[ROUTER_ADDR_IPV6, ARow] = '' then
+            Result := NONE_CHAR
+          else
+            Result := aSg.Cells[ROUTER_ADDR_IPV6, ARow];
+        end;
         ROUTER_FLAGS:
         begin
           if RoutersDic.TryGetValue(KeyStr, RouterInfo) then
@@ -846,10 +885,27 @@ begin
     end;
     GRID_CIRC_INFO:
     begin
-      if ACol = CIRC_INFO_FLAG then
-        Result := CountryCodes[GetCountryValue(aSg.Cells[CIRC_INFO_IP, ARow])];
+      case ACol of
+        CIRC_INFO_COUNTRY_FLAG:
+        begin
+          Result := CountryCodes[GetCountryValue(aSg.Cells[CIRC_INFO_ADDR_IPV4, ARow])];
+          if Tcp.miCircuitsShowIPv6CountryFlag.Checked and (aSg.Cells[CIRC_INFO_ADDR_IPV6, ARow] <> '') then
+          begin
+            StrData := CountryCodes[GetCountryValue(aSg.Cells[CIRC_INFO_ADDR_IPV6, ARow])];
+            if Result <> StrData then
+              Result := Result + ',' + StrData;
+          end;
+        end;
+        CIRC_INFO_ADDR_IPV6:
+        begin
+          if aSg.Cells[CIRC_INFO_ADDR_IPV6, ARow] = '' then
+            Result := NONE_CHAR
+          else
+            Result := aSg.Cells[CIRC_INFO_ADDR_IPV6, ARow];
+        end;
+      end;
     end;
-    GRID_STREAM_INFO:
+    GRID_STREAMS_INFO:
     begin
       if ACol = STREAMS_INFO_SOURCE_ADDR then
       begin
@@ -882,7 +938,7 @@ begin
       'C':
       begin
         Data := '';
-        UseSpecialData := aSg.Tag in [GRID_FILTER, GRID_ROUTERS, GRID_CIRCUITS, GRID_CIRC_INFO, GRID_STREAM_INFO];
+        UseSpecialData := aSg.Tag in [GRID_FILTER, GRID_ROUTERS, GRID_CIRCUITS, GRID_CIRC_INFO, GRID_STREAMS_INFO];
         if MultiRows or ((aSg.IsMultiRow or (aSg.Selection.Left <> aSg.Selection.Right)) and not (goRowSelect in aSg.Options)) then
         begin
           for i := aSg.Selection.Top to aSg.Selection.Bottom do
@@ -941,7 +997,7 @@ begin
     VK_APPS:
     begin
       case aSg.Tag of
-        GRID_HS, GRID_HSP: GridCheckAutoPopup(aSg, aSg.Row, True);
+        GRID_HS, GRID_HS_PORTS: GridCheckAutoPopup(aSg, aSg.Row, True);
         else
           GridCheckAutoPopup(aSg, aSg.Row);
       end;
@@ -1053,6 +1109,71 @@ begin
   begin
     Application.CancelHint;
     aSg.Hint := '';
+  end;
+end;
+
+procedure GridShowCountryHint(aSg: TStringGrid; IPv4Col, IPv6Col, FlagCol: Integer; UseSocket: Boolean; out HintGeoIpType: TGeoIpType);
+var
+  PixelData, RowIndex, MaxItems: Integer;
+  CountryCodeIPv4, CountryCodeIPv6: Byte;
+  IPv4Str, IPv6Str: string;
+  CellRect, CellPoint: TRect;
+  Fail: Boolean;
+begin
+  Fail := True;
+  RowIndex := aSg.MovRow;
+  if not aSg.IsEmptyRow(RowIndex) then
+  begin
+    IPv4Str := aSg.Cells[IPv4Col, RowIndex];
+    if IPv4Str <> '' then
+    begin
+      MaxItems := 1;
+      if UseSocket then
+        IPv4Str := GetAddressFromSocket(IPv4Str, True);
+      CountryCodeIPv4 := GetCountryValue(IPv4Str);
+      IPv6Str := aSg.Cells[IPv6Col, RowIndex];
+      if IPv6Str <> '' then
+      begin
+        if UseSocket then
+          IPv6Str := GetAddressFromSocket(IPv6Str);
+        CountryCodeIPv6 := GetCountryValue(IPv6Str);
+        if CountryCodeIPv6 <> CountryCodeIPv4 then
+          MaxItems := 2;
+      end
+      else
+        CountryCodeIPv6 := DEFAULT_COUNTRY_ID;
+      CellRect := aSg.CellRect(FlagCol, aSg.MovRow);
+      CellPoint := aSg.ClientToScreen(CellRect);
+      PixelData := (Mouse.CursorPos.X - CellPoint.Left - (CellRect.Width - MaxItems * 20) div 2);
+      if InRange(PixelData, 0, MaxItems * 20 - 1) then
+      begin
+        case PixelData div 20 of
+          0:
+          begin
+            HintGeoIpType := gitIPv4;
+            aSg.Hint := TransStr(CountryCodes[CountryCodeIPv4]);
+          end;
+          1:
+          begin
+            HintGeoIpType := gitIPv6;
+            aSg.Hint := TransStr(CountryCodes[CountryCodeIPv6]);
+          end
+          else
+          begin
+            HintGeoIpType := gitBoth;
+            aSg.Hint := TransStr('??');
+          end;
+        end;
+        Application.ActivateHint(Mouse.CursorPos);
+        Exit;
+      end;
+    end;
+  end;
+  if Fail then
+  begin
+    Application.CancelHint;
+    aSg.Hint := '';
+    HintGeoIpType := gitNone;
   end;
 end;
 
@@ -3293,7 +3414,7 @@ begin
   end
   else
   begin
-    if HasBrackets(HostStr) then
+    if (HostStr = '') or HasBrackets(HostStr) then
       Result := HostStr
     else
       Result := '[' + HostStr + ']'
@@ -3325,8 +3446,6 @@ begin
   begin
     Port := GetPortFromSocket(SocketStr);
     IpStr := GetAddressFromSocket(SocketStr);
-    if SocketType = soIPv6 then
-      IpStr := FormatHost(IpStr);
     for BridgesItem in BridgesDic do
     begin
       if FindData(BridgesItem.Value.Router) then

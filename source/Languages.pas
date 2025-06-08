@@ -17,11 +17,11 @@ uses
   procedure TranslateArray(var HeaderArray: array of string; Header: string);
 
 var
-  DetailsHeader: array [0..5] of string;
+  CircuitInfoHeader: array [0..6] of string;
   FilterHeader: array [0..8] of string;
   HsHeader: array [0..3] of string;
   HsPortsHeader: array [0..2] of string;
-  RoutersHeader: array [0..8] of string;
+  RoutersHeader: array [0..9] of string;
   CircuitsHeader: array [0..1] of string;
   StreamsHeader: array [0..0] of string;
   StreamsInfoHeader: array [0..2] of string;
@@ -247,7 +247,7 @@ begin
     LoadStr('228', 'Скопировать в буфер обмена');
     LoadStr('230', 'Название,Версия,Точек входа,Соединений');
     LoadStr('231', 'Интерфейс,Порт,Виртуальный');
-    LoadStr('232', 'Ник,IP адрес,,Страна,Вес,Пинг');
+    LoadStr('232', 'Ник,IPv4 адрес,,Страна,IPv6 адрес,Вес,Пинг');
     LoadStr('233', 'ID,,Страна,Всего,Вход,Выход,Мосты,Живые,∑ пинг');
     LoadStr('234', 'Б,КБ,МБ,ГБ,ТБ,ПБ,ЭБ');
     LoadStr('235', 'Информация');
@@ -304,7 +304,7 @@ begin
     LoadStr('289', 'Средние');
     LoadStr('290', 'Выходные');
     LoadStr('310', 'Действия с роутерами');
-    LoadStr('320', 'Ник,IP адрес,,Страна,Вес,Порт,Версия,Пинг,Флаги');
+    LoadStr('320', 'Ник,IPv4 адрес,,Страна,IPv6 адрес,Вес,Порт,Версия,Пинг,Флаги');
     LoadStr('321', 'Показано: %d из %d');
     LoadLns('322', '\n  Список хэшей, определяющих ваше семейство\n\n  Пример:\n\n        ABCD1234CDEF5..');
     LoadStr('323', 'Роутеры');
@@ -467,10 +467,11 @@ begin
     LoadStr('694', 'Выключить режим предпочитаемого моста');
     LoadStr('695', 'Нестабильный');
     LoadLns('697', 'Вы собираетесь выключить режим "Только чтение".\n\nЛюбые изменения списка мостов в программе будут перезаписывать выбранный вами файл.\n\nВы действительно хотите это сделать?');
+    LoadStr('702', 'Показывать IPv6 адрес и флаг');
 
     TranslateArray(HsHeader, TransStr('230'));
     TranslateArray(HsPortsHeader, TransStr('231'));
-    TranslateArray(DetailsHeader, TransStr('232'));
+    TranslateArray(CircuitInfoHeader, TransStr('232'));
     TranslateArray(FilterHeader, TransStr('233'));
     TranslateArray(RoutersHeader, TransStr('320'));
     TranslateArray(CircuitsHeader, TransStr('329'));
@@ -733,7 +734,7 @@ begin
     Tcp.edTransports.TextHint := Load('462', 'Список поддерживаемых транспортов');
     Tcp.lbTransportsHandler.Caption := Load('463', 'Обработчик');
     Tcp.edTransportsHandler.TextHint := Load('464', 'Введите имя файла');
-    Tcp.lbHandlerParams.Caption := Load('465', 'Параметры');
+    Tcp.cbHandlerParamsState.Caption := Load('465', 'Параметры');
     Tcp.lbTransportState.Caption := TransStr('199');
     LoadList(Tcp.cbxTransportState, '689', '"Автовыбор","Включено","Выключено"');
     Tcp.lbTransportType.Caption := TransStr('151');
@@ -803,10 +804,10 @@ begin
     Tcp.lbFingerprintCaption.Caption := Load('218', 'Идентификатор') + ':';
     Tcp.lbBridgeCaption.Caption := Load('219', 'Адрес моста') + ':';
     if AlreadyStarted then
-      Tcp.lbDetailsTime.Caption := TransStr('221') + ': ' + SeparateRight(Tcp.lbDetailsTime.Caption, ': ')
+      Tcp.lbCircuitInfoTime.Caption := TransStr('221') + ': ' + SeparateRight(Tcp.lbCircuitInfoTime.Caption, ': ')
     else
     begin
-      Tcp.lbDetailsTime.Caption := TransStr('221') + ': ' + TransStr('110');
+      Tcp.lbCircuitInfoTime.Caption := TransStr('221') + ': ' + TransStr('110');
       Tcp.lbClientVersion.Caption := TransStr('110');
       Tcp.lbServerExternalIp.Caption := TransStr('260');
       Tcp.lbFingerprint.Caption := TransStr('260');
@@ -875,11 +876,11 @@ begin
     Tcp.miCheckIpProxySocks.Caption := TransStr('225');
     Tcp.miCheckIpProxyHttp.Caption := TransStr('593');
 
-    Tcp.miDetailsUpdateIp.Caption := TransStr('284');
-    Tcp.miDetailsExtractData.Caption := TransStr('669');
-    Tcp.miDetailsAddToNodesList.Caption := TransStr('285');
-    Tcp.miDetailsSelectTemplate.Caption := TransStr('286');
-    Tcp.miDetailsRelayOperations.Caption := TransStr('310');
+    Tcp.miCircuitInfoUpdateIp.Caption := TransStr('284');
+    Tcp.miCircuitInfoExtractData.Caption := TransStr('669');
+    Tcp.miCircuitInfoAddToNodesList.Caption := TransStr('285');
+    Tcp.miCircuitInfoSelectTemplate.Caption := TransStr('286');
+    Tcp.miCircuitInfoRelayOperations.Caption := TransStr('310');
 
     Tcp.miGetBridges.Caption := Load('291', 'Получить мосты');
     Tcp.miGetBridgesSite.Caption := Load('501', 'Веб-сайт');
@@ -1036,6 +1037,7 @@ begin
     Tcp.miCircuitsUpdateManual.Caption := Load('541', 'Обновлять вручную');
     Tcp.miShowPortAlongWithIp.Caption := Load('611', 'Показывать порт вместе с IP адресом роутера');
     Tcp.miCircuitsShowFlagsHint.Caption := TransStr('568');
+    Tcp.miCircuitsShowIPv6CountryFlag.Caption := TransStr('702');
 
     Tcp.miStreamsDestroyStream.Caption := TransStr('524');
     Tcp.miStreamsOpenInBrowser.Caption := TransStr('542');
@@ -1086,6 +1088,7 @@ begin
     Tcp.miRoutersScrollTop.Caption := TransStr('160');
     Tcp.miRoutersSelectRow.Caption := TransStr('515');
     Tcp.miRoutersShowFlagsHint.Caption := TransStr('568');
+    Tcp.miRoutersShowIPv6CountryFlag.Caption := TransStr('702');
     Tcp.miLoadCachedRoutersOnStartup.Caption := Load('569', 'Загружать роутеры из кэша при запуске');
     Tcp.miDisableSelectionUnSuitableAsBridge.Caption := Load('570', 'Запретить выбор в качестве моста неподходящих узлов');
     Tcp.miConvertNodes.Caption := Load('571', 'Преобразовывать IP, CIDR и коды стран в хэши');

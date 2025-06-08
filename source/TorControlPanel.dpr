@@ -13,7 +13,8 @@ uses
   ConstData in 'ConstData.pas';
 
 var
-  i, Locker: Integer;
+  i: Integer;
+  Locker: THandle;
   AppDataDir, DataDir: string;
 
 {$IFDEF RELEASE}
@@ -56,11 +57,11 @@ begin
     UserDir := AppDataDir;
 
   ForceDirectories(UserDir);
+  UserDir := ExtractShortPathName(UserDir);
 
   Locker := FileCreate(UserDir + 'lock.tcp');
-  if Locker = -1 then
+  if Locker = INVALID_HANDLE_VALUE then
     Exit;
-  UserDir := ExtractShortPathName(UserDir);
 
   Application.Initialize;
   Application.MainFormOnTaskbar := False;
