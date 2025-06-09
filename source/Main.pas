@@ -18921,7 +18921,7 @@ begin
   [
     'Tor Control Panel',
     GetFileVersionStr(Paramstr(0)) + BitStr,
-    'Copyright © 2020-2024, abysshint',
+    'Copyright © 2020-2025, abysshint & contributors',
     TransStr('357')
   ]), TransStr('355'), mtInfo, True) then
   begin
