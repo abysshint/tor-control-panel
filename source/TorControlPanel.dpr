@@ -10,7 +10,8 @@ uses
   Functions in 'Functions.pas',
   Languages in 'Languages.pas',
   Addons in 'Addons.pas',
-  ConstData in 'ConstData.pas';
+  ConstData in 'ConstData.pas',
+  ClassData in 'ClassData.pas';
 
 var
   i: Integer;

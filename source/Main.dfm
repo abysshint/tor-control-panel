@@ -563,16 +563,16 @@ object Tcp: TTcp
       OnClick = sbDecreaseFormClick
     end
     object lbScanType: TLabel
-      Left = 628
+      Left = 607
       Top = 11
-      Width = 170
+      Width = 181
       Height = 13
-      Caption = #1054#1087#1088#1077#1076#1077#1083#1077#1085#1080#1077' '#1078#1080#1074#1099#1093' '#1082#1072#1090#1072#1083#1086#1075#1086#1074'..'
+      Caption = #1055#1088#1086#1074#1077#1088#1082#1072' '#1076#1086#1089#1090#1091#1087#1085#1086#1089#1090#1080' '#1082#1072#1090#1072#1083#1086#1075#1086#1074'..'
       Transparent = True
       Visible = False
     end
     object lbScanProgress: TLabel
-      Left = 628
+      Left = 607
       Top = 26
       Width = 46
       Height = 13
@@ -627,9 +627,9 @@ object Tcp: TTcp
       OnClick = btnSwitchTorClick
     end
     object pbScanProgress: TProgressBar
-      Left = 677
+      Left = 656
       Top = 27
-      Width = 119
+      Width = 140
       Height = 13
       Cursor = crHandPoint
       ParentShowHint = False
@@ -4383,7 +4383,7 @@ object Tcp: TTcp
           Top = 262
           Width = 300
           Height = 17
-          Caption = #1040#1074#1090#1086#1084#1072#1090#1080#1095#1077#1089#1082#1080' '#1086#1087#1088#1077#1076#1077#1083#1103#1090#1100' '#1087#1080#1085#1075' '#1080' '#1078#1080#1074#1099#1077' '#1091#1079#1083#1099
+          Caption = #1040#1074#1090#1086#1084#1072#1090#1080#1095#1077#1089#1082#1072#1103' '#1087#1088#1086#1074#1077#1088#1082#1072' '#1087#1080#1085#1075#1072' '#1080' '#1076#1086#1089#1090#1091#1087#1085#1086#1089#1090#1080' '#1091#1079#1083#1086#1074
           Checked = True
           State = cbChecked
           TabOrder = 18
@@ -4394,7 +4394,7 @@ object Tcp: TTcp
           Top = 21
           Width = 300
           Height = 17
-          Caption = #1042#1082#1083#1102#1095#1080#1090#1100' '#1086#1087#1088#1077#1076#1077#1083#1077#1085#1080#1077' '#1078#1080#1074#1099#1093' '#1091#1079#1083#1086#1074
+          Caption = #1042#1082#1083#1102#1095#1080#1090#1100' '#1087#1088#1086#1074#1077#1088#1082#1091' '#1076#1086#1089#1090#1091#1087#1085#1086#1089#1090#1080' '#1091#1079#1083#1086#1074
           Checked = True
           State = cbChecked
           TabOrder = 0
@@ -4651,7 +4651,7 @@ object Tcp: TTcp
           Height = 21
           Associate = edScanPingTimeout
           Min = 1000
-          Max = 60000
+          Max = 30000
           Increment = 1000
           Position = 2000
           TabOrder = 7
@@ -5669,7 +5669,7 @@ object Tcp: TTcp
       end
       object miClearAliveCache: TMenuItem
         Tag = 2
-        Caption = #1054#1095#1080#1089#1090#1080#1090#1100' '#1082#1101#1096' '#1078#1080#1074#1099#1093' '#1091#1079#1083#1086#1074
+        Caption = #1054#1095#1080#1089#1090#1080#1090#1100' '#1082#1101#1096' '#1076#1086#1089#1090#1091#1087#1085#1086#1089#1090#1080' '#1091#1079#1083#1086#1074
         OnClick = ClearScannerCacheClick
       end
       object miClearUnusedNetworkCache: TMenuItem
@@ -5727,7 +5727,7 @@ object Tcp: TTcp
       end
       object miManualDetectAliveNodes: TMenuItem
         AutoCheck = True
-        Caption = #1054#1087#1088#1077#1076#1077#1083#1103#1090#1100' '#1078#1080#1074#1099#1077' '#1091#1079#1083#1099
+        Caption = #1054#1087#1088#1077#1076#1077#1083#1103#1090#1100' '#1076#1086#1089#1090#1091#1087#1085#1086#1089#1090#1100
         Checked = True
         OnClick = miManualDetectAliveNodesClick
       end
@@ -6643,7 +6643,7 @@ object Tcp: TTcp
         end
         object miConvertCidrNodes: TMenuItem
           AutoCheck = True
-          Caption = #1055#1088#1077#1086#1073#1088#1072#1079#1086#1074#1099#1074#1072#1090#1100' CIDR-'#1084#1072#1089#1082#1080
+          Caption = #1055#1088#1077#1086#1073#1088#1072#1079#1086#1074#1099#1074#1072#1090#1100' CIDR-'#1076#1080#1072#1087#1072#1079#1086#1085#1099
           Checked = True
           OnClick = miConvertCidrNodesClick
         end

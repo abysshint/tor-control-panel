@@ -88,7 +88,7 @@ type
   TProgressBar = class (Vcl.Comctrls.TProgressBar)
   private
     FProgressText: string;
-    procedure SetProgressText(TextStr: string);
+    procedure SetProgressText(const TextStr: string);
   protected
     procedure WMPaint(var Msg: TWMPaint); message WM_PAINT;
   published
@@ -147,7 +147,7 @@ type
 
   TStyleManagerHelper = class helper for TStyleManager
   public
-    class procedure RemoveStyle(StyleName: string);
+    class procedure RemoveStyle(const StyleName: string);
   end;
 
 implementation
@@ -377,10 +377,13 @@ begin
   end;
 end;
 
-procedure TProgressBar.SetProgressText(TextStr: string);
+procedure TProgressBar.SetProgressText(const TextStr: string);
 begin
-  FProgressText := TextStr;
-  Invalidate;
+  if FProgressText <> TextStr then
+  begin
+    FProgressText := TextStr;
+    Invalidate;
+  end;
 end;
 
 procedure TProgressBar.WMPaint(var Msg: TWMPaint);
@@ -415,7 +418,7 @@ begin
   end;
 end;
 
-class procedure TStyleManagerHelper.RemoveStyle(StyleName: string);
+class procedure TStyleManagerHelper.RemoveStyle(const StyleName: string);
 var
   Style: TCustomStyleServices;
 begin
@@ -448,7 +451,6 @@ destructor TMemo.Destroy;
 begin
   FreeAndNil(FTextHintFont);
   FreeAndNil(FCanvas);
-  FTextHint.Clear;
   FreeAndNil(FTextHint);
   inherited;
 end;
@@ -745,7 +747,7 @@ end;
 
 procedure TStringGrid.DrawCell(ACol, ARow: Longint; ARect: TRect; AState: TGridDrawState);
 var
-  Temp: Boolean;
+  IsDefaultDrawing: Boolean;
   NewText: String;
 begin
   if DefaultDrawing then
@@ -769,10 +771,10 @@ begin
       end;
     end;
   end;
-  Temp := DefaultDrawing;
+  IsDefaultDrawing := DefaultDrawing;
   DefaultDrawing := False;
   inherited DrawCell(ACol, ARow, ARect, AState);
-  DefaultDrawing := Temp;
+  DefaultDrawing := IsDefaultDrawing;
 end;
 
 end.

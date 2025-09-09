@@ -35,7 +35,7 @@ const
 
   LOOPBACK_ADDRESS = '127.0.0.1';
 
-  CURRENT_CONFIG_VERSION = 13;
+  CURRENT_CONFIG_VERSION = 14;
   MAX_SPEED_DATA_LENGTH = 24 * 60 * 60;
   BUFSIZE = 1024 * 1024;
 
@@ -182,6 +182,14 @@ const
 
   CONTROL_TYPE_MEMO = 0;
   CONTROL_TYPE_GRID = 1;
+
+  PING_DEAD = -1;
+  PING_NONE = 0;
+
+  PORT_FAKE = -2;
+  PORT_DEAD = -1;
+  PORT_NONE = 0;
+  PORT_ALIVE = 1;
 
   GRID_FILTER = 1;
   GRID_ROUTERS = 2;
@@ -380,12 +388,12 @@ const
   FILTER_MODE_COUNTRIES = 1;
   FILTER_MODE_FAVORITES = 2;
 
-  FILTER_BY_BRIDGE = 5;
-  FILTER_BY_ALIVE = 6;
-  FILTER_BY_TOTAL = 7;
-  FILTER_BY_GUARD = 8;
-  FILTER_BY_EXIT = 9;
-  FILTER_BY_QUERY = 10;
+  FILTER_BY_BRIDGE = 25;
+  FILTER_BY_ALIVE = 26;
+  FILTER_BY_TOTAL = 27;
+  FILTER_BY_GUARD = 28;
+  FILTER_BY_EXIT = 29;
+  FILTER_BY_QUERY = 30;
 
   USER_QUERY_HASH = 0;
   USER_QUERY_NICKNAME = 1;
@@ -407,13 +415,13 @@ const
   RF_QUERY_TEXT = 8;
 
   NONE_ID = 0;
-  ENTRY_ID = ROUTER_ENTRY_NODES;
-  MIDDLE_ID = ROUTER_MIDDLE_NODES;
-  EXIT_ID = ROUTER_EXIT_NODES;
-  EXCLUDE_ID = ROUTER_EXCLUDE_NODES;
-  FAVORITES_ID = 15;
-  BRIDGES_ID = 16;
-  FALLBACK_DIR_ID = 17;
+  ENTRY_ID = 1;
+  MIDDLE_ID = 2;
+  EXIT_ID = 3;
+  EXCLUDE_ID = 4;
+  FAVORITES_ID = 5;
+  BRIDGES_ID = 6;
+  FALLBACK_DIR_ID = 7;
 
   CF_EXIT = 1;
   CF_INTERNAL = 2;
@@ -434,7 +442,6 @@ const
   CF_OTHER = 65536;
 
 type
-  ArrOfStr = array of string;
   ArrOfPoint = array of TPoint;
 
   TNodeType = (
@@ -458,49 +465,45 @@ type
   TListType = (ltNone, ltHost, ltHash, ltPolicy, ltBridge, ltNode, ltSocket, ltTransport, ltFallbackDir);
   TGuardType = (gtNone, gtBridges, gtRestricted, gtDefault, gtAll);
   TMsgType = (mtInfo, mtWarning, mtError, mtQuestion);
-  TParamType = (ptString, ptInteger, ptBoolean, ptSocket, ptHost, ptBridge);
+  TParamType = (ptString, ptInteger, ptBoolean);
   TTaskBarPos = (tbTop, tbBottom, tbLeft, tbRight, tbNone);
   TScanType = (stNone, stPing, stAlive, stBoth);
   TScanPurpose = (spNone, spNew, spFailed, spUserBridges, spUserFallbackDirs, spAll, spNewAndFailed, spNewAndAlive, spNewAndBridges, spBridges, spGuards, spAlive, spNewBridges, spAuto, spSelected);
   TProxyType = (ptNone, ptSocks, ptHttp, ptBoth);
   TBracketsType = (btCurly, btSquare, btRound);
-  TConfigFlag = (cfAutoAppend, cfAutoSave, cfFindComments, cfExistCheck, cfMultiLine, cfBoolInvert, cfDeleteBlankLines, cfTrimLines);
+  TConfigFlag = (cfAutoAppend, cfAutoSave, cfFindComments, cfExistCheck, cfBoolInvert, cfDeleteBlankLines, cfParamWithSpace);
   TConfigFlags = set of TConfigFlag;
   TRouterFlag = (rfAuthority, rfBadExit, rfExit, rfFast, rfGuard, rfHSDir, rfStable, rfV2Dir, rfBridge, rfRelay, rfMiddleOnly, rfNoBridgeRelay);
   TRouterFlags = set of TRouterFlag;
+
   TProcessFlag = (pfHideWindow, pfReadStdOut);
   TProcessFlags = set of TProcessFlag;
   TProcessInfo = record
-    ProcessID: Cardinal;
+    ProcessID: DWORD;
     hProcess: THandle;
     hStdOutput: THandle;
   end;
 
+  TIPRangeType = (rtNone, rtAny, rtLoopback, rtPrivate, rtDoc);
+  TIPRangeTypes = set of TIPRangeType;
+  TStaticRanges = record
+    Cidr: string;
+    AddrType: TAddressType;
+    Group: TIPRangeType;
+  end;
+
   TStaticPair = record
     Key: string;
-    Value: Integer;
+    Value: ShortInt;
   end;
 
   TStaticData = record
-    Key: Integer;
-    Value: Integer;
+    Key: Byte;
+    Value: Byte;
   end;
-
-  TCidrInfo = record
-    CidrType: TAddressType;
-    Prefix: Byte;
-    Bits: string
-  end;
-
-  TNodeData = record
-    NodeStr: string;
-    NodeDataType: TNodeDataType;
-    CidrInfo: TCidrInfo;
-  end;
-  ArrOfNodes = array of TNodeData;
 
 const
-  cDefaultTProcessInfo: TProcessInfo = (ProcessID: INVALID_HANDLE_VALUE; hProcess: INVALID_HANDLE_VALUE; hStdOutput: INVALID_HANDLE_VALUE);
+  cDefaultProcessInfo: TProcessInfo = (ProcessID: 0; hProcess: INVALID_HANDLE_VALUE; hStdOutput: INVALID_HANDLE_VALUE);
 var
   CountryCodes: array [0..MAX_COUNTRIES - 1] of string = (
     'au','at','az','ax','al','dz','as','ai','ao','ad','aq','ag','ar','am','aw',
@@ -536,22 +539,6 @@ var
   MaskTypes: array [0..3] of string = (
     '*', '*4', '*6', 'private'
   );
-  PrefixSizes: array [0..4] of string = (
-    '', 'kilo', 'mega', 'giga', 'tera'
-  );
-  PrefixShortSizes: array [0..4] of string = (
-    '', 'k', 'm', 'g', 't'
-  );
-  PrivateRanges: array [0..3] of string = (
-    '192.168.0.0/16',
-    '172.16.0.0/12',
-    '169.254.0.0/16',
-    '10.0.0.0/8'
-  );
-  DocRanges: array [0..1] of string = (
-    '192.0.2.0/24',
-    '2001:db8::/32'
-  );
 
   GeoIpDirs: array [0..2] of string = (
     '%UserDir%',
@@ -562,6 +549,27 @@ var
   TransportDirs: array [0..1] of string = (
     '%ProgramDir%\Tor\Pluggable_Transports\',
     '%ProgramDir%\Tor\PluggableTransports\'
+  );
+
+  ReservedRanges: array [0..17] of TStaticRanges = (
+    (Cidr: '0.0.0.0/8'; AddrType: atIPv4Cidr; Group: rtAny),
+    (Cidr: '10.0.0.0/8'; AddrType: atIPv4Cidr; Group: rtPrivate),
+    (Cidr: '127.0.0.0/8'; AddrType: atIPv4Cidr; Group: rtLoopback),
+    (Cidr: '100.64.0.0/10'; AddrType: atIPv4Cidr; Group: rtPrivate),
+    (Cidr: '169.254.0.0/16'; AddrType: atIPv4Cidr; Group: rtPrivate),
+    (Cidr: '172.16.0.0/12'; AddrType: atIPv4Cidr; Group: rtPrivate),
+    (Cidr: '192.168.0.0/16'; AddrType: atIPv4Cidr; Group: rtPrivate),
+    (Cidr: '192.0.2.0/24'; AddrType: atIPv4Cidr; Group: rtDoc),
+    (Cidr: '198.51.100.0/24'; AddrType: atIPv4Cidr; Group: rtDoc),
+    (Cidr: '203.0.113.0/24'; AddrType: atIPv4Cidr; Group: rtDoc),
+    (Cidr: '233.252.0.0/24'; AddrType: atIPv4Cidr; Group: rtDoc),
+    (Cidr: '::/128'; AddrType: atIPv6Cidr; Group: rtAny),
+    (Cidr: '::1/128'; AddrType: atIPv6Cidr; Group: rtLoopback),
+    (Cidr: '2001:db8::/32'; AddrType: atIPv6Cidr; Group: rtDoc),
+    (Cidr: '3fff::/20'; AddrType: atIPv6Cidr; Group: rtDoc),
+    (Cidr: 'fc00::/7'; AddrType: atIPv6Cidr; Group: rtPrivate),
+    (Cidr: 'fe80::/10'; AddrType: atIPv6Cidr; Group: rtPrivate),
+    (Cidr: 'fec0::/10'; AddrType: atIPv6Cidr; Group: rtPrivate)
   );
 
   CircuitPurposes: array[0..14] of TStaticPair = (

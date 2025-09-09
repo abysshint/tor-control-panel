@@ -3,13 +3,13 @@
 interface
 
 uses
-  Winapi.Windows, Winapi.Messages, Winapi.CommCtrl, Winapi.Winsock, Winapi.ShellApi, Winapi.shlwapi,
-  Winapi.ShlObj, Winapi.GDIPAPI, Winapi.GDIPOBJ, System.SysUtils, System.IniFiles,
-  System.Generics.Collections, System.ImageList, System.DateUtils, System.Math, System.IOUtils,
-  Vcl.Forms, System.Classes, System.Masks, Vcl.ImgList, Vcl.Controls, Vcl.ExtCtrls,
-  Vcl.Menus, Vcl.StdCtrls, Vcl.Grids, Vcl.ComCtrls, Vcl.Clipbrd, Vcl.Dialogs, Vcl.Graphics,
-  Vcl.Themes, Vcl.Buttons, Vcl.ExtDlgs, blcksock, dnssend, httpsend, pingsend, synacode,
-  synautil, ConstData, Functions, Addons, Languages;
+  Winapi.Windows, Winapi.Messages, Winapi.CommCtrl, Winapi.Winsock, Winapi.shlwapi,
+  Winapi.ShlObj, Winapi.GDIPAPI, Winapi.GDIPOBJ, System.SysUtils, System.IniFiles, System.Hash,
+  System.NetEncoding, System.Generics.Collections, System.ImageList, System.DateUtils, System.Math,
+  System.IOUtils, Vcl.Forms, System.Classes, System.Masks, Vcl.ImgList, Vcl.Controls, Vcl.ExtCtrls,
+  Vcl.Menus, Vcl.StdCtrls, Vcl.Grids, Vcl.ComCtrls, Vcl.Clipbrd, Vcl.Dialogs, Vcl.Graphics, Vcl.Themes,
+  Vcl.Buttons, blcksock, dnssend, httpsend, pingsend, synautil, ConstData, Functions, Addons,
+  Languages, ClassData;
 
 type
   TUserGrid = class(TCustomGrid);
@@ -58,15 +58,15 @@ type
 
   TGeoIpInfo = record
     cc: Byte;
-    ping: Integer;
-    ports: string;
+    ping: SmallInt;
+    ports: TArray<TPortInfo>;
   end;
 
   TBuildFlag = (bfOneHop, bfInternal, bfNeedCapacity, bfNeedUptime);
   TBuildFlags = set of TBuildFlag;
   TCircuitInfo = record
     BuildFlags: TBuildFlags;
-    PurposeID: Integer;
+    PurposeID: ShortInt;
     Streams: Integer;
     Nodes: string;
     Date: TDateTime;
@@ -80,10 +80,21 @@ type
     Target: string;
     SourceAddr: string;
     DestAddr: string;
-    PurposeID: Integer;
-    Protocol: Integer;
+    PurposeID: ShortInt;
+    Protocol: ShortInt;
     BytesRead: int64;
     BytesWritten: int64;
+  end;
+
+  TSocketInfo = record
+    IpStr: string;
+    Port: Word;
+  end;
+
+  TNodeData = record
+    NodeStr: string;
+    NodeDataType: TNodeDataType;
+    CidrInfo: TIPv4CidrInfo;
   end;
 
   TPing = class(TPINGSend)
@@ -114,7 +125,7 @@ type
 
   TDNSSendThread = class(TThread)
   private
-    Temp: string;
+    Data: string;
     procedure UpdateIpStage;
   protected
     procedure Execute; override;
@@ -140,7 +151,6 @@ type
     MaxPortAttempts, MaxPingAttempts: Byte;
     ScanType: TScanType;
     PingTimeout, PortTimeout, AttemptsDelay: Integer;
-    Result: Integer;
   protected
     procedure Execute; override;
   end;
@@ -157,25 +167,24 @@ type
 
   TControlThread = class(TThread)
   private
-    Duplicates: TDictionary<string, Byte>;
+    Duplicates: THashSet<string>;
     Socket: TTCPBlockSocket;
     PurposeID, StatusID: Integer;
     CircuitInfo: TCircuitInfo;
     StreamInfo: TStreamInfo;
     SendBuffer: string;
     Data, AuthParam: string;
-    Ip, Temp, CircuitID, StreamID, NodeID, LinkedCircID: string;
-    ParseStr: ArrOfStr;
+    Ip, CircuitID, StreamID, NodeID, LinkedCircID: string;
+    ParseStr: TArray<string>;
     SearchPos, InfoCount, CommandSize: Integer;
     DataOverflow: Boolean;
-    CountryCode: Byte;
     AddressType: TAddressType;
     function AuthStageReady(AuthMethod: Integer): Boolean;
-    function GetSpecialFlags(const BaseFlag: Integer; Circuit: TCircuitInfo): Integer;
-    function GetCircuitFlags(Circuit: TCircuitInfo): Integer;
+    function GetSpecialFlags(BaseFlag: Integer; const Circuit: TCircuitInfo): Integer;
+    function GetCircuitFlags(const Circuit: TCircuitInfo): Integer;
     procedure GetData;
-    procedure SendData(cmd: string);
-    procedure CheckDirFetches(StreamInfo: TStreamInfo; Counter: Integer);
+    procedure SendData(const cmd: string);
+    procedure CheckDirFetches(const StreamInfo: TStreamInfo; Counter: Integer);
     procedure UpdateConnectState;
   protected
     procedure Execute; override;
@@ -1048,7 +1057,7 @@ type
     sbStayOnTop: TSpeedButton;
     function GetGridByIndex(GridIndex: Integer): TStringGrid;
     function GetMemoByIndex(MemoIndex: Integer): TMemo;
-    function CheckCacheOpConfirmation(OpStr: string): Boolean;
+    function CheckCacheOpConfirmation(const OpStr: string): Boolean;
     function CheckVanguards(Silent: Boolean = False): Boolean;
     function CheckNetworkOptions: Boolean;
     function CheckHsPorts: Boolean;
@@ -1056,23 +1065,23 @@ type
     function GetTransportState(var TransportStateID: Integer; FindTransport: Boolean; TransportFileData: TFileID; CheckTransport: Boolean): Boolean;
     function CheckTransports: Boolean;
     function CheckSimilarPorts: Boolean;
-    function NodesToFavorites(NodesID: Integer): Integer;
-    function FavoritesToNodes(FavoritesID: Integer): Integer;
+    function NodesToFavorites(NodesID: ShortInt): ShortInt;
+    function FavoritesToNodes(FavoritesID: ShortInt): ShortInt;
     function GetFavoritesLabel(FavoritesID: Integer): TLabel;
     function GetFilterLabel(FilterID: Integer): TLabel;
+    function GetNodeTypeByGridCol(aSg: TStringGrid; ACol: Integer): TNodeType;
     function GetFormPositionStr: string;
-    function FindTrackHost(Host: string): Boolean;
-    function FindInRanges(IpStr: string; AddressType: TAddressType): string;
-    function RouterInNodesList(RouterID: string; IpStr: string; NodeType: TNodeType; SkipCodes: Boolean = False; CodeStr: string = ''; AddressType: TAddressType = atNone): Boolean;
-    function GetTrackHostDomains(Host: string; OnlyExists: Boolean): string;
+    function FindTrackHost(const HostStr: string): Boolean;
+    function RouterInNodesList(const RouterID, IpStr: string; NodeType: TNodeType; SkipCodes: Boolean = False; const CodeStr: string = ''): Boolean;
+    function GetTrackHostDomains(const HostStr: string; OnlyExists: Boolean): string;
     function GetControlEvents: string;
     function GetTorHs: Integer;
     function LoadHiddenServices(var ini: TMemIniFile): Integer;
     function PreferredBridgeFound: Boolean;
-    function GetRouterCsvData(RouterID: string; RouterInfo: TRouterInfo; Preview: Boolean = False): string;
-    function GetBridgeStr(RouterID: string; RouterInfo: TRouterInfo; UseIPv6: Boolean; Preview: Boolean = False): string;
-    function GetFallbackStr(RouterID: string; RouterInfo: TRouterInfo; Preview: Boolean = False): string;
-    function CheckRouterFlags(NodeTypeID: Integer; RouterInfo: TRouterInfo): Boolean;
+    function GetRouterCsvData(const RouterID: string; const RouterInfo: TRouterInfo; Preview: Boolean = False): string;
+    function GetBridgeStr(const RouterID: string; const RouterInfo: TRouterInfo; UseIPv6: Boolean; Preview: Boolean = False): string;
+    function GetFallbackStr(const RouterID: string; const RouterInfo: TRouterInfo; Preview: Boolean = False): string;
+    function CheckRouterFlags(NodeTypeID: Integer; const RouterInfo: TRouterInfo): Boolean;
     procedure LoadSortData(var ini: TMemIniFile; const StaticData: array of TStaticData; ControlType: Integer);
     procedure SaveScanData;
     procedure UpdateBridgesControls(UpdateList: Boolean; UpdateUserBridges: Boolean);
@@ -1081,23 +1090,23 @@ type
     procedure ShowCircuitsFlagsHint;
     procedure CalculateFilterNodes(AlwaysUpdate: Boolean = True);
     procedure CalculateTotalNodes(AlwaysUpdate: Boolean = True);
-    function CloseCircuitInternal(CircuitID: string): Boolean;
-    procedure CloseCircuit(CircuitID: string; AutoUpdate: Boolean = True);
-    procedure CloseStreams(CircuitID: string; CloseType: TCloseType);
+    function CloseCircuitInternal(const CircuitID: string): Boolean;
+    procedure CloseCircuit(const CircuitID: string; AutoUpdate: Boolean = True);
+    procedure CloseStreams(const CircuitID: string; CloseType: TCloseType);
     function CheckFilesChanged: Boolean;
     procedure LoadNetworkCache;
     procedure SaveNetworkCache(AutoSave: Boolean = True);
     procedure LoadBridgesCache;
     procedure SaveBridgesCache;
     procedure SetServerPort(PortControl: TUpDown);
-    procedure SetNodes(FilterEntry, FilterMiddle, FilterExit, FavoritesEntry, FavoritesMiddle, FavoritesExit, ExcludeNodes: string);
+    procedure SetNodes(const FilterEntry, FilterMiddle, FilterExit, FavoritesEntry, FavoritesMiddle, FavoritesExit, ExcludeNodes: string);
     procedure ShowFilter;
     procedure ApplyOptions(AutoResolveErrors: Boolean = False);
     function GetTransportFilesID: string;
     function InsertExtractMenu(ParentMenu: TMenuItem; ControlType, ControlID, ExtractType: Integer): Boolean;
-    procedure InsertNodesMenu(ParentMenu: TMenuItem; NodeID: string; AutoSave: Boolean = True);
-    procedure InsertNodesListMenu(ParentMenu: TmenuItem; NodeID: string; NodeTypeID: Integer; AutoSave: Boolean = True);
-    procedure InsertNodesToDeleteMenu(ParentMenu: TmenuItem; NodeID: string; AutoSave: Boolean = True);
+    procedure InsertNodesMenu(ParentMenu: TMenuItem; const NodeID: string; AutoSave: Boolean = True);
+    procedure InsertNodesListMenu(ParentMenu: TmenuItem; const NodeID: string; NodeTypeID: Integer; AutoSave: Boolean = True);
+    procedure InsertNodesToDeleteMenu(ParentMenu: TmenuItem; const NodeID: string; AutoSave: Boolean = True);
     procedure InsertRelayOperationsMenu(ParentMenu: TMenuItem; ExtractMenu: TMenuItem; DataID: Integer = 0);
     procedure ChangeFilter;
     procedure ChangeRouters;
@@ -1108,7 +1117,7 @@ type
     procedure UpdateRoutersAfterBridgesUpdate;
     procedure UpdateRoutersAfterFallbackDirsUpdate;
     procedure SaveRoutersFilterdata(Default: Boolean = False; SaveFilters: Boolean = True);
-    procedure LoadRoutersFilterData(Data: string; AutoUpdate: Boolean = True; ResetCustomFilter: Boolean = False);
+    procedure LoadRoutersFilterData(const DataStr: string; AutoUpdate: Boolean = True; ResetCustomFilter: Boolean = False);
     procedure ChangeHsTable(Param: Integer);
     procedure ChangeTransportTable(Param: Integer);
     procedure SetDesktopPosition(ALeft, ATop: Integer; AutoUpdate: Boolean = True);
@@ -1120,7 +1129,7 @@ type
     procedure CheckFilterMode;
     procedure CheckHsVersion;
     procedure CheckStatusControls;
-    procedure CheckOpenPorts(PortSpin: TUpDown; IP: string; var PortStr: string);
+    procedure CheckOpenPorts(PortSpin: TUpDown; const IP: string; var PortStr: string);
     procedure CheckServerControls;
     procedure CheckScannerControls;
     procedure CircuitInfoScrollCheck;
@@ -1142,8 +1151,8 @@ type
     procedure FallbackDirsCheckControls;
     procedure EnableOptionButtons(State: Boolean = True);
     procedure FindInFilter(const IpAddr: string);
-    procedure FindInRouters(RouterID: string; SocketStr: string = '');
-    procedure FindInCircuits(CircID, NodeID: string; AutoSelect: Boolean = False);
+    procedure FindInRouters(const FindStr: string; const SocketStr: string = '');
+    procedure FindInCircuits(const CircID, NodeID: string; AutoSelect: Boolean = False);
     procedure SendDataThroughProxy;
     procedure GetDNSExternalAddress(UpdateExternalIp: Boolean = True);
     procedure GetServerInfo(UpdateExternalIp: Boolean = True);
@@ -1165,12 +1174,13 @@ type
     procedure CheckCountryIndexInList;
     procedure CheckNodesListControls;
     procedure CheckFavoritesState(FavoritesID: Integer = -1);
-    procedure LoadNodesList(UseDic: Boolean = True; NodesStr: string = '');
+    procedure LoadNodesList;
     procedure SaveNodesList(NodesID: Integer);
+    procedure UpdateTotalNodesList;
     procedure UpdateGeoFileID(ini: TMeminiFile);
     procedure LoadFilterTotals;
     procedure LoadRoutersCountries;
-    procedure OpenMetricsUrl(Page, Query: string);
+    procedure OpenMetricsUrl(const Page, Query: string);
     procedure ProxyParamCheck;
     function CheckRequiredFiles(AutoSave: Boolean = False): Boolean;
     function ReachablePortsExists: Boolean;
@@ -1183,13 +1193,13 @@ type
     procedure LoadUserBridges(var ini: TMemIniFile);
     procedure LoadBridgesFromFile;
     procedure LoadFallbackDirs(var ini: TMemIniFile; Default: Boolean);
-    procedure LoadBuiltinBridges(var ini: TMemIniFile; UpdateBridges, UpdateList: Boolean; ListName: string = '');
+    procedure LoadBuiltinBridges(var ini: TMemIniFile; UpdateBridges, UpdateList: Boolean; const ListName: string = '');
     procedure ResetTransports(var ini: TMemIniFile);
     procedure ResetServerTransportOptions(var ini: TMemIniFile);
     procedure LoadTransportsData(Data: TStringList);
     procedure LoadServerTransportOptionsData(Data: TStringList);
-    procedure SaveServerTransportOptions(Key, Value: string; UpdateControls: Boolean = False);
-    procedure LoadServerTransportOptions(Key: string; UpdateControls: Boolean = False);
+    procedure SaveServerTransportOptions(const Key, Value: string; UpdateControls: Boolean = False);
+    procedure LoadServerTransportOptions(const Key: string; UpdateControls: Boolean = False);
     procedure LoadProxyPorts(PortControl: TUpdown; HostControl: TCombobox; EnabledControl: TCheckBox; ini: TMemIniFile);
     procedure SaveReachableAddresses(var ini: TMemIniFile);
     procedure SaveProxyData(var ini: TMemIniFile);
@@ -1201,7 +1211,7 @@ type
     procedure LimitBridgesList(var Data: TStringList; AutoSave: Boolean);
     procedure ExcludeUnsuitableBridges(var Data: TStringList; DeleteUnsuitable: Boolean = False; AutoSave: Boolean = False);
     procedure ExcludeUnsuitableFallbackDirs(var Data: TStringList);
-    procedure LoadStaticArray(Data: array of TStaticPair);
+    procedure LoadStaticArray(const Data: array of TStaticPair);
     procedure ResetOptions;
     procedure LoadUserOverrides(var ini: TMemIniFile);
     procedure RestartTor(RestartCode: Byte = 0);
@@ -1219,21 +1229,21 @@ type
     procedure SendCommand(const cmd: string);
     procedure CheckSelectRowOptions(aSg: TStringGrid; Checked: Boolean; Save: Boolean = False);
     procedure SetButtonsProp(Btn: TSpeedButton; LeftSmall, LeftBig: Integer);
-    procedure ShowBalloon(Msg: string; Title: string = ''; Notice: Boolean = False; MsgType: TMsgType = mtInfo);
+    procedure ShowBalloon(const Msg: string; const Title: string = ''; Notice: Boolean = False; MsgType: TMsgType = mtInfo);
     procedure ShowCircuits(AlwaysUpdate: Boolean = True);
-    procedure ShowStreams(CircID: string; AlwaysUpdate: Boolean = True);
-    procedure ShowStreamsInfo(CircID: string);
-    procedure ShowCircuitInfo(CircID: string);
+    procedure ShowStreams(const CircID: string; AlwaysUpdate: Boolean = True);
+    procedure ShowStreamsInfo(const CircID: string);
+    procedure ShowCircuitInfo(const CircID: string);
     procedure ShowRouters(BlockUpdate: Boolean = False);
-    function FindSelectedBridge(RouterID: string; Router: TRouterInfo): Boolean;
+    function FindSelectedBridge(const RouterID: string; const Router: TRouterInfo): Boolean;
     procedure CheckNodesListState(NodeTypeID: Integer);
-    procedure CheckCircuitExists(CircID: string; UpdateStreamsCount: Boolean = False);
-    procedure CheckCircuitStreams(CircID: string; var Targets: TDictionary<string, Integer>);
+    procedure CheckCircuitExists(const CircID: string; UpdateStreamsCount: Boolean = False);
+    procedure CheckCircuitStreams(const CircID: string; var Targets: TDictionary<string, Integer>);
     procedure SelectRowPopup(aSg: TStringGrid; aPopup: TPopupMenu);
     procedure SaveTrackHostExits(var ini: TMemIniFile; UseDic: Boolean = False);
     procedure SaveServerOptions(var ini: TMemIniFile);
     procedure SetOptionsEnable(State: Boolean);
-    procedure PrepareOpenDialog(FileName, Filter: string);    
+    procedure PrepareOpenDialog(const FileName, Filter: string);
     procedure StartTor(AutoResolveErrors: Boolean = False);
     procedure StopTor(SkipMessages: Boolean = False);
     procedure UpdateTrayIcon;
@@ -1259,20 +1269,20 @@ type
     procedure UpdateTrayHint;
     procedure UpdateRoutersData;
     procedure UpdateCircuitsData(AlwaysUpdate: Boolean = True);
-    procedure SetCaptionByDataCount(Caption: string; MenuItem: TMenuItem; aSg: TStringGrid; IsBrowserLinks: Boolean = False);
+    procedure SetCaptionByDataCount(const Caption: string; MenuItem: TMenuItem; aSg: TStringGrid; IsBrowserLinks: Boolean = False);
     procedure CheckFallbackDirsUpdateState;
     procedure CheckBridgesUpdateState;
-    function GetTransportStateID(StateStr: string): Integer;
+    function GetTransportStateID(const StateStr: string): Integer;
     function GetTransportStateChar(StateID: Integer): string;
-    function GetHsStateID(StateStr: string): Integer;
+    function GetHsStateID(const StateStr: string): Integer;
     function GetHsStateChar(StateID: Integer): string;
-    function GetTransportID(TypeStr: string): Integer;
+    function GetTransportID(const TypeStr: string): Integer;
     function GetTransportChar(TransportID: Integer): string;
     function ShowRelayInfo(aSg: TStringGrid; Handle: Boolean): Boolean;
     procedure CountTotalBridges(ShowSuitableCount: Boolean = True);
     procedure CountTotalFallbackDirs(ShowSuitableCount: Boolean = True);
-    function PrepareNodesToRemove(Data: string; NodeType: TNodeType; out Nodes: ArrOfNodes): Boolean;
-    procedure RemoveFromNodesListWithConvert(Nodes: ArrOfNodes; NodeType: TNodeType);
+    function PrepareNodesToRemove(const Data: string; NodeType: TNodeType; out Nodes: TArray<TNodeData>): Boolean;
+    procedure RemoveFromNodesListWithConvert(const Nodes: TArray<TNodeData>; NodeType: TNodeType);
     procedure SortPrepare(aSg: TStringGrid; ACol: Integer; ManualSort: Boolean = False);
     procedure GridSort(aSg: TStringGrid);
     procedure SetExtractOptions(Sender: TObject);
@@ -1684,20 +1694,22 @@ var
   NodesDic: TDictionary<string, TNodeTypes>;
   CircuitsDic: TDictionary<string, TCircuitInfo>;
   StreamsDic: TDictionary<string, TStreamInfo>;
-  TrackHostDic: TDictionary<string, Byte>;
-  VersionsDic: TDictionary<string, Byte>;
   TransportsDic: TDictionary<string, TTransportInfo>;
-  TransportsList: TDictionary<string, Byte>;
   BridgesDic: TDictionary<string, TBridgeInfo>;
-  CidrsDic: TDictionary<string, TCidrInfo>;
-  PortsDic: TDictionary<Word, Byte>;
-  ConstDic: TDictionary<string, Integer>;
+  ConstDic: TDictionary<string, ShortInt>;
+  PrefixesDic: TDictionary<string, Int64>;
   DefaultsDic: TDictionary<string, string>;
   NewBridgesList: TDictionary<string, string>;
-  UsedBridgesList: TDictionary<string, Byte>;
   CompBridgesDic: TDictionary<string, string>;
   UsedFallbackDirsList: TDictionary<string, string>;
-  UserScanList: TDictionary<string, Byte>;
+  TrackHostMap: THashSet<string>;
+  UserScanMap: THashSet<string>;
+  UsedBridgesMap: THashSet<string>;
+  VersionsMap: THashSet<string>;
+  PortsMap: THashSet<Word>;
+  TransportsMap: THashSet<string>;
+  IPv4ReservedRanges, IPv4CidrNodes: TIPv4RadixTree;
+  IPv6ReservedRanges: TIPv6RadixTree;
 
   ProgramDir, UserDir, HsDir, ThemesDir, TransportsDir, OnionAuthDir, LogsDir: string;
   DefaultsFile, UserConfigFile, UserBackupFile, TorConfigFile, TorStateFile, TorLogFile,
@@ -1713,7 +1725,8 @@ var
   SessionDL, SessionUL, TotalDL, TotalUL: Int64;
   ConnectState, StopCode, FormSize, LastPlace, InfoStage, GetIpStage, NodesListStage, NewBridgesStage: Byte;
   EncodingNoBom: TUTF8EncodingNoBOM;
-  SearchTimer, LastCountriesHash, LastFallbackDirsHash, LastBridgesHash: Cardinal;
+  SearchTimer: Cardinal;
+  LastCountriesHash, LastFallbackDirsHash, LastBridgesHash: Integer;
   DecFormPos, IncFormPos, IncFormSize: TPoint;
   RoutersCustomFilter, LastRoutersCustomFilter, RoutersFilters, LastFilters: Integer;
   GeoIPv4Exists, GeoIPv6Exists, FirstLoad, Restarting, Closing, WindowsShutdown, CursorShow, GeoIpModified, ServerIsObfs4: Boolean;
@@ -1730,7 +1743,7 @@ var
   SupportVanguardsLite, SupportBridgesTesting, SupportConflux, SupportCircuitPadding: Boolean;
   FallbackDirsRecalculate, FallbackDirsUpdated, ServerTransportOptionsUpdated: Boolean;
   Scale: Real;
-  HsToDelete: ArrOfStr;
+  HsToDelete: TArray<string>;
   SystemLanguage: Word;
   LastAuthCookieDate, LastConsensusDate, LastNewDescriptorsDate: TDateTime;
   LastFullScanDate, LastPartialScanDate, TotalStartDate, LastSaveStats: Int64;
@@ -1840,10 +1853,10 @@ end;
 
 procedure TReadPipeThread.UpdateVersionInfo;
 var
-  ParseStr: ArrOfStr;
+  ParseStr: TArray<string>;
   ini: TMemIniFile;
 begin
-  ParseStr := Explode(BR, Data);
+  ParseStr := Data.Split([BR]);
   TorVersion := SeparateLeft(SeparateRight(ParseStr[0], 'Tor version ').Trim(['.']), ' ');
   if ValidAddress(SeparateLeft(TorVersion, '-')) = atIPv4 then
   begin
@@ -1902,7 +1915,7 @@ begin
     end;
 
     if Tcp.sbAutoScroll.Down and not LogHasSel then
-      Tcp.meLog.Lines.Add(Data)
+      Tcp.meLog.Lines.Append(Data)
     else
     begin
       GetCaretPos(Caret);
@@ -1910,7 +1923,7 @@ begin
       SelStart := Tcp.meLog.SelStart;
       SelLength := Tcp.meLog.SelLength;
       Tcp.meLog.Lines.BeginUpdate;
-      Tcp.meLog.Lines.Add(Data);
+      Tcp.meLog.Lines.Append(Data);
       Tcp.meLog.Lines.EndUpdate;
 
       if SelStart <> CharFromPos then
@@ -1989,7 +2002,7 @@ end;
 
 procedure TDNSSendThread.UpdateIpStage;
 begin
-  ServerIPv4 := Temp;
+  ServerIPv4 := Data;
   if ConnectState = 2 then
     GetIpStage := 2
   else
@@ -2009,7 +2022,7 @@ begin
   try
     DNS.TargetHost := 'resolver1.opendns.com';
     DNS.DNSQuery('myip.opendns.com', QTYPE_A, ls);
-    Temp := Trim(ls.Text);
+    Data := Trim(ls.Text);
     Synchronize(UpdateIpStage);
   finally
     DNS.Free;
@@ -2053,54 +2066,44 @@ end;
 
 procedure TScanItemThread.Execute;
 var
-  GeoIpInfo: TGeoIpInfo;
+  DataValue: Integer;
   i: Integer;
 begin
   try
     if ScanType = stPing then
     begin
+      DataValue := PING_NONE;
       for i := 1 to MaxPingAttempts do
       begin
         if StopScan then
           Exit;
-        Result := SendPing(IpStr, PingTimeOut);
-        if Result <> -1 then
+        DataValue := SendPing(IpStr, PingTimeOut);
+        if DataValue <> PING_DEAD then
           Break;
         if i <> MaxPingAttempts then
           Sleep(AttemptsDelay);
       end;
-      if GeoIpDic.TryGetValue(IpStr, GeoIpInfo) then
-      begin
-        GeoIpInfo.ping := Result;
-        GeoIpDic.AddOrSetValue(IpStr, GeoIpInfo);
-      end
-      else
-      begin
-        GeoIpInfo.ping := Result;
-        GeoIpInfo.ports := '';
-        GeoIpInfo.cc := DEFAULT_COUNTRY_ID;
-        GeoIpDic.AddOrSetValue(IpStr, GeoIpInfo);
-      end;
-      GeoIpModified := True;
+      SetPingValue(IpStr, DataValue);
     end;
 
     if ScanType = stAlive then
     begin
+      DataValue := PORT_NONE;
       for i := 1 to MaxPortAttempts do
       begin
         if StopScan then
           Exit;
         if PortTCPIsOpen(Port, IpStr, PortTimeout) then
         begin
-          Result := 1;
+          DataValue := PORT_ALIVE;
           Break;
         end
         else
-          Result := -1;
+          DataValue := PORT_DEAD;
         if i <> MaxPortAttempts then
           Sleep(AttemptsDelay);
       end;
-      SetPortsValue(IpStr, IntToStr(Port), Result);
+      SetPortsValue(IpStr, Port, DataValue);
     end;
   finally
     InterlockedDecrement(ScanThreads);
@@ -2109,7 +2112,7 @@ end;
 
 procedure TTcp.ScanThreadTerminate(Sender: TObject);
 begin
-  UserScanList.Clear;
+  UserScanMap.Clear;
   Scanner := nil;
 end;
 
@@ -2124,103 +2127,109 @@ end;
 procedure TScanThread.Execute;
 var
   MemoryStatus: TMemoryStatusEx;
-  Data, ls: TStringList;
+  Data: TStringList;
+  ls: TArray<TSocketInfo>;
   Item: TPair<string, TRouterInfo>;
-  ScanItem: TPair<string, Byte>;
   RouterInfo: TRouterInfo;
   GeoIpInfo: TGeoIpInfo;
   AvailMemoryBefore: Int64;
   NeedScan: Boolean;
-  i, PortsData: Integer;
-  IpToScan, IpStr: string;
-  PortToScan: Word;
+  i, PortsData, DataCount: Integer;
+  IpStr, HashStr: string;
   Bridge: TBridge;
   FallbackDir: TFallbackDir;
+  Duplicates: THashSet<string>;
 
-  procedure AddToScanList(IpStr: string; Port: Word); overload;
+  procedure AddDataInternal(const IpStr: string; Port: Word);
+  var
+    KeyStr: string;
+    SocketInfo: TSocketInfo;
   begin
     if sScanType = stPing then
-      ls.Append(IpStr + ':0')
+      KeyStr := IpStr + ':0'
     else
-      ls.Append(IpStr + ':' + IntToStr(Port));
+      KeyStr := IpStr + ':' + IntToStr(Port);
+    if Duplicates.Contains(KeyStr) then
+      Exit;
+    Duplicates.Add(KeyStr);
+    SocketInfo.IpStr := IpStr;
+    SocketInfo.Port := Port;
+    TArrayHelper.AddToArray<TSocketInfo>(ls, DataCount, SocketInfo);
   end;
 
-  procedure AddToScanList(IpStr: string; Port: Word; Flags: TRouterFlags); overload;
-  var
-    PortStr: string;
+  procedure AddToScanList(const IpStr: string; Port: Word); overload;
   begin
-    PortStr := IntToStr(Port);
+    AddDataInternal(IpStr, Port);
+  end;
+
+  procedure AddToScanList(const IpStr: string; Port: Word; Flags: TRouterFlags); overload;
+  begin
     if GeoIpDic.TryGetValue(IpStr, GeoIpInfo) then
     begin
       NeedScan := False;
-      PortsData := 0;
+      PortsData := PORT_NONE;
       if sScanType = stAlive then
-        PortsData := GetPortsValue(GeoIpInfo.ports, PortStr);
+        PortsData := GetPortsValue(GeoIpInfo.ports, Port);
 
       case sScanPurpose of
         spAll: NeedScan := True;
         spNew:
         begin
           case sScanType of
-            stPing: NeedScan := GeoIpInfo.ping = 0;
-            stAlive: NeedScan := PortsData = 0;
+            stPing: NeedScan := GeoIpInfo.ping = PING_NONE;
+            stAlive: NeedScan := PortsData = PORT_NONE;
           end;
         end;
         spFailed:
         begin
           case sScanType of
-            stPing: NeedScan := GeoIpInfo.ping = -1;
-            stAlive: NeedScan := PortsData = -1;
+            stPing: NeedScan := GeoIpInfo.ping = PING_DEAD;
+            stAlive: NeedScan := PortsData = PORT_DEAD;
           end;
         end;
         spNewAndFailed:
         begin
           case sScanType of
-            stPing: NeedScan := GeoIpInfo.ping < 1;
-            stAlive: NeedScan := PortsData < 1;
+            stPing: NeedScan := GeoIpInfo.ping <= PING_NONE;
+            stAlive: NeedScan := PortsData < PORT_ALIVE;
           end;
         end;
         spNewAndAlive:
         begin
           case sScanType of
-            stPing: NeedScan := GeoIpInfo.ping = 0;
-            stAlive: NeedScan := PortsData <> -1;
+            stPing: NeedScan := GeoIpInfo.ping = PING_NONE;
+            stAlive: NeedScan := PortsData <> PORT_DEAD;
           end;
         end;
         spNewAndBridges:
         begin
           case sScanType of
-            stPing: NeedScan := GeoIpInfo.ping = 0;
-            stAlive: NeedScan := (PortsData = 0) or (rfBridge in Flags);
+            stPing: NeedScan := GeoIpInfo.ping = PING_NONE;
+            stAlive: NeedScan := (PortsData = PORT_NONE) or (rfBridge in Flags);
           end;
         end;
         spBridges: NeedScan := rfBridge in Flags;
         spGuards: NeedScan := rfGuard in Flags;
-        spAlive: NeedScan := PortsData = 1;
+        spAlive: NeedScan := PortsData = PORT_ALIVE;
       end;
     end
     else
       NeedScan := True;
     if NeedScan then
-    begin
-      if sScanType = stPing then
-        ls.Append(IpStr + ':0')
-      else
-        ls.Append(IpStr + ':' + PortStr);
-    end;
+      AddDataInternal(IpStr, Port);
   end;
 
 begin
-  ls := TStringList.Create;
+  DataCount := 0;
+  Duplicates := THashSet<string>.Create;
   try
     if CurrentAutoScanPurpose <> spNone then
       sScanPurpose := CurrentAutoScanPurpose;
-
     if sScanPurpose in [spUserBridges, spNewBridges] then
     begin
       Data := TStringList.Create;
       try
-        MemoToList(Tcp.meBridges, SORT_NONE, Data);
+        MemoToList(Tcp.meBridges, Data);
         for i := 0 to Data.Count - 1 do
         begin
           if TryParseBridge(Data[i], Bridge, False) then
@@ -2233,7 +2242,7 @@ begin
               if IpStr <> '' then
               begin
                 if GeoIpDic.TryGetValue(IpStr, GeoIpInfo) then
-                  NeedScan := GetPortsValue(GeoIpInfo.ports, IntToStr(Bridge.Port)) = 0
+                  NeedScan := GetPortsValue(GeoIpInfo.ports, Bridge.Port) = PORT_NONE
                 else
                   NeedScan := True;
               end
@@ -2254,7 +2263,7 @@ begin
       begin
         Data := TStringList.Create;
         try
-          MemoToList(Tcp.meFallbackDirs, SORT_NONE, Data);
+          MemoToList(Tcp.meFallbackDirs, Data);
           for i := 0 to Data.Count - 1 do
           begin
             if TryParseFallbackDir(Data[i], FallbackDir, False) then
@@ -2268,9 +2277,9 @@ begin
       begin
         if sScanPurpose = spSelected then
         begin
-          for ScanItem in UserScanList do
+          for HashStr in UserScanMap do
           begin
-            if RoutersDic.TryGetValue(ScanItem.Key, RouterInfo) then
+            if RoutersDic.TryGetValue(HashStr, RouterInfo) then
               AddToScanList(RouterInfo.IPv4, RouterInfo.Port);
           end;
         end
@@ -2281,54 +2290,53 @@ begin
         end;
       end;
     end;
-    DeleteDuplicatesFromList(ls);
-    if ls.Count > 0 then
-    begin
-      Synchronize(UpdateControls);
-      TotalScans := ls.Count;
-      i := 0;
-      MemoryStatus.dwLength := SizeOf(MemoryStatus);
-      GlobalMemoryStatusEx(MemoryStatus);
-      AvailMemoryBefore := MemoryStatus.ullAvailVirtual;
-      while not Terminated do
-      begin
-        if ScanThreads < sMaxThreads then
-        begin
-          IpToScan := GetAddressFromSocket(ls[i]);
-          PortToScan := GetPortFromSocket(ls[i]);
-          with TScanItemThread.Create(True) do
-          begin
-            IpStr := IpToScan;
-            Port := PortToScan;
-            ScanType := sScanType;
-            MaxPortAttempts := sMaxPortAttempts;
-            MaxPingAttempts := sMaxPingAttempts;
-            AttemptsDelay := sAttemptsDelay;
-            PingTimeout := sPingTimeout;
-            PortTimeout := sPortTimeout;
-            FreeOnTerminate := True;
-            Priority := tpNormal;
-            Start;
-          end;
-          CurrentScans := i + 1;
-          InterlockedIncrement(ScanThreads);
-
-          if (i = ls.Count - 1) or StopScan then
-            Exit;
-          Inc(i);
-
-          GlobalMemoryStatusEx(MemoryStatus);
-          if MemoryStatus.ullAvailVirtual < Round(AvailMemoryBefore * 0.2) then
-            sMaxThreads := ScanThreads;
-          if i mod sScanPortionSize = 0 then
-            Sleep(sScanPortionTimeout);
-        end
-        else
-          Sleep(1);
-      end;
-    end;
   finally
-    ls.Free;
+    Duplicates.Free;
+  end;
+
+  SetLength(ls, DataCount);
+  if DataCount > 0 then
+  begin
+    Synchronize(UpdateControls);
+    TotalScans := DataCount;
+    i := 0;
+    MemoryStatus.dwLength := SizeOf(MemoryStatus);
+    GlobalMemoryStatusEx(MemoryStatus);
+    AvailMemoryBefore := MemoryStatus.ullAvailVirtual;
+    while not Terminated do
+    begin
+      if ScanThreads < sMaxThreads then
+      begin
+        with TScanItemThread.Create(True) do
+        begin
+          IpStr := ls[i].IpStr;
+          Port := ls[i].Port;
+          ScanType := sScanType;
+          MaxPortAttempts := sMaxPortAttempts;
+          MaxPingAttempts := sMaxPingAttempts;
+          AttemptsDelay := sAttemptsDelay;
+          PingTimeout := sPingTimeout;
+          PortTimeout := sPortTimeout;
+          FreeOnTerminate := True;
+          Priority := tpNormal;
+          Start;
+        end;
+        CurrentScans := i + 1;
+        InterlockedIncrement(ScanThreads);
+
+        if (i = DataCount - 1) or StopScan then
+          Exit;
+        Inc(i);
+
+        GlobalMemoryStatusEx(MemoryStatus);
+        if MemoryStatus.ullAvailVirtual < Round(AvailMemoryBefore * 0.2) then
+          sMaxThreads := ScanThreads;
+        if i mod sScanPortionSize = 0 then
+          Sleep(sScanPortionTimeout);
+      end
+      else
+        Sleep(1);
+    end;
   end;
 end;
 
@@ -2360,8 +2368,10 @@ end;
 
 procedure TTcp.SaveConfluxOptions(var ini: TMemIniFile);
 begin
-  DeleteTorConfig('ConfluxEnabled');
-  DeleteTorConfig('ConfluxClientUX');
+  DeleteTorConfig([
+    'ConfluxEnabled',
+    'ConfluxClientUX'
+  ]);
   if SupportConflux then
   begin
     case cbxUseConflux.ItemIndex of
@@ -2403,7 +2413,7 @@ begin
   end;
 end;
 
-function TTcp.GetTransportStateID(StateStr: string): Integer;
+function TTcp.GetTransportStateID(const StateStr: string): Integer;
 begin
   Result := PT_STATE_AUTO;
   if Length(StateStr) > 0 then
@@ -2425,7 +2435,7 @@ begin
   end;
 end;
 
-function TTcp.GetTransportID(TypeStr: string): Integer;
+function TTcp.GetTransportID(const TypeStr: string): Integer;
 begin
   Result := TRANSPORT_CLIENT;
   if Length(TypeStr) > 0 then
@@ -2447,7 +2457,7 @@ begin
   end;
 end;
 
-function TTcp.GetHsStateID(StateStr: string): Integer;
+function TTcp.GetHsStateID(const StateStr: string): Integer;
 begin
   if StateStr = SELECT_CHAR then
     Result := HS_STATE_ENABLED
@@ -2480,7 +2490,7 @@ begin
   BridgesState := NeedUpdateBridges;
   FallbackDirsState := NeedUpdateFallbackDirs or (MissingFallbackDirCount > 0);
 
-  if cbUseBridges.Checked and (UsedBridgesCount <> UsedBridgesList.Count) and not BridgesState and not FirstLoad then
+  if cbUseBridges.Checked and (UsedBridgesCount <> UsedBridgesMap.Count) and not BridgesState and not FirstLoad then
     SaveBridgesData;
 
   if (BridgesState or FallbackDirsState) and (UpdateBridgesInterval = 0) then
@@ -2539,7 +2549,7 @@ var
   NeedUpdate: Boolean;
   i, j, DataCount: Integer;
   RouterID, FallbackStr: string;
-  ParseStr: ArrOfStr;
+  ParseStr: TArray<string>;
   Router: TRouterInfo;
   GeoIpInfo: TGeoIpInfo;
   BridgeItem: TPair<string, TBridgeInfo>;
@@ -2547,7 +2557,7 @@ var
   FallbackDir: TFallbackDir;
   HashItem: TPair<string, Byte>;
   BridgeInfo: TBridgeInfo;
-  HashList: TDictionary<string, Byte>;
+  HashList: TDictionary<string, byte>;
   LastRoutersCount: Integer;
 
   procedure RemoveMissingRouter;
@@ -2555,7 +2565,7 @@ var
     if RoutersDic.TryGetValue(HashItem.Key, Router) then
     begin
       if not UsedFallbackDirsList.ContainsKey(Router.IPv4 + '|' + IntToStr(Router.Port)) then
-        SetPortsValue(Router.IPv4, IntToStr(Router.Port), -1);
+        SetPortsValue(Router.IPv4, Router.Port, PORT_DEAD);
       RoutersDic.Remove(HashItem.Key);
     end;
   end;
@@ -2564,9 +2574,9 @@ var
   begin
     if GeoIpDic.TryGetValue(FallbackDir.IPv4, GeoIpInfo) then
     begin
-      if GetPortsValue(GeoIpInfo.ports, IntToStr(FallbackDir.OrPort)) <> -1 then
+      if GetPortsValue(GeoIpInfo.ports, FallbackDir.OrPort) <> PORT_DEAD then
       begin
-        SetPortsValue(FallbackDir.IPv4, IntToStr(FallbackDir.OrPort), -1);
+        SetPortsValue(FallbackDir.IPv4, FallbackDir.OrPort, PORT_DEAD);
         Inc(MissingFallbackDirCount);
       end;
     end
@@ -2577,7 +2587,7 @@ var
 begin
   if not FileExists(ConsensusFile) then
     Exit;
-  VersionsDic.Clear;
+  VersionsMap.Clear;
   HashList := TDictionary<string, Byte>.Create;
   ls := TStringList.Create;
   try
@@ -2592,10 +2602,10 @@ begin
     ls.LoadFromFile(ConsensusFile);
     for i := 0 to ls.Count - 1 do
     begin
-      if Pos('r ', ls[i]) = 1 then
+      if ls[i].StartsWith('r ') then
       begin
-        ParseStr := Explode(' ', ls[i]);
-        RouterID := AnsiStrToHex(decodebase64(AnsiString(ParseStr[2])));
+        ParseStr := ls[i].Split([' ']);
+        RouterID := BytesToHex(TNetEncoding.Base64.DecodeStringToBytes(ParseStr[2]));
         Router.Name := ParseStr[1];
         Router.IPv4 := ParseStr[5];
         Router.IPv6 := '';
@@ -2605,71 +2615,63 @@ begin
         Router.Params := 0;
         Continue;
       end;
-      if Pos('a ', ls[i]) = 1 then
+      if ls[i].StartsWith('a ') then
       begin
         Router.IPv6 := Copy(ls[i], 4, RPos(':', ls[i]) - 5);
         Inc(Router.Params, ROUTER_REACHABLE_IPV6);
         Continue;
       end;
-      if Pos('s ', ls[i]) = 1 then
+      if ls[i].StartsWith('s ') then
       begin
-        ParseStr := Explode(' ', ls[i]);
-        DataCount := Length(ParseStr);
-        for j := 1 to DataCount - 1 do
+        ParseStr := ls[i].Split([' ']);
+        for j := 1 to High(ParseStr) do
         begin
-          if Pos('Authority', ParseStr[j]) = 1 then
-          begin
-            Include(Router.Flags, rfAuthority);
-            Inc(Router.Params, ROUTER_AUTHORITY);
-          end;
-          if Pos('BadExit', ParseStr[j]) = 1 then
-          begin
-            Include(Router.Flags, rfBadExit);
-            Inc(Router.Params, ROUTER_BAD_EXIT);
-          end;
-          if Pos('Exit', ParseStr[j]) = 1 then
-            Include(Router.Flags, rfExit);
-          if Pos('MiddleOnly', ParseStr[j]) = 1 then
-          begin
-            Include(Router.Flags, rfMiddleOnly);
-            Inc(Router.Params, ROUTER_MIDDLE_ONLY);
-          end;
-          if Pos('Fast', ParseStr[j]) = 1 then
-            Include(Router.Flags, rfFast);
-          if Pos('Guard', ParseStr[j]) = 1 then
-            Include(Router.Flags, rfGuard);
-          if Pos('HSDir', ParseStr[j]) = 1 then
-          begin
+          if ParseStr[j] = 'Fast' then
+            Include(Router.Flags, rfFast)
+          else if ParseStr[j] = 'Stable' then
+            Include(Router.Flags, rfStable)
+          else if ParseStr[j] = 'V2Dir' then
+            Include(Router.Flags, rfV2Dir)
+          else if ParseStr[j] = 'HSDir' then begin
             Include(Router.Flags, rfHSDir);
-            Inc(Router.Params, ROUTER_HS_DIR);
+            Inc(Router.Params, ROUTER_HS_DIR)
+          end else if ParseStr[j] = 'Guard' then
+            Include(Router.Flags, rfGuard)
+          else if ParseStr[j] = 'Exit' then
+            Include(Router.Flags, rfExit)
+          else if ParseStr[j] ='BadExit' then begin
+            Include(Router.Flags, rfBadExit);
+            Inc(Router.Params, ROUTER_BAD_EXIT)
+          end else if ParseStr[j] = 'MiddleOnly' then begin
+            Include(Router.Flags, rfMiddleOnly);
+            Inc(Router.Params, ROUTER_MIDDLE_ONLY)
+          end else if ParseStr[j] = 'Authority' then begin
+            Include(Router.Flags, rfAuthority);
+            Inc(Router.Params, ROUTER_AUTHORITY)
           end;
-          if Pos('Stable', ParseStr[j]) = 1 then
-            Include(Router.Flags, rfStable);
-          if Pos('V2Dir', ParseStr[j]) = 1 then
-            Include(Router.Flags, rfV2Dir);
         end;
         if not (rfStable in Router.Flags) then
           Inc(Router.Params, ROUTER_UNSTABLE);
         Continue;
       end;
-      if Pos('v ', ls[i]) = 1 then
+      if ls[i].StartsWith('v ') then
       begin
         Router.Version := Copy(ls[i], 7);
-        if not VersionsDic.ContainsKey(Router.Version) then
+        if not VersionsMap.Contains(Router.Version) then
           Inc(Router.Params, ROUTER_NOT_RECOMMENDED);
         Continue;
       end;
 
-      if Pos('pr ', ls[i]) = 1 then
+      if ls[i].StartsWith('pr ') then
       begin
         if Pos('Conflux', ls[i]) <> 0 then
           Inc(Router.Params, ROUTER_SUPPORT_CONFLUX);
         Continue;
       end;
 
-      if Pos('w ', ls[i]) = 1 then
+      if ls[i].StartsWith('w ') then
       begin
-        ParseStr := Explode(' ', ls[i]);
+        ParseStr := ls[i].Split([' ']);
         Router.Bandwidth := StrToInt(SeparateRight(ParseStr[1], '='));
         if BridgesDic.TryGetValue(RouterID, BridgeInfo) then
         begin
@@ -2686,20 +2688,19 @@ begin
         else
         begin
           if LastRoutersCount > 0 then
-            SetPortsValue(Router.IPv4, IntToStr(Router.Port), 0);
+            SetPortsValue(Router.IPv4, Router.Port, PORT_NONE);
         end;
         Continue;
       end;
 
-      if Pos('server-versions', ls[i]) = 1 then
+      if ls[i].StartsWith('server-versions') then
       begin
-        ParseStr := Explode(',', ls[i]);
-        for j := 0 to Length(ParseStr) - 1 do
-          VersionsDic.AddOrSetValue(ParseStr[j], 0);
+        ParseStr := ls[i].Split([',']);
+        for j := 0 to High(ParseStr) do
+          VersionsMap.Add(ParseStr[j]);
         Continue;
       end;
-
-      if Pos('directory-footer', ls[i]) = 1 then
+      if ls[i].StartsWith('directory-footer') then
         Break;
     end;
     FileAge(ConsensusFile, LastConsensusDate);
@@ -2729,7 +2730,7 @@ begin
             NeedUpdate := True;
           end;
         end;
-        if TryUpdateMask(BridgeInfo.Router.Params, ROUTER_NOT_RECOMMENDED, not VersionsDic.ContainsKey(BridgeInfo.Router.Version))
+        if TryUpdateMask(BridgeInfo.Router.Params, ROUTER_NOT_RECOMMENDED, not VersionsMap.Contains(BridgeInfo.Router.Version))
           or NeedUpdate then
             BridgesDic.AddOrSetValue(BridgeItem.Key, BridgeInfo);
         RoutersDic.AddOrSetValue(BridgeItem.Key, BridgeInfo.Router);
@@ -2752,6 +2753,7 @@ begin
         end;
       end;
     end;
+    RoutersDic.TrimExcess;
   finally
     ls.Free;
     HashList.Free;
@@ -2762,7 +2764,7 @@ procedure TTcp.LoadDescriptorsData;
 var
   ls, lb: TStringList;
   i, PrevData, CurrData: Integer;
-  ParseStr: ArrOfStr;
+  ParseStr: TArray<string>;
   DescRouter, Router: TRouterInfo;
   UserBridges: TDictionary<string, TBridge>;
   Bridge, PrevBridge: TBridge;
@@ -2770,7 +2772,7 @@ var
   BridgeRelay, UpdateFromDesc, DifferSource: Boolean;
   GeoIpInfo: TGeoIpInfo;
 
-  procedure LoadDesc(FileName: string);
+  procedure LoadDesc(const FileName: string);
   var
     Desc: TStringList;
   begin
@@ -2786,16 +2788,16 @@ var
     end;
   end;
 
-  procedure UpdateBridgeData(IpStr, PortStr: string; UpdatePort: Boolean = False);
+  procedure UpdateBridgeData(const IpStr: string; Port: Word; UpdatePort: Boolean = False);
   var
     BridgeKey: string;
   begin
     if IpStr = '' then
       Exit;
-    BridgeKey := IpStr + '|' + PortStr;
+    BridgeKey := IpStr + '|' + IntToStr(Port);
     DirFetches.Remove(BridgeKey);
     if UpdatePort then
-      SetPortsValue(IpStr, PortStr, 1);
+      SetPortsValue(IpStr, Port, PORT_ALIVE);
     if (NewBridgesStage = 1) and (NewBridgesCount > 0) then
     begin
       if NewBridgesList.ContainsKey(BridgeKey) then
@@ -2859,7 +2861,7 @@ var
       atIPv4: DifferSource := SourceAddr <> RouterInfo.IPv4;
       atIPv6: DifferSource := SourceAddr <> RouterInfo.IPv6;
     end;
-    if DifferSource and IpInRanges(SourceAddr, DocRanges) then
+    if DifferSource and IpInReservedRanges(SourceAddr, rtDoc) then
     begin
       BridgeInfo.Source := SourceAddr;
       CompBridgesDic.AddOrSetValue(SourceAddr, RouterID);
@@ -2871,9 +2873,9 @@ var
 
     if ConnectState <> 0 then
     begin
-      UpdateBridgeData(BridgeInfo.Router.IPv4, IntToStr(BridgeInfo.Router.Port), True);
-      UpdateBridgeData(BridgeInfo.Router.IPv6, IntToStr(BridgeInfo.Router.Port));
-      UpdateBridgeData(BridgeInfo.Source, IntToStr(BridgeInfo.Router.Port));
+      UpdateBridgeData(BridgeInfo.Router.IPv4, BridgeInfo.Router.Port, True);
+      UpdateBridgeData(BridgeInfo.Router.IPv6, BridgeInfo.Router.Port);
+      UpdateBridgeData(BridgeInfo.Source, BridgeInfo.Router.Port);
     end;
   end;
 
@@ -2898,14 +2900,14 @@ begin
         if UserBridges.TryGetValue(BridgeID, PrevBridge) then
         begin
           if GeoIpDic.TryGetValue(PrevBridge.Ip, GeoIpInfo) then
-            PrevData := GetPortsValue(GeoIpInfo.ports, IntToStr(PrevBridge.Port))
+            PrevData := GetPortsValue(GeoIpInfo.ports, PrevBridge.Port)
           else
-            PrevData := 0;
+            PrevData := PORT_NONE;
 
           if GeoIpDic.TryGetValue(Bridge.Ip, GeoIpInfo) then
-            CurrData := GetPortsValue(GeoIpInfo.ports, IntToStr(Bridge.Port))
+            CurrData := GetPortsValue(GeoIpInfo.ports, Bridge.Port)
           else
-            CurrData := 0;
+            CurrData := PORT_NONE;
 
           if CurrData > PrevData then
             UserBridges.AddOrSetValue(BridgeID, Bridge)
@@ -2921,12 +2923,12 @@ begin
     LoadDesc(NewDescriptorsFile);
     for i := 0 to ls.Count - 1 do
     begin
-      if Pos('@source ', ls[i]) = 1 then
+      if ls[i].StartsWith('@source ') then
       begin
         SourceAddr := StringReplace(Copy(ls[i], 9), '"', '', [rfReplaceAll]);
         Continue;
       end;
-      if Pos('@purpose bridge', ls[i]) = 1 then
+      if ls[i].StartsWith('@purpose bridge') then
       begin
         BridgeRelay := True;
         UpdateFromDesc := True;
@@ -2934,9 +2936,9 @@ begin
       end;
       if BridgeRelay then
       begin
-        if Pos('router ', ls[i]) = 1 then
+        if ls[i].StartsWith('router ') then
         begin
-          ParseStr := Explode(' ', ls[i]);
+          ParseStr := ls[i].Split([' ']);
           DescRouter.Name := ParseStr[1];
           DescRouter.IPv4 := ParseStr[2];
           DescRouter.IPv6 := '';
@@ -2946,8 +2948,7 @@ begin
           DescRouter.Version := '';
           Continue;
         end;
-
-        if Pos('or-address ', ls[i]) = 1 then
+        if ls[i].StartsWith('or-address ') then
         begin
           Temp := Copy(ls[i], 13, RPos(':', ls[i]) - 14);
           if ValidAddress(Temp) = atIPv6 then
@@ -2957,36 +2958,33 @@ begin
           end;
           Continue;
         end;
-
-        if Pos('platform ', ls[i]) = 1 then
+        if ls[i].StartsWith('platform ') then
         begin
-          ParseStr := Explode(' ', ls[i]);
+          ParseStr := ls[i].Split([' ']);
           DescRouter.Version := ParseStr[2];
-          if not VersionsDic.ContainsKey(ParseStr[2]) then
+          if not VersionsMap.Contains(ParseStr[2]) then
             Inc(DescRouter.Params, ROUTER_NOT_RECOMMENDED);
           Continue;
         end;
-
-        if Pos('fingerprint ', ls[i]) = 1 then
+        if ls[i].StartsWith('fingerprint ') then
         begin
           RouterID := StringReplace(Copy(ls[i], 13), ' ', '', [rfReplaceAll]);
           Continue;
         end;
 
-        if Pos('bandwidth ', ls[i]) = 1 then
+        if ls[i].StartsWith('bandwidth ') then
         begin
-          ParseStr := Explode(' ', ls[i]);
+          ParseStr := ls[i].Split([' ']);
           DescRouter.Bandwidth := Round(StrToInt(ParseStr[3]) / 1024);
           Continue;
         end;
 
-        if Pos('tunnelled-dir-server', ls[i]) = 1 then
+        if ls[i].StartsWith('tunnelled-dir-server') then
         begin
           Include(DescRouter.Flags, rfV2Dir);
           Continue;
         end;
-
-        if Pos('router-signature', ls[i]) = 1 then
+        if ls[i].StartsWith('router-signature') then
         begin
           if RoutersDic.TryGetValue(RouterID, Router) then
           begin
@@ -3063,7 +3061,7 @@ end;
 procedure TControlThread.Execute;
 begin
   Socket := TTCPBlockSocket.Create;
-  Duplicates := TDictionary<string, Byte>.Create;
+  Duplicates := THashSet<string>.Create;
   try
     repeat
       Socket.Connect(LOOPBACK_ADDRESS, IntToStr(Tcp.udControlPort.Position));
@@ -3121,13 +3119,13 @@ begin
   end;
 end;
 
-procedure TControlThread.SendData(cmd: string);
+procedure TControlThread.SendData(const cmd: string);
 begin
   if Connected then
     SendBuffer := SendBuffer + cmd + BR;
 end;
 
-procedure TControlThread.CheckDirFetches(StreamInfo: TStreamInfo; Counter: Integer);
+procedure TControlThread.CheckDirFetches(const StreamInfo: TStreamInfo; Counter: Integer);
 var
   Target: TTarget;
   FetchInfo: TFetchInfo;
@@ -3155,7 +3153,7 @@ begin
                 begin
                   if Bridge.Transport <> '' then
                   begin
-                    SetPortsValue(Target.Hostname, Target.Port, -1);
+                    SetPortsValue(Target.Hostname, StrToInt(Target.Port), PORT_DEAD);
                     Inc(FailedBridgesCount);
                     ConsensusUpdated := True;
                     Exit;
@@ -3168,11 +3166,11 @@ begin
           DirFetches.AddOrSetValue(BridgeKey, FetchInfo);
           if FetchInfo.FailsCount > Tcp.udMaxDirFails.Position then
           begin
-            if IpInRanges(FetchInfo.IpStr, DocRanges) then
-              PortData := -2
+            if IpInReservedRanges(FetchInfo.IpStr, rtDoc) then
+              PortData := PORT_FAKE
             else
-              PortData := -1;
-            SetPortsValue(FetchInfo.IpStr, FetchInfo.PortStr, PortData);
+              PortData := PORT_DEAD;
+            SetPortsValue(FetchInfo.IpStr, StrToInt(FetchInfo.PortStr), PortData);
             DirFetches.Remove(BridgeKey);
             Inc(FailedBridgesCount);
             ConsensusUpdated := True;
@@ -3190,7 +3188,7 @@ begin
   end;
 end;
 
-function TControlThread.GetSpecialFlags(const BaseFlag: Integer; Circuit: TCircuitInfo): Integer;
+function TControlThread.GetSpecialFlags(BaseFlag: Integer; const Circuit: TCircuitInfo): Integer;
 begin
   if bfInternal in (Circuit.BuildFlags) then
     Result := CF_INTERNAL + BaseFlag
@@ -3198,7 +3196,7 @@ begin
     Result := CF_EXIT + BaseFlag;
 end;
 
-function TControlThread.GetCircuitFlags(Circuit: TCircuitInfo): Integer;
+function TControlThread.GetCircuitFlags(const Circuit: TCircuitInfo): Integer;
 begin
   if bfOneHop in (Circuit.BuildFlags) then
     Result := CF_DIR_REQUEST
@@ -3237,14 +3235,16 @@ var
   RouterInfo: TRouterInfo;
   Bridge: TBridge;
   FallbackDir: TFallbackDir;
-  Str: string;
+  DataStr, Str: string;
+  sb: TStringBuilder;
+  CountryCode: Byte;
 
   function CheckCountryUpdate(const IpStr: string; FindData: Boolean = True): Boolean;
   var
-    DataStr: string;
+    CommandStr: string;
   begin
     Result := False;
-    if Duplicates.ContainsKey(IpStr) then
+    if Duplicates.Contains(IpStr) then
       Exit;
     if FindData then
     begin
@@ -3263,11 +3263,11 @@ var
     end;
     if CommandSize < (BUFSIZE - 64) then
     begin
-      Duplicates.AddOrSetValue(IpStr, 0);
-      DataStr := ' ip-to-country/' + IpStr;
-      Inc(CommandSize, Length(DataStr));
+      Duplicates.Add(IpStr);
+      CommandStr := 'ip-to-country/' + IpStr;
+      Inc(CommandSize, Length(CommandStr) + 1);
       Inc(InfoCount);
-      Temp := Temp + DataStr;
+      AppendWithDelims(sb, CommandStr, ' ');
     end
     else
     begin
@@ -3281,108 +3281,99 @@ begin
   begin
     if InfoStage = 1 then
     begin
-      Temp := '';
-      InfoCount := 0;
-      CommandSize := 0;
-      DataOverflow := False;
+      sb := TStringBuilder.Create;
+      try
+        InfoCount := 0;
+        CommandSize := 0;
+        DataOverflow := False;
 
-      if FindBridgesCountries or FindFallbackDirCountries or (GeoIpUpdateType <> gitNone) then
-      begin
-        ls := TStringList.Create;
-        try
-          if GeoIpUpdateType <> gitNone then
-          begin
-            for GeoIpItem in GeoIpDic do
+        if FindBridgesCountries or FindFallbackDirCountries or (GeoIpUpdateType <> gitNone) then
+        begin
+          ls := TStringList.Create;
+          try
+            if GeoIpUpdateType <> gitNone then
             begin
-              if CheckCountryUpdate(GeoIpItem.Key, False) then
-                Break;
-            end;
-          end;
-          if FindBridgesCountries and not DataOverflow then
-          begin
-            ls.Text := Tcp.meBridges.Text;
-            ls.Append(Tcp.edPreferredBridge.Text);
-            for i := 0 to ls.Count - 1 do
-            begin
-              if TryParseBridge(ls[i], Bridge, False) then
+              for GeoIpItem in GeoIpDic do
               begin
-                Str := GetBridgeIp(Bridge);
-                if Str = '' then
-                  Continue;
-                if CheckCountryUpdate(Str) then
+                if CheckCountryUpdate(GeoIpItem.Key, False) then
                   Break;
               end;
             end;
-          end;
-          if FindFallbackDirCountries and not DataOverflow then
-          begin
-            ls.Text := Tcp.meFallbackDirs.Text;
-            for i := 0 to ls.Count - 1 do
+            if FindBridgesCountries and not DataOverflow then
             begin
-              if TryParseFallbackDir(ls[i], FallbackDir, False) then
+              ls.Text := Tcp.meBridges.Text;
+              ls.Append(Tcp.edPreferredBridge.Text);
+              for i := 0 to ls.Count - 1 do
               begin
-                if CheckCountryUpdate(FallbackDir.IPv4) then
-                  Break;
-                if FallbackDir.IPv6 <> '' then
+                if TryParseBridge(ls[i], Bridge, False) then
                 begin
-                  if CheckCountryUpdate(FallbackDir.IPv6) then
+                  Str := GetBridgeIp(Bridge);
+                  if Str = '' then
+                    Continue;
+                  if CheckCountryUpdate(Str) then
                     Break;
                 end;
               end;
             end;
+            if FindFallbackDirCountries and not DataOverflow then
+            begin
+              ls.Text := Tcp.meFallbackDirs.Text;
+              for i := 0 to ls.Count - 1 do
+              begin
+                if TryParseFallbackDir(ls[i], FallbackDir, False) then
+                begin
+                  if CheckCountryUpdate(FallbackDir.IPv4) then
+                    Break;
+                  if FallbackDir.IPv6 <> '' then
+                  begin
+                    if CheckCountryUpdate(FallbackDir.IPv6) then
+                      Break;
+                  end;
+                end;
+              end;
+            end;
+          finally
+            ls.Free;
           end;
-        finally
-          ls.Free;
-        end;
-      end
-      else
-      begin
-        for Router in RoutersDic do
+        end
+        else
         begin
-          if CheckCountryUpdate(Router.Value.IPv4) then
-            Break;
-          if Router.Value.IPv6 <> '' then
+          for Router in RoutersDic do
           begin
-            if CheckCountryUpdate(Router.Value.IPv6) then
+            if CheckCountryUpdate(Router.Value.IPv4) then
               Break;
+            if Router.Value.IPv6 <> '' then
+            begin
+              if CheckCountryUpdate(Router.Value.IPv6) then
+                Break;
+            end;
           end;
         end;
-      end;
 
-      if InfoCount > 0 then
-      begin
-        if not DataOverflow then
-          Duplicates.Clear;
-        SendData('GETINFO' + Temp);
-        InfoStage := 2;
-      end
-      else
-        InfoStage := 3;
+        if InfoCount > 0 then
+        begin
+          if not DataOverflow then
+            Duplicates.Clear;
+          SendData('GETINFO ' + sb.ToString);
+          InfoStage := 2;
+        end
+        else
+          InfoStage := 3;
+      finally
+        sb.Free;
+      end;
     end;
 
     if InfoStage = 2 then
     begin
-      if Pos('250-ip-to-country/', Data) = 1 then
+      if Data.StartsWith('250-ip-to-country/') then
       begin
-        ParseStr := Explode('=', copy(Data, 19));
+        ParseStr := Copy(Data, 19).Split(['=']);
         if FilterDic.TryGetValue(ParseStr[1], FilterInfo) then
-          CountryCode := FilterInfo.cc
+          SetCountryValue(ParseStr[0], FilterInfo.cc)
         else
-          CountryCode := DEFAULT_COUNTRY_ID;
-
-        if GeoIpDic.TryGetValue(ParseStr[0], GeoIpInfo) then
-          GeoIpInfo.cc := CountryCode
-        else
-        begin
-          GeoIpInfo.cc := CountryCode;
-          GeoIpInfo.ping := 0;
-          GeoIpInfo.ports := '';
-        end;
-        GeoIpDic.AddOrSetValue(ParseStr[0], GeoIpInfo);
-        GeoIpModified := True;
-
+          SetCountryValue(ParseStr[0], DEFAULT_COUNTRY_ID);
         Dec(InfoCount);
-
         if InfoCount = 0 then
         begin
           if DataOverflow then
@@ -3441,13 +3432,12 @@ begin
   begin
     if GetIpStage = 1 then
     begin
-      if (Pos('250-address', Data) = 1) then
+      if Data.StartsWith('250-address') then
       begin
         ServerIPv4 := SeparateRight(Data, '=');
         GetIpStage := 2;
       end;
-
-      if Pos('551 Address unknown', Data) = 1 then
+      if Data.StartsWith('551 Address unknown') then
       begin
         if Tcp.cbUseOpenDNS.Checked and Tcp.cbUseOpenDNSOnlyWhenUnknown.Checked then
         begin
@@ -3472,16 +3462,15 @@ begin
 
   if ConnectState = 1 then
   begin
-
-    if Pos('515 Authentication failed', Data) = 1 then
+    if Data.StartsWith('515 Authentication failed') then
     begin
       StopCode := STOP_AUTH_ERROR;
       Exit;
     end;
 
-    SearchPos := Pos('BOOTSTRAP PROGRESS', Data);
-    if SearchPos <> 0 then
+    if Data.StartsWith('650 STATUS_CLIENT NOTICE BOOTSTRAP PROGRESS') then
     begin
+      SearchPos := Pos('BOOTSTRAP PROGRESS', Data);
       ConnectProgress := StrToIntDef(copy(Data, SearchPos + 19, Pos('TAG', Data) - (SearchPos + 20)), 0);
       Tcp.UpdateConnectProgress(ConnectProgress);
       if ConnectProgress = 100 then
@@ -3497,9 +3486,9 @@ begin
     end;
   end;
 
-  if Pos('650 CIRC ', Data) = 1  then
+  if Data.StartsWith('650 CIRC ') then
   begin
-    ParseStr := Explode(' ', Data);
+    ParseStr := Data.Split([' ']);
     CircuitID := ParseStr[2];
     StatusID := GetConstantIndex(ParseStr[3]);
     case StatusID of
@@ -3519,7 +3508,7 @@ begin
           Include(CircuitInfo.BuildFlags, bfNeedUptime);
         CircuitInfo.PurposeID := GetConstantIndex(SeparateRight(ParseStr[6], '='));
         CircuitInfo.Flags := GetCircuitFlags(CircuitInfo);
-        for i := 7 to Length(ParseStr) - 1 do
+        for i := 7 to High(ParseStr) do
         begin
           if Pos('TIME_CREATED', ParseStr[i]) <> 0 then
           begin
@@ -3527,12 +3516,17 @@ begin
             Break;
           end;
         end;
-        ParseStr := Explode(',', ParseStr[4]);
-        Temp := '';
-        for i := 0 to Length(ParseStr) - 1 do
-          Temp := Temp + ',' + Copy(SeparateLeft(ParseStr[i], '~'), 2);
-        Delete(Temp, 1, 1);
-        CircuitInfo.Nodes := Temp;
+        ParseStr := ParseStr[4].Split([',']);
+        DataStr := '';
+        for i := 0 to High(ParseStr) do
+        begin
+          Str := Copy(SeparateLeft(ParseStr[i], '~'), 2);
+          if DataStr <> '' then
+            DataStr := DataStr + ',' + Str
+          else
+            DataStr := Str;
+        end;
+        CircuitInfo.Nodes := DataStr;
         CircuitsDic.AddOrSetValue(CircuitID, CircuitInfo);
         CircuitsUpdated := True;
       end;
@@ -3547,17 +3541,17 @@ begin
     Exit;
   end;
 
-  if Pos('650 CIRC_MINOR ', Data) = 1  then
+  if Data.StartsWith('650 CIRC_MINOR ') then
   begin
-    ParseStr := Explode(' ', Data);
+    ParseStr := Data.Split([' ']);
     CircuitID := ParseStr[2];
     StatusID := GetConstantIndex(ParseStr[3]);
     case StatusID of
       PURPOSE_CHANGED:
       begin
-        for i := 6 to Length(ParseStr) - 1 do
+        for i := 6 to High(ParseStr) do
         begin
-          if Pos('PURPOSE', ParseStr[i]) = 1 then
+          if ParseStr[i].StartsWith('PURPOSE=') then
           begin
             PurposeID := GetConstantIndex(SeparateRight(ParseStr[i], '='));
             if PurposeID = CONFLUX_LINKED then
@@ -3587,9 +3581,9 @@ begin
     Exit;
   end;
 
-  if Pos('650 STREAM ', Data) = 1  then
+  if Data.StartsWith('650 STREAM ') then
   begin
-    ParseStr := Explode(' ', Data);
+    ParseStr := Data.Split([' ']);
     StreamID := ParseStr[2];
     StatusID := GetConstantIndex(ParseStr[3]);
     CircuitID := ParseStr[4];
@@ -3603,13 +3597,13 @@ begin
         StreamInfo.Protocol := -1;
         StreamInfo.BytesRead := 0;
         StreamInfo.BytesWritten := 0;
-        for i := 6 to Length(ParseStr) - 1 do
+        for i := 6 to High(ParseStr) do
         begin
-          if Pos('SOURCE_ADDR', ParseStr[i]) = 1 then
+          if ParseStr[i].StartsWith('SOURCE_ADDR=') then
             StreamInfo.SourceAddr := SeparateRight(ParseStr[i], '=');
-          if Pos('PURPOSE', ParseStr[i]) = 1 then
+          if ParseStr[i].StartsWith('PURPOSE=') then
             StreamInfo.PurposeID := GetConstantIndex(SeparateRight(ParseStr[i], '='));
-          if Pos('CLIENT_PROTOCOL', ParseStr[i]) = 1 then
+          if ParseStr[i].StartsWith('CLIENT_PROTOCOL=') then
           begin
             StreamInfo.Protocol := GetConstantIndex(SeparateRight(ParseStr[i], '='));
             Break;
@@ -3634,9 +3628,9 @@ begin
             begin
               if not (bfInternal in CircuitInfo.BuildFlags) then
               begin
-                ParseStr := Explode(',', CircuitInfo.Nodes);
-                Temp := ParseStr[Length(ParseStr) - 1];
-                if RoutersDic.TryGetValue(Temp, RouterInfo) then
+                ParseStr := CircuitInfo.Nodes.Split([',']);
+                Str := ParseStr[High(ParseStr)];
+                if RoutersDic.TryGetValue(Str, RouterInfo) then
                 begin
                   LastUserStreamProtocol := StreamInfo.Protocol;
                   Circuit := CircuitID;
@@ -3647,7 +3641,7 @@ begin
                     Tcp.lbExitIp.Cursor := crHandPoint;
                     Tcp.lbExitCountry.Cursor := crHandPoint;
                   end;
-                  ExitNodeID := Temp;
+                  ExitNodeID := Str;
                   Tcp.lbExitIp.Caption := Ip;
                   Tcp.lbExitCountry.Caption := TransStr(CountryCodes[CountryCode]);
                   Tcp.lbExitCountry.Left := Round(208 * Scale);
@@ -3717,9 +3711,9 @@ begin
     Exit;
   end;
 
-  if Pos('650 BW ', Data) = 1 then
+  if Data.StartsWith('650 BW ') then
   begin
-    ParseStr := Explode(' ', Data);
+    ParseStr := Data.Split([' ']);
     DLSpeed := StrToIntDef(ParseStr[2], 0);
     ULSpeed := StrToIntDef(ParseStr[3], 0);
     if DLSpeed > MaxDLSpeed then
@@ -3759,9 +3753,9 @@ begin
   end;
   if Tcp.miShowCircuitsTraffic.Checked then
   begin
-    if Pos('650 CIRC_BW ', Data) = 1 then
+    if Data.StartsWith('650 CIRC_BW ') then
     begin
-      ParseStr := Explode(' ', Data);
+      ParseStr := Data.Split([' ']);
       CircuitID := SeparateRight(ParseStr[2], '=');
       if CircuitsDic.TryGetValue(CircuitID, CircuitInfo) then
       begin
@@ -3776,9 +3770,9 @@ begin
 
   if Tcp.miShowStreamsTraffic.Checked then
   begin
-    if Pos('650 STREAM_BW ', Data) = 1 then
+    if Data.StartsWith('650 STREAM_BW ') then
     begin
-      ParseStr := Explode(' ', Data);
+      ParseStr := Data.Split([' ']);
       StreamID := SeparateRight(ParseStr[2], '=');
       if StreamsDic.TryGetValue(StreamID, StreamInfo) then
       begin
@@ -3793,18 +3787,18 @@ begin
 
   if Tcp.cbxServerMode.ItemIndex <> SERVER_MODE_NONE then
   begin
-    if Pos('650 STATUS_SERVER ', Data) = 1 then
+    if Data.StartsWith('650 STATUS_SERVER ') then
     begin
-      ParseStr := Explode(' ', Data);
-      for i := 2 to Length(ParseStr) - 1 do
+      ParseStr := Data.Split([' ']);
+      for i := 2 to High(ParseStr) do
       begin
-        if Pos('ADDRESS=', ParseStr[i]) = 1 then
+        if ParseStr[i].StartsWith('ADDRESS=') then
         begin
-          Temp := SeparateRight(ParseStr[i], '=');
-          AddressType := ValidAddress(Temp);
+          Str := SeparateRight(ParseStr[i], '=');
+          AddressType := ValidAddress(Str);
           case AddressType of
-            atIPv4: if Temp <> ServerIPv4 then ServerIPv4 := Temp;
-            atIPv6: if Temp <> ServerIPv6 then ServerIPv6 := Temp;
+            atIPv4: if Str <> ServerIPv4 then ServerIPv4 := Str;
+            atIPv6: if Str <> ServerIPv6 then ServerIPv6 := Str;
           end;
           if AddressType <> atNone then
             Tcp.UpdateServerInfo;
@@ -4195,16 +4189,10 @@ begin
   Key := LowerCase(sgFilter.Cells[FILTER_ID, sgFilter.SelRow]);
   if not FilterDic.ContainsKey(Key) then
     Exit;
-  case sgFilter.SelCol of
-    FILTER_ENTRY_NODES: FNodeType := ntEntry;
-    FILTER_MIDDLE_NODES: FNodeType := ntMiddle;
-    FILTER_EXIT_NODES: FNodeType := ntExit;
-    FILTER_EXCLUDE_NODES: FNodeType := ntExclude;
-    else
-      Exit;
-  end;
+  FNodeType := GetNodeTypeByGridCol(sgFilter, sgFilter.SelCol);
+  if FNodeType = ntNone then
+    Exit;
   FilterDic.TryGetValue(Key,  FilterInfo);
-
   if FNodeType = ntExclude then
   begin
     if sgFilter.Cells[FILTER_EXCLUDE_NODES, sgFilter.SelRow] = '' then
@@ -4473,7 +4461,7 @@ end;
 procedure TTcp.UpdateHsPorts(EmptyData: Boolean = False);
 var
   i: Integer;
-  Ports: string;
+  Ports, Data: string;
 begin
   if (EmptyData and not LockHsPortsControls) or sgHsPorts.IsEmpty then
   begin
@@ -4488,12 +4476,14 @@ begin
     Ports := '';
     for i := 1 to sgHsPorts.RowCount - 1 do
     begin
-      Ports := Ports + '|' +
-        sgHsPorts.Cells[HSP_INTERFACE, i] + ',' +
-        sgHsPorts.Cells[HSP_REAL_PORT, i] + ',' +
-        sgHsPorts.Cells[HSP_VIRTUAL_PORT, i];
+      Data := sgHsPorts.Cells[HSP_INTERFACE, i] + ',' +
+              sgHsPorts.Cells[HSP_REAL_PORT, i] + ',' +
+              sgHsPorts.Cells[HSP_VIRTUAL_PORT, i];
+      if Ports <> '' then
+        Ports := Ports + '|' + Data
+      else
+        Ports := Data;
     end;
-    Delete(Ports, 1, 1);
     sgHs.Cells[HS_PORTS_DATA, sgHs.SelRow] := Ports;
   end;
 end;
@@ -4679,10 +4669,10 @@ end;
 function TTcp.GetFilterLabel(FilterID: Integer): TLabel;
 begin
   case FilterID of
-    FILTER_ENTRY_NODES: Result := lbFilterEntry;
-    FILTER_MIDDLE_NODES: Result := lbFilterMiddle;
-    FILTER_EXIT_NODES: Result := lbFilterExit;
-    FILTER_EXCLUDE_NODES: Result := lbFilterExclude;
+    ENTRY_ID: Result := lbFilterEntry;
+    MIDDLE_ID: Result := lbFilterMiddle;
+    EXIT_ID: Result := lbFilterExit;
+    EXCLUDE_ID: Result := lbFilterExclude;
     else
       Result := nil;
   end;
@@ -4703,17 +4693,43 @@ begin
   end;
 end;
 
+function TTcp.GetNodeTypeByGridCol(aSg: TStringGrid; ACol: Integer): TNodeType;
+begin
+  case aSg.Tag of
+    GRID_ROUTERS:
+    begin
+      case ACol of
+        ROUTER_ENTRY_NODES: Exit(ntEntry);
+        ROUTER_MIDDLE_NODES: Exit(ntMiddle);
+        ROUTER_EXIT_NODES: Exit(ntExit);
+        ROUTER_EXCLUDE_NODES: Exit(ntExclude);
+      end
+    end;
+    GRID_FILTER:
+    begin
+      case ACol of
+        FILTER_ENTRY_NODES: Exit(ntEntry);
+        FILTER_MIDDLE_NODES: Exit(ntMiddle);
+        FILTER_EXIT_NODES: Exit(ntExit);
+        FILTER_EXCLUDE_NODES: Exit(ntExclude);
+      end;
+    end;
+  end;
+  Exit(ntNone)
+end;
+
 procedure TTcp.ChangeRouters;
 var
   i: Integer;
-  Key, IPv4CountryCode, IPv6CountryCode, FindCidr, NodeStr, SelData, ConvertMsg: string;
+  Key, IPv4CountryCode, IPv6CountryCode, NodeStr, SelData, ConvertMsg: string;
   FNodeTypes: TNodeTypes;
   NodeTypeID: TNodeType;
   RouterInfo: TRouterInfo;
   NodesList: TStringList;
   HashMode, FindCountry, DoubleCountry, ConvertNodes: Boolean;
   NodeDataType: TNodeDataType;
-  Nodes: ArrOfNodes;
+  Nodes: TArray<TNodeData>;
+  IPv4Cidrs: TCidrValuePairs;
 
   function IsHashMode: Boolean;
   begin
@@ -4725,37 +4741,37 @@ var
     end;
   end;
 
-  procedure FindNode(NodeStr: string; NodeType: TNodeType; IsCountry: Boolean = False);
+  procedure FindNode(const NodeStr: string; NodeType: TNodeType; IsCountry: Boolean = False);
+  var
+    NodeData: TNodeTypes;
   begin
-    if NodesDic.ContainsKey(NodeStr) then
+    if NodesDic.TryGetValue(NodeStr, NodeData) and (NodeType in NodeData) then
     begin
-      if NodeType in NodesDic.Items[NodeStr] then
+      if IsCountry then
       begin
-        if IsCountry then
-        begin
-          NodesList.Append(UpperCase(NodeStr) + ' (' + TransStr(NodeStr) + ')');
-          FindCountry := True;
-        end
-        else
-          NodesList.Append(NodeStr);
-      end;
+        NodesList.Append('{' + NodeStr + '} ' + TransStr(NodeStr));
+        FindCountry := True;
+      end
+      else
+        NodesList.Append(NodeStr);
     end;
   end;
 
   procedure CreateNodesList(NodeType: TNodeType);
   var
     i: Integer;
-    ParseStr: ArrOfStr;
   begin
     NodesList.Clear;
     FindNode(Key, NodeType);
     FindNode(RouterInfo.IPv4, NodeType);
-    FindCidr := FindInRanges(RouterInfo.IPv4, atIPv4Cidr);
-    if FindCidr <> '' then
+    IPv4Cidrs := IPv4CidrNodes.FindAllMatchesIP(RouterInfo.IPv4);
+    if IPv4Cidrs <> nil then
     begin
-      ParseStr := Explode(',', FindCidr);
-      for i := 0 to Length(ParseStr) - 1 do
-        FindNode(ParseStr[i], NodeType);
+      for i := 0 to High(IPv4Cidrs) do
+      begin
+        if NodeType in IPv4Cidrs[i].Value then
+          NodesList.Append(IPv4Cidrs[i].Cidr);
+      end;
       SortNodesList(NodesList, SORT_DESC);
     end;
     FindNode(IPv4CountryCode, NodeType, True);
@@ -4774,7 +4790,7 @@ begin
   begin
     DoubleCountry := False;
     FindCountry := False;
-    NodeTypeID := TNodeType(sgRouters.SelCol);
+    NodeTypeID := GetNodeTypeByGridCol(sgRouters, sgRouters.SelCol);
     IPv4CountryCode := CountryCodes[GetCountryValue(RouterInfo.IPv4)];
     IPv6CountryCode := '';
     if RouterInfo.IPv6 <> '' then
@@ -4798,7 +4814,7 @@ begin
             sgRouters.Cells[ROUTER_EXCLUDE_NODES, sgRouters.SelRow] := EXCLUDE_CHAR;
             for i := ROUTER_ENTRY_NODES to ROUTER_EXIT_NODES do
             begin
-              CreateNodesList(TNodeType(i));
+              CreateNodesList(GetNodeTypeByGridCol(sgRouters, i));
               if IsHashMode then
               begin
                 if CheckRouterFlags(i, RouterInfo) then
@@ -4859,14 +4875,23 @@ begin
           begin
             for i := 0 to NodesList.Count - 1 do
             begin
-              NodeStr := SeparateLeft(NodesList[i], ' ');
-              NodeDataType := ValidNode(NodeStr);
-              if NodeDataType = dtCode then
-                NodeStr := LowerCase(NodeStr);
-              if NodesDic.TryGetValue(NodeStr, FNodeTypes) then
+              NodeStr := RemoveBrackets(SeparateLeft(NodesList[i], ' '), btCurly);
+              NodeDataType := ValidNode(NodeStr, False);
+              if NodeDataType <> dtIPv4Cidr then
               begin
-                Exclude(FNodeTypes, NodeTypeID);
-                NodesDic.AddOrSetValue(NodeStr, FNodeTypes);
+                if NodesDic.TryGetValue(NodeStr, FNodeTypes) then
+                begin
+                  Exclude(FNodeTypes, NodeTypeID);
+                  NodesDic.AddOrSetValue(NodeStr, FNodeTypes);
+                end;
+              end
+              else
+              begin
+                if IPv4CidrNodes.FindExactCIDR(NodeStr, FNodeTypes) then
+                begin
+                  Exclude(FNodeTypes, NodeTypeID);
+                  IPv4CidrNodes.AddOrSetCIDR(NodeStr, FNodeTypes);
+                end;
               end;
             end;
             if ConvertNodes then
@@ -4918,15 +4943,14 @@ var
   Mask, MaxItems: Integer;
   Params: string;
   CellRect, CellPoint: TRect;
-  Data: array of Integer;
+  Data: TArray<Integer>;
   ArrayIndex: Integer;
 
   procedure CheckMask(Param: Integer);
   begin
     if Mask and Param <> 0 then
     begin
-      SetLength(Data, MaxItems + 1);
-      Data[MaxItems] := Param;
+      TArrayHelper.AddToArray<Integer>(Data, Param);
       Inc(MaxItems);
     end;
   end;
@@ -5004,15 +5028,14 @@ var
   Mask, MaxItems: Integer;
   Fail: Boolean;
   CellRect, CellPoint: TRect;
-  Data: array of Word;
+  Data: TArray<Word>;
   ArrayIndex: Integer;
 
   procedure CheckMask(Param: Integer);
   begin
     if Mask and Param <> 0 then
     begin
-      SetLength(Data, MaxItems + 1);
-      Data[MaxItems] := Param;
+      TArrayHelper.AddToArray<Word>(Data, Param);
       Inc(MaxItems);
     end;
   end;
@@ -5319,7 +5342,7 @@ end;
 procedure TTcp.SelectHs;
 var
   i: Integer;
-  ParseStr, Items: ArrOfStr;
+  ParseStr, Items: TArray<string>;
 begin
   if sgHs.SelRow = 0 then
     sgHs.SelRow := 1;
@@ -5347,11 +5370,11 @@ begin
   end;
   if sgHs.Cells[HS_PORTS_DATA, sgHs.SelRow] <> '' then
   begin
-    Items := Explode('|', sgHs.Cells[HS_PORTS_DATA, sgHs.SelRow]);
+    Items := sgHs.Cells[HS_PORTS_DATA, sgHs.SelRow].Split(['|']);
     sgHsPorts.RowCount := Length(Items) + 1;
-    for i := 0 to Length(Items) - 1 do
+    for i := 0 to High(Items) do
     begin
-      ParseStr := Explode(',', Items[i]);
+      ParseStr := Items[i].Split([',']);
       sgHsPorts.Cells[HSP_INTERFACE, i + 1] := ParseStr[0];
       sgHsPorts.Cells[HSP_REAL_PORT, i + 1] := ParseStr[1];
       sgHsPorts.Cells[HSP_VIRTUAL_PORT, i + 1] := ParseStr[2];
@@ -5430,7 +5453,7 @@ begin
   OptionsChanged := State;
 end;
 
-procedure TTcp.ShowBalloon(Msg: string; Title: string = ''; Notice: Boolean = False; MsgType: TMsgType = mtInfo);
+procedure TTcp.ShowBalloon(const Msg: string; const Title: string = ''; Notice: Boolean = False; MsgType: TMsgType = mtInfo);
 var
   MsgIcon: TBalloonFlags;
 begin
@@ -5507,7 +5530,7 @@ var
   Fingerprint, ServerIp, BridgeStr: string;
   IsIPv4, IsIPv6, IsFingerprint, ServerIsBridge: Boolean;
 
-  function ReplaceIp(Str: string): string;
+  function ReplaceIp(const Str: string): string;
   begin
     Result := StringReplace(Str, ServerIPv4, FormatHost(ServerIPv6), [rfReplaceAll]);
   end;
@@ -5589,7 +5612,7 @@ begin
   begin
     for i := 0 to cbxSOCKSHost.items.Count - 1 do
     begin
-      if not IpInRanges(cbxSOCKSHost.Items[i], PrivateRanges) then
+      if not IpInReservedRanges(cbxSOCKSHost.Items[i], rtPrivate) then
         Continue;
       AddUPnPEntry(udORPort.Position, 'ORPort', cbxSOCKSHost.Items[i], Test, UPnPMsg);
       udORPort.Tag := udORPort.Position;
@@ -5643,13 +5666,18 @@ begin
   end;
 end;
 
-procedure TTcp.CheckOpenPorts(PortSpin: TUpDown; IP: string; var PortStr: string);
+procedure TTcp.CheckOpenPorts(PortSpin: TUpDown; const IP: string; var PortStr: string);
 var
   Port: Integer;
+  Data: string;
 begin
   if PortTCPIsOpen(PortSpin.Position, IP, 1) then
   begin
-    PortStr := PortStr + ', ' + IntToStr(PortSpin.Position);
+    Data := IntToStr(PortSpin.Position);
+    if PortStr <> '' then
+      PortStr := PortStr + ', ' + Data
+    else
+      PortStr := Data;
     Randomize;
     repeat
       Port := RandomRange(9000, 10000)
@@ -5745,6 +5773,7 @@ var
   BridgesChanged, FallbackDirsChanged, TransportsChanged,
   NeedReset: Boolean;
 begin
+
   DefaultsChanged := DefaultsFileID <> GetFileID(DefaultsFile).Data;
   TorrcChanged := TorrcFileID <> GetFileID(TorConfigFile).Data;
   PathChanged := not CheckRequiredFiles;
@@ -5823,7 +5852,6 @@ begin
       if cbxBridgeType.ItemIndex > 0 then
         CheckOpenPorts(udTransportPort, LOOPBACK_ADDRESS, PortStr);
     end;
-    Delete(PortStr, 1, 1);
     if PortStr <> '' then
     begin
       if ShowMsg(Format(TransStr('259'), [PortStr]), TransStr('246'), mtWarning, True) then
@@ -5960,7 +5988,7 @@ begin
   case Value of
     -1, 100: Str := TransStr('103');
     else
-      Str := IntToStr(Value) + ' %';  
+      Str := IntToStr(Value) + ' %';
   end;
   if (Value = 100) and (ConnectState = 1) then
     Exit
@@ -6093,7 +6121,7 @@ begin
 end;
 
 function TTcp.CheckRequiredFiles(AutoSave: Boolean = False): Boolean;
-  procedure CheckPathChanges(var PathVar: string; PathStr: string);
+  procedure CheckPathChanges(var PathVar: string; const PathStr: string);
   begin
     if (PathVar <> '') and (PathVar <> PathStr) then
       Result := False;
@@ -6114,12 +6142,12 @@ begin
     if GeoIPv4Exists then
       SetTorConfig('GeoIPFile', GeoIPv4File)
     else
-      DeleteTorConfig('GeoIPFile');
+      DeleteTorConfig(['GeoIPFile']);
     if GeoIPv6Exists then
       SetTorConfig('GeoIPv6File', GeoIPv6File)
     else
-      DeleteTorConfig('GeoIPv6File');
-    DeleteTorConfig('DisableNetwork');
+      DeleteTorConfig(['GeoIPv6File']);
+    DeleteTorConfig(['DisableNetwork']);
   end;
 end;
 
@@ -6193,28 +6221,28 @@ var
   ini, inidef: TMemIniFile;
   TemplateList, ls: TStringlist;
   TemplateName, DataStr, OldPath, NewPath: string;
-  ParseStr: ArrOfStr;
+  ParseStr: TArray<string>;
   FirstRun: Boolean;
   i: Integer;
   SearchRec: TSearchRec;
 
-  procedure UpdateSettingsParsedData(Section, Ident: string; Delimiter: Char; Index, MinValue, MaxValue, Modifier: Integer; var ini: TMemIniFile);
+  procedure UpdateSettingsParsedData(const Section, Ident: string; Delimiter: Char; Index, MinValue, MaxValue, Modifier: Integer; var ini: TMemIniFile);
   var
-    Data: ArrOfStr;
+    Data: TArray<string>;
     Str: string;
   begin
-    Data := Explode(Delimiter, GetSettings(Section, Ident, '', ini));
+    Data := GetSettings(Section, Ident, '', ini).Split([Delimiter]);
     if TryGetStrFromIndex(Data, Str, Index) then
     begin
       if ValidInt(Str, MinValue, MaxValue) then
       begin
         Data[Index] := IntToStr(StrToInt(Str) + Modifier);
-        SetSettings(Section, Ident, ParsedDataToStr(Data, Delimiter), ini);
+        SetSettings(Section, Ident, string.Join(Delimiter, Data), ini);
       end;
     end;
   end;
 
-  procedure UpdateGeoIpDir(FileName: string);
+  procedure UpdateGeoIpDir(const FileName: string);
   begin
     if FileExists(NewPath + FileName) then
       DeleteFile(OldPath + FileName)
@@ -6222,30 +6250,44 @@ var
       RenameFile(OldPath + FileName, NewPath + FileName);
   end;
 
-  function ConvertCodes(Str: string): string;
+  function ConvertCodes(const Data: string): string;
   var
-    Mas: ArrOfStr;
+    Mas: TArray<string>;
+    Str: string;
     i: Integer;
   begin
     Result := '';
-    Mas := Explode(',', Str);
-    for i := 0 to Length(Mas) - 1 do
+    Mas := Data.Split([',']);
+    for i := 0 to High(Mas) do
+    begin
       if ValidInt(Mas[i], 0, MAX_COUNTRIES - 1) then
-        Result := Result + ',' + CountryCodes[StrToInt(Mas[i])]
+      begin
+        Str := CountryCodes[StrToInt(Mas[i])];
+        if Result <> '' then
+          Result := Result + ',' + Str
+        else
+          Result := Str
+      end
       else
-        Result := Result + ',' + Mas[i];
-    Delete(Result, 1, 1);
+      begin
+        if Result <> '' then
+          Result := Result + ',' + Mas[i]
+        else
+          Result := Mas[i]
+      end;
+    end;
   end;
 
-  function ConvertNodes(FilterData: string; TorFormat: Boolean): string;
+  function ConvertNodes(const FilterData: string; TorFormat: Boolean): string;
   var
-    ParsedData: ArrOfStr;
-    NodesList: TStringlist;
-    EntryNodes, MiddleNodes, ExitNodes, ExcludeList, IncludeList: string;
+    ParsedData: TArray<string>;
+    NodesList: TList<string>;
+    sb: TStringBuilder;
+    EntryNodes, MiddleNodes, ExitNodes, ExcludeList, IncludeList, NodeStr: string;
     FMode, FNodes: Byte;
     i: Integer;
   begin
-    ParsedData := Explode(';', FilterData);
+    ParsedData := FilterData.Split([';']);
     if (Length(ParsedData) in [4,5]) then
     begin
       if ValidInt(ParsedData[1], 0, 2) then
@@ -6263,24 +6305,24 @@ var
 
       if FMode in [0, 2] then
       begin
-        NodesList := TStringList.Create;
+        sb := TStringBuilder.Create;
+        NodesList := TList<string>.Create(GetDefaultsValue('DefaultExitCountries', DEFAULT_EXIT_COUNTRIES).Split([',']));
         try
-          ParseParametersEx(RemoveBrackets(GetDefaultsValue('DefaultExitCountries', DEFAULT_EXIT_COUNTRIES), btCurly), ',', NodesList);
-          for i := NodesList.Count - 1 downto 0 do
-          begin
-            if Pos(NodesList[i], ExcludeList) <> 0 then
-              NodesList.Delete(i);
-          end;
           for i := 0 to NodesList.Count - 1 do
           begin
-            if TorFormat then
-              ExitNodes := ExitNodes + ',{' + NodesList[i] + '}'
-            else
-              ExitNodes := ExitNodes + ',' + NodesList[i];
+            NodeStr := RemoveBrackets(NodesList[i], btCurly);
+            if Pos(NodeStr, ExcludeList) = 0 then
+            begin
+              if TorFormat then
+                AppendWithDelims(sb, NodesList[i])
+              else
+                AppendWithDelims(sb, NodeStr)
+            end;
           end;
-          Delete(ExitNodes, 1, 1);
+          ExitNodes := sb.ToString;
         finally
           NodesList.Free;
+          sb.Free;
         end;
       end;
       case FMode of
@@ -6324,12 +6366,12 @@ begin
         if GetSettings('Server', 'BridgeType', 0, ini) = 1 then
           SetSettings('Server', 'BridgeType', 'obfs4', ini);
 
-        ParseStr := Explode(';', ConvertNodes(
+        ParseStr := ConvertNodes(
           ';' + IntToStr(GetSettings('Main', 'FilterMode', 0, ini)) +
           ';' + GetTorConfig('ExcludeExitNodes', '', [cfFindComments]) +
           ';' + GetTorConfig('ExitNodes', '', [cfFindComments]) +
           ';' + IntToStr(GetSettings('Main', 'FilterNodes', 4, ini)), True
-        ));
+        ).Split([';']);
         SetSettings('Filter', 'FilterMode', StrToInt(ParseStr[1]), ini);
         SetSettings('Filter', 'EntryNodes', ParseStr[2], ini);
         SetSettings('Filter', 'MiddleNodes', ParseStr[3], ini);
@@ -6338,41 +6380,55 @@ begin
         SetTorConfig('EntryNodes', ParseStr[2], [cfFindComments]);
         SetTorConfig('MiddleNodes', ParseStr[3], [cfFindComments]);
         SetTorConfig('ExitNodes', ParseStr[4], [cfFindComments]);
-        DeleteTorConfig('ExcludeExitNodes', [cfFindComments]);
+        DeleteTorConfig(['ExcludeExitNodes'], [cfFindComments]);
 
         DataStr := GetTorConfig('ExcludeNodes', '', [cfFindComments]);
         SetSettings('Routers', 'ExcludeNodes', DataStr, ini);
         if GetTorConfig('ExcludeNodes', '0', [cfExistCheck]) = '1' then
           SetSettings('Lists', 'UseExcludeNodes', True, ini)
         else
-          DeleteTorConfig('ExcludeNodes', [cfFindComments]);
+          DeleteTorConfig(['ExcludeNodes'], [cfFindComments]);
 
         DataStr := GetTorConfig('TrackHostExits', '', [cfFindComments]);
         SetSettings('Lists', 'TrackHostExits', DataStr, ini);
         if GetTorConfig('TrackHostExits', '0', [cfExistCheck]) = '1' then
           SetSettings('Lists', 'UseTrackHostExits', True, ini)
         else
-          DeleteTorConfig('TrackHostExits', [cfFindComments]);
+          DeleteTorConfig(['TrackHostExits'], [cfFindComments]);
 
         DataStr := GetTorConfig('TrackHostExitsExpire', '1800', [cfFindComments], ptInteger, Tcp.udTrackHostExitsExpire.Min, Tcp.udTrackHostExitsExpire.Max);
         SetSettings('Lists', 'TrackHostExitsExpire', StrToInt(DataStr), ini);
         if GetTorConfig('TrackHostExitsExpire', '0', [cfExistCheck]) = '0' then
-          DeleteTorConfig('TrackHostExitsExpire', [cfFindComments]);
+          DeleteTorConfig(['TrackHostExitsExpire'], [cfFindComments]);
 
         DataStr := GetTorConfig('HashedControlPassword', '', [cfFindComments]);
         SetSettings('Main', 'HashedControlPassword', DataStr, ini);
         if GetTorConfig('HashedControlPassword', '0', [cfExistCheck]) = '0' then
-          DeleteTorConfig('HashedControlPassword', [cfFindComments]);
+          DeleteTorConfig(['HashedControlPassword'], [cfFindComments]);
 
-        DataStr := GetTorConfig('Bridge', '', [cfMultiLine, cfFindComments]);
-        if DataStr <> '' then
+        ls := GetTorConfig('Bridge', [cfFindComments]);
+        if ls <> nil then
         begin
-          ParseStr := Explode('|', DataStr);
-          for i := 0 to Length(ParseStr) - 1 do
-            SetSettings('Bridges', IntToStr(i), ParseStr[i], ini);
+          try
+            DeleteDuplicatesFromList(ls, ltBridge);
+            ini.EraseSection('Bridges');
+            for i := 0 to ls.Count - 1 do
+            begin
+              if ValidBridge(ls[i]) then
+                SetSettings('Bridges', IntToStr(i), ls[i], ini);
+            end;
+          finally
+            ls.Free;
+          end;
           SetSettings('Network', 'UseBridges', StrToBool(GetTorConfig('UseBridges', '0', [], ptBoolean)), ini);
           SetSettings('Network', 'BridgesType', 1, ini);
-          DeleteTorConfig('Bridge', [cfMultiLine, cfFindComments]);
+          DeleteTorConfig(['Bridge'], [cfFindComments]);
+        end;
+
+        if DataStr <> '' then
+        begin
+          ParseStr := DataStr.Split(['|']);
+
         end;
 
         SetSettings('Server', 'UseNumCPUs', StrToBool(GetTorConfig('NumCPUs', '0', [cfExistCheck])), ini);
@@ -6491,8 +6547,8 @@ begin
         DeleteSettings('Server', 'DirPort', ini);
         DeleteSettings('Main', 'UseOpenDNS', ini);
         DeleteSettings('Main', 'UseOpenDNSOnlyWhenUnknown', ini);
-        DeleteTorConfig('RendPostPeriod');
-        DeleteTorConfig('DirPort');
+
+        DeleteTorConfig(['RendPostPeriod', 'DirPort']);
         ConfigVersion := 9;
       end;
       if ConfigVersion = 9 then
@@ -6581,6 +6637,20 @@ begin
         UpdateSettingsParsedData('Routers', 'DefaultFilter', ';', RF_PREVIOUS_CUSTOM, 4, 16, 1, ini);
         ConfigVersion := 13;
       end;
+      if ConfigVersion = 13 then
+      begin
+        UpdateSettingsParsedData('Routers', 'CurrentFilter', ';', RF_CURRENT_CUSTOM, 5, 10, 20, ini);
+        UpdateSettingsParsedData('Routers', 'CurrentFilter', ';', RF_PREVIOUS_CUSTOM, 5, 10, 20, ini);
+        UpdateSettingsParsedData('Routers', 'DefaultFilter', ';', RF_CURRENT_CUSTOM, 5, 10, 20, ini);
+        UpdateSettingsParsedData('Routers', 'DefaultFilter', ';', RF_PREVIOUS_CUSTOM, 5, 10, 20, ini);
+
+        UpdateSettingsParsedData('Routers', 'CurrentFilter', ';', RF_CURRENT_CUSTOM, 11, 17, -10, ini);
+        UpdateSettingsParsedData('Routers', 'CurrentFilter', ';', RF_PREVIOUS_CUSTOM,11, 17, -10, ini);
+        UpdateSettingsParsedData('Routers', 'DefaultFilter', ';', RF_CURRENT_CUSTOM, 11, 17, -10, ini);
+        UpdateSettingsParsedData('Routers', 'DefaultFilter', ';', RF_PREVIOUS_CUSTOM, 11, 17, -10, ini);
+        ConfigVersion := 14;
+      end;
+
     end
     else
       ConfigVersion := CURRENT_CONFIG_VERSION;
@@ -6594,11 +6664,11 @@ function TTcp.GetTorHs: Integer;
 var
   Name, Version, MaxStreams, IntroPoints, Port, Temp, Data, Delimiter: string;
   VirtualPort, RealPort, Address: string;
-  ParseStr: ArrOfStr;
+  ParseStr: TArray<string>;
   Reset: Boolean;
   i, Min, Max: Integer;
 
-  function GetParam(Param, Str: string): string;
+  function GetParam(const Param, Str: string): string;
   var
     p, CommentPos, ParamSize: Integer;
   begin
@@ -6665,7 +6735,7 @@ begin
       Temp := sgHs.Cells[HS_PORTS_DATA, Result];
       if Temp <> '' then
         Delimiter := '|';
-      ParseStr := Explode(' ', Port);
+      ParseStr := Port.Split([' ']);
       VirtualPort := ParseStr[0];
       if not ValidInt(VirtualPort, 1, 65535) then
       begin
@@ -6757,7 +6827,7 @@ function TTcp.LoadHiddenServices(var ini: TMemIniFile): Integer;
 var
   HsList, PortList: TStringList;
   i, j, Min, Max: Integer;
-  ParseStr, PortsStr: ArrOfStr;
+  ParseStr, PortsStr: TArray<string>;
   Address, RealPort, VirtualPort: string;
   Name, Version, MaxStreams, IntroPoints, PortsData, State: string;
 begin
@@ -6773,7 +6843,7 @@ begin
     begin
       if ValidInt(SeparateLeft(HsList[i], '='), 0, MAXINT) then
       begin
-        ParseStr := Explode(';', SeparateRight(HsList[i], '='));
+        ParseStr := SeparateRight(HsList[i], '=').Split([';']);
         if Length(ParseStr) = 6 then
         begin
           Name := ParseStr[0];
@@ -6796,10 +6866,10 @@ begin
           else
             State := FAVERR_CHAR;
           PortList.Clear;
-          ParseStr := Explode('|', PortsData);
-          for j := 0 to Length(ParseStr) - 1 do
+          ParseStr := PortsData.Split(['|']);
+          for j := 0 to High(ParseStr) do
           begin
-            PortsStr := Explode(',', ParseStr[j]);
+            PortsStr := ParseStr[j].Split([',']);
             if Length(PortsStr) = 3 then
             begin
               Address := PortsStr[0];
@@ -6821,10 +6891,7 @@ begin
             PortList.Append(Address + ',' + RealPort + ',' + VirtualPort);
           end;
           DeleteDuplicatesFromList(PortList);
-          PortsData := '';
-          for j := 0 to PortList.Count - 1 do
-            PortsData := PortsData + '|' + PortList[j];
-          Delete(PortsData, 1, 1);
+          PortsData :=  ListToStr(PortList, '|');
 
           Inc(Result);
           sgHs.Cells[HS_NAME, Result] := Name;
@@ -6852,20 +6919,22 @@ procedure TTcp.SaveHiddenServices(var ini: TMemIniFile);
 var
   i, j: Integer;
   UpdateControls: Boolean;
-  ParseStr, ParsePort: ArrOfStr;
+  ParseStr, ParsePort: TArray<string>;
   Name, PrevName, Version, MaxStreams, IntroPoints, PortsData, State: string;
 begin
   UpdateControls := False;
-  DeleteTorConfig('HiddenServiceDir', [cfMultiLine]);
-  DeleteTorConfig('HiddenServiceVersion', [cfMultiLine]);
-  DeleteTorConfig('HiddenServicePort', [cfMultiLine]);
-  DeleteTorConfig('HiddenServiceNumIntroductionPoints', [cfMultiLine]);
-  DeleteTorConfig('HiddenServiceMaxStreams', [cfMultiLine]);
+  DeleteTorConfig([
+    'HiddenServiceDir',
+    'HiddenServiceVersion',
+    'HiddenServicePort',
+    'HiddenServiceNumIntroductionPoints',
+    'HiddenServiceMaxStreams'
+  ]);
   ini.EraseSection('HiddenServices');
 
   if Length(HsToDelete) > 0 then
   begin
-    for i := 0 to Length(HsToDelete) - 1 do
+    for i := 0 to High(HsToDelete) do
       DeleteDir(HsDir + HsToDelete[i]);
     HsToDelete := nil;
   end;
@@ -6900,23 +6969,23 @@ begin
             sgHs.Cells[HS_PREVIOUS_NAME, i] := Name;
           end;
         end;
-        tc.Data.Append('HiddenServiceDir ' + HsDir + Name);
-        tc.Data.Append('HiddenServiceVersion ' + Version);
-        ParseStr := Explode('|', PortsData);
-        for j := 0 to Length(ParseStr) - 1 do
+        AddTorConfig('HiddenServiceDir', HsDir + Name);
+        AddTorConfig('HiddenServiceVersion', Version);
+        ParseStr := PortsData.Split(['|']);
+        for j := 0 to High(ParseStr) do
         begin
-          ParsePort := Explode(',', ParseStr[j]);
+          ParsePort := ParseStr[j].Split([',']);
           if (cbxHsAddress.Items.IndexOf(ParsePort[0]) = -1) then
           begin
             ParsePort[0] := LOOPBACK_ADDRESS;
             UpdateControls := True;
           end;
-          tc.Data.Append('HiddenServicePort ' + ParsePort[2] + ' ' + FormatHost(ParsePort[0]) + ':' + ParsePort[1]);
+          AddTorConfig('HiddenServicePort', ParsePort[2] + ' ' + FormatHost(ParsePort[0]) + ':' + ParsePort[1]);
         end;
         if IntroPoints <> '3' then
-          tc.Data.Append('HiddenServiceNumIntroductionPoints ' + IntroPoints);
+          AddTorConfig('HiddenServiceNumIntroductionPoints', IntroPoints);
         if MaxStreams <> '0' then
-          tc.Data.Append('HiddenServiceMaxStreams ' + MaxStreams);
+          AddTorConfig('HiddenServiceMaxStreams', MaxStreams);
       end;
 
       SetSettings('HiddenServices', IntToStr(i - 1),
@@ -6936,34 +7005,38 @@ begin
   end;
 end;
 
-procedure TTcp.SaveServerTransportOptions(Key, Value: string; UpdateControls: Boolean = False);
+procedure TTcp.SaveServerTransportOptions(const Key, Value: string; UpdateControls: Boolean = False);
 var
   i: Integer;
-  Options: string;
-  ParseStr: ArrOfStr;
+  Options, KeyStr: string;
+  ParseStr: TArray<string>;
   T: TTransportInfo;
 begin
-  Key := Trim(Key);
-  if TransportsDic.TryGetValue(Key, T) then
+  KeyStr := Trim(Key);
+  if TransportsDic.TryGetValue(KeyStr, T) then
   begin
-    ParseStr := Explode(' ', Trim(Value));
+    ParseStr := Trim(Value).Split([' ']);
     Options := '';
-    for i := 0 to Length(ParseStr) - 1 do
+    for i := 0 to High(ParseStr) do
     begin
       ParseStr[i] := Trim(ParseStr[i]);
       if ValidKeyValue(ParseStr[i]) then
-        Options := Options + ' ' + ParseStr[i];
+      begin
+        if Options <> '' then
+          Options := Options + ' ' + ParseStr[i]
+        else
+          Options := ParseStr[i];
+      end;
     end;
-    Delete(Options, 1, 1);
     T.ServerOptions := Options;
-    TransportsDic.AddOrSetValue(Key, T);
+    TransportsDic.AddOrSetValue(KeyStr, T);
     if UpdateControls then
       meServerTransportOptions.SetTextData(Options);
   end;
   ServerTransportOptionsUpdated := False;
 end;
 
-procedure TTcp.LoadServerTransportOptions(Key: string; UpdateControls: Boolean = False);
+procedure TTcp.LoadServerTransportOptions(const Key: string; UpdateControls: Boolean = False);
 var
   T: TTransportInfo;
   Data: string;
@@ -7031,7 +7104,7 @@ procedure TTcp.LoadTransportsData(Data: TStringList);
 var
   i, j, TotalTransports, DataCount, TransportState: Integer;
   TransportID: Byte;
-  ParseStr, TransList: ArrOfStr;
+  ParseStr, TransList: TArray<string>;
   Transports, Handler, Params, StrType, Item, FilesID: string;
   T: TTransportInfo;
   IsValid, ParamsState, FindTransport, State: Boolean;
@@ -7046,7 +7119,7 @@ begin
 
   for i := 0 to Data.Count - 1 do
   begin
-    ParseStr := Explode('|', SeparateRight(Data[i], '='));
+    ParseStr := SeparateRight(Data[i], '=').Split(['|']);
     DataCount := Length(ParseStr);
     if InRange(DataCount, 2, 6) then
     begin
@@ -7078,9 +7151,9 @@ begin
       TransportFileData := GetFileID(TransportsDir + Handler, FindTransport);
       State := GetTransportState(TransportState, FindTransport, TransportFileData, True);
 
-      TransList := Explode(',', Transports);
+      TransList := Transports.Split([',']);
       Transports := '';
-      for j := 0 to Length(TransList) - 1 do
+      for j := 0 to High(TransList) do
       begin
         IsValid := False;
         Item := Trim(TransList[j]);
@@ -7109,11 +7182,13 @@ begin
             T.InList := False;
             T.State := State;
             TransportsDic.AddOrSetValue(Item, T);
-            Transports := Transports + ',' + Item;
+            if Transports <> '' then
+              Transports := Transports + ',' + Item
+            else
+              Transports := Item
           end;
         end;
       end;
-      Delete(Transports, 1, 1);
 
       if Transports <> '' then
       begin
@@ -7145,15 +7220,17 @@ procedure TTcp.SaveTransportsData(var ini: TMemIniFile; ReloadServerTransport: B
 var
   i, j, TransportID, TransportState: Integer;
   Transports, UsedTransports, Handler, Params, StrType, ServerTransport, ParamsData: string;
-  ParseStr: ArrOfStr;
+  ParseStr: TArray<string>;
   State, InBridges, ParamsState: Boolean;
   T: TTransportInfo;
 begin
-  DeleteTorConfig('ClientTransportPlugin', [cfMultiLine]);
-  DeleteTorConfig('ServerTransportPlugin', [cfMultiLine]);
-  DeleteTorConfig('ServerTransportListenAddr', [cfMultiLine]);
-  DeleteTorConfig('ServerTransportOptions', [cfMultiLine]);
-  DeleteTorConfig('ExtORPort', [cfMultiLine]);
+  DeleteTorConfig([
+    'ClientTransportPlugin',
+    'ServerTransportPlugin',
+    'ServerTransportListenAddr',
+    'ServerTransportOptions',
+    'ExtORPort'
+  ]);
   ini.EraseSection('Transports');
   ini.EraseSection('ServerTransportOptions');
   if ReloadServerTransport then
@@ -7174,11 +7251,11 @@ begin
       TransportState := GetTransportStateID(sgTransports.Cells[PT_STATE, i]);
 
       TransportID := GetTransportID(StrType);
-      ParseStr := Explode(',', Transports);
+      ParseStr := Transports.Split([',']);
       Transports := '';
       UsedTransports := '';
       State := False;
-      for j := 0 to Length(ParseStr) - 1 do
+      for j := 0 to High(ParseStr) do
       begin
         ParseStr[j] := Trim(ParseStr[j]);
         if TransportsDic.TryGetValue(ParseStr[j], T) then
@@ -7186,7 +7263,10 @@ begin
           InBridges := T.InList = True;
           if (T.TransportID <> TRANSPORT_SERVER) and InBridges then
           begin
-            UsedTransports := UsedTransports + ',' + ParseStr[j];
+            if UsedTransports <> '' then
+              UsedTransports := UsedTransports + ',' + ParseStr[j]
+            else
+              UsedTransports := ParseStr[j];
             State := T.State;
           end;
           if T.ServerOptions <> '' then
@@ -7208,10 +7288,11 @@ begin
             end;
           end;
         end;
-        Transports := Transports + ',' + ParseStr[j];
+        if Transports <> '' then
+          Transports := Transports + ',' + ParseStr[j]
+        else
+          Transports := ParseStr[j]
       end;
-      Delete(Transports, 1, 1);
-      Delete(UsedTransports, 1, 1);
 
       if ParamsState then
         ParamsData := ' ' + Params
@@ -7219,7 +7300,7 @@ begin
         ParamsData := '';
 
       if cbUseBridges.Checked and State then
-        tc.Data.Append('ClientTransportPlugin ' + UsedTransports + ' exec ' + TransportsDir + Handler + ParamsData);
+        AddTorConfig('ClientTransportPlugin', UsedTransports + ' exec ' + TransportsDir + Handler + ParamsData);
 
       if Params <> '' then
         ParamsData := '|' + Params + '|' + BoolToStrDef(ParamsState)
@@ -7254,7 +7335,7 @@ begin
       begin
         IsCompat := False;
         Bridges[i] := Trim(Bridges[i]);
-        if InsensPosEx('Bridge ', Bridges[i]) = 1 then
+        if Bridges[i].StartsWith('Bridge ', True) then
         begin
           Bridges[i] := Copy(Bridges[i], 8);
           IsCompat := True;
@@ -7348,7 +7429,7 @@ begin
     meFallbackDirs.ClearText(False);
 end;
 
-procedure TTcp.LoadBuiltinBridges(var ini: TMemIniFile; UpdateBridges, UpdateList: Boolean; ListName: string = '');
+procedure TTcp.LoadBuiltinBridges(var ini: TMemIniFile; UpdateBridges, UpdateList: Boolean; const ListName: string = '');
 const
   Delimiter = '|';
 var
@@ -7418,24 +7499,6 @@ begin
   end;
 end;
 
-function TTcp.ReachablePortsExists: Boolean;
-var
-  ParseStr: ArrOfStr;
-  i: Integer;
-begin
-  if cbUseReachableAddresses.Checked then
-  begin
-    PortsDic.Clear;
-    ParseStr := Explode(',', StringReplace(edReachableAddresses.Text, ' ', '', [rfReplaceAll]));
-    for i := 0 to Length(ParseStr) - 1 do
-    begin
-      if ValidInt(ParseStr[i], 1, 65535) then
-        PortsDic.AddOrSetValue(StrToInt(ParseStr[i]), 0);
-    end;
-  end;
-  Result := PortsDic.Count > 0;
-end;
-
 procedure TTcp.ExcludeUnsuitableBridges(var Data: TStringList; DeleteUnsuitable: Boolean = False; AutoSave: Boolean = False);
 var
   cdPorts, cdAlive, cdRelay, cdTransport: Boolean;
@@ -7452,15 +7515,14 @@ var
   CountryStr, IpStr, HashStr: string;
   i, CountryID, PortData: Integer;
 begin
+  SuitableBridgesCount := 0;
+  BridgesCount := Data.Count;
+  if BridgesCount = 0 then
+    Exit;
+  CheckEntryPorts := ReachablePortsExists;
   IPv4Bridges := TDictionary<string, TBridge>.Create;
   IPv6Bridges := TDictionary<string, TBridgeData>.Create;
   try
-    SuitableBridgesCount := 0;
-    BridgesCount := Data.Count;
-    if BridgesCount = 0 then
-      Exit;
-    CheckEntryPorts := ReachablePortsExists;
-
     for i := Data.Count - 1 downto 0 do
     begin
       if TryParseBridge(Data[i], Bridge, False) then
@@ -7476,7 +7538,7 @@ begin
           cdTransport := True;
 
         if CheckEntryPorts then
-          cdPorts := PortsDic.ContainsKey(Bridge.Port)
+          cdPorts := PortsMap.Contains(Bridge.Port)
         else
           cdPorts := True;
 
@@ -7486,10 +7548,10 @@ begin
           if GeoIpDic.TryGetValue(IpStr, GeoIpInfo) then
           begin
             CountryID := GeoIpInfo.cc;
-            PortData := GetPortsValue(GeoIpInfo.ports, IntToStr(Bridge.Port));
+            PortData := GetPortsValue(GeoIpInfo.ports, Bridge.Port);
             NeedCountry := CountryID = DEFAULT_COUNTRY_ID;
-            NeedAlive := PortData = 0;
-            cdAlive := PortData > -1;
+            NeedAlive := PortData = PORT_NONE;
+            cdAlive := PortData > PORT_DEAD;
             FindCountry := NeedCountry and cdAlive;
           end
           else
@@ -7536,7 +7598,7 @@ begin
               ConsensusNode := True
             else
             begin
-              SetPortsValue(IpStr, IntToStr(Bridge.Port), -1);
+              SetPortsValue(IpStr, Bridge.Port, PORT_DEAD);
               cdAlive := False;
               NeedAlive := False;
             end;
@@ -7596,7 +7658,7 @@ begin
     end;
 
     if CheckEntryPorts then
-      PortsDic.Clear;
+      PortsMap.Clear;
   finally
     IPv4Bridges.Free;
     IPv6Bridges.Free;
@@ -7607,7 +7669,7 @@ procedure TTcp.LimitBridgesList(var Data: TStringList; AutoSave: Boolean);
 var
   i, PriorityType, Ping, Bandwidth, Max, Count: Integer;
   SortCompare: TStringListSortCompare;
-  UniqueList: TDictionary<string, Byte>;
+  UniqueList: THashSet<string>;
   Item: TPair<string, string>;
   GeoIpInfo: TGeoIpInfo;
   Bridge: TBridge;
@@ -7620,7 +7682,7 @@ begin
   if Data.Text = '' then
     Exit;
   PriorityType := cbxBridgesPriority.ItemIndex;
-  UniqueList := TDictionary<string, Byte>.Create;
+  UniqueList := THashSet<string>.Create;
   ls := TStringList.Create;
   try
     WeightCount := 0;
@@ -7650,8 +7712,8 @@ begin
               if GeoIpDic.TryGetValue(IpStr, GeoIpInfo) then
               begin
                 case GeoIpInfo.ping of
-                  -1: Ping := MAXINT;
-                  0: Ping := MAXWORD;
+                  PING_DEAD: Ping := MAXINT;
+                  PING_NONE: Ping := MAXWORD;
                   else
                   begin
                     Ping := GeoIpInfo.ping;
@@ -7696,7 +7758,7 @@ begin
         begin
           if TryParseBridge(RandomBridges[i], Bridge, False) then
           begin
-            UniqueList.AddOrSetValue(Bridge.Ip + '|' + IntToStr(Bridge.Port), 0);
+            UniqueList.Add(Bridge.Ip + '|' + IntToStr(Bridge.Port));
             Data.Append(RandomBridges[i]);
           end;
         end;
@@ -7714,7 +7776,7 @@ begin
         begin
           if TryParseBridge(ls[i], Bridge, False) then
           begin
-            UniqueList.AddOrSetValue(Bridge.Ip + '|' + IntToStr(Bridge.Port), 0);
+            UniqueList.Add(Bridge.Ip + '|' + IntToStr(Bridge.Port));
             Data.Append(ls[i]);
             if RandomState then
               RandomBridges.Append(ls[i]);
@@ -7734,7 +7796,7 @@ begin
       begin
         if Count < Max then
         begin
-          if not UniqueList.ContainsKey(Item.Key) then
+          if not UniqueList.Contains(Item.Key) then
           begin
             Data.Append(Item.Value);
             Inc(Count);
@@ -7776,7 +7838,7 @@ begin
       begin
         IpStr := GetBridgeIp(Bridge);
         if IpStr <> '' then
-          UsedBridgesList.AddOrSetValue(Bridge.Ip + IntToStr(Bridge.Port), 0);
+          UsedBridgesMap.Add(Bridge.Ip + IntToStr(Bridge.Port));
         Inc(UsedBridgesCount);
       end;
     end;
@@ -7796,16 +7858,17 @@ begin
       Bridges.FileName := BridgesFileName;
       Bridges.Encoding := TEncoding.Default;
       Bridges.Data := nil;
+      Bridges.Idx := nil;
       LoadConfig(Bridges);
       for i := Bridges.Data.Count - 1 downto 0 do
       begin
         Data := Trim(Bridges.Data[i]);
-        if InsensPosEx('Bridge ', Data) = 1 then
+        if Data.StartsWith('Bridge ', True) then
           Data := Copy(Data, 8);
         if ValidBridge(Data) then
           Bridges.Data.Delete(i)
       end;
-      SetConfig(Bridges, 'Bridge', TStringList(meBridges.Lines), [cfAutoSave]);
+      AddConfig(Bridges, 'Bridge', TStringList(meBridges.Lines), [cfAutoSave]);
     end
     else
       meBridges.Lines.SaveToFile(BridgesFileName);
@@ -7822,7 +7885,7 @@ var
 begin
   AutoSave := ini <> nil;
   UsedBridgesCount := 0;
-  UsedBridgesList.Clear;
+  UsedBridgesMap.Clear;
   if AutoSave then
   begin
     ScanNewBridges := False;
@@ -7831,7 +7894,7 @@ begin
     FailedBridgesCount := 0;
     UpdateBridgesInterval := 0;
     UnknownBridgesCountriesCount := 0;
-    DeleteTorConfig('Bridge', [cfMultiLine]);
+    DeleteTorConfig(['Bridge']);
   end;
 
   ls := TStringList.Create;
@@ -7855,11 +7918,11 @@ begin
     end;
     edPreferredBridge.Text := PreferredBridge;
 
-    MemoToList(meBridges, SORT_NONE, ls);
+    MemoToList(meBridges, ls);
     if cbExcludeUnsuitableBridges.Checked then
     begin
       ExcludeUnSuitableBridges(ls, not AutoSave, AutoSave);
-      LastBridgesHash := Crc32(AnsiString(ls.Text));
+      LastBridgesHash := THashBobJenkins.GetHashValue(ls.Text);
     end;
 
     if cbUsePreferredBridge.Checked then
@@ -7878,7 +7941,7 @@ begin
       ScanNewBridges := cbEnableDetectAliveNodes.Checked and cbUseBridges.Checked and cbScanNewBridges.Checked and (NewBridgesCount > 0) and (ConnectState = 0);
       SetTorConfig('UseBridges', IntToStr(Integer(cbUseBridges.Checked)));
       if cbUseBridges.Checked then
-        SetTorConfig('Bridge', ls);
+        AddTorConfig('Bridge', ls);
 
       if (cbxBridgesPriority.ItemIndex <> PRIORITY_RANDOM) or not cbUseBridges.Checked then
         RandomBridges.Clear;
@@ -7905,7 +7968,7 @@ begin
       SetSettings('Network', edPreferredBridge, ini);
       SetSettings('Network', 'BridgesFileName', BridgesFileName, ini);
       SetSettings('Network', 'BridgesFileFormat', BridgesFileFormat, ini);
-      
+
       if cbxBridgesType.ItemIndex = BRIDGES_TYPE_FILE then
       begin
         if BridgesFileNeedSave then
@@ -7941,14 +8004,16 @@ end;
 
 procedure TTcp.SaveProxyData(var ini: TMemIniFile);
 begin
-  DeleteTorConfig('Socks4Proxy');
-  DeleteTorConfig('Socks5Proxy');
-  DeleteTorConfig('Socks5ProxyUsername');
-  DeleteTorConfig('Socks5ProxyPassword');
-  DeleteTorConfig('HTTPProxy');
-  DeleteTorConfig('HTTPProxyAuthenticator');
-  DeleteTorConfig('HTTPSProxy');
-  DeleteTorConfig('HTTPSProxyAuthenticator');
+  DeleteTorConfig([
+    'Socks4Proxy',
+    'Socks5Proxy',
+    'Socks5ProxyUsername',
+    'Socks5ProxyPassword',
+    'HTTPProxy',
+    'HTTPProxyAuthenticator',
+    'HTTPSProxy',
+    'HTTPSProxyAuthenticator'
+  ]);
   edProxyAddress.Text := ExtractDomain(Trim(edProxyAddress.Text));
   edProxyUser.Text := Trim(edProxyUser.Text);
   edProxyPassword.Text := Trim(edProxyPassword.Text);
@@ -7978,19 +8043,37 @@ begin
     cbUseProxy.Checked := False;
   SetSettings('Network', cbUseProxy, ini);
   SetSettings('Network', cbxProxyType, ini);
-  SetSettings('Network', edProxyAddress, ini, True);
+  SetSettings('Network', edProxyAddress, ini);
   SetSettings('Network', udProxyPort, ini);
   SetSettings('Network', edProxyUser, ini);
   SetSettings('Network', edProxyPassword, ini);
 end;
 
+function TTcp.ReachablePortsExists: Boolean;
+var
+  ParseStr: TArray<string>;
+  i: Integer;
+begin
+  if cbUseReachableAddresses.Checked then
+  begin
+    PortsMap.Clear;
+    ParseStr := StringReplace(edReachableAddresses.Text, ' ', '', [rfReplaceAll]).Split([',']);
+    for i := 0 to High(ParseStr) do
+    begin
+      if ValidInt(ParseStr[i], 1, 65535) then
+        PortsMap.Add(StrToInt(ParseStr[i]));
+    end;
+  end;
+  Result := PortsMap.Count > 0;
+end;
+
 procedure TTcp.SaveReachableAddresses(var ini: TMemIniFile);
 var
   AllowedPorts: TStringList;
-  Data: string;
+  DataStr, Str: string;
   i: Integer;
 begin
-  DeleteTorConfig('ReachableAddresses');
+  DeleteTorConfig(['ReachableAddresses']);
   AllowedPorts := TStringList.Create;
   try
     AllowedPorts.CommaText := edReachableAddresses.Text;
@@ -8005,12 +8088,17 @@ begin
     begin
       AllowedPorts.CustomSort(CompTextAsc);
       edReachableAddresses.Text := AllowedPorts.CommaText;
-      Data := '';
+      DataStr := '';
       for i := 0 to AllowedPorts.Count - 1 do
-        Data := Data + ',*:' + AllowedPorts[i];
-      Delete(Data, 1, 1);
+      begin
+        Str := '*:' + AllowedPorts[i];
+        if DataStr <> '' then
+          DataStr := DataStr + ',' + Str
+        else
+          DataStr := Str
+      end;
       if cbUseReachableAddresses.Checked then
-        SetTorConfig('ReachableAddresses', Data);
+        SetTorConfig('ReachableAddresses', DataStr);
     end
     else
     begin
@@ -8024,12 +8112,12 @@ begin
   end;
 end;
 
-procedure TTCP.LoadProxyPorts(PortControl: TUpdown; HostControl: TCombobox; EnabledControl: TCheckBox; ini: TMemIniFile);
+procedure TTcp.LoadProxyPorts(PortControl: TUpdown; HostControl: TCombobox; EnabledControl: TCheckBox; ini: TMemIniFile);
 var
-  Host, TempHost, Params, ParamStr: string;
-  Port, i: Integer;
+  Host, TempHost, Params, ParamStr, Data: string;
+  Port, DataCount, i: Integer;
   Update: Boolean;
-  ParseStr: ArrOfStr;
+  ParseStr: TArray<string>;
 begin
   if FirstLoad then
   begin
@@ -8046,10 +8134,17 @@ begin
     Host := LOOPBACK_ADDRESS;
 
   Params := '';
-  ParseStr := Explode(' ', GetTorConfig(ParamStr, ''));
-  if Length(ParseStr) > 1 then
+  ParseStr := GetTorConfig(ParamStr, '').Split([' ']);
+  DataCount := Length(ParseStr);
+
+  if DataCount > 0 then
+    Data := ParseStr[0]
+  else
+    Data := '';
+
+  if DataCount > 1 then
   begin
-    for i := 1 to Length(ParseStr) - 1 do
+    for i := 1 to High(ParseStr) do
     begin
       ParseStr[i] := Trim(ParseStr[i]);
       if ParseStr[i] <> '' then
@@ -8058,11 +8153,12 @@ begin
   end;
   HostControl.Hint := Params;
 
-  if ValidSocket(ParseStr[0]) <> soNone then
+
+  if ValidSocket(Data) <> soNone then
   begin
     EnabledControl.Checked := True;
-    Port := GetPortFromSocket(ParseStr[0]);
-    TempHost := GetAddressFromSocket(ParseStr[0]);
+    Port := GetPortFromSocket(Data);
+    TempHost := GetAddressFromSocket(Data);
     if HostControl.Items.IndexOf(TempHost) <> -1 then
       Host := TempHost
     else
@@ -8070,12 +8166,12 @@ begin
   end
   else
   begin
-    if ValidInt(ParseStr[0], 0, PortControl.Max) then
+    if ValidInt(Data, 0, PortControl.Max) then
     begin
-      EnabledControl.Checked := StrToBool(ParseStr[0]);
-      if StrToInt(ParseStr[0]) > 0 then
+      EnabledControl.Checked := StrToBool(Data);
+      if StrToInt(Data) > 0 then
       begin
-        Port := StrToInt(ParseStr[0]);
+        Port := StrToInt(Data);
         Host := LOOPBACK_ADDRESS;
       end;
     end
@@ -8085,7 +8181,7 @@ begin
   HostControl.ItemIndex := HostControl.Items.IndexOf(Host);
   PortControl.Position := Port;
 
-  if (Update or CheckSimilarPorts) and ((ParseStr[0] <> '') or EnabledControl.Checked) then
+  if (Update or CheckSimilarPorts) and ((Data <> '') or EnabledControl.Checked) then
     SetTorConfig(ParamStr, FormatHost(Host) + ':' + IntToStr(Port) + Params);
 end;
 
@@ -8190,7 +8286,7 @@ end;
 
 procedure TTcp.LoadSortData(var ini: TMemIniFile; const StaticData: array of TStaticData; ControlType: Integer);
 var
-  ParseStr: ArrOfStr;
+  ParseStr: TArray<string>;
   Data, DataCount, MinValue, MaxValue, i: Integer;
   ControlGrid: TStringGrid;
   ControlMemo: TMemo;
@@ -8205,9 +8301,9 @@ begin
     else
       DataStr := '';
   end;
-  ParseStr := Explode(',', GetSettings('Main', DataStr, '', ini));
+  ParseStr := GetSettings('Main', DataStr, '', ini).Split([',']);
   DataCount := Length(ParseStr);
-  for i := 0 to Length(StaticData) - 1 do
+  for i := 0 to High(StaticData) do
   begin
     Data := -1;
     SortDataID := -1;
@@ -8254,9 +8350,9 @@ var
   i, LogID, AutoSelNodesType: Integer;
   ini, inidef: TMemIniFile;
   ScrollBars, SeparateType, LogAutoDelType: Byte;
-  ParseStr: ArrOfStr;
+  ParseStr: TArray<string>;
   Transports, ServerTransportOptions: TStringList;
-  FilterEntry, FilterMiddle, FilterExit, Temp: string;
+  FilterEntry, FilterMiddle, FilterExit, DataStr: string;
   FavoritesEntry, FavoritesMiddle, FavoritesExit, ExcludeNodes: string;
 begin
   LoadTorConfig;
@@ -8294,7 +8390,6 @@ begin
     GetSettings('Main', cbxMinimizeOnEvent, ini, MINIMIZE_ON_CLOSE);
     GetSettings('Main', cbShowBalloonHint, ini);
     GetSettings('Main', cbShowBalloonOnlyWhenHide, ini);
-    GetSettings('Main', sbStayOnTop, ini);
     GetSettings('Main', cbNoDesktopBorders, ini);
     GetSettings('Main', cbNoDesktopBordersOnlyEnlarged, ini);
     GetSettings('Main', cbHideIPv6Addreses, ini);
@@ -8318,8 +8413,8 @@ begin
       LoadNetworkCache;
       LastPlace := GetIntDef(GetSettings('Main', 'LastPlace', LP_OPTIONS, ini), LP_OPTIONS, LP_OPTIONS, LP_ROUTERS);
       pcOptions.TabIndex := GetIntDef(GetSettings('Main', 'OptionsPage', 0, ini), 0, 0, pcOptions.PageCount - 1);
-      ParseStr := Explode(',', GetSettings('Main', 'FormPosition', '-1,-1,-1,-1', ini));
-      for i := 0 to Length(ParseStr) - 1 do
+      ParseStr := GetSettings('Main', 'FormPosition', '-1,-1,-1,-1', ini).Split([',']);
+      for i := 0 to High(ParseStr) do
       begin
         case i of
           0: DecFormPos.X := StrToIntDef(ParseStr[i], -1);
@@ -8519,8 +8614,8 @@ begin
     end;
 
     ControlPassword := GetSettings('Main', 'ControlPassword', '', ini);
-    Temp := GetSettings('Main', 'HashedControlPassword', '', ini);
-    if Temp = '' then
+    DataStr := GetSettings('Main', 'HashedControlPassword', '', ini);
+    if DataStr = '' then
     begin
       ControlPassword := '';
       SetSettings('Main', 'ControlPassword', '', ini);
@@ -8535,12 +8630,12 @@ begin
     if GetTorConfig('CookieAuthentication', '0') = '1' then
     begin
       cbxAuthMetod.ItemIndex := CONTROL_AUTH_COOKIE;
-      DeleteTorConfig('HashedControlPassword');
+      DeleteTorConfig(['HashedControlPassword']);
     end
     else
     begin
       cbxAuthMetod.ItemIndex := CONTROL_AUTH_PASSWORD;
-      SetTorConfig('HashedControlPassword', Temp);
+      SetTorConfig('HashedControlPassword', DataStr);
     end;
     CheckAuthMetodContols;
 
@@ -8632,9 +8727,9 @@ begin
     FilterExit := GetSettings('Filter', 'ExitNodes', GetDefaultsValue('DefaultExitCountries', DEFAULT_EXIT_COUNTRIES), ini);
     if not FirstLoad then
       ClearFilter(ntNone);
-    GetNodes(FilterEntry, ntEntry, False, ini);
-    GetNodes(FilterMiddle, ntMiddle, False, ini);
-    GetNodes(FilterExit, ntExit, False, ini);
+    GetNodes(FilterEntry, ntEntry, False, True, ini);
+    GetNodes(FilterMiddle, ntMiddle, False, True, ini);
+    GetNodes(FilterExit, ntExit, False, True, ini);
 
     FavoritesEntry := GetSettings('Routers', 'EntryNodes', '', ini);
     FavoritesMiddle := GetSettings('Routers', 'MiddleNodes', '', ini);
@@ -8643,10 +8738,11 @@ begin
 
     if not FirstLoad then
       ClearRouters;
-    GetNodes(FavoritesEntry, ntEntry, True, ini);
-    GetNodes(FavoritesMiddle, ntMiddle, True, ini);
-    GetNodes(FavoritesExit, ntExit, True, ini);
-    GetNodes(ExcludeNodes, ntExclude, True, ini);
+
+    GetNodes(FavoritesEntry, ntEntry, True, True, ini);
+    GetNodes(FavoritesMiddle, ntMiddle, True, True, ini);
+    GetNodes(FavoritesExit, ntExit, True, True, ini);
+    GetNodes(ExcludeNodes, ntExclude, True, True, ini);
 
     CalculateTotalNodes;
     CalculateFilterNodes;
@@ -8657,12 +8753,7 @@ begin
     lbExcludeNodes.HelpContext := GetIntDef(GetSettings('Lists', 'UseExcludeNodes', 0, ini), 0, 0, 1);
 
     GetSettings('Lists', cbxNodesListType, ini, NL_TYPE_EXLUDE);
-    case cbxNodesListType.ItemIndex of
-      NL_TYPE_ENTRY: LoadNodesList(False, FavoritesEntry);
-      NL_TYPE_MIDDLE: LoadNodesList(False, FavoritesMiddle);
-      NL_TYPE_EXIT: LoadNodesList(False, FavoritesExit);
-      NL_TYPE_EXLUDE: LoadNodesList(False, ExcludeNodes);
-    end;
+    LoadNodesList;
     CheckFilterMode;
     CheckFavoritesState;
     CheckVanguards(True);
@@ -8748,13 +8839,14 @@ begin
     SaveHiddenServices(ini);
     if FirstLoad then
       LoadRoutersFilterData(GetSettings('Routers', 'CurrentFilter', DEFAULT_ROUTERS_FILTER_DATA, ini), False);
-    ParseStr := Explode(';', GetSettings('Routers', 'DefaultFilter', DEFAULT_ROUTERS_FILTER_DATA, ini));
+    ParseStr := GetSettings('Routers', 'DefaultFilter', DEFAULT_ROUTERS_FILTER_DATA, ini).Split([';']);
     if Length(ParseStr) > 4 then
       udRoutersWeight.ResetValue := StrToIntDef(ParseStr[4], 10);
     CheckShowRouters;
 
     if FirstLoad then
     begin
+      GetSettings('Main', sbStayOnTop, ini);
       if GetSettings('Main', 'Terminated', False, ini) = True then
       begin
         if (cbUseUPnP.Checked) and (cbxServerMode.ItemIndex > SERVER_MODE_NONE) then
@@ -8809,11 +8901,13 @@ end;
 
 procedure TTcp.LoadNetworkCache;
 var
-  DataLength, i: Integer;
-  ParseStr: ArrOfStr;
+  DataLength, i, j, DataValue: Integer;
+  ParseStr, ParsePorts: TArray<string>;
   GeoIpCache: TStringList;
   GeoIpInfo: TGeoIpInfo;
   FilterInfo: TFilterInfo;
+  PortInfo: TPortInfo;
+  CountryCode: Byte;
 begin
   if FileExists(NetworkCacheFile) then
   begin
@@ -8822,25 +8916,47 @@ begin
       GeoIpCache.LoadFromFile(NetworkCacheFile);
       for i := 0 to GeoIpCache.Count - 1 do
       begin
-        ParseStr := Explode(',', GeoIpCache[i]);
+        ParseStr := GeoIpCache[i].Split([',']);
         DataLength := Length(ParseStr);
-        if DataLength in [2..4] then
+        if DataLength > 1 then
         begin
           if FilterDic.TryGetValue(ParseStr[1], FilterInfo) then
+            CountryCode := FilterInfo.cc
+          else
+          CountryCode := DEFAULT_COUNTRY_ID;
+          if ValidAddress(ParseStr[0]) <> atNone then
           begin
-            if ValidAddress(ParseStr[0]) <> atNone then
+            GeoIpInfo.ports := nil;
+            GeoIpInfo.cc := CountryCode;
+            if DataLength > 2 then
             begin
-              GeoIpInfo.cc := FilterInfo.cc;
-              if DataLength > 2 then
-                GeoIpInfo.ping := StrToIntDef(ParseStr[2], 0)
+              if ValidInt(ParseStr[2], PING_DEAD, High(SmallInt), DataValue) then
+                GeoIpInfo.ping := DataValue
               else
-                GeoIpInfo.ping := 0;
-              if DataLength > 3 then
-                GeoIpInfo.ports := ParseStr[3]
-              else
-                GeoIpInfo.ports := '';
-              GeoIpDic.AddOrSetValue(ParseStr[0], GeoIpInfo);
+                GeoIpInfo.ping := PING_NONE;
+            end
+            else
+              GeoIpInfo.ping := PING_NONE;
+            if DataLength > 3 then
+            begin
+              ParsePorts := ParseStr[3].Split(['|']);
+              if Length(ParsePorts) = 0 then
+                Continue;
+              SetLength(GeoIpInfo.ports, Length(ParsePorts));
+              for j := 0 to High(ParsePorts) do
+              begin
+                if ValidInt(SeparateLeft(ParsePorts[j], ':'), 1, 65535, DataValue) then
+                begin
+                  PortInfo.Port := DataValue;
+                  if ValidInt(SeparateRight(ParsePorts[j], ':'), PORT_FAKE, PORT_ALIVE, DataValue) then
+                    PortInfo.Value := DataValue
+                  else
+                    PortInfo.Value := PORT_NONE;
+                  GeoIpInfo.ports[j] := PortInfo;
+                end;
+              end;
             end;
+            GeoIpDic.AddOrSetValue(ParseStr[0], GeoIpInfo);
           end;
         end;
       end;
@@ -8855,6 +8971,7 @@ var
   GeoIpCache: TStringList;
   Item: TPair<string, TGeoIpInfo>;
   PingData, PortsData: string;
+  PortDataLen, i: Integer;
 begin
   if cbUseNetworkCache.Checked then
   begin
@@ -8864,12 +8981,21 @@ begin
     try
       for Item in GeoIpDic do
       begin
-        if Item.Value.ports = '' then
-          PortsData := ''
-        else
-          PortsData := ',' + Item.Value.ports;
+        PortsData := '';
+        PortDataLen := Length(Item.Value.ports);
+        if PortDataLen > 0 then
+        begin
+          for i := 0 to PortDataLen - 1 do
+          begin
+            if PortsData <> '' then
+              PortsData := PortsData + '|' +
+                IntToStr(Item.Value.ports[i].Port) + ':' + IntToStr(Item.Value.ports[i].Value)
+            else
+              PortsData := ',' + IntToStr(Item.Value.ports[i].Port) + ':' + IntToStr(Item.Value.ports[i].Value);
+          end;
+        end;
 
-        if Item.Value.ping = 0 then
+        if Item.Value.ping = PING_NONE then
         begin
           if PortsData = '' then
             PingData := ''
@@ -8878,7 +9004,6 @@ begin
         end
         else
           PingData := ',' + IntToStr(Item.Value.ping);
-
         GeoIpCache.Append(Item.Key + ',' + CountryCodes[Item.Value.cc] + PingData + PortsData);
       end;
       if GeoIpCache.Count > 0 then
@@ -8893,12 +9018,12 @@ begin
   end;
 end;
 
-procedure TTCP.LoadBridgesCache;
+procedure TTcp.LoadBridgesCache;
 var
   DataLength, i, j: Integer;
   BridgesCache: TStringList;
   BridgeInfo: TBridgeInfo;
-  ParseStr, IpStr: ArrOfStr;
+  ParseStr, IpStr: TArray<string>;
   BridgeStr, Data: string;
 begin
   if FileExists(BridgesCacheFile) then
@@ -8908,7 +9033,7 @@ begin
       BridgesCache.LoadFromFile(BridgesCacheFile);
       for i := 0 to BridgesCache.Count - 1 do
       begin
-        ParseStr := Explode('|', BridgesCache[i]);
+        ParseStr := BridgesCache[i].Split(['|']);
         DataLength := Length(ParseStr);
         if DataLength in [8..11] then
         begin
@@ -8918,8 +9043,8 @@ begin
           BridgeInfo.Router.IPv4 := '';
           BridgeInfo.Router.IPv6 := '';
           BridgeInfo.Source := '';
-          IpStr := Explode(',', ParseStr[2]);
-          for j := 0 to Length(IpStr) - 1 do
+          IpStr := ParseStr[2].Split([',']);
+          for j := 0 to High(IpStr) do
           begin
             case GetAddressType(IpStr[j]) of
               atIPv4: BridgeInfo.Router.IPv4 := IpStr[j];
@@ -8935,7 +9060,7 @@ begin
             end;
           end;
           BridgeInfo.Router.Port := StrToIntDef(ParseStr[3], 0);
-          BridgeInfo.Router.Bandwidth := StrToIntDef(ParseStr[4], 0);  
+          BridgeInfo.Router.Bandwidth := StrToIntDef(ParseStr[4], 0);
           BridgeInfo.Router.Version := ParseStr[5];
           BridgeInfo.Kind := GetIntDef(StrToIntDef(ParseStr[6], BRIDGE_RELAY), BRIDGE_RELAY, BRIDGE_RELAY, BRIDGE_NATIVE);
           if ParseStr[7] = '1' then
@@ -8950,7 +9075,7 @@ begin
             BridgeInfo.Params := '';
           if DataLength > 10 then
           begin
-            if IpInRanges(ParseStr[10], DocRanges) then
+            if IpInReservedRanges(ParseStr[10], rtDoc) then
               BridgeInfo.Source := ParseStr[10];
           end;
           BridgeStr := Trim(
@@ -9082,12 +9207,12 @@ var
   i, j, ResultCode, TransportState, TransportID: Integer;
   T, TransportInfo: TTransportInfo;
   Transports, Item, Handler, Params, Msg, MsgData, ResultMsg, FilesID: string;
-  ParseStr: ArrOfStr;
+  ParseStr: TArray<string>;
   TransportsList: TDictionary<string, TTransportInfo>;
   TransportItem: TPair<string, TTransportInfo>;
   ParamsState, State, FindTransport: Boolean;
   TransportFileData: TFileID;
-  ls: TStringList;
+  ls: TList<string>;
 begin
   Result := True;
   ResultCode := 0;
@@ -9138,8 +9263,8 @@ begin
         Break;
       end;
 
-      ParseStr := Explode(',', Transports);
-      for j := 0 to Length(ParseStr) - 1 do
+      ParseStr := Transports.Split([',']);
+      for j := 0 to High(ParseStr) do
       begin
         Item := Trim(ParseStr[j]);
         if Item = '' then
@@ -9199,12 +9324,12 @@ begin
       TransportFilesID := FilesID;
       for TransportItem in TransportsList do
         TransportsDic.AddOrSetValue(TransportItem.Key, TransportItem.Value);
-      ls := TStringList.Create;
+      ls := TList<string>.Create;
       try
         for TransportItem in TransportsDic do
         begin
           if not TransportsList.ContainsKey(TransportItem.Key) then
-            ls.Append(TransportItem.Key);
+            ls.Add(TransportItem.Key);
         end;
         for i := 0 to ls.Count - 1 do
           TransportsDic.Remove(ls[i]);
@@ -9278,7 +9403,7 @@ var
   Duplicate: Integer;
   i, j, k, ResultCode: Integer;
   Msg, PortStr: string;
-  ParseStr: ArrOfStr;
+  ParseStr: TArray<string>;
 begin
   ResultCode := 0;
   Result := True;
@@ -9294,13 +9419,13 @@ begin
       ResultCode := 1;
       Break;
     end;
-    ParseStr := Explode('|', sgHs.Cells[HS_PORTS_DATA, i]);
+    ParseStr := sgHs.Cells[HS_PORTS_DATA, i].Split(['|']);
     if Length(ParseStr) > 1 then
     begin
-      for j := 0 to Length(ParseStr) - 1 do
+      for j := 0 to High(ParseStr) do
       begin
         PortStr := Copy(ParseStr[j], RPos(',', ParseStr[j]));
-        for k := j + 1 to Length(ParseStr) - 1 do
+        for k := j + 1 to High(ParseStr) do
         begin
           if ParseStr[j] = ParseStr[k] then
           begin
@@ -9364,9 +9489,9 @@ begin
     Result := True;
 end;
 
-function TTcp.RouterInNodesList(RouterID: string; IpStr: string; NodeType: TNodeType; SkipCodes: Boolean = False; CodeStr: string = ''; AddressType: TAddressType = atNone): Boolean;
+function TTcp.RouterInNodesList(const RouterID, IpStr: string; NodeType: TNodeType; SkipCodes: Boolean = False; const CodeStr: string = ''): Boolean;
 var
-  ParseStr: ArrOfStr;
+  IPv4Cidrs: TCidrValuePairs;
   KeyStr: string;
   i,j: Integer;
 begin
@@ -9389,27 +9514,23 @@ begin
         2: KeyStr := IpStr;
       end;
       if NodesDic.ContainsKey(KeyStr) then
-        Result := NodeType in NodesDic.Items[KeyStr];
+      begin
+        if NodeType in NodesDic.Items[KeyStr] then
+          Exit(True);
+      end;
     end
     else
     begin
-      KeyStr := FindInRanges(IpStr, AddressType);
-      if KeyStr <> '' then
+      IPv4Cidrs := IPv4CidrNodes.FindAllMatchesIP(IpStr);
+      if IPv4Cidrs <> nil then
       begin
-        ParseStr := Explode(',', KeyStr);
-        for j := 0 to Length(ParseStr) - 1 do
+        for j := 0 to High(IPv4Cidrs) do
         begin
-          if NodesDic.ContainsKey(ParseStr[j]) then
-          begin
-            Result := NodeType in NodesDic.Items[ParseStr[j]];
-            if Result then
-              Exit;
-          end;
+          if NodeType in IPv4Cidrs[j].Value then
+            Exit(True);
         end;
       end;
     end;
-    if Result then
-      Exit;
   end;
 end;
 
@@ -9481,26 +9602,32 @@ begin
   end;
 end;
 
-procedure TTcp.SetNodes(FilterEntry, FilterMiddle, FilterExit, FavoritesEntry, FavoritesMiddle, FavoritesExit, ExcludeNodes: string);
+procedure TTcp.SetNodes(const FilterEntry, FilterMiddle, FilterExit, FavoritesEntry, FavoritesMiddle, FavoritesExit, ExcludeNodes: string);
 var
   Vanguards: string;
-  ParseStr: ArrOfStr;
+  ParseStr: TArray<string>;
+  sb: TStringBuilder;
   i: Integer;
 begin
-  DeleteTorConfig('HSLayer2Nodes');
-  DeleteTorConfig('HSLayer3Nodes');
-  DeleteTorConfig('VanguardsLiteEnabled');
+  DeleteTorConfig([
+    'HSLayer2Nodes',
+    'HSLayer3Nodes',
+    'VanguardsLiteEnabled'
+  ]);
   if cbUseHiddenServiceVanguards.Checked then
   begin
-    ParseStr := Explode(',', RemoveBrackets(FavoritesEntry, btCurly));
-    Vanguards := '';
-    for i := 0 to Length(ParseStr) - 1 do
-    begin
-      if Length(ParseStr[i]) > 2 then
-        Vanguards := Vanguards + ',' + ParseStr[i];
+    sb := TStringBuilder.Create;
+    try
+      ParseStr := FavoritesEntry.Split([',']);
+      for i := 0 to High(ParseStr) do
+      begin
+        if not HasBrackets(ParseStr[i], btCurly) then
+          AppendWithDelims(sb, ParseStr[i]);
+      end;
+      Vanguards := sb.ToString;
+    finally
+      sb.Free;
     end;
-    Delete(Vanguards, 1, 1);
-
     case cbxVanguardLayerType.ItemIndex of
       VG_L2: SetTorConfig('HSLayer2Nodes', Vanguards);
       VG_L3: SetTorConfig('HSLayer3Nodes', Vanguards);
@@ -9520,14 +9647,16 @@ begin
   case cbxFilterMode.ItemIndex of
     FILTER_MODE_NONE:
     begin
-      DeleteTorConfig('EntryNodes');
-      DeleteTorConfig('MiddleNodes');
-      DeleteTorConfig('ExitNodes');
+      DeleteTorConfig([
+        'EntryNodes',
+        'MiddleNodes',
+        'ExitNodes'
+      ]);
     end;
     FILTER_MODE_COUNTRIES:
     begin
       if cbUseBridges.Checked then
-        DeleteTorConfig('EntryNodes')
+        DeleteTorConfig(['EntryNodes'])
       else
         SetTorConfig('EntryNodes', FilterEntry);
       SetTorConfig('MiddleNodes', FilterMiddle);
@@ -9535,41 +9664,50 @@ begin
     end;
     FILTER_MODE_FAVORITES:
     begin
-      if miReplaceDisabledFavoritesWithCountries.Checked and
-        ((FavoritesEntry = '') or (lbFavoritesEntry.HelpContext = 0)) then
-        FavoritesEntry := FilterEntry;
+      if cbUseBridges.Checked then
+        DeleteTorConfig(['EntryNodes'])
+      else
+      begin
+        if miReplaceDisabledFavoritesWithCountries.Checked and
+          ((FavoritesEntry = '') or (lbFavoritesEntry.HelpContext = 0)) then
+          SetTorConfig('EntryNodes', FilterEntry)
+        else
+          SetTorConfig('EntryNodes', FavoritesEntry);
+      end;
       if miReplaceDisabledFavoritesWithCountries.Checked and
         ((FavoritesMiddle = '') or (lbFavoritesMiddle.HelpContext = 0)) then
-        FavoritesMiddle := FilterMiddle;
+        SetTorConfig('MiddleNodes', FilterMiddle)
+      else
+        SetTorConfig('MiddleNodes', FavoritesMiddle);
+
       if miReplaceDisabledFavoritesWithCountries.Checked and
         ((FavoritesExit = '') or (lbFavoritesExit.HelpContext = 0)) then
-        FavoritesExit := FilterExit;
-
-      if cbUseBridges.Checked then
-        DeleteTorConfig('EntryNodes')
+        SetTorConfig('ExitNodes', FilterExit)
       else
-        SetTorConfig('EntryNodes', FavoritesEntry);
-      SetTorConfig('MiddleNodes', FavoritesMiddle);
-      SetTorConfig('ExitNodes', FavoritesExit);
+        SetTorConfig('ExitNodes', FavoritesExit);
     end;
   end;
   if lbExcludeNodes.HelpContext = 1 then
     SetTorConfig('ExcludeNodes', ExcludeNodes)
   else
-    DeleteTorConfig('ExcludeNodes');
-  DeleteTorConfig('ExcludeExitNodes');
+    DeleteTorConfig(['ExcludeNodes']);
+  DeleteTorConfig(['ExcludeExitNodes']);
 end;
 
 procedure TTcp.ApplyOptions(AutoResolveErrors: Boolean = False);
 var
   ini, inidef: TMemIniFile;
-  AutoSelNodesType: Integer;
+  i, AutoSelNodesType: Integer;
   Item: TPair<string, TFilterInfo>;
   NodeItem: TPair<string, TNodeTypes>;
-  Temp: string;
-  FilterEntry, FilterMiddle, FilterExit, ExcludeNodes, NodeStr: string;
-  FavoritesEntry, FavoritesMiddle, FavoritesExit: string;
+  Temp, NodeStr: string;
+  FilterEntry, FilterMiddle, FilterExit: string;
+  FavoritesEntry, FavoritesMiddle, FavoritesExit, ExcludeNodes: string;
   StyleName: string;
+  sbFilterEntry, sbFilterMiddle, sbFilterExit,
+  sbFavoritesEntry, sbFavoritesMiddle, sbFavoritesExit, sbExcludeNodes: TStringBuilder;
+  IPv4Cidrs: TCidrValuePairs;
+
 begin
   if (cbxAuthMetod.ItemIndex = CONTROL_AUTH_PASSWORD) and (CheckEditString(edControlPassword.Text, '', True, lbControlPassword.Caption, edControlPassword) <> '') then
     Exit;
@@ -9706,10 +9844,10 @@ begin
         ControlPassword := '';
         SetSettings('Main', 'HashedControlPassword', '', ini);
       end;
-      DeleteTorConfig('HashedControlPassword');
+      DeleteTorConfig(['HashedControlPassword']);
     end
     else
-      DeleteTorConfig('CookieAuthentication');
+      DeleteTorConfig(['CookieAuthentication']);
     SetSettings('Main', 'ControlPassword', ControlPassword, ini);
     CheckAuthMetodContols;
 
@@ -9770,40 +9908,73 @@ begin
     SaveFallbackDirsData(ini);
     SaveBridgesData(ini);
 
-    for Item in FilterDic do
-    begin
-      if ntEntry in Item.Value.Data then
-        FilterEntry := FilterEntry + ',{' + Item.Key + '}';
-      if ntMiddle in Item.Value.Data then
-        FilterMiddle := FilterMiddle + ',{' + Item.Key + '}';
-      if ntExit in Item.Value.Data then
-        FilterExit := FilterExit + ',{' + Item.Key + '}';
+    sbFilterEntry := TStringBuilder.Create;
+    sbFilterMiddle := TStringBuilder.Create;
+    sbFilterExit := TStringBuilder.Create;
+    try
+      for Item in FilterDic do
+      begin
+        if ntEntry in Item.Value.Data then
+          AppendWithDelims(sbFilterEntry, '{' + Item.Key + '}');
+        if ntMiddle in Item.Value.Data then
+          AppendWithDelims(sbFilterMiddle, '{' + Item.Key + '}');
+        if ntExit in Item.Value.Data then
+          AppendWithDelims(sbFilterExit, '{' + Item.Key + '}');
+      end;
+      FilterEntry := sbFilterEntry.ToString;
+      FilterMiddle := sbFilterMiddle.ToString;
+      FilterExit := sbFilterExit.ToString;
+    finally
+      sbFilterEntry.Free;
+      sbFilterMiddle.Free;
+      sbFilterExit.Free;
     end;
-    Delete(FilterEntry, 1, 1);
-    Delete(FilterMiddle, 1, 1);
-    Delete(FilterExit, 1, 1);
     SetSettings('Filter', 'EntryNodes', FilterEntry, ini);
     SetSettings('Filter', 'MiddleNodes', FilterMiddle, ini);
     SetSettings('Filter', 'ExitNodes', FilterExit, ini);
 
-    for NodeItem in NodesDic do
-    begin
-      NodeStr := NodeItem.Key;
-      if FilterDic.ContainsKey(NodeStr) then
-        NodeStr := '{' + NodeStr + '}';
-      if ntEntry in NodeItem.Value then
-        FavoritesEntry := FavoritesEntry + ',' + NodeStr;
-      if ntMiddle in NodeItem.Value then
-        FavoritesMiddle := FavoritesMiddle + ',' + NodeStr;
-      if ntExit in NodeItem.Value then
-        FavoritesExit := FavoritesExit + ',' + NodeStr;
-      if ntExclude in NodeItem.Value then
-        ExcludeNodes := ExcludeNodes + ',' + NodeStr;
+    sbFavoritesEntry := TStringBuilder.Create;
+    sbFavoritesMiddle := TStringBuilder.Create;
+    sbFavoritesExit := TStringBuilder.Create;
+    sbExcludeNodes := TStringBuilder.Create;
+    try
+      for NodeItem in NodesDic do
+      begin
+        if Length(NodeItem.Key) > 2  then
+          NodeStr := NodeItem.Key
+        else
+          NodeStr := '{' + NodeItem.Key + '}';
+        if ntEntry in NodeItem.Value then
+          AppendWithDelims(sbFavoritesEntry, NodeStr);
+        if ntMiddle in NodeItem.Value then
+          AppendWithDelims(sbFavoritesMiddle, NodeStr);
+        if ntExit in NodeItem.Value then
+          AppendWithDelims(sbFavoritesExit, NodeStr);
+        if ntExclude in NodeItem.Value then
+          AppendWithDelims(sbExcludeNodes, NodeStr);
+      end;
+      IPv4CidrNodes.EnumerateAllNodes(IPv4Cidrs);
+      for i := 0 to High(IPv4Cidrs) do
+      begin
+        if ntEntry in IPv4Cidrs[i].Value then
+          AppendWithDelims(sbFavoritesEntry, IPv4Cidrs[i].Cidr);
+        if ntMiddle in IPv4Cidrs[i].Value then
+          AppendWithDelims(sbFavoritesMiddle, IPv4Cidrs[i].Cidr);
+        if ntExit in IPv4Cidrs[i].Value then
+          AppendWithDelims(sbFavoritesExit, IPv4Cidrs[i].Cidr);
+        if ntExclude in IPv4Cidrs[i].Value then
+          AppendWithDelims(sbExcludeNodes, IPv4Cidrs[i].Cidr);
+      end;
+      FavoritesEntry := sbFavoritesEntry.ToString;
+      FavoritesMiddle := sbFavoritesMiddle.ToString;
+      FavoritesExit := sbFavoritesExit.ToString;
+      ExcludeNodes := sbExcludeNodes.ToString;
+    finally
+      sbFavoritesEntry.Free;
+      sbFavoritesMiddle.Free;
+      sbFavoritesExit.Free;
+      sbExcludeNodes.Free;
     end;
-    Delete(FavoritesEntry, 1, 1);
-    Delete(FavoritesMiddle, 1, 1);
-    Delete(FavoritesExit, 1, 1);
-    Delete(ExcludeNodes, 1, 1);
 
     CheckFilterMode;
     CheckFavoritesState;
@@ -9950,12 +10121,14 @@ end;
 procedure TTcp.ClearRouters(NodeTypes: TNodeTypes = []; Silent: Boolean = True);
 var
   Item: TPair<string, TNodeTypes>;
+  IPv4Cidrs: TCidrValuePairs;
   Data, ExcludeData: TNodeTypes;
+  i: Integer;
 begin
   if NodeTypes = [] then
   begin
     NodesDic.Clear;
-    CidrsDic.Clear;
+    IPv4CidrNodes.Clear;
   end
   else
   begin
@@ -9965,9 +10138,16 @@ begin
       ExcludeData := NodeTypes;
     for Item in NodesDic do
     begin
-      Data := Item.Value;
-      Data := Data - ExcludeData;
-      NodesDic.AddOrSetValue(Item.Key, Data);
+      Data := Item.Value - ExcludeData;
+      if Data <> Item.Value then
+        NodesDic.AddOrSetValue(Item.Key, Data);
+    end;
+    IPv4CidrNodes.EnumerateAllNodes(IPv4Cidrs);
+    for i := 0 to High(IPv4Cidrs) do
+    begin
+      Data := IPv4Cidrs[i].Value - ExcludeData;
+      if Data <> Item.Value then
+        IPv4CidrNodes.AddOrSetCIDR(IPv4Cidrs[i].Cidr, Data);
     end;
   end;
   if not Silent then
@@ -9983,13 +10163,12 @@ end;
 
 procedure TTcp.miClearRoutersAbsentClick(Sender: TObject);
 var
-  IpList: TDictionary<string, TAddressType>;
+  IPv4AddrsList, IPv4CidrsList: THashSet<string>;
   NodeItem: TPair<string, TNodeTypes>;
-  RouterItem: TPair<string, TRouterInfo>;
-  ListItem: TPair<string, TAddressType>;
-  DeleteExcludeNodes, Search: Boolean;
-  CidrInfo: TCidrInfo;
-  AddressType: TAddressType;
+  Router: TPair<string, TRouterInfo>;
+  DeleteExcludeNodes: Boolean;
+  Cidrs: TCidrValuePairs;
+  i: Integer;
 
   procedure SetNodesData;
   begin
@@ -10003,110 +10182,121 @@ begin
   if (InfoStage > 0) or Assigned(Consensus) or Assigned(Descriptors) or (RoutersDic.Count = 0) then
     Exit;
   DeleteExcludeNodes := not ShowMsg(TransStr('358'), '', mtQuestion, True);
-  IpList := TDictionary<string, TAddressType>.Create;
+  IPv4AddrsList := THashSet<string>.Create;
+  IPv4CidrsList := THashSet<string>.Create;
   try
-    for RouterItem in RoutersDic do
-      IpList.AddOrSetValue(RouterItem.Value.IPv4, atIPv4Cidr);
-    for NodeItem in NodesDic do
+    for Router in RoutersDic do
     begin
-      if ValidHash(NodeItem.Key) then
+      if not IPv4AddrsList.Contains(Router.Value.IPv4) then
       begin
-        if not RoutersDic.ContainsKey(NodeItem.Key) then
-          SetNodesData;
-      end
-      else
-      begin
-        AddressType := ValidAddress(NodeItem.Key, True, True);
-        if AddressType <> atNone then
+        IPv4AddrsList.Add(Router.Value.IPv4);
+        Cidrs := IPv4CidrNodes.FindAllMatchesIP(Router.Value.IPv4);
+        if Cidrs <> nil then
         begin
-          if AddressType = atIPv4 then
-          begin
-            if not IpList.ContainsKey(NodeItem.Key) then
-              SetNodesData;
-          end
-          else
-          begin
-            Search := False;
-            CidrInfo := CidrStrToInfo(NodeItem.Key, AddressType);
-            for ListItem in IpList do
-            begin
-              if IpInCidr(ListItem.Key, CidrInfo, ListItem.Value) then
-              begin
-                Search := True;
-                Break;
-              end;
-            end;
-            if not Search then
-            begin
-              CidrsDic.Remove(NodeItem.Key);
-              SetNodesData;
-            end;
-          end;
-        end
-        else
-        begin
-          if GeoIpDic.Count > 0 then
-          begin
-            if FilterDic.ContainsKey(NodeItem.Key) then
-            begin
-              if CountryTotals[TOTAL_RELAYS][FilterDic.Items[NodeItem.Key].cc] = 0 then
-                SetNodesData;
-            end;
-          end;
+          for i := 0 to High(Cidrs) do
+            IPv4CidrsList.Add(Cidrs[i].Cidr);
         end;
       end;
     end;
+
+    for NodeItem in NodesDic do
+    begin
+      case ValidNode(NodeItem.Key, False) of
+        dtHash: if not RoutersDic.ContainsKey(NodeItem.Key) then SetNodesData;
+        dtIPv4: if not IPv4AddrsList.Contains(NodeItem.Key) then SetNodesData;
+        dtCode:
+        begin
+          if (GeoIpDic.Count > 0) and
+            (CountryTotals[TOTAL_RELAYS][FilterDic.Items[NodeItem.Key].cc] = 0) then SetNodesData;
+        end;
+      end;
+    end;
+
+    IPv4CidrNodes.EnumerateAllNodes(Cidrs);
+    for i := 0 to High(Cidrs) do
+    begin
+      if not IPv4CidrsList.Contains(Cidrs[i].Cidr) then
+      begin
+        if DeleteExcludeNodes or not (ntExclude in Cidrs[i].Value) then
+          IPv4CidrNodes.RemoveCIDR(Cidrs[i].Cidr)
+        else
+          IPv4CidrNodes.AddOrSetCIDR(Cidrs[i].Cidr, [ntExclude]);
+      end;
+    end;
+      
     CalculateTotalNodes(False);
     ShowRouters;
     FilterUpdated := True;
     RoutersUpdated := True;
     EnableOptionButtons;
   finally
-    IpList.Free;
+    IPv4AddrsList.Free;
+    IPv4CidrsList.Free;
   end;
 end;
 
 procedure TTcp.miClearRoutersIncorrectClick(Sender: TObject);
 var
-  IpList: TDictionary<string, string>;
-  UpdateList: TDictionary<string, Byte>;
+  IpList: TDictionary<string, TArray<string>>;
+  UpdateList: TDictionary<string, TNodeDataType>;
   NodeItem: TPair<string, TNodeTypes>;
+  UpdateItem: TPair<string, TNodeDataType>;
   RouterItem: TPair<string, TRouterInfo>;
-  UpdateItem: TPair<string, Byte>;
   ConvertToHash: Boolean;
   RouterInfo: TRouterInfo;
   Ip, CountryCode: string;
+  Data: TArray<string>;
 
-  procedure CheckNode(NodeID: string; NodeTypes: TNodeTypes; HashID: string = '');
+  function FindNode(const NodeStr: string; DataType: TNodeDataType; out NodeValues: TNodeTypes): Boolean;
+  begin
+    if DataType <> dtIPv4Cidr then
+      Result := NodesDic.TryGetValue(NodeStr, NodeValues)
+    else
+      Result := IPv4CidrNodes.FindExactCIDR(NodeStr, NodeValues)
+  end;
+
+  procedure CheckNode(const NodeStr: string; DataType: TNodeDataType; NodeTypes: TNodeTypes; const HashStr: string = '');
   var
     NodeIsChanged, NodeIsExcluded, NodeIsBridge: Boolean;
     Flags: TRouterFlags;
-    Node, CountryCode: string;
+    HashID, CountryCode: string;
+    NodeValues: TNodeTypes;
+
+    procedure UpdateNodes(NodesData: TNodeTypes);
+    begin
+      if DataType <> dtIPv4Cidr then
+        NodesDic.AddOrSetValue(NodeStr, NodesData)
+      else
+      begin
+        if NodesData = [] then
+          IPv4CidrNodes.RemoveCIDR(NodeStr)
+        else
+          IPv4CidrNodes.AddOrSetCIDR(NodeStr, NodesData);
+      end;
+    end;
+
   begin
     NodeIsChanged := False;
     NodeIsExcluded := False;
 
-    if HashID = '' then
-      Node := NodeID
+    if HashStr = '' then
+      HashID := NodeStr
     else
-      Node := HashID;
+      HashID := HashStr;
 
-    if RoutersDic.TryGetValue(Node, RouterInfo) then
+    if RoutersDic.TryGetValue(HashID, RouterInfo) then
     begin
-      if NodesDic.ContainsKey(NodeID) then
+      if FindNode(NodeStr, DataType, NodeValues) then
       begin
         Flags := RouterInfo.Flags;
         NodeIsBridge := (NodeTypes <> [ntExclude]) and (rfBridge in Flags) and not (rfRelay in Flags);
 
-        if GeoIpDic.Count > 0 then
-        begin
-          CountryCode := CountryCodes[GetCountryValue(RouterInfo.IPv4)];
-          if NodesDic.ContainsKey(CountryCode) then
-            NodeIsExcluded := ntExclude in NodesDic.Items[CountryCode];
-        end;
+        CountryCode := CountryCodes[GetCountryValue(RouterInfo.IPv4)];
+        if NodesDic.TryGetValue(CountryCode, NodeValues) then
+          NodeIsExcluded := ntExclude in NodeValues;
 
         if NodeIsExcluded or NodeIsBridge then
-          NodesDic.AddOrSetValue(NodeID, [])
+          UpdateNodes([])
         else
         begin
           if (ntEntry in NodeTypes) and not (rfGuard in Flags) then
@@ -10120,47 +10310,43 @@ var
             NodeIsChanged := True;
           end;
           if NodeIsChanged then
-            NodesDic.AddOrSetValue(NodeID, NodeTypes);
+            UpdateNodes(NodeTypes);
         end;
       end;
     end;
   end;
 
-  procedure CheckRanges(NodeIp: string; NodeTypes: TNodeTypes; HashID: string = '');
+  procedure CheckRanges(const NodeIp: string; NodeTypes: TNodeTypes; const HashID: string = '');
   var
-    CidrItem: TPair<string, TCidrInfo>;
-    NodeInfo: TNodeTypes;
+    NodeValues: TNodeTypes;
     NodeID: string;
+    IPv4Cidrs: TCidrValuePairs;
+    i: Integer;
   begin
-    if CidrsDic.Count > 0 then
+    IPv4Cidrs := IPv4CidrNodes.FindAllMatchesIP(NodeIp);
+    if IPv4Cidrs <> nil then
     begin
       if HashID = '' then
         NodeID := NodeIp
       else
         NodeID := HashID;
-      for CidrItem in CidrsDic do
+      for i := 0 to High(IPv4Cidrs) do
       begin
-        if IpInCidr(NodeIp, CidrItem.Value, atIPv4Cidr) then
+        if NodeTypes = [ntNone] then
+          CheckNode(IPv4Cidrs[i].Cidr, dtIPv4Cidr, IPv4Cidrs[i].Value, HashID)
+        else
         begin
-          if NodesDic.TryGetValue(CidrItem.Key, NodeInfo) then
+          if NodesDic.TryGetValue(NodeID, NodeValues) then
           begin
-            if NodeTypes = [ntNone] then
-              CheckNode(CidrItem.Key, NodeInfo, HashID)
+            if ntExclude in IPv4Cidrs[i].Value then
+            begin
+              if NodeTypes <> [ntExclude] then
+                NodesDic.AddOrSetValue(NodeID, [])
+            end
             else
             begin
-              if NodesDic.ContainsKey(NodeID) then
-              begin
-                if (ntExclude in NodeInfo) then
-                begin
-                  if NodeTypes <> [ntExclude] then
-                    NodesDic.AddOrSetValue(NodeID, [])
-                end
-                else
-                begin
-                  if ntExclude in NodesDic.Items[NodeID] then
-                    NodesDic.AddOrSetValue(CidrItem.Key, [])
-                end;
-              end;
+              if ntExclude in NodeValues then
+                IPv4CidrNodes.RemoveCIDR(IPv4Cidrs[i].Cidr);
             end;
           end;
         end;
@@ -10168,26 +10354,25 @@ var
     end;
   end;
 
-  procedure CheckIp(NodeIp: string; NodeTypes: TNodeTypes; HashID: string = '');
+  procedure CheckIp(const NodeIp: string; NodeTypes: TNodeTypes; const HashID: string = '');
   var
-    ParseStr: ArrOfStr;
-    NodesList, CountryCode: string;
+    ParseStr: TArray<string>;
+    CountryCode: string;
     i: Integer;
   begin
 
     if HashID <> '' then
     begin
       CheckRanges(NodeIp, NodeTypes, HashID);
-      CheckNode(HashID, NodeTypes);
+      CheckNode(HashID, dtHash, NodeTypes);
       Exit;
     end
     else
       CheckRanges(NodeIp, NodeTypes);
 
-    if IpList.TryGetValue(NodeIp, NodesList) then
+    if IpList.TryGetValue(NodeIp, ParseStr) then
     begin
-      ParseStr := Explode(',', NodesList);
-      for i := 0 to Length(ParseStr) - 1 do
+      for i := 0 to High(ParseStr) do
       begin
         if NodesDic.ContainsKey(ParseStr[i]) then
         begin
@@ -10196,7 +10381,7 @@ var
           if (ntExclude in NodeTypes) and (NodesDic.Items[ParseStr[i]] <> [ntExclude]) then
             NodesDic.AddOrSetValue(ParseStr[i], [])
           else
-            CheckNode(ParseStr[i], NodesDic.Items[ParseStr[i]]);
+            CheckNode(ParseStr[i], dtHash, NodesDic.Items[ParseStr[i]]);
 
           if NodesDic.ContainsKey(NodeIp) then
           begin
@@ -10205,12 +10390,12 @@ var
               if (NodesDic.Items[ParseStr[i]] = [ntExclude]) then
                 NodesDic.AddOrSetValue(NodeIp, [])
               else
-                CheckNode(NodeIp, NodeTypes, ParseStr[i]);
+                CheckNode(NodeIp, dtIPv4, NodeTypes, ParseStr[i]);
             end;
           end;
         end
         else
-          CheckNode(NodeIp, NodeTypes, ParseStr[i]);
+          CheckNode(NodeIp, dtIPv4, NodeTypes, ParseStr[i]);
       end;
     end
     else
@@ -10230,80 +10415,37 @@ var
     end;
   end;
 
-  procedure CheckCountry(NodeIp, HashID: string);
+  procedure CheckCountry(const NodeIp, HashID: string);
+  var
+    NodeValues: TNodeTypes;
   begin
     if GeoIpDic.Count > 0 then
     begin
       CountryCode := CountryCodes[GetCountryValue(NodeIp)];
-      if NodesDic.ContainsKey(CountryCode) then
+      if NodesDic.TryGetValue(CountryCode, NodeValues) then
       begin
-        if not (ntExclude in NodesDic.Items[CountryCode]) then
-          CheckNode(CountryCode, NodesDic.Items[CountryCode], HashID);
+        if not (ntExclude in NodeValues) then
+          CheckNode(CountryCode, dtCode, NodeValues, HashID);
       end;
     end;
   end;
 
-  procedure CheckRangesNesting(RangeID: string; NodeTypes: TNodeTypes);
+  procedure ConvertNodesToHash(const NodeIp, HashID: string);
   var
-    CidrItem: TPair<string, TCidrInfo>;
-    CidrInfo: TCidrInfo;
-    MinBits: Byte;
-  begin
-    if CidrsDic.Count > 1 then
-    begin
-      if CidrsDic.ContainsKey(RangeID) then
-        CidrInfo := CidrsDic.Items[RangeID]
-      else
-        CidrInfo := CidrStrToInfo(RangeID, atIPv4Cidr);
-      for CidrItem in CidrsDic do
-      begin
-        if RangeID <> CidrItem.Key then
-        begin
-          MinBits := Min(CidrInfo.Prefix, CidrItem.Value.Prefix);
-          if (Copy(CidrInfo.Bits, 1, MinBits) = Copy(CidrItem.Value.Bits, 1, MinBits)) and
-            (CidrInfo.Prefix > CidrItem.Value.Prefix) then
-          begin
-            if NodesDic.ContainsKey(CidrItem.Key) then
-            begin
-              if (ntExclude in NodesDic.Items[CidrItem.Key]) then
-              begin
-                if NodesDic.ContainsKey(RangeID) then
-                  NodesDic.AddOrSetValue(RangeID, []);
-              end
-              else
-              begin
-                if (ntExclude in NodeTypes) then
-                  NodesDic.AddOrSetValue(CidrItem.Key, [])
-                else
-                begin
-                  if NodesDic.Items[CidrItem.Key] = NodeTypes then
-                  begin
-                    if NodesDic.ContainsKey(RangeID) then
-                      NodesDic.AddOrSetValue(RangeID, []);
-                  end;
-                end;
-              end;
-            end;
-          end;
-        end;
-      end;
-    end;
-  end;
-
-
-  procedure ConvertNodesToHash(NodeIp, HashID: string);
-  var
-    CidrItem: TPair<string, TCidrInfo>;
     CountryCode: string;
     IgnoreExclude: Boolean;
+    IPv4Cidrs: TCidrValuePairs;
+    i: Integer;
 
-    procedure UpdateNodes(NodeID: string);
+    procedure UpdateNodes(const NodeID: string; DataType: TNodeDataType);
+    var
+      NodeValues, HashValues: TNodeTypes;
     begin
-      if NodesDic.ContainsKey(NodeID) then
+      if FindNode(NodeID, DataType, NodeValues) then
       begin
-        if NodesDic.ContainsKey(HashID) then
+        if NodesDic.TryGetValue(HashID, HashValues) then
         begin
-          if (ntExclude in NodesDic.Items[NodeID]) then
+          if (ntExclude in NodeValues) then
           begin
             if IgnoreExclude then
               Exit;
@@ -10311,17 +10453,17 @@ var
           end
           else
           begin
-            if NodesDic.Items[HashID] <> [ntExclude] then
-              NodesDic.AddOrSetValue(HashID, NodesDic.Items[HashID] + NodesDic.Items[NodeID]);
+            if HashValues <> [ntExclude] then
+              NodesDic.AddOrSetValue(HashID, HashValues + NodeValues);
           end;
         end
         else
         begin
-          if IgnoreExclude and (ntExclude in NodesDic.Items[NodeID]) then
+          if IgnoreExclude and (ntExclude in NodeValues) then
             Exit;
-          NodesDic.AddOrSetValue(HashID, NodesDic.Items[NodeID]);
+          NodesDic.AddOrSetValue(HashID, NodeValues);
         end;
-        UpdateList.AddOrSetValue(NodeID, 0);
+        UpdateList.AddOrSetValue(NodeID, DataType);
       end;
     end;
 
@@ -10329,16 +10471,14 @@ var
     IgnoreExclude := miIgnoreConvertExcludeNodes.Checked;
 
     if miConvertIpNodes.Checked then
-      UpdateNodes(NodeIp);
+      UpdateNodes(NodeIp, dtIPv4);
     if miConvertCidrNodes.Checked then
     begin
-      if CidrsDic.Count > 0 then
+      IPv4Cidrs := IPv4CidrNodes.FindAllMatchesIP(NodeIp);
+      if IPv4Cidrs <> nil then
       begin
-        for CidrItem in CidrsDic do
-        begin
-          if IpInCidr(NodeIp, CidrItem.Value, atIPv4Cidr) then
-            UpdateNodes(CidrItem.Key);
-        end;
+        for i := 0 to High(IPv4Cidrs) do
+          UpdateNodes(IPv4Cidrs[i].Cidr, dtIPv4Cidr);
       end;
     end
     else
@@ -10349,7 +10489,7 @@ var
       if GeoIpDic.Count > 0 then
       begin
         CountryCode := CountryCodes[GetCountryValue(NodeIp)];
-        UpdateNodes(CountryCode);
+        UpdateNodes(CountryCode, dtCode);
       end;
     end
     else
@@ -10357,35 +10497,40 @@ var
   end;
 
 begin
-
   if (RoutersDic.Count = 0) or (InfoStage > 0) or Assigned(Consensus) or Assigned(Descriptors) then
     Exit;
 
   ConvertToHash := miEnableConvertNodesOnIncorrectClear.Checked;
 
-  IpList := TDictionary<string, string>.Create;
-  UpdateList := TDictionary<string, Byte>.Create;
+  IpList := TDictionary<string, TArray<string>>.Create;
+  UpdateList := TDictionary<string, TNodeDataType>.Create;
   try
     for NodeItem in NodesDic do
     begin
       if (ntExclude in NodeItem.Value) and (NodeItem.Value <> [ntExclude]) then
         NodesDic.AddOrSetValue(NodeItem.Key, [ntExclude]);
-      if Pos('/', NodeItem.Key) <> 0 then
-        CheckRangesNesting(NodeItem.Key, NodeItem.Value)
     end;
+    IPv4CidrNodes.RemoveIncorrectCIDRs;
 
     for RouterItem in RoutersDic do
     begin
-      if IpList.ContainsKey(RouterItem.Value.IPv4) then
-        IpList.AddOrSetValue(RouterItem.Value.IPv4, IpList.Items[RouterItem.Value.IPv4] + ',' + RouterItem.Key)
-      else
-        IpList.AddOrSetValue(RouterItem.Value.IPv4, RouterItem.Key);
-      if ConvertToHash then
-        ConvertNodesToHash(RouterItem.Value.IPv4, RouterItem.Key)
+      if IpList.TryGetValue(RouterItem.Value.IPv4, Data) then
+      begin
+        TArrayHelper.AddToArray<string>(Data, RouterItem.Key);
+        IpList.AddOrSetValue(RouterItem.Value.IPv4, Data);
+      end
       else
       begin
-        CheckCountry(RouterItem.Value.IPv4, RouterItem.Key);
-        CheckRanges(RouterItem.Value.IPv4, [ntNone], RouterItem.Key);
+        TArrayHelper.AddToArray<string>(Data, RouterItem.Key);
+        IpList.Add(RouterItem.Value.IPv4, Data);
+
+        if ConvertToHash then
+          ConvertNodesToHash(RouterItem.Value.IPv4, RouterItem.Key)
+        else
+        begin
+          CheckCountry(RouterItem.Value.IPv4, RouterItem.Key);
+          CheckRanges(RouterItem.Value.IPv4, [ntNone], RouterItem.Key);
+        end;
       end;
     end;
 
@@ -10393,12 +10538,13 @@ begin
     begin
       for UpdateItem in UpdateList do
       begin
-        if NodesDic.ContainsKey(UpdateItem.Key) then
+        if UpdateItem.Value <> dtIPv4Cidr then
         begin
-          NodesDic.AddOrSetValue(UpdateItem.Key, []);
-          if Pos('/', UpdateItem.Key) <> 0 then
-            CidrsDic.Remove(UpdateItem.Key);
-        end;
+          if NodesDic.ContainsKey(UpdateItem.Key) then
+            NodesDic.AddOrSetValue(UpdateItem.Key, []);
+        end
+        else
+          IPv4CidrNodes.RemoveCIDR(UpdateItem.Key);
       end;
     end;
 
@@ -10416,7 +10562,7 @@ begin
         end
         else
         begin
-          if ValidAddress(NodeItem.Key) = atIPv4 then
+          if ValidNode(NodeItem.Key, False) = dtIPv4 then
             CheckIp(NodeItem.Key, NodeItem.Value)
         end;
       end;
@@ -10451,108 +10597,109 @@ end;
 
 procedure TTcp.miClearUnusedNetworkCacheClick(Sender: TObject);
 var
-  IpList: TDictionary<string, string>;
-  DeleteList, BridgesList: TStringList;
+  IpList: TDictionary<string, TArray<Word>>;
+  RouterPorts: TPair<string, TArray<Word>>;
+  BridgesList: TStringList;
+  DeleteList: TList<string>;
   Router: TPair<string, TRouterInfo>;
   Item: TPair<string, TGeoIpInfo>;
-  ListItem: TPair<string, string>;
   GeoIpInfo: TGeoIpInfo;
   Bridge: TBridge;
-  Data: string;
-  RouterPorts, IpPorts, ParseStr: ArrOfStr;
+  Data: TArray<TPortInfo>;
   i, j, Max, Index, Count, Find: Integer;
 
-  procedure AddToIpList(IpStr, PortStr: string);
+  procedure AddToIpList(const IpStr: string; Port: Word);
   var
-    PortsList: string;
+    PortsList: TArray<Word>;
     i: Integer;
   begin
     if IpList.TryGetValue(IpStr, PortsList) then
     begin
-      ParseStr := Explode(',', PortsList);
-      for i := 0 to Length(ParseStr) - 1 do
+      for i := 0 to High(PortsList) do
       begin
-        if ParseStr[i] = PortStr then
+        if PortsList[i] = Port then
           Exit;
       end;
-      IpList.AddOrSetValue(IpStr, PortsList + ',' + PortStr)
+      TArrayHelper.AddToArray<Word>(PortsList, Port);
+      IpList.AddOrSetValue(IpStr, PortsList)
     end
     else
-      IpList.AddOrSetValue(IpStr, PortStr);
+    begin
+      TArrayHelper.AddToArray<Word>(PortsList, Port);
+      IpList.Add(IpStr, PortsList);
+    end;
   end;
 begin
   if not CheckCacheOpConfirmation(TMenuItem(Sender).Caption) then
     Exit;
-  DeleteList := TStringList.Create;
+  DeleteList := TList<string>.Create;
   BridgesList := TStringList.Create;
-  IpList := TDictionary<string, string>.Create;
+  IpList := TDictionary<string, TArray<Word>>.Create;
   try
     for Router in RoutersDic do
     begin
-      AddToIpList(Router.Value.IPv4, IntToStr(Router.Value.Port));
+      AddToIpList(Router.Value.IPv4, Router.Value.Port);
       if Router.Value.IPv6 <> '' then
-        AddToIpList(Router.Value.IPv6, IntToStr(Router.Value.Port));
+        AddToIpList(Router.Value.IPv6, Router.Value.Port);
     end;
 
     BridgesList.Text := meBridges.Text;
     for i := 0 to BridgesList.Count - 1 do
     begin
       if TryParseBridge(BridgesList[i], Bridge) then
-        AddToIpList(Bridge.Ip, IntToStr(Bridge.Port));
+        AddToIpList(Bridge.Ip, Bridge.Port);
     end;
 
     for Item in GeoIpDic do
     begin
       if not IpList.ContainsKey(Item.Key) then
-        DeleteList.Append(Item.Key);
+        DeleteList.Add(Item.Key);
     end;
     for i := 0 to DeleteList.Count - 1 do
       GeoIpDic.Remove(DeleteList[i]);
 
-    for ListItem in IpList do
+    for RouterPorts in IpList do
     begin
-      if GeoIpDic.TryGetValue(ListItem.Key, GeoIpInfo) then
+      if GeoIpDic.TryGetValue(RouterPorts.Key, GeoIpInfo) then
       begin
-        if GeoIpInfo.ports <> '' then
+        if GeoIpInfo.ports <> nil then
         begin
-          IpPorts := Explode('|', GeoIpInfo.ports);
-          RouterPorts := Explode(',', ListItem.Value);
-          Max := Length(RouterPorts);
+          Max := Length(RouterPorts.Value);
           Find := 0;
           Index := -1;
-          for i := 0 to Length(IpPorts) - 1 do
+          for i := 0 to High(GeoIpInfo.ports) do
           begin
             Count := 0;
-            for j := 0 to Length(RouterPorts) - 1 do
+            for j := 0 to High(RouterPorts.Value) do
             begin
-              if Pos(RouterPorts[j] + ':', IpPorts[i]) = 1 then
+              if GeoIpInfo.ports[i].Port = RouterPorts.Value[j] then
               begin
-                RouterPorts[j] := '';
+                RouterPorts.Value[j] := PORT_NONE;
                 Index := i;
                 Inc(Count);
                 Inc(Find);
               end;
               if (j = Max - 1) and (Count = 0) then
-                IpPorts[i] := '';
+                GeoIpInfo.ports[i].Port := PORT_NONE;
             end;
             if Find = Max then
               Break;
           end;
-          Data := '';
+          Data := nil;
           if Index > -1 then
           begin
             for j := 0 to Index do
             begin
-              if IpPorts[j] <> '' then
-                Data := Data + '|' + IpPorts[j];
+              if GeoIpInfo.ports[j].Port <> PORT_NONE then
+                TArrayHelper.AddToArray<TPortInfo>(Data, GeoIpInfo.ports[j]);
             end;
-            Delete(Data, 1, 1);
           end;
           GeoIpInfo.ports := Data;
-          GeoIpDic.AddOrSetValue(ListItem.Key, GeoIpInfo);
+          GeoIpDic.AddOrSetValue(RouterPorts.Key, GeoIpInfo);
         end;
       end;
     end;
+    GeoIpDic.TrimExcess;
   finally
     IpList.Free;
     BridgesList.Free;
@@ -10623,15 +10770,14 @@ end;
 procedure TTcp.FilterDeleteClick(Sender: TObject);
 var
   ini: TMemIniFile;
-  TemplateName, Temp: string;
+  TemplateName, Msg: string;
 begin
   TemplateName := TMenuItem(Sender).Caption;
   if TemplateName = TransStr('264') then
-    Temp := ''
+    Msg := ''
   else
-    Temp := TransStr('366') + ' ';
-
-  if ShowMsg(Format(TransStr('263'), [Temp, TemplateName]), '', mtQuestion, True) then
+    Msg := TransStr('366') + ' ';
+  if ShowMsg(Format(TransStr('263'), [Msg, TemplateName]), '', mtQuestion, True) then
   begin
     ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
     try
@@ -10648,7 +10794,7 @@ end;
 
 procedure TTcp.FilterLoadClick(Sender: TObject);
 var
-  ParseStr: ArrOfStr;
+  ParseStr: TArray<string>;
   FUpdated, RUpdated, ImmediateApplyOptions, IgnoreSettings: Boolean;
   EmptyCountries, EmptyFavorites, EmptyExcludes: Boolean;
   LoadCountries, LoadFavorites, LoadExcludes: Boolean;
@@ -10663,7 +10809,7 @@ begin
   end;
   ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
   try
-    ParseStr := Explode(';', GetSettings('Templates', IntToStr(TMenuItem(Sender).Tag), '', ini));
+    ParseStr := GetSettings('Templates', IntToStr(TMenuItem(Sender).Tag), '', ini).Split([';']);
     n := Length(ParseStr);
     if n in [5,9] then
     begin
@@ -10900,7 +11046,7 @@ begin
   if sgCircuits.IsEmptyRow(sgCircuits.SelRow) or not State then
   begin
     miDestroyCircuit.Enabled := False;
-    miDestroyStreams.Enabled := False;    
+    miDestroyStreams.Enabled := False;
   end
   else
   begin
@@ -11061,14 +11207,16 @@ begin
         if ValidHost(DataStr, False, False, False, False) <> htNone then
         begin
           Inc(DataCount);
-          Result := Result + BR + DataStr;
+          if Result <> '' then
+            Result := Result + BR + DataStr
+          else
+            Result := DataStr
         end;
       end
       else
         Inc(DataCount);
     end;
   end;
-  Delete(Result, 1, Length(BR));
   if DataCount > 1 then
   begin
     if Preview then
@@ -11131,7 +11279,7 @@ begin
   EditMenuEnableCheck(miLogFind, emFind);
 end;
 
-function TTcp.GetBridgeStr(RouterID: string; RouterInfo: TRouterInfo; UseIPv6: Boolean; Preview: Boolean = False): string;
+function TTcp.GetBridgeStr(const RouterID: string; const RouterInfo: TRouterInfo; UseIPv6: Boolean; Preview: Boolean = False): string;
 var
   IpStr, HashStr: string;
   BridgeInfo: TBridgeInfo;
@@ -11151,7 +11299,7 @@ begin
   begin
     if BridgeInfo.Source <> '' then
     begin
-      if UseIPv6 and IpInRanges(BridgeInfo.Source, DocRanges) then
+      if UseIPv6 and IpInReservedRanges(BridgeInfo.Source, rtDoc) then
         Exit;
       if GetAddressType(IpStr) = atIPv6 then
         IpStr := FormatHost(BridgeInfo.Source, False);
@@ -11164,7 +11312,7 @@ begin
     Result := IpStr + ':' + IntToStr(RouterInfo.Port) + ' ' + HashStr;
 end;
 
-function TTcp.GetRouterCsvData(RouterID: string; RouterInfo: TRouterInfo; Preview: Boolean = False): string;
+function TTcp.GetRouterCsvData(const RouterID: string; const RouterInfo: TRouterInfo; Preview: Boolean = False): string;
 var
   HashStr, IPv6Str, IPv4CountryStr, IPv6CountryStr, CountryData, PingStr, FlagsStr, TypeStr, AliveStr: string;
   GeoIpInfo: TGeoIpInfo;
@@ -11231,12 +11379,16 @@ begin
     PingStr + TypeStr + AliveStr + FlagsStr;
 end;
 
-function TTcp.GetFallbackStr(RouterID: string; RouterInfo: TRouterInfo; Preview: Boolean = False): string;
+function TTcp.GetFallbackStr(const RouterID: string; const RouterInfo: TRouterInfo; Preview: Boolean = False): string;
+var
+  Hash: string;
 begin
   if Preview then
-    RouterID := Copy(RouterID, 1, 30) + '..';
+    Hash := Copy(RouterID, 1, 30) + '..'
+  else
+    Hash := RouterID;
   Result := RouterInfo.IPv4;
-  Result := Result + ' orport=' + IntToStr(RouterInfo.Port) + ' id=' + RouterID;
+  Result := Result + ' orport=' + IntToStr(RouterInfo.Port) + ' id=' + Hash;
   if RouterInfo.IPv6 <> '' then
   begin
     if Preview then
@@ -11318,13 +11470,14 @@ begin
   end;
 end;
 
-function TTcp.GetTrackHostDomains(Host: string; OnlyExists: Boolean): string;
+function TTcp.GetTrackHostDomains(const HostStr: string; OnlyExists: Boolean): string;
 var
   DotIndex: Integer;
   HostType: THostType;
+  Host: string;
 begin
   Result := '';
-  Host := ExtractDomain(Host, True);
+  Host := ExtractDomain(HostStr, True);
   HostType := ValidHost(Host, True, True);
   if HostType = htNone then
     Exit;
@@ -11333,28 +11486,47 @@ begin
   begin
     if OnlyExists then
     begin
-      if TrackHostDic.ContainsKey(Host) then
-        Result := Result + ';' + Host;
+      if TrackHostMap.Contains(Host) then
+      begin
+        if Result <> '' then
+          Result := Result + ';' + Host
+        else
+          Result := Host
+      end;
     end
     else
     begin
-      Result := Result + ';' + Host;
+      if Result <> '' then
+        Result := Result + ';' + Host
+      else
+        Result := Host;
       if HostType in [htIPv4, htIPv6] then
         Break;
     end;
+
     if DotIndex = 255 then
     begin
       Host := '.' + Host;
-      if OnlyExists and TrackHostDic.ContainsKey(Host) then
-        Result := Result + ';' + Host;
+      if OnlyExists and TrackHostMap.Contains(Host) then
+      begin
+        if Result <> '' then
+          Result := Result + ';' + Host
+        else
+          Result := Host
+      end;
     end;
     DotIndex := Pos('.', Host, 2);
     if DotIndex <> -1 then
       Host := Copy(Host, DotIndex);
   end;
-  if OnlyExists and TrackHostDic.ContainsKey('.') then
-    Result := Result + ';' + TransStr('353');
-  Delete(Result, 1, 1);
+
+  if OnlyExists and TrackHostMap.Contains('.') then
+  begin
+    if Result <> '' then
+      Result := Result + ';' + TransStr('353')
+    else
+      Result := TransStr('353')
+  end;
 end;
 
 procedure TTcp.mnShowNodesChange(Sender: TObject; Source: TMenuItem;
@@ -11390,7 +11562,7 @@ procedure TTcp.mnStreamsPopup(Sender: TObject);
 var
   i: Integer;
   State, Search: Boolean;
-  ParseStr: ArrOfStr;
+  ParseStr: TArray<string>;
   HostMenu: TMenuItem;
   Domains: string;
 begin
@@ -11423,8 +11595,8 @@ begin
     Domains := GetTrackHostDomains(sgStreams.Cells[STREAMS_TARGET, sgStreams.SelRow], Search);
     if Domains <> '' then
     begin
-      ParseStr := Explode(';', Domains);
-      for i := 0 to Length(ParseStr) - 1 do
+      ParseStr := Domains.Split([';']);
+      for i := 0 to High(ParseStr) do
       begin
         HostMenu := TMenuItem.Create(self);
         HostMenu.Caption := ParseStr[i];
@@ -11442,7 +11614,7 @@ begin
   miResetTotalsCounter.Enabled := (ConnectState <> 1) and ((TotalDL <> 0) or (TotalUL <> 0));
 end;
 
-procedure TTcp.SetCaptionByDataCount(Caption: string; MenuItem: TMenuItem; aSg: TStringGrid; IsBrowserLinks: Boolean = False);
+procedure TTcp.SetCaptionByDataCount(const Caption: string; MenuItem: TMenuItem; aSg: TStringGrid; IsBrowserLinks: Boolean = False);
 var
   DataCount: Integer;
   State: Boolean;
@@ -11659,7 +11831,7 @@ begin
     begin
       ls := TStringList.Create;
       try
-        MemoToList(Control, Control.SortType, ls);
+        MemoToList(Control, ls, Control.SortType);
       finally
         ls.Free;
       end;
@@ -11728,7 +11900,7 @@ var
   Bridge: TBridge;
   BridgeInfo: TBridgeInfo;
   DataStr, Delimiter, PortData: string;
-  UniqueList: TDictionary<string, Byte>;
+  UniqueList: THashSet<string>;
   PortStr, IPv4Str, IPv6Str, HashStr, IPv4BridgesStr, IPv6BridgesStr,
   FallbackDirsStr, NicknameStr, CountryCodeStr, IPv4CountryCodeStr, IPv6CountryCodeStr, CsvStr, IPv4SocketStr, IPv6SocketStr, HostStr,
   HostSocketStr, HostRootStr, IPv4CidrStr: string;
@@ -11736,7 +11908,7 @@ var
   FallbackDirsCount, NicknameCount, CountryCodeCount, IPv4CountryCodeCount, IPv6CountryCodeCount, CsvCount, IPv4SocketCount, IPv6SocketCount,
   HostCount, HostSocketCount, HostRootCount, IPv4CidrCount: Integer;
 
-  procedure UpdateMenu(Menu: TMenuItem; DataStr: string; Count: Integer; AlwaysShow: Boolean);
+  procedure UpdateMenu(Menu: TMenuItem; const DataStr: string; Count: Integer; AlwaysShow: Boolean);
   var
     Str: string;
   begin
@@ -11753,8 +11925,11 @@ var
     Result := Result or Menu.Visible;
   end;
 
-  procedure FormatData(var Str: string; var Count: Integer; Data: string; CurrentType: Integer);
+  procedure FormatData(var Str: string; var Count: Integer; const DataStr: string; CurrentType: Integer; UseDuplicates: Boolean = True);
+  var
+    Data: string;
   begin
+    Data := DataStr;
     case CurrentType of
       EXTRACT_COUNTRY_CODE, EXTRACT_IPV4_COUNTRY_CODE, EXTRACT_IPV6_COUNTRY_CODE: if FormatCodesOnExtract then Data := '{' + Data + '}';
       EXTRACT_IPV6: if FormatIPv6OnExtract then Data := FormatHost(Data, False);
@@ -11763,15 +11938,15 @@ var
     begin
       if Count = 0 then
         Str := Data;
-      if RemoveDuplicateOnExtract then
+      if UseDuplicates and RemoveDuplicateOnExtract then
       begin
         if CurrentType = EXTRACT_IPV6_COUNTRY_CODE  then
           Data := Data + '6';
-        if UniqueList.ContainsKey(Data) then
+        if UniqueList.Contains(Data) then
           Exit
         else
         begin
-          UniqueList.AddOrSetValue(Data, 0);
+          UniqueList.Add(Data);
           Inc(Count);
         end;
       end
@@ -11782,13 +11957,13 @@ var
     begin
       if ExtractType = CurrentType then
       begin
-        if RemoveDuplicateOnExtract then
+        if UseDuplicates and RemoveDuplicateOnExtract then
         begin
-          if UniqueList.ContainsKey(Data) then
+          if UniqueList.Contains(Data) then
             Exit
           else
           begin
-            UniqueList.AddOrSetValue(Data, 0);
+            UniqueList.Add(Data);
             lr.Append(Data);
             Inc(Count);
           end;
@@ -11892,7 +12067,7 @@ begin
   end;
   if Assigned(ControlMemo) or Assigned(ControlGrid) then
   begin
-    UniqueList := TDictionary<string, Byte>.Create;
+    UniqueList := THashSet<string>.Create;
     ls := TStringList.Create;
     lr := TStringList.Create;
     try
@@ -11984,11 +12159,11 @@ begin
                 for i := 0 to ls.Count - 1 do
                 begin
                   DataStr := Trim(ls[i]);
-                  case ValidNode(DataStr) of
-                    dtHash: FormatData(HashStr, HashCount, DataStr, EXTRACT_HASH);
-                    dtIPv4: FormatData(IPv4Str, IPv4Count, DataStr, EXTRACT_IPV4);
-                    dtIPv4Cidr: FormatData(IPv4CidrStr, IPv4CidrCount, DataStr, EXTRACT_IPV4_CIDR);
-                    dtCode: FormatData(CountryCodeStr, CountryCodeCount, LowerCase(DataStr), EXTRACT_COUNTRY_CODE);
+                  case ValidNode(DataStr, NodesListStage = 1) of
+                    dtHash: FormatData(HashStr, HashCount, DataStr, EXTRACT_HASH, NodesListStage = 1);
+                    dtIPv4: FormatData(IPv4Str, IPv4Count, DataStr, EXTRACT_IPV4, NodesListStage = 1);
+                    dtIPv4Cidr: FormatData(IPv4CidrStr, IPv4CidrCount, DataStr, EXTRACT_IPV4_CIDR, NodesListStage = 1);
+                    dtCode: FormatData(CountryCodeStr, CountryCodeCount, LowerCase(DataStr), EXTRACT_COUNTRY_CODE, NodesListStage = 1);
                   end;
                 end;
               end;
@@ -12131,14 +12306,18 @@ begin
         if SortOnExtract then
         begin
           if ExtractType = EXTRACT_HASH then
-            lr.Sort
+            lr.CustomSort(CompAsc)
           else
             lr.CustomSort(CompTextAsc);
         end;
         DataStr := '';
         for i := 0 to lr.Count - 1 do
-          DataStr := DataStr + Delimiter + lr[i];
-        Delete(DataStr, 1, Length(Delimiter));
+        begin
+          if DataStr <> '' then
+            DataStr := DataStr + Delimiter + lr[i]
+          else
+            DataStr := lr[i];
+        end;
         if DataStr <> '' then
         begin
           if (Delimiter = BR) and (lr.Count > 1) then
@@ -12675,22 +12854,18 @@ end;
 
 procedure TTcp.SaveTrackHostExits(var ini: TMemIniFile; UseDic: Boolean = False);
 var
-  TrackHostExits: string;
+  TrackHostExits, HostStr: string;
   ls: TStringList;
-  Item: TPair<string, Byte>;
   i: Integer;
 begin
   if UseDic then
   begin
     ls := TStringList.Create;
     try
-      for Item in TrackHostDic do
-        ls.Append(Item.Key);
+      for HostStr in TrackHostMap do
+        ls.Append(HostStr);
       SortList(ls, ltHost, meTrackHostExits.SortType);
-      TrackHostExits := '';
-      for i := 0 to ls.Count - 1 do
-        TrackHostExits := TrackHostExits + ',' + ls[i];
-      Delete(TrackHostExits, 1, 1);
+      TrackHostExits := ListToStr(ls, ',');
       meTrackHostExits.SetTextData(ls.Text);
     finally
       ls.Free;
@@ -12699,10 +12874,10 @@ begin
   else
   begin
     TrackHostExits := MemoToLine(meTrackHostExits, meTrackHostExits.SortType);
-    TrackHostDic.Clear;
+    TrackHostMap.Clear;
     if TrackHostExits <> '' then
       for i := 0 to meTrackHostExits.Lines.Count - 1 do
-        TrackHostDic.AddOrSetValue(meTrackHostExits.Lines[i], 0);
+        TrackHostMap.Add(meTrackHostExits.Lines[i]);
   end;
   if cbUseTrackHostExits.Checked and (TrackHostExits <> '') then
   begin
@@ -12712,8 +12887,10 @@ begin
   else
   begin
     cbUseTrackHostExits.Checked := False;
-    DeleteTorConfig('TrackHostExits');
-    DeleteTorConfig('TrackHostExitsExpire');
+    DeleteTorConfig([
+      'TrackHostExits',
+      'TrackHostExitsExpire'
+    ]);
   end;
   SetSettings('Lists', cbUseTrackHostExits, ini);
   SetSettings('Lists', udTrackHostExitsExpire, ini);
@@ -12730,31 +12907,32 @@ end;
 procedure TTcp.SaveServerOptions(var ini: TMemIniFile);
 var
   ExitPolicy, MyFamily, Address: string;
-  ParseStr: ArrOfStr;
+  ParseStr: TArray<string>;
   i: Integer;
 begin
-  DeleteTorConfig('Nickname');
-  DeleteTorConfig('ContactInfo');
-  DeleteTorConfig('Address', [cfMultiLine]);
-  DeleteTorConfig('RelayBandwidthRate');
-  DeleteTorConfig('RelayBandwidthBurst');
-  DeleteTorConfig('MaxAdvertisedBandwidth');
-  DeleteTorConfig('MaxMemInQueues');
-  DeleteTorConfig('NumCPUs');
-  DeleteTorConfig('PublishServerDescriptor');
-  DeleteTorConfig('DirReqStatistics');
-  DeleteTorConfig('HiddenServiceStatistics');
-  DeleteTorConfig('AssumeReachable');
-  DeleteTorConfig('DirCache');
-  DeleteTorConfig('ORPort');
-  DeleteTorConfig('BridgeRelay');
-  DeleteTorConfig('BridgeDistribution');
-  DeleteTorConfig('ExitRelay');
-  DeleteTorConfig('ExitPolicy', [cfMultiLine]);
-  DeleteTorConfig('IPv6Exit');
-  DeleteTorConfig('ReducedExitPolicy');
-  DeleteTorConfig('MyFamily');
-
+  DeleteTorConfig([
+    'Nickname',
+    'ContactInfo',
+    'Address',
+    'RelayBandwidthRate',
+    'RelayBandwidthBurst',
+    'MaxAdvertisedBandwidth',
+    'MaxMemInQueues',
+    'NumCPUs',
+    'PublishServerDescriptor',
+    'DirReqStatistics',
+    'HiddenServiceStatistics',
+    'AssumeReachable',
+    'DirCache',
+    'ORPort',
+    'BridgeRelay',
+    'BridgeDistribution',
+    'ExitRelay',
+    'ExitPolicy',
+    'IPv6Exit',
+    'ReducedExitPolicy',
+    'MyFamily'
+  ]);
   MyFamily := MemoToLine(meMyFamily, meMyFamily.SortType);
   ExitPolicy := MemoToLine(meExitPolicy);
   if ExitPolicy = '' then
@@ -12770,21 +12948,22 @@ begin
     edContactInfo.Text := Trim(edContactInfo.Text);
     SetTorConfig('ContactInfo', edContactInfo.Text);
     SetServerPort(udORPort);
-    ParseStr := Explode(',', RemoveBrackets(edAddress.Text, btSquare));
+    ParseStr := string(edAddress.Text).Split([',']);
     Address := '';
-    for i := 0 to Length(ParseStr) - 1 do
+    for i := 0 to High(ParseStr) do
     begin
-      ParseStr[i] := ExtractDomain(Trim(ParseStr[i]));
+      ParseStr[i] := ExtractDomain(RemoveBrackets(Trim(ParseStr[i]), btSquare));
       if ValidHost(ParseStr[i]) <> htNone then
       begin
         if cbUseAddress.Checked then
-          tc.Data.Append('Address ' + FormatHost(ParseStr[i]));
-        Address := Address + ',' + ParseStr[i];
+          AddTorConfig('Address', FormatHost(ParseStr[i]));
+        if Address <> '' then
+          Address := Address + ',' + ParseStr[i]
+        else
+          Address := ParseStr[i]
       end;
     end;
-    Delete(Address, 1, 1);
     edAddress.Text := Address;
-
     if cbUseRelayBandwidth.Checked then
     begin
       SetTorConfig('RelayBandwidthRate', IntToStr(udRelayBandwidthRate.Position) + ' kb');
@@ -12837,7 +13016,7 @@ begin
   SetSettings('Server', cbxServerMode, ini);
   SetSettings('Server', edNickname, ini);
   SetSettings('Server', edContactInfo, ini);
-  SetSettings('Server', edAddress, ini, True);
+  SetSettings('Server', edAddress, ini);
   SetSettings('Server', udORPort, ini);
   SetSettings('Server', udTransportPort, ini);
   SetSettings('Server', udRelayBandwidthRate, ini);
@@ -12877,11 +13056,12 @@ end;
 
 procedure TTcp.SavePaddingOptions(var ini: TMemIniFile);
 begin
-  DeleteTorConfig('ConnectionPadding');
-  DeleteTorConfig('ReducedConnectionPadding');
-  DeleteTorConfig('CircuitPadding');
-  DeleteTorConfig('ReducedCircuitPadding');
-
+  DeleteTorConfig([
+    'ConnectionPadding',
+    'ReducedConnectionPadding',
+    'CircuitPadding',
+    'ReducedCircuitPadding'
+  ]);
   if cbxServerMode.ItemIndex = SERVER_MODE_NONE then
   begin
     case cbxConnectionPadding.ItemIndex of
@@ -12915,12 +13095,12 @@ begin
   OptionsLocked := True;
   if TMenuItem(Sender).Tag = 0 then
   begin
-    if TrackHostDic.Count = 0 then
+    if TrackHostMap.Count = 0 then
       cbUseTrackHostExits.Checked := True;
-    TrackHostDic.AddOrSetValue(Host, 0)
+    TrackHostMap.Add(Host)
   end
   else
-    TrackHostDic.Remove(Host);
+    TrackHostMap.Remove(Host);
   ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
   try
     SaveTrackHostExits(ini, True);
@@ -13091,7 +13271,7 @@ begin
     try
       ls.Text := meFallbackDirs.Text;
       ExcludeUnsuitableFallbackDirs(ls);
-      if LastFallbackDirsHash <> Crc32(AnsiString(ls.Text)) then
+      if LastFallbackDirsHash <> THashBobJenkins.GetHashValue(ls.Text) then
         NeedUpdateFallbackDirs := True;
     finally
       ls.Free;
@@ -13109,7 +13289,7 @@ begin
     try
       ls.Text := meBridges.Text;
       ExcludeUnsuitableBridges(ls);
-      if LastBridgesHash <> Crc32(AnsiString(ls.Text)) then
+      if LastBridgesHash <> THashBobJenkins.GetHashValue(ls.Text) then
         NeedUpdateBridges := True;
     finally
       ls.Free;
@@ -13129,16 +13309,16 @@ var
   CurrentMemo: TMemo;
   NeedUpdate: Boolean;
 
-  procedure DeleteListData(IpStr, PortStr: string);
+  procedure DeleteListData(const IpStr: string; Port: Word);
   begin
     if GeoIpDic.TryGetValue(IpStr, GeoIpInfo) then
     begin
-      if GetPortsValue(GeoIpInfo.ports, PortStr) = -1 then
+      if GetPortsValue(GeoIpInfo.ports, Port) = PORT_DEAD then
       begin
         ls.Delete(i);
         Inc(DeleteCount);
       end;
-      if (GeoIpInfo.cc = DEFAULT_COUNTRY_ID) and (GeoIpInfo.ping = 0) then
+      if (GeoIpInfo.cc = DEFAULT_COUNTRY_ID) and (GeoIpInfo.ping = PING_NONE) then
         GeoIpDic.Remove(IpStr);
     end;
   end;
@@ -13186,7 +13366,7 @@ begin
                     Str := GetBridgeIp(Bridge);
                     if Str = '' then
                       Continue;
-                    DeleteListData(Str, IntToStr(Bridge.Port));
+                    DeleteListData(Str, Bridge.Port);
                   end;
                 end;
               end;
@@ -13195,7 +13375,7 @@ begin
                 for i := ls.Count - 1 downto 0 do
                 begin
                   if TryParseFallbackDir(ls[i], FallbackDir) then
-                    DeleteListData(FallbackDir.IPv4, IntToStr(FallbackDir.OrPort));
+                    DeleteListData(FallbackDir.IPv4, FallbackDir.OrPort);
                 end;
               end;
               if DeleteCount > 0 then
@@ -13493,41 +13673,23 @@ begin
   lbFilterCount.Caption := Format(TransStr('321'), [FilterCount, FilterDic.Count]);
 end;
 
-function TTcp.FindInRanges(IpStr: string; AddressType: TAddressType): string;
-var
-  CidrItem: TPair<string, TCidrInfo>;
-begin
-  Result := '';
-  if IpStr = '' then
-    Exit;
-  if CidrsDic.Count > 0 then
-  begin
-    for CidrItem in CidrsDic do
-    begin
-      if IpInCidr(IpStr, CidrItem.Value, AddressType) then
-        Result := Result + ',' + CidrItem.Key;
-    end;
-    Delete(Result, 1, 1);
-  end;
-end;
-
-function TTcp.FindSelectedBridge(RouterID: string; Router: TRouterInfo): Boolean;
+function TTcp.FindSelectedBridge(const RouterID: string; const Router: TRouterInfo): Boolean;
 var
   BridgeInfo: TBridgeInfo;
 begin
   Result := False;
-  if UsedBridgesList.ContainsKey(Router.IPv4 + IntToStr(Router.Port)) then
+  if UsedBridgesMap.Contains(Router.IPv4 + IntToStr(Router.Port)) then
     Result := True
   else
   begin
-    if UsedBridgesList.ContainsKey(Router.IPv6 + IntToStr(Router.Port)) then
+    if UsedBridgesMap.Contains(Router.IPv6 + IntToStr(Router.Port)) then
       Result := True
     else
     begin
       if BridgesDic.TryGetValue(RouterID, BridgeInfo) then
       begin
         if BridgeInfo.Source <> '' then
-          Result := UsedBridgesList.ContainsKey(BridgeInfo.Source + IntToStr(Router.Port));
+          Result := UsedBridgesMap.Contains(BridgeInfo.Source + IntToStr(Router.Port));
       end;
     end;
   end;
@@ -13543,35 +13705,39 @@ var
   CountryCodeIPv4Str, CountryCodeIPv6Str: string;
   CountryCodeIPv4, CountryCodeIPv6: Byte;
   FindIPv4Country, FindHash, FindIPv4, IsExclude, IsNativeBridge, IsSelectedBridge, WrongQuery, SelectedBridgeFound: Boolean;
-  FindIPv4Cidr, Query, Temp: string;
-  ParseStr, RangeStr: ArrOfStr;
+  Query, DataStr: string;
+  ParseStr, RangeStr: TArray<string>;
   GeoIpInfo: TGeoIpInfo;
   BridgeInfo: TBridgeInfo;
+  FindIPv4Cidr: TCidrValuePairs;
 
-  procedure SelectNodes(KeyStr: string; Exclude: Boolean);
+  procedure UpdateSelectNodes(ACol: Integer);
+  begin
+    if sgRouters.Cells[ACol, RoutersCount] <> FAVERR_CHAR then
+    begin
+      if (sgRouters.Cells[ACol, RoutersCount] = NONE_CHAR) or IsExclude then
+        sgRouters.Cells[ACol, RoutersCount] := FAVERR_CHAR
+      else
+      begin
+        if IsSelectedBridge then
+        begin
+          if ACol <> ROUTER_ENTRY_NODES then
+            sgRouters.Cells[ACol, RoutersCount] := FAVERR_CHAR
+        end
+        else
+          sgRouters.Cells[ACol, RoutersCount] := SELECT_CHAR
+      end;
+    end;
+  end;
+
+  procedure SelectNodes(const KeyStr: string);
   var
-    i: Integer; 
+    i: Integer;
   begin
     for i := ROUTER_ENTRY_NODES to ROUTER_EXIT_NODES do
     begin
-      if TNodeType(i) in NodesDic.Items[KeyStr] then
-      begin
-        if sgRouters.Cells[i, RoutersCount] <> FAVERR_CHAR then
-        begin
-          if (sgRouters.Cells[i, RoutersCount] = NONE_CHAR) or Exclude then
-            sgRouters.Cells[i, RoutersCount] := FAVERR_CHAR
-          else
-          begin
-            if IsSelectedBridge then
-            begin
-              if i <> ROUTER_ENTRY_NODES then
-                sgRouters.Cells[i, RoutersCount] := FAVERR_CHAR
-            end
-            else
-              sgRouters.Cells[i, RoutersCount] := SELECT_CHAR
-          end;
-        end;
-      end;
+      if GetNodeTypeByGridCol(sgRouters, i) in NodesDic.Items[KeyStr] then
+        UpdateSelectNodes(i);
     end;
   end;
 
@@ -13587,28 +13753,30 @@ var
       Result := True;
   end;
 
-  function CheckNodesDic(KeyStr: string): Boolean;
+  function CheckNodeTypes(NodeTypes: TNodeTypes): Boolean;
+  begin
+    if NodeTypes = [] then
+      Exit(False);
+    case RoutersCustomFilter of
+      ENTRY_ID: Result := ntEntry in NodeTypes;
+      MIDDLE_ID: Result := ntMiddle in NodeTypes;
+      EXIT_ID: Result := ntExit in NodeTypes;
+      EXCLUDE_ID: Result := ntExclude in NodeTypes;
+      FAVORITES_ID: Result := (ntEntry in NodeTypes) or
+        (ntMiddle in NodeTypes) or (ntExit in NodeTypes);
+      else
+        Result := False;
+    end;
+  end;
+
+  function CheckNodesDic(const KeyStr: string): Boolean;
   var
     NodeTypes: TNodeTypes;
   begin
     if NodesDic.TryGetValue(KeyStr, NodeTypes) then
-    begin
-      if NodeTypes <> [] then
-      begin
-        case RoutersCustomFilter of
-          ENTRY_ID: Result := ntEntry in NodeTypes;
-          MIDDLE_ID: Result := ntMiddle in NodeTypes;
-          EXIT_ID: Result := ntExit in NodeTypes;
-          EXCLUDE_ID: Result := ntExclude in NodeTypes;
-          FAVORITES_ID: Result := (ntEntry in NodeTypes) or
-            (ntMiddle in NodeTypes) or (ntExit in NodeTypes);
-          else
-            Result := False;
-        end;
-        Exit;
-      end;
-    end;
-    Result := False;
+      Result := CheckNodeTypes(NodeTypes)
+    else
+      Result := False;
   end;
 
 begin
@@ -13623,17 +13791,17 @@ begin
     case cbxRoutersQuery.ItemIndex of
       USER_QUERY_PORT:
       begin
-        PortsDic.Clear;
-        ParseStr := Explode(',', Query);
-        Temp := '';
-        for i := 0 to Length(ParseStr) - 1 do
+        PortsMap.Clear;
+        ParseStr := Query.Split([',']);
+        DataStr := '';
+        for i := 0 to High(ParseStr) do
         begin
           ParseStr[i] := Trim(ParseStr[i]);
           if ValidInt(ParseStr[i], 0, 65535) then
-            PortsDic.AddOrSetValue(StrToInt(ParseStr[i]), 0)
+            PortsMap.Add(StrToInt(ParseStr[i]))
           else
           begin
-            RangeStr := Explode('-', ParseStr[i]);
+            RangeStr :=  ParseStr[i].Split(['-']);
             if Length(RangeStr) <> 2 then
               ParseStr[i] := ''
             else
@@ -13643,7 +13811,7 @@ begin
                 if StrToInt(RangeStr[0]) <= StrToInt(RangeStr[1]) then
                 begin
                   for j := StrToInt(RangeStr[0]) to StrToInt(RangeStr[1]) do
-                    PortsDic.AddOrSetValue(j, 0);
+                    PortsMap.Add(j);
                 end
                 else
                   ParseStr[i] := '';
@@ -13653,10 +13821,14 @@ begin
             end;
           end;
           if ParseStr[i] <> '' then
-            Temp := Temp + ',' + ParseStr[i];
+          begin
+            if DataStr <> '' then
+              DataStr := DataStr + ',' + ParseStr[i]
+            else
+              DataStr :=  ParseStr[i];
+          end;
         end;
-        Delete(Temp, 1, 1);
-        Query := Temp;
+        Query := DataStr;
       end;
       USER_QUERY_PING:
       begin
@@ -13668,12 +13840,12 @@ begin
         if Query <> NONE_CHAR then
         begin
           WrongQuery := True;
-          TransportsList.Clear;
+          TransportsMap.Clear;
           for Transport in TransportsDic do
           begin
             if FindStr(Query, Transport.Key) then
             begin
-              TransportsList.AddOrSetValue(Transport.Key, 0);
+              TransportsMap.Add(Transport.Key);
               WrongQuery := False;
             end;
           end;
@@ -13710,7 +13882,7 @@ begin
     for Item in RoutersDic do
     begin
       SelectedBridgeFound := False;
-      FindIPv4Cidr := '';
+      FindIPv4Cidr := nil;
       CountryCodeIPv4 := GetCountryValue(Item.Value.IPv4);
       CountryCodeIPv4Str := CountryCodes[CountryCodeIPv4];
       if miRtFiltersCountry.Checked then
@@ -13743,17 +13915,17 @@ begin
             else
               cdQuery := Item.Value.IPv6 = '';
           end;
-          USER_QUERY_PORT: cdQuery := PortsDic.ContainsKey(Item.Value.Port);
+          USER_QUERY_PORT: cdQuery := PortsMap.Contains(Item.Value.Port);
           USER_QUERY_VERSION: cdQuery := FindStr(Query, Item.Value.Version);
           USER_QUERY_PING:
           begin
             if GeoIpDic.TryGetValue(Item.Value.IPv4, GeoIpInfo) then
             begin
               case AnsiChar(Query[1]) of
-                NONE_CHAR: cdQuery := GeoIpInfo.ping = 0;
-                INFINITY_CHAR: cdQuery := GeoIpInfo.ping = -1;
+                NONE_CHAR: cdQuery := GeoIpInfo.ping = PING_NONE;
+                INFINITY_CHAR: cdQuery := GeoIpInfo.ping = PING_DEAD;
                 else
-                  cdQuery := (GeoIpInfo.ping <= StrToInt(Query)) and (GeoIpInfo.ping > 0);
+                  cdQuery := (GeoIpInfo.ping <= StrToInt(Query)) and (GeoIpInfo.ping > PING_NONE);
               end;
             end
             else
@@ -13764,7 +13936,7 @@ begin
             if BridgesDic.TryGetValue(Item.Key, BridgeInfo) then
             begin
               if Query <> NONE_CHAR then
-                cdQuery := TransportsList.ContainsKey(BridgeInfo.Transport)
+                cdQuery := TransportsMap.Contains(BridgeInfo.Transport)
               else
                 cdQuery := BridgeInfo.Transport = '';
             end
@@ -13791,7 +13963,7 @@ begin
         cdHSDir := CheckRouterType(miShowHSDir, rfHSDir in Item.Value.Flags);
         cdV2Dir := CheckRouterType(miShowV2Dir, rfV2Dir in Item.Value.Flags);
         cdAlive := CheckRouterType(miShowAlive, Item.Value.Params and ROUTER_ALIVE <> 0);
-        cdRecommended := CheckRouterType(miShowRecommend, VersionsDic.ContainsKey(Item.Value.Version));
+        cdRecommended := CheckRouterType(miShowRecommend, VersionsMap.Contains(Item.Value.Version));
 
         cdRouterType := cdExit and cdGuard and cdBridge and cdAuthority and cdOther and cdConsensus and cdFast and cdStable and cdV2Dir and cdHSDir and cdRecommended and cdAlive;
       end
@@ -13813,15 +13985,14 @@ begin
                 cdFavorites := True
               else
               begin
-                FindIPv4Cidr := FindInRanges(Item.Value.IPv4, atIPv4Cidr);
-                if FindIPv4Cidr <> '' then
+                FindIPv4Cidr := IPv4CidrNodes.FindAllMatchesIP(Item.Value.IPv4);
+                if FindIPv4Cidr <> nil then
                 begin
                   cdFavorites := False;
-                  ParseStr := Explode(',', FindIPv4Cidr);
-                  for i := 0 to Length(ParseStr) - 1 do
+                  for i := 0 to High(FindIPv4Cidr) do
                   begin
                     if not cdFavorites then
-                      cdFavorites := CheckNodesDic(ParseStr[i])
+                      cdFavorites := CheckNodeTypes(FindIPv4Cidr[i].Value)
                     else
                       Break;
                   end;
@@ -13861,11 +14032,11 @@ begin
           sgRouters.Cells[ROUTER_VERSION, RoutersCount] := NONE_CHAR;
         if GeoIpDic.TryGetValue(Item.Value.IPv4, GeoIpInfo) then
         begin
-          if GeoIpInfo.ping > 0 then
+          if GeoIpInfo.ping > PING_NONE then
             sgRouters.Cells[ROUTER_PING, RoutersCount] := IntToStr(GeoIpInfo.ping) + ' ' + TransStr('379')
           else
           begin
-            if GeoIpInfo.ping < 0 then
+            if GeoIpInfo.ping < PING_NONE then
               sgRouters.Cells[ROUTER_PING, RoutersCount] := INFINITY_CHAR
             else
               sgRouters.Cells[ROUTER_PING, RoutersCount] := NONE_CHAR;
@@ -13890,7 +14061,8 @@ begin
         FindHash := NodesDic.ContainsKey(Item.Key);
         FindIPv4Country := NodesDic.ContainsKey(CountryCodeIPv4Str);
         FindIPv4 := NodesDic.ContainsKey(Item.Value.IPv4);
-        FindIPv4Cidr := FindInRanges(Item.Value.IPv4, atIPv4Cidr);
+        if FindIPv4Cidr = nil then
+          FindIPv4Cidr := IPv4CidrNodes.FindAllMatchesIP(Item.Value.IPv4);
         IsExclude := False;
 
         if FindHash then
@@ -13902,18 +14074,14 @@ begin
         if FindIPv4 then
           if ntExclude in NodesDic.Items[Item.Value.IPv4] then
             IsExclude := True;
-        if FindIPv4Cidr <> '' then
+        if FindIPv4Cidr <> nil then
         begin
-          ParseStr := Explode(',', FindIPv4Cidr);
-          for i := 0 to Length(ParseStr) - 1 do
+          for i := 0 to High(FindIPv4Cidr) do
           begin
-            if NodesDic.ContainsKey(ParseStr[i]) then
+            if ntExclude in FindIPv4Cidr[i].Value then
             begin
-              if ntExclude in NodesDic.Items[ParseStr[i]] then
-              begin
-                IsExclude := True;
-                Break;
-              end;
+              IsExclude := True;
+              Break;
             end;
           end;
         end;
@@ -13929,17 +14097,20 @@ begin
         end;
 
         if FindHash then
-          SelectNodes(Item.Key, IsExclude);
+          SelectNodes(Item.Key);
         if FindIPv4Country then
-          SelectNodes(CountryCodeIPv4Str, IsExclude);
+          SelectNodes(CountryCodeIPv4Str);
         if FindIPv4 then
-          SelectNodes(Item.Value.IPv4, IsExclude);
-        if FindIPv4Cidr <> '' then
+          SelectNodes(Item.Value.IPv4);
+        if FindIPv4Cidr <> nil then
         begin
-          for i := 0 to Length(ParseStr) - 1 do
+          for i := 0 to High(FindIPv4Cidr) do
           begin
-            if NodesDic.ContainsKey(ParseStr[i]) then
-              SelectNodes(ParseStr[i], IsExclude);
+            for j := ROUTER_ENTRY_NODES to ROUTER_EXIT_NODES do
+            begin
+              if GetNodeTypeByGridCol(sgRouters, j) in FindIPv4Cidr[i].Value then
+                UpdateSelectNodes(j);
+            end;
           end;
         end;
       end;
@@ -13957,10 +14128,10 @@ begin
   sgRouters.EndUpdateRows;
   lbRoutersCount.Caption := Format(TransStr('321'), [RoutersCount, RoutersDic.Count]);
 
-  if PortsDic.Count > 0 then
-    PortsDic.Clear;
-  if TransportsList.Count > 0 then
-    TransportsList.Clear;
+  if PortsMap.Count > 0 then
+    PortsMap.Clear;
+  if TransportsMap.Count > 0 then
+    TransportsMap.Clear;
 end;
 
 procedure TTcp.CheckCountryIndexInList;
@@ -14002,7 +14173,6 @@ var
   Flags: TRouterFlags;
   GeoIpInfo: TGeoIpInfo;
   CountryID: Byte;
-  ParseStr: ArrOfStr;
   i, j: Integer;
   NeedCount: Boolean;
 begin
@@ -14018,27 +14188,28 @@ begin
     if GeoIpDic.TryGetValue(Item.Value.IPv4, GeoIpInfo) then
     begin
       CountryID := GeoIpInfo.cc;
-      if (GeoIpInfo.ping > 0) and NeedCount then
+      if (GeoIpInfo.ping > PING_NONE) and NeedCount then
       begin
         Inc(CountryTotals[TOTAL_PING_SUM][CountryID], GeoIpInfo.ping);
         Inc(CountryTotals[TOTAL_PING_COUNTS][CountryID]);
         Inc(PingNodesCount);
       end;
-      if GeoIpInfo.ports <> '' then
+      if GeoIpInfo.ports <> nil then
       begin
-        ParseStr := Explode('|', GeoIpInfo.ports);
-        for i := 0 to Length(ParseStr) - 1 do
+        for i := 0 to High(GeoIpInfo.ports) do
         begin
-          if Pos(IntToStr(Item.Value.Port) + ':1', ParseStr[i]) = 1 then
+          if (GeoIpInfo.ports[i].Port = Item.Value.Port) and (GeoIpInfo.ports[i].Value = PORT_ALIVE) then
           begin
             if NeedCount then
+            begin
               Inc(CountryTotals[TOTAL_ALIVES][CountryID]);
+              Inc(AliveNodesCount);
+            end;
             if Item.Value.Params and ROUTER_ALIVE = 0 then
             begin
               RouterInfo := Item.Value;
               Inc(RouterInfo.Params, ROUTER_ALIVE);
               RoutersDic.AddOrSetValue(Item.Key, RouterInfo);
-              Inc(AliveNodesCount);
             end;
             Break;
           end;
@@ -14065,7 +14236,7 @@ procedure TTcp.LoadRoutersCountries;
 var
   i: Integer;
   ls: TStringList;
-  CountriesHash: Cardinal;
+  CountriesHash: Integer;
 begin
   ls := TStringList.Create;
   try
@@ -14076,7 +14247,7 @@ begin
       if CountryTotals[TOTAL_RELAYS][i] > 0 then
         ls.AddObject(TransStr(CountryCodes[i]), TObject(i));
     end;
-    CountriesHash := Crc32(AnsiString(ls.Text));
+    CountriesHash := THashBobJenkins.GetHashValue(ls.Text);
     if CountriesHash <> LastCountriesHash then
     begin
       LastCountriesHash := CountriesHash;
@@ -14200,11 +14371,11 @@ begin
   ShowCircuitInfo(sgCircuits.Cells[CIRC_ID, sgCircuits.SelRow]);
 end;
 
-procedure TTcp.ShowCircuitInfo(CircID: string);
+procedure TTcp.ShowCircuitInfo(const CircID: string);
 var
   NodesCount, i: Integer;
   Router: TRouterInfo;
-  NodesData: ArrOfStr;
+  NodesData: TArray<string>;
   CountryCodeIPv4, CountryCodeIPv6: Byte;
   CircuitInfo: TCircuitInfo;
   GeoIpInfo: TGeoIpInfo;
@@ -14221,8 +14392,8 @@ begin
 
   if CircuitsDic.TryGetValue(CircID, CircuitInfo) then
   begin
-    NodesData := Explode(',', CircuitInfo.Nodes);
-    for i := 0 to Length(NodesData) - 1 do
+    NodesData := CircuitInfo.Nodes.Split([',']);
+    for i := 0 to High(NodesData) do
     begin
       PingData := NONE_CHAR;
       inc(NodesCount);
@@ -14255,11 +14426,11 @@ begin
         sgCircuitInfo.Cells[CIRC_INFO_WEIGHT, NodesCount] := BytesFormat(Router.Bandwidth * 1024) + '/' + TransStr('180');
         if GeoIpDic.TryGetValue(Router.IPv4, GeoIpInfo) then
         begin
-          if GeoIpInfo.ping > 0 then
+          if GeoIpInfo.ping > PING_NONE then
             PingData := IntToStr(GeoIpInfo.ping) + ' ' + TransStr('379')
           else
           begin
-            if GeoIpInfo.ping < 0 then
+            if GeoIpInfo.ping < PING_NONE then
               PingData := INFINITY_CHAR;
           end;
         end;
@@ -14294,7 +14465,7 @@ begin
   LockCircuitInfo := False;
 end;
 
-procedure TTcp.CheckCircuitExists(CircID: string; UpdateStreamsCount: Boolean = False);
+procedure TTcp.CheckCircuitExists(const CircID: string; UpdateStreamsCount: Boolean = False);
 var
   Search, CircuitPurpose, LinkedSearch, i: Integer;
   Item: TPair<string, string>;
@@ -14343,7 +14514,7 @@ begin
   end;
 end;
 
-procedure TTcp.ShowStreams(CircID: string; AlwaysUpdate: Boolean = True);
+procedure TTcp.ShowStreams(const CircID: string; AlwaysUpdate: Boolean = True);
 var
   StreamsCount, Search, i: Integer;
   Item: TPair<string, TStreamInfo>;
@@ -14428,7 +14599,7 @@ begin
   end;
 end;
 
-procedure TTcp.ShowStreamsInfo(CircID: string);
+procedure TTcp.ShowStreamsInfo(const CircID: string);
 var
   Targets: TDictionary<string, Integer>;
   StreamsCount, TargetCount, i: Integer;
@@ -14546,7 +14717,7 @@ begin
   end;
 end;
 
-procedure TTcp.CheckCircuitStreams(CircID: string; var Targets: TDictionary<string, Integer>);
+procedure TTcp.CheckCircuitStreams(const CircID: string; var Targets: TDictionary<string, Integer>);
 var
   CircuitInfo: TCircuitInfo;
   TargetCount, i: Integer;
@@ -14589,26 +14760,27 @@ begin
   end;
 end;
 
-function TTcp.FindTrackHost(Host: string): Boolean;
+function TTcp.FindTrackHost(const HostStr: string): Boolean;
 var
   DotIndex: Integer;
+  Host: string;
 begin
   Result := True;
-  if TrackHostDic.ContainsKey('.') then
+  if TrackHostMap.Contains('.') then
     Exit
   else
   begin
-    Host := ExtractDomain(Host, True);
+    Host := ExtractDomain(HostStr, True);
     if ValidHost(Host, True, True) <> htNone then
     begin
-      if TrackHostDic.ContainsKey('.' + Host) then
+      if TrackHostMap.Contains('.' + Host) then
         Exit
       else
       begin
         DotIndex := 1;
         while DotIndex > 0 do
         begin
-          if TrackHostDic.ContainsKey(Host) then
+          if TrackHostMap.Contains(Host) then
             Exit;
           DotIndex := Pos('.', Host, 2);
           if DotIndex <> -1 then
@@ -15137,11 +15309,16 @@ begin
   SortPrepare(sgStreams, ACol, True);
 end;
 
-procedure TTcp.meNodesListChange(Sender: TObject);
+procedure TTcp.UpdateTotalNodesList;
 begin
   lbTotalNodesList.Caption := TransStr('203') + ': ' + IntToStr(meNodesList.Lines.Count);
+end;
+
+procedure TTcp.meNodesListChange(Sender: TObject);
+begin
   if not meNodesList.Focused then
     Exit;
+  UpdateTotalNodesList;
   NodesListStage := 1;
   EnableOptionButtons;
 end;
@@ -15311,7 +15488,7 @@ begin
   QueueState := UnsuitableState and NewState and cbCacheNewBridges.Checked;
   BuiltinState := State and BridgeIsBuiltin and (cbxBridgesList.Items.Count > 0);
   FileState := State and BridgeIsFile;
-  
+
   edBridgesLimit.Enabled := LimitState;
   edBridgesQueueSize.Enabled := QueueState;
   edMaxDirFails.Enabled := UnsuitableState;
@@ -15518,7 +15695,7 @@ begin
   EnableOptionButtons;
 end;
 
-procedure TTCP.CheckAutoSelControls;
+procedure TTcp.CheckAutoSelControls;
 var
   State, EntryState, MiddleState, ExitState, FallbackDirState: Boolean;
 begin
@@ -15738,7 +15915,7 @@ begin
   lbTotalMyFamily.Enabled := State;
 end;
 
-function TTcp.NodesToFavorites(NodesID: Integer): Integer;
+function TTcp.NodesToFavorites(NodesID: ShortInt): ShortInt;
 begin
   case NodesID of
     NL_TYPE_ENTRY: Result := ENTRY_ID;
@@ -15750,7 +15927,7 @@ begin
   end;
 end;
 
-function TTcp.FavoritesToNodes(FavoritesID: Integer): Integer;
+function TTcp.FavoritesToNodes(FavoritesID: ShortInt): ShortInt;
 begin
   case FavoritesID of
     ENTRY_ID: Result := NL_TYPE_ENTRY;
@@ -15763,21 +15940,19 @@ begin
 end;
 
 procedure TTcp.CalculateFilterNodes(AlwaysUpdate: Boolean = True);
-const
-  differ = FILTER_ENTRY_NODES;
 var
   FilterItem: TPair<string, TFilterInfo>;
   NodeType: TNodeTypes;
   Counters: array[0..3] of integer;
   lbComponent: TLabel;
   IsExclude: Boolean;
-  ls: TStringList;
+  ls: TList<string>;
   FilterInfo: TFilterInfo;
   i, j: Integer;
 begin
-  for i := 0 to Length(Counters) - 1 do
+  for i := 0 to High(Counters) do
     Counters[i] := 0;
-  ls := TStringList.Create;
+  ls := TList<string>.Create;
   try
     for FilterItem in FilterDic do
     begin
@@ -15785,7 +15960,7 @@ begin
       begin
         IsExclude := ntExclude in NodeType;
         if IsExclude and (FilterItem.Value.Data <> []) then
-          ls.Append(FilterItem.Key);
+          ls.Add(FilterItem.Key);
       end
       else
         IsExclude := False;
@@ -15799,10 +15974,10 @@ begin
         if ntExit in NodeType then Inc(Counters[2]);
       end;
     end;
-    for i := FILTER_ENTRY_NODES to FILTER_EXCLUDE_NODES do
+    for i := ENTRY_ID to EXCLUDE_ID do
     begin
       lbComponent := GetFilterLabel(i);
-      j := i - differ;
+      j := i - ENTRY_ID;
       if AlwaysUpdate or (lbComponent.Tag <> Counters[j]) then
       begin
         lbComponent.Tag := Counters[j];
@@ -15822,54 +15997,61 @@ begin
   end;
 end;
 
-procedure TTCP.CalculateTotalNodes(AlwaysUpdate: Boolean = True);
-const
-  differ = ENTRY_ID;
+procedure TTcp.CalculateTotalNodes(AlwaysUpdate: Boolean = True);
 var
   NodeItem: TPair<string, TNodeTypes>;
+  Ipv4Cidrs: TCidrValuePairs;
   Counters: array[0..4] of integer;
   lbComponent: TLabel;
-  ls: TStringList;
+  ls: TList<string>;
   i, j: Integer;
-begin
-  for i := 0 to Length(Counters) - 1 do
-    Counters[i] := 0;
 
-  ls := TStringList.Create;
-  try
-    for NodeItem in NodesDic do
+  procedure Caclucate(const Key: string; Value: TNodeTypes; IsDic: Boolean);
+  begin
+    if Value = [] then
     begin
-      if NodeItem.Value = [] then
+      if IsDic then
+        ls.Add(Key)
+      else
+        Ipv4CidrNodes.RemoveCIDR(Key);
+      Exit;
+    end;
+    if ntEntry in Value then Inc(Counters[0]);
+    if ntMiddle in Value then Inc(Counters[1]);
+    if ntExit in Value then Inc(Counters[2]);
+    if ntExclude in Value then Inc(Counters[3]);
+    if Value <> [ntExclude] then
+      Inc(Counters[4]);
+  end;
+
+begin
+  ls := TList<string>.Create;
+  try
+    for i := 0 to High(Counters) do
+      Counters[i] := 0;
+
+    for NodeItem in NodesDic do
+      Caclucate(NodeItem.Key, NodeItem.Value, True);
+
+    Ipv4CidrNodes.EnumerateAllNodes(Ipv4Cidrs);
+    for i := 0 to High(Ipv4Cidrs) do
+      Caclucate(Ipv4Cidrs[i].Cidr, Ipv4Cidrs[i].Value, False);
+
+    for i := ENTRY_ID to FAVORITES_ID do
+    begin
+      lbComponent := GetFavoritesLabel(i);
+      j := i - ENTRY_ID;
+      if AlwaysUpdate or (lbComponent.Tag <> Counters[j]) then
       begin
-        CidrsDic.Remove(NodeItem.Key);
-        ls.Add(NodeItem.Key);
+        lbComponent.Tag := Counters[j];
+        lbComponent.Caption := IntToStr(Counters[j])
       end;
     end;
     for i := 0 to ls.Count - 1 do
       NodesDic.Remove(ls[i]);
+    NodesDic.TrimExcess;
   finally
     ls.Free;
-  end;
-
-  for NodeItem in NodesDic do
-  begin
-    if ntEntry in NodeItem.Value then Inc(Counters[0]);
-    if ntMiddle in NodeItem.Value then Inc(Counters[1]);
-    if ntExit in NodeItem.Value then Inc(Counters[2]);
-    if ntExclude in NodeItem.Value then Inc(Counters[3]);
-    if NodeItem.Value <> [ntExclude] then
-      Inc(Counters[4]);
-  end;
-
-  for i := ENTRY_ID to FAVORITES_ID do
-  begin
-    lbComponent := GetFavoritesLabel(i);
-    j := i - differ;
-    if AlwaysUpdate or (lbComponent.Tag <> Counters[j]) then
-    begin
-      lbComponent.Tag := Counters[j];
-      lbComponent.Caption := IntToStr(Counters[j])
-    end;
   end;
 end;
 
@@ -15897,7 +16079,8 @@ begin
   Include(NodeTypes, TNodeType(FavoritesID));
   ClearRouters(NodeTypes);
   NodesList := MemoToLine(meNodesList, meNodesList.SortType);
-  GetNodes(NodesList, TNodeType(FavoritesID), True);
+  UpdateTotalNodesList;
+  GetNodes(NodesList, TNodeType(FavoritesID), True, False);
   CalculateTotalNodes;
   if NodesListStage > 0 then
     NodesListStage := 0;
@@ -15911,26 +16094,35 @@ begin
   ShowRouters;
 end;
 
-procedure TTcp.LoadNodesList(UseDic: Boolean = True; NodesStr: string = '');
+procedure TTcp.LoadNodesList;
 var
   NodeItem: TPair<string, TNodeTypes>;
   NodeType: TNodeType;
-  FavoritesID: Integer;
+  FavoritesID, i: Integer;
+  IPv4Cidrs: TCidrValuePairs;
+  sb: TStringBuilder;
 begin
   FavoritesID := NodesToFavorites(cbxNodesListType.ItemIndex);
-  if UseDic then
-  begin
-    NodesStr := '';
-    NodeType := TNodeType(FavoritesID);
+  NodeType := TNodeType(FavoritesID);
+  sb := TStringBuilder.Create;
+  try
     for NodeItem in NodesDic do
+    begin
       if NodeType in NodeItem.Value then
-        NodesStr := NodesStr + ',' + NodeItem.Key;
-    Delete(NodesStr, 1, 1);
-  end;
-
-  LineToMemo(RemoveBrackets(NodesStr, btCurly), meNodesList, meNodesList.SortType);
-  if UseDic then
+        AppendWithDelims(sb, NodeItem.Key);
+    end;
+    IPv4CidrNodes.EnumerateAllNodes(IPv4Cidrs);
+    for i := 0 to High(IPv4Cidrs) do
+    begin
+      if NodeType in IPv4Cidrs[i].Value then
+        AppendWithDelims(sb, IPv4Cidrs[i].Cidr);
+    end;
+    LineToMemo(sb.ToString, meNodesList, meNodesList.SortType, ',', False, False);
     CheckFavoritesState(FavoritesID);
+    UpdateTotalNodesList;
+  finally
+    sb.Free;
+  end;
 end;
 
 procedure TTcp.CheckFavoritesState(FavoritesID: Integer = -1);
@@ -15965,7 +16157,7 @@ var
 begin
   State := cbEnableNodesList.Checked;
   meNodesList.Enabled := State;
-  lbTotalNodesList.Enabled := State; 
+  lbTotalNodesList.Enabled := State;
 end;
 
 procedure TTcp.CheckServerControls;
@@ -16123,21 +16315,21 @@ begin
   tiTray.Visible := True;
 end;
 
-procedure TTcp.PrepareOpenDialog(FileName, Filter: string);
+procedure TTcp.PrepareOpenDialog(const FileName, Filter: string);
 var
   Str: string;
 begin
   OpenDialog.Filter := Filter;
   if FileExists(FileName) then
   begin
-    Str := ExpandFileName(FileName); 
-    OpenDialog.InitialDir := ExtractFilePath(Str); 
-    OpenDialog.FileName := ExtractFileName(Str); 
+    Str := ExpandFileName(FileName);
+    OpenDialog.InitialDir := ExtractFilePath(Str);
+    OpenDialog.FileName := ExtractFileName(Str);
   end
   else
   begin
     OpenDialog.InitialDir := '';
-    OpenDialog.FileName := '';  
+    OpenDialog.FileName := '';
   end;
 end;
 
@@ -16759,16 +16951,16 @@ begin
   BridgeState := not miShowBridge.Checked;
   AuthorityOrBridgeState := AuthorityState and BridgeState;
 
-  if (RoutersCustomFilter > 0) then
+  if (RoutersCustomFilter > NONE_ID) then
   begin
     case RoutersCustomFilter of
+      ENTRY_ID..FALLBACK_DIR_ID: IntToMenu(miRtFilters, 0, True);
       FILTER_BY_BRIDGE: IntToMenu(miRtFilters, 3);
       FILTER_BY_ALIVE: IntToMenu(miRtFilters, 3);
       FILTER_BY_TOTAL: IntToMenu(miRtFilters, 3);
       FILTER_BY_GUARD: IntToMenu(miRtFilters, 3);
       FILTER_BY_EXIT: IntToMenu(miRtFilters, 3);
       FILTER_BY_QUERY: IntToMenu(miRtFilters, 8);
-      ENTRY_ID..FALLBACK_DIR_ID: IntToMenu(miRtFilters, 0, True);
     end;
   end;
 
@@ -16876,24 +17068,27 @@ end;
 procedure TTcp.SetRoutersFilterState(Sender: TObject);
 begin
   if RoutersCustomFilter in [FILTER_BY_BRIDGE..FILTER_BY_QUERY] then
-    RoutersCustomFilter := 0;
+    RoutersCustomFilter := NONE_ID;
   LastFilters := -1;
   CheckShowRouters;
   ShowRouters;
   SaveRoutersFilterdata;
 end;
 
-procedure TTcp.LoadRoutersFilterData(Data: string; AutoUpdate: Boolean = True; ResetCustomFilter: Boolean = False);
+procedure TTcp.LoadRoutersFilterData(const DataStr: string; AutoUpdate: Boolean = True; ResetCustomFilter: Boolean = False);
 var
-  ParseStr: ArrOfStr;
+  ParseStr: TArray<string>;
   i, QueryType: Integer;
+  Data: string;
 begin
-  if Trim(Data) = '' then
-    Data := DEFAULT_ROUTERS_FILTER_DATA;
+  if Trim(DataStr) = '' then
+    Data := DEFAULT_ROUTERS_FILTER_DATA
+  else
+    Data := DataStr;
   LastRoutersFilter := Data;
 
-  ParseStr := Explode(';', Data);
-  for i := 0 to Length(ParseStr) - 1 do
+  ParseStr := Data.Split([';']);
+  for i := 0 to High(ParseStr) do
   begin
     case i of
       RF_CURRENT_TYPES:
@@ -16908,19 +17103,19 @@ begin
       RF_CURRENT_CUSTOM:
       begin
         if ResetCustomFilter then
-          RoutersCustomFilter := 0
+          RoutersCustomFilter := NONE_ID
         else
         begin
-          RoutersCustomFilter := StrToIntDef(ParseStr[i], 0);
-          if not (RoutersCustomFilter in [0, FILTER_BY_BRIDGE..FALLBACK_DIR_ID]) then
-            RoutersCustomFilter := 0;
+          RoutersCustomFilter := StrToIntDef(ParseStr[i], NONE_ID);
+          if not (RoutersCustomFilter in [NONE_ID..FALLBACK_DIR_ID, FILTER_BY_BRIDGE..FILTER_BY_QUERY]) then
+            RoutersCustomFilter := NONE_ID;
         end;
       end;
       RF_PREVIOUS_CUSTOM:
       begin
-        LastRoutersCustomFilter := StrToIntDef(ParseStr[i], 0);
-        if not (LastRoutersCustomFilter in [0, FILTER_BY_BRIDGE..FALLBACK_DIR_ID]) then
-          LastRoutersCustomFilter := 0;
+        LastRoutersCustomFilter := StrToIntDef(ParseStr[i], NONE_ID);
+        if not (LastRoutersCustomFilter in [NONE_ID..FALLBACK_DIR_ID, FILTER_BY_BRIDGE..FILTER_BY_QUERY]) then
+          LastRoutersCustomFilter := NONE_ID;
       end;
       RF_QUERY_TYPE:
       begin
@@ -16969,7 +17164,7 @@ begin
     Filters := RoutersFilters;
 
   UserQuery := Trim(edRoutersQuery.Text);
-  Search := Pos(';', UserQuery); 
+  Search := Pos(';', UserQuery);
   if Search <> 0 then
   begin
     case cbxRoutersQuery.ItemIndex of
@@ -17320,7 +17515,7 @@ end;
 
 procedure TTcp.miGetBridgesEmailClick(Sender: TObject);
 var
-  Param: AnsiString;
+  Param: string;
 begin
   if miRequestIPv6Bridges.Checked then
     Param := 'get ipv6'
@@ -17331,7 +17526,7 @@ begin
     else
       Param := 'get vanilla';
   end;
-  ShellOpen('mailto:' + GetDefaultsValue('BridgesEmail', BRIDGES_EMAIL) + '?Body=' + string(EncodeURL(Param)));
+  ShellOpen('mailto:' + GetDefaultsValue('BridgesEmail', BRIDGES_EMAIL) + '?Body=' + TNetEncoding.URL.EncodeQuery(Param));
 end;
 
 procedure TTcp.miRequestIPv6BridgesClick(Sender: TObject);
@@ -17346,7 +17541,7 @@ begin
   SetConfigInteger('Network', 'RequestBridgesType', RequestBridgesType);
 end;
 
-function TTCP.CheckCacheOpConfirmation(OpStr: string): Boolean;
+function TTcp.CheckCacheOpConfirmation(const OpStr: string): Boolean;
 begin
   Result := ShowMsg(Format(TransStr('405'),[OpStr]), '', mtQuestion, True);
 end;
@@ -17467,12 +17662,14 @@ begin
   end;
 end;
 
-procedure TTcp.FindInRouters(RouterID: string; SocketStr: string = '');
+procedure TTcp.FindInRouters(const FindStr: string; const SocketStr: string = '');
 var
   Index: Integer;
   Router: TRouterInfo;
-  Sum, Temp: Integer;
+  Sum, Value: Integer;
+  RouterID: string;
 begin
+  RouterID := FindStr;
   if not ValidHash(RouterID) then
   begin
     if SocketStr <> '' then
@@ -17484,7 +17681,7 @@ begin
     else
       Exit;
   end;
-  
+
   if RoutersDic.TryGetValue(RouterID, Router) then
   begin
     LoadRoutersFilterData(LastRoutersFilter, False, True);
@@ -17501,7 +17698,7 @@ begin
       if rfStable in Router.Flags then Inc(Sum, 64);
       if rfV2Dir in Router.Flags then Inc(Sum, 128);
       if rfHSDir in Router.Flags then Inc(Sum, 256);
-      if VersionsDic.ContainsKey(Router.Version) then Inc(Sum, 512);
+      if VersionsMap.Contains(Router.Version) then Inc(Sum, 512);
       if (Router.Params and ROUTER_ALIVE <> 0) then Inc(Sum, 2048);
 
       IntToMenu(mnShowNodes.Items, Sum);
@@ -17511,11 +17708,11 @@ begin
     begin
       if cbxRoutersCountry.Tag <> -1 then
       begin
-        Temp := GetCountryValue(Router.IPv4);
+        Value := GetCountryValue(Router.IPv4);
         if cbxRoutersCountry.Tag = -2 then
-          if FilterDic.Items[CountryCodes[Temp]].Data <> [] then
-            Temp := -2;
-        if cbxRoutersCountry.Tag <> Temp then
+          if FilterDic.Items[CountryCodes[Value]].Data <> [] then
+            Value := -2;
+        if cbxRoutersCountry.Tag <> Value then
         begin
           cbxRoutersCountry.ItemIndex := 0;
           cbxRoutersCountry.Tag := -1;
@@ -17527,12 +17724,12 @@ begin
     begin
       if Router.Bandwidth < udRoutersWeight.Position * 1024 then
       begin
-        Temp := Floor(Router.Bandwidth/1024);
-        if Temp < 5 then
-          Temp := 0
+        Value := Floor(Router.Bandwidth/1024);
+        if Value < 5 then
+          Value := 0
         else
-          Temp := Temp - (Temp mod 5);
-        udRoutersWeight.Position := Temp;
+          Value := Value - (Value mod 5);
+        udRoutersWeight.Position := Value;
       end;
     end;
 
@@ -17627,10 +17824,7 @@ begin
       for i := 1 to sgHs.RowCount - 1 do
       begin
         if sgHs.Cells[HS_PREVIOUS_NAME, i] <> '' then
-        begin
-          SetLength(HsToDelete, Length(HsToDelete) + 1);
-          HsToDelete[Length(HsToDelete) - 1] := sgHs.Cells[HS_PREVIOUS_NAME, i];
-        end;
+          TArrayHelper.AddToArray<string>(HsToDelete, sgHs.Cells[HS_PREVIOUS_NAME, i]);
       end;
       sgHs.Clear;
       UpdateHs;
@@ -17666,10 +17860,7 @@ begin
       for i := sgHs.Selection.Bottom downto sgHs.Selection.Top do
       begin
         if sgHs.Cells[HS_PREVIOUS_NAME, i] <> '' then
-        begin
-          SetLength(HsToDelete, Length(HsToDelete) + 1);
-          HsToDelete[Length(HsToDelete) - 1] := sgHs.Cells[HS_PREVIOUS_NAME, i];
-        end;
+          TArrayHelper.AddToArray<string>(HsToDelete, sgHs.Cells[HS_PREVIOUS_NAME, i]);
         sgHs.DeleteARow(i);
       end;
       SetGridLastCell(sgHs);
@@ -17750,7 +17941,7 @@ var
   NotStarting, BridgeState, ScanState, FindPorts: Boolean;
   Router: TRouterInfo;
 
-  function ExtractDataCount(DataStr: string; CheckLimits: Boolean = False): string;
+  function ExtractDataCount(const DataStr: string; CheckLimits: Boolean = False): string;
   begin
     Result := '';
     if DataStr = '' then
@@ -17761,7 +17952,7 @@ var
       Result := Copy(DataStr, Search);
       if CheckLimits then
       begin
-        if not ValidInt(RemoveBrackets(Result, btRound), 1, MAX_URLS_TO_OPEN) then
+        if not ValidInt(RemoveBrackets(Trim(Result), btRound), 1, MAX_URLS_TO_OPEN) then
           Result := ' (' + INFINITY_CHAR + ')';
       end;
     end;
@@ -17800,8 +17991,8 @@ begin
   begin
     if ReachablePortsExists then
     begin
-      FindPorts := PortsDic.ContainsKey(Router.Port);
-      PortsDic.Clear;
+      FindPorts := PortsMap.Contains(Router.Port);
+      PortsMap.Clear;
     end
     else
       FindPorts := True;
@@ -17813,8 +18004,8 @@ begin
     BridgeState := False;
   InsertMenuItem(ParentMenu, 0, 35, TransStr('281') + HashData, RelayInfoClick, False, False, False, ShowRelayInfo(aSg, False), True, DataID);
   InsertMenuItem(ParentMenu, 0, -1, '-');
-  InsertMenuItem(ParentMenu, Byte(stPing), 69, TransStr('686') + IpData, ScannerMenuClick, False, False, False, ScanState and cbEnablePingMeasure.Checked, True, DataID);
   InsertMenuItem(ParentMenu, Byte(stAlive), 56, TransStr('687') + SocketData, ScannerMenuClick, False, False, False, ScanState and cbEnableDetectAliveNodes.Checked, True, DataID);
+  InsertMenuItem(ParentMenu, Byte(stPing), 69, TransStr('686') + IpData, ScannerMenuClick, False, False, False, ScanState and cbEnablePingMeasure.Checked, True, DataID);
   InsertMenuItem(ParentMenu, 0, -1, '-', nil, False, False, False, NotStarting, BridgeState);
   InsertMenuItem(ParentMenu, 0, -1, TransStr('564'), nil, False, False, False, NotStarting, BridgeState);
   InsertMenuItem(ParentMenu, EXTRACT_IPV4_BRIDGE, 59, IPv4Bridge, SelectNodeAsBridge, False, False, False, NotStarting, BridgeState and (IPv4Bridge <> ''), 0, RouterID);
@@ -17837,14 +18028,14 @@ begin
   end;
   if Assigned(aSg) then
   begin
-    if UserScanList.Count > 0 then
-      UserScanList.Clear;
+    if UserScanMap.Count > 0 then
+      UserScanMap.Clear;
     if (aSg.Tag = GRID_CIRC_INFO) and SelNodeState then
-      UserScanList.AddOrSetValue(SelectedNode, 0)
+      UserScanMap.Add(SelectedNode)
     else
     begin
       for i := aSg.Selection.Top to aSg.Selection.Bottom do
-        UserScanList.AddOrSetValue(aSg.Cells[0, i], 0);
+        UserScanMap.Add(aSg.Cells[0, i]);
     end;
     ScanNetwork(TScanType(TMenuItem(Sender).Tag), spSelected);
   end;
@@ -17858,7 +18049,7 @@ begin
   end;
 end;
 
-procedure TTcp.InsertNodesMenu(ParentMenu: TMenuItem; NodeID: string; AutoSave: Boolean = True);
+procedure TTcp.InsertNodesMenu(ParentMenu: TMenuItem; const NodeID: string; AutoSave: Boolean = True);
 begin
   ParentMenu.Clear;
   if not ParentMenu.Enabled then
@@ -17878,26 +18069,27 @@ begin
     (Assigned(Consensus) or Assigned(Descriptors) or tmScanner.Enabled), not AutoSave);
 end;
 
-procedure TTcp.InsertNodesListMenu(ParentMenu: TmenuItem; NodeID: string; NodeTypeID: Integer; AutoSave: Boolean = True);
+procedure TTcp.InsertNodesListMenu(ParentMenu: TmenuItem; const NodeID: string; NodeTypeID: Integer; AutoSave: Boolean = True);
 var
   SubMenu: TMenuItem;
   ls, lr: TStringList;
   i: Integer;
   Ipv4CountryCode, Ipv6CountryCode: string;
   Router: TRouterInfo;
-  RangesStr, NodeStr: string;
-  ParseStr: ArrOfStr;
+  NodeStr: string;
   NodeDataType: TNodeDataType;
   FindRouter, DoubleCountry: Boolean;
+  IPv4Cidrs: TCidrValuePairs;
+  NodeData: TNodeTypes;
 
-  function IpToMask(IpStr: string; Mask: Byte): string;
+  function IpToMask(const IpStr: string; Mask: Byte): string;
   var
     i, n: Byte;
-    ParseStr: ArrOfStr;
+    ParseStr: TArray<string>;
   begin
-    ParseStr := Explode('.', IpStr);
+    ParseStr := IpStr.Split(['.']);
     n := 32;
-    for i := Length(ParseStr) - 1 downto 0 do
+    for i := High(ParseStr) downto 0 do
     begin
       dec(n, 8);
       if n >= Mask then
@@ -17910,41 +18102,42 @@ begin
   DoubleCountry := False;
   ls := TStringList.Create;
   try
-    ls.Add(NodeID);
+    ls.Append(NodeID);
     if RoutersDic.TryGetValue(NodeID, Router) then
     begin
       FindRouter := True;
-      ls.Add(Router.IPv4);
-      ls.Add('-');
-      ls.Add(IpToMask(Router.IPv4, 24));
-      ls.Add(IpToMask(Router.IPv4, 16));
-      ls.Add(IpToMask(Router.IPv4, 8));
-      RangesStr := FindInRanges(Router.IPv4, atIPv4Cidr);
-      if RangesStr <> '' then
+      ls.Append(Router.IPv4);
+      ls.Append('-');
+      ls.Append(IpToMask(Router.IPv4, 24));
+      ls.Append(IpToMask(Router.IPv4, 16));
+      ls.Append(IpToMask(Router.IPv4, 8));
+      IPv4Cidrs := IPv4CidrNodes.FindAllMatchesIP(Router.IPv4);
+      if IPv4Cidrs <> nil then
       begin
         lr := TStringList.Create;
         try
-          ls.Add('-');
-          ParseStr := Explode(',', RangesStr);
-          for i := 0 to Length(ParseStr) - 1 do
-            if ls.IndexOf(ParseStr[i]) < 0 then
-              lr.Add(ParseStr[i]);
+          ls.Append('-');
+          for i := 0 to High(IPv4Cidrs) do
+          begin
+            if ls.IndexOf(IPv4Cidrs[i].Cidr) < 0 then
+              lr.Append(IPv4Cidrs[i].Cidr);
+          end;
           SortNodesList(lr, SORT_DESC);
           ls.AddStrings(lr);
         finally
           lr.Free;
         end;
       end;
-      ls.Add('-');
+      ls.Append('-');
       Ipv4CountryCode := CountryCodes[GetCountryValue(Router.IPv4)];
-      ls.Add(UpperCase(Ipv4CountryCode) + ' (' + TransStr(Ipv4CountryCode) + ')');
+      ls.Append('{' + (Ipv4CountryCode) + '} ' + TransStr(Ipv4CountryCode));
       if Router.IPv6 <> '' then
       begin
         Ipv6CountryCode := CountryCodes[GetCountryValue(Router.IPv6)];
         if Ipv6CountryCode <> Ipv4CountryCode then
         begin
           DoubleCountry := True;
-          ls.Add(UpperCase(Ipv6CountryCode) + ' (' + TransStr(Ipv6CountryCode) + ')');
+          ls.Append('{' + Ipv6CountryCode + '} ' + TransStr(Ipv6CountryCode));
         end;
       end;
     end
@@ -17953,20 +18146,28 @@ begin
 
     for i := 0 to ls.Count - 1 do
     begin
-      NodeStr := SeparateLeft(ls[i], ' ');
-      NodeDataType := ValidNode(NodeStr);
-      if NodeDataType = dtCode then
-        NodeStr := LowerCase(NodeStr);
-
+      NodeStr := RemoveBrackets(SeparateLeft(ls[i], ' '), btCurly);
+      NodeDataType := ValidNode(NodeStr, False);
       SubMenu := TMenuItem.Create(self);
       SubMenu.Hint := BoolToStr(AutoSave);
       SubMenu.Tag := NodeTypeID;
       SubMenu.Caption := ls[i];
 
-      if NodesDic.ContainsKey(NodeStr) then
+      if NodeDataType <> dtIPv4Cidr then
       begin
-        if TNodeType(NodeTypeID) in NodesDic.Items[NodeStr] then
-          SubMenu.Enabled := False;
+        if NodesDic.ContainsKey(NodeStr) then
+        begin
+          if TNodeType(NodeTypeID) in NodesDic.Items[NodeStr] then
+            SubMenu.Enabled := False;
+        end;
+      end
+      else
+      begin
+        if IPv4CidrNodes.FindExactCIDR(NodeStr, NodeData) then
+        begin
+          if TNodeType(NodeTypeID) in NodeData then
+            SubMenu.Enabled := False;
+        end;
       end;
 
       if SubMenu.Enabled and (NodeDataType in [dtHash]) and FindRouter then
@@ -18004,90 +18205,87 @@ begin
   end;
 end;
 
-procedure TTcp.InsertNodesToDeleteMenu(ParentMenu: TmenuItem; NodeID: string; AutoSave: Boolean = True);
+procedure TTcp.InsertNodesToDeleteMenu(ParentMenu: TmenuItem; const NodeID: string; AutoSave: Boolean = True);
 var
   Router: TRouterInfo;
   ls: TStringList;
   i: Integer;
   NodeDataType: TNodeDataType;
-  RangesStr, NodeStr, DeleteList, Ipv4CountryCode, Ipv6CountryCode: string;
-  ParseStr: ArrOfStr;
+  NodeStr, DeleteList, Ipv4CountryCode, Ipv6CountryCode: string;
   SubMenu: TMenuItem;
   DoubleCountry: Boolean;
+  IPv4Cidrs: TCidrValuePairs;
+  NodeData: TNodeTypes;
 begin
   if RoutersDic.TryGetValue(NodeID, Router) then
   begin
     DoubleCountry := False;
     ls := TStringList.Create;
     try
-      ls.Add(NodeID);
-      ls.Add(Router.IPv4);
-      RangesStr := FindInRanges(Router.IPv4, atIPv4Cidr);
-      if RangesStr <> '' then
+      ls.Append(NodeID);
+      ls.Append(Router.IPv4);
+      IPv4Cidrs := IPv4CidrNodes.FindAllMatchesIP(Router.IPv4);
+      if IPv4Cidrs <> nil then
       begin
-        ParseStr := Explode(',', RangesStr);
-        for i := 0 to Length(ParseStr) - 1 do
-          ls.Add(ParseStr[i]);
+        for i := 0 to High(IPv4Cidrs) do
+          ls.Append(IPv4Cidrs[i].Cidr);
       end;
       SortNodesList(ls, SORT_DESC);
 
       Ipv4CountryCode := CountryCodes[GetCountryValue(Router.IPv4)];
-      ls.Add(UpperCase(Ipv4CountryCode) + ' (' + TransStr(Ipv4CountryCode) + ')');
+      ls.Append('{' + (Ipv4CountryCode) + '} ' + TransStr(Ipv4CountryCode));
       if Router.IPv6 <> '' then
       begin
         Ipv6CountryCode := CountryCodes[GetCountryValue(Router.IPv6)];
         if Ipv6CountryCode <> Ipv4CountryCode then
         begin
           DoubleCountry := True;
-          ls.Add(UpperCase(Ipv6CountryCode) + ' (' + TransStr(Ipv6CountryCode) + ')');
+          ls.Append('{' + Ipv6CountryCode + '} ' + TransStr(Ipv6CountryCode));
         end;
       end;
 
       DeleteList := '';
       for i := 0 to ls.Count - 1 do
       begin
-        NodeStr := SeparateLeft(ls[i], ' ');
-        NodeDataType := ValidNode(NodeStr);
-        if NodeDataType = dtCode then
-          NodeStr := LowerCase(NodeStr);
+        NodeStr := RemoveBrackets(SeparateLeft(ls[i], ' '), btCurly);
+        NodeDataType := ValidNode(NodeStr, False);
 
-        if NodesDic.ContainsKey(NodeStr) then
+        if (NodesDic.TryGetValue(NodeStr, NodeData) or IPv4CidrNodes.FindExactCIDR(NodeStr, NodeData)) and (NodeData <> []) then
         begin
-          if NodesDic.Items[NodeStr] <> [] then
-          begin
-            SubMenu := TMenuItem.Create(self);
-            SubMenu.Tag := Integer(AutoSave);
-            case NodeDataType of
-              dtHash: SubMenu.ImageIndex := 23;
-              dtIPv4: SubMenu.ImageIndex := 33;
-              dtIPv4Cidr: SubMenu.ImageIndex := 48;
-              dtCode:
+          SubMenu := TMenuItem.Create(self);
+          SubMenu.Tag := Integer(AutoSave);
+          case NodeDataType of
+            dtHash: SubMenu.ImageIndex := 23;
+            dtIPv4: SubMenu.ImageIndex := 33;
+            dtIPv4Cidr: SubMenu.ImageIndex := 48;
+            dtCode:
+            begin
+              if DoubleCountry then
               begin
-                if DoubleCountry then
-                begin
-                  if NodeStr = Ipv4CountryCode then
-                    SubMenu.ImageIndex := 79
-                  else
-                    SubMenu.ImageIndex := 80;
-                end
+                if NodeStr = Ipv4CountryCode then
+                  SubMenu.ImageIndex := 79
                 else
-                  SubMenu.ImageIndex := 57;
-              end;
+                  SubMenu.ImageIndex := 80;
+              end
+              else
+                SubMenu.ImageIndex := 57;
             end;
-            SubMenu.Caption := ls[i];
-            SubMenu.Hint := '';
-            SubMenu.OnClick := RemoveFromNodeListClick;
-            ParentMenu.Add(SubMenu);
-            DeleteList := DeleteList + ',' + ls[i];
           end;
+          SubMenu.Caption := ls[i];
+          SubMenu.Hint := '';
+          SubMenu.OnClick := RemoveFromNodeListClick;
+          ParentMenu.Add(SubMenu);
+          if DeleteList <> '' then
+            DeleteList := DeleteList + ',' + ls[i]
+          else
+            DeleteList := ls[i]
         end;
       end;
-      Delete(DeleteList, 1, 1);
       if ParentMenu.Count > 1 then
       begin
         ls.Clear;
-        ls.Add('-');
-        ls.Add(TransStr('406'));
+        ls.Append('-');
+        ls.Append(TransStr('406'));
         for i := 0 to ls.Count - 1 do
         begin
           SubMenu := TMenuItem.Create(self);
@@ -18126,7 +18324,7 @@ begin
   end;
 end;
 
-function TTCP.CheckRouterFlags(NodeTypeID: Integer; RouterInfo: TRouterInfo): Boolean;
+function TTcp.CheckRouterFlags(NodeTypeID: Integer; const RouterInfo: TRouterInfo): Boolean;
 begin
   Result := False;
   if (rfBridge in RouterInfo.Flags) and not (rfRelay in RouterInfo.Flags) then
@@ -18138,7 +18336,7 @@ begin
   Result := True;
 end;
 
-procedure TTCP.AddToNodesListClick(Sender: TObject);
+procedure TTcp.AddToNodesListClick(Sender: TObject);
 var
   NodeStr, NodeCap, ConvertMsg: string;
   ConvertNodes, CtrlPressed, EnableConvertNodes: Boolean;
@@ -18147,9 +18345,9 @@ var
   FilterInfo: TFilterInfo;
   NodeDataType: TNodeDataType;
   Router: TPair<string, TRouterInfo>;
-  CidrInfo: TCidrInfo;
+  IPv4CidrInfo: TIPv4CidrInfo;
 
-  procedure AddRouterToNodesList(RouterID: string; RouterInfo: TRouterInfo);
+  procedure AddRouterToNodesList(const RouterID: string; const RouterInfo: TRouterInfo);
   begin
     if NodeTypeID <> EXCLUDE_ID then
     begin
@@ -18157,7 +18355,7 @@ var
       begin
         if not CheckRouterFlags(NodeTypeID, RouterInfo) then
           Exit;
-        if RouterInNodesList(RouterID, RouterInfo.IPv4, ntExclude, False, '', atIPv4Cidr) then
+        if RouterInNodesList(RouterID, RouterInfo.IPv4, ntExclude) then
           Exit;
       end;
     end;
@@ -18172,13 +18370,12 @@ begin
   ConvertMsg := '';
   CtrlPressed := CtrlKeyPressed(#0);
   NodeCap := TMenuItem(Sender).Caption;
-  NodeStr := SeparateLeft(NodeCap, ' ');
+  NodeStr := RemoveBrackets(SeparateLeft(NodeCap, ' '), btCurly);
   NodeTypeID := TMenuItem(Sender).Tag;
-  NodeDataType := ValidNode(NodeStr);
-  case NodeDataType of
-    dtCode: NodeStr := LowerCase(NodeStr);
-    dtIPv4Cidr: CidrInfo := CidrStrToInfo(NodeStr, atIPv4Cidr);
-  end;
+  NodeDataType := ValidNode(NodeStr, False);
+  if NodeDataType = dtIPv4Cidr then
+    TIPv4RadixTree.ParseCIDR(NodeStr, IPv4CidrInfo);
+
   ConvertNodes := miEnableConvertNodesOnAddToNodesList.Checked and
       (((NodeDataType = dtIPv4) and miConvertIpNodes.Checked) or
        ((NodeDataType = dtIPv4Cidr) and miConvertCidrNodes.Checked) or
@@ -18204,7 +18401,7 @@ begin
           end;
           dtIPv4Cidr:
           begin
-            if IpInCidr(Router.Value.IPv4, CidrInfo, atIPv4Cidr) then
+            if TIPv4RadixTree.IPInCIDR(Router.Value.IPv4, IPv4CidrInfo) then
               AddRouterToNodesList(Router.Key, Router.Value);
           end;
           dtCode:
@@ -18217,11 +18414,22 @@ begin
     end
     else
     begin
-      NodesDic.TryGetValue(NodeStr, FNodeTypes);
-      if (ntExclude in FNodeTypes) or (NodeTypeID = EXCLUDE_ID) then
-        FNodeTypes := [];
-      Include(FNodeTypes, TNodeType(NodeTypeID));
-      NodesDic.AddOrSetValue(NodeStr, FNodeTypes);
+      if NodeDataType <> dtIPv4Cidr then
+      begin
+        NodesDic.TryGetValue(NodeStr, FNodeTypes);
+        if (ntExclude in FNodeTypes) or (NodeTypeID = EXCLUDE_ID) then
+          FNodeTypes := [];
+        Include(FNodeTypes, TNodeType(NodeTypeID));
+        NodesDic.AddOrSetValue(NodeStr, FNodeTypes);
+      end
+      else
+      begin
+        IPv4CidrNodes.FindExactCIDR(NodeStr, FNodeTypes);
+        if (ntExclude in FNodeTypes) or (NodeTypeID = EXCLUDE_ID) then
+          FNodeTypes := [];
+        Include(FNodeTypes, TNodeType(NodeTypeID));
+        IPv4CidrNodes.AddOrSetCIDR(NodeStr, FNodeTypes);
+      end;
 
       if NodeTypeID = EXCLUDE_ID then
       begin
@@ -18231,8 +18439,6 @@ begin
           FilterDic.AddOrSetValue(NodeStr, FilterInfo);
         end;
       end;
-      if NodeDataType = dtIPv4Cidr then
-        CidrsDic.AddOrSetValue(NodeStr, CidrStrToInfo(NodeStr, atIPv4Cidr));
     end;
     CheckNodesListState(NodeTypeID);
     CalculateTotalNodes;
@@ -18258,10 +18464,10 @@ procedure TTcp.RemoveFromNodeListClick(Sender: TObject);
 var
   ConvertNodes: Boolean;
   NodesList, NodeStr, ConvertMsg: string;
-  ParseStr: ArrOfStr;
+  ParseStr: TArray<string>;
   NodeDataType: TNodeDataType;
   i: Integer;
-  Nodes: ArrOfNodes;
+  Nodes: TArray<TNodeData>;
 
 begin
   if TMenuItem(Sender).Hint = '' then
@@ -18277,17 +18483,15 @@ begin
 
   if ShowMsg(Format(TransStr('361'), [StringReplace(NodesList, ',', BR, [rfReplaceAll]), ConvertMsg]), '', mtQuestion, True) then
   begin
-    ParseStr := Explode(',', NodesList);
-    for i := 0 to Length(ParseStr) - 1 do
+    ParseStr := NodesList.Split([',']);
+    for i := 0 to High(ParseStr) do
     begin
-      NodeStr := SeparateLeft(ParseStr[i], ' ');
-      NodeDataType := ValidNode(NodeStr);
-      if NodeDataType = dtCode then
-        NodeStr := LowerCase(NodeStr);
-
-      NodesDic.Remove(NodeStr);
-      if NodeDataType = dtIPv4Cidr then
-        CidrsDic.Remove(NodeStr);
+      NodeStr := RemoveBrackets(SeparateLeft(ParseStr[i], ' '), btCurly);
+      NodeDataType := ValidNode(NodeStr, False);
+      if NodeDataType <> dtIPv4Cidr then
+        NodesDic.Remove(NodeStr)
+      else
+        IPv4CidrNodes.RemoveCIDR(NodeStr);
     end;
     if ConvertNodes then
       RemoveFromNodesListWithConvert(Nodes, ntNone);
@@ -18308,54 +18512,57 @@ begin
   end;
 end;
 
-function TTcp.PrepareNodesToRemove(Data: string; NodeType: TNodeType; out Nodes: ArrOfNodes): Boolean;
+function TTcp.PrepareNodesToRemove(const Data: string; NodeType: TNodeType; out Nodes: TArray<TNodeData>): Boolean;
 var
-  ParseStr: ArrOfStr;
-  i, j: Integer;
+  ParseStr: TArray<string>;
+  i: Integer;
   NodeStr: string;
   NodeDataType: TNodeDataType;
   CtrlPressed, ConvertNodes: Boolean;
+  CidrInfo: TIPv4CidrInfo;
+  NodeData: TNodeData;
 begin
   Result := False;
   Nodes := nil;
   CtrlPressed := CtrlKeyPressed(#0);
-  ParseStr := Explode(',', Data);
+  ParseStr := Data.Split([',']);
   if Length(ParseStr) = 0 then
     Exit;
-  j := 0;
-  for i := 0 to Length(ParseStr) - 1 do
+  for i := 0 to High(ParseStr) do
   begin
-    NodeStr := SeparateLeft(ParseStr[i], ' ');
-    NodeDataType := ValidNode(NodeStr);
+    NodeStr := RemoveBrackets(SeparateLeft(ParseStr[i], ' '), btCurly);
+    NodeDataType := ValidNode(NodeStr, False);
 
     ConvertNodes := miEnableConvertNodesOnRemoveFromNodesList.Checked and
-      (((NodeDataType = dtIPv4) and miConvertIpNodes.Checked) or
-       ((NodeDataType = dtIPv4Cidr) and miConvertCidrNodes.Checked) or
-       ((NodeDataType = dtCode) and miConvertCountryNodes.Checked));
+        (((NodeDataType = dtIPv4) and miConvertIpNodes.Checked) or
+         ((NodeDataType = dtIPv4Cidr) and miConvertCidrNodes.Checked) or
+         ((NodeDataType = dtCode) and miConvertCountryNodes.Checked)) and
+          (((NodeType = ntExclude) and not miIgnoreConvertExcludeNodes.Checked) or
+           (NodeType <> ntExclude));
 
     if (ConvertNodes and not CtrlPressed) or
        (not ConvertNodes and CtrlPressed and (NodeDataType <> dtHash)) then
     begin
-      SetLength(Nodes, j + 1);
-      case NodeDataType of
-        dtCode: NodeStr := LowerCase(NodeStr);
-        dtIPv4Cidr: Nodes[j].CidrInfo := CidrStrToInfo(NodeStr, atIPv4Cidr);
+      NodeData.NodeStr := NodeStr;
+      NodeData.NodeDataType := NodeDataType;
+      if NodeDataType = dtIPv4Cidr then
+      begin
+        TIPv4RadixTree.ParseCIDR(NodeStr, CidrInfo);
+        NodeData.CidrInfo := CidrInfo;
       end;
-      Nodes[j].NodeStr := NodeStr;
-      Nodes[j].NodeDataType := NodeDataType;
-      Inc(j);
+      TArrayHelper.AddToArray<TNodeData>(Nodes, NodeData);
     end;
   end;
 
   Result := Assigned(Nodes);
 end;
 
-procedure TTcp.RemoveFromNodesListWithConvert(Nodes: ArrOfNodes; NodeType: TNodeType);
+procedure TTcp.RemoveFromNodesListWithConvert(const Nodes: TArray<TNodeData>; NodeType: TNodeType);
 var
   NodesCount, i: Integer;
   Router: TPair<string, TRouterInfo>;
 
-  procedure RemoveRouterFromNodesList(RouterID: string);
+  procedure RemoveRouterFromNodesList(const RouterID: string);
   var
     FNodeTypes: TNodeTypes;
   begin
@@ -18387,7 +18594,7 @@ begin
         end;
         dtIPv4Cidr:
         begin
-          if IpInCidr(Router.Value.IPv4, Nodes[i].CidrInfo, atIPv4Cidr) then
+          if TIPv4RadixTree.IPInCIDR(Router.Value.IPv4, Nodes[i].CidrInfo) then
             RemoveRouterFromNodesList(Router.Key);
         end;
         dtCode:
@@ -18398,7 +18605,6 @@ begin
       end;
     end;
   end;
-
 end;
 
 function TTcp.RoutersAutoSelect: Boolean;
@@ -18413,11 +18619,11 @@ var
   FilterNodeTypes, AutoSelNodeTypes: TNodeTypes;
   FilterInfo: TFilterInfo;
   CountryID: Byte;
-  EntryStr, MiddleStr, ExitStr, FallbackStr, CountryCode, PortsData: string;
+  EntryStr, MiddleStr, ExitStr, FallbackStr, CountryCode: string;
   EntryNodes, MiddleNodes, ExitNodes, FallbackDirs: TStringList;
-  UniqueList: TDictionary<string, Byte>;
+  UniqueList: THashSet<string>;
   SortCompare: TStringListSortCompare;
-  ParseStr: ArrOfStr;
+  ParseStr: TArray<string>;
   ConfluxEnabled: Boolean;
   i: Integer;
 
@@ -18451,18 +18657,24 @@ var
         begin
           if cbAutoSelUniqueNodes.Checked then
           begin
-            if UniqueList.ContainsKey(ls[i]) then
+            if UniqueList.Contains(ls[i]) then
               Continue
             else
             begin
-              UniqueList.AddOrSetValue(ls[i], 0);
-              Result := Result + ',' + ls[i];
+              UniqueList.Add(ls[i]);
+              if Result <> '' then
+                Result := Result + ',' + ls[i]
+              else
+                Result := ls[i];
               Inc(Count);
             end;
           end
           else
           begin
-            Result := Result + ',' + ls[i];
+            if Result <> '' then
+              Result := Result + ',' + ls[i]
+            else
+              Result := ls[i];
             Inc(Count);
           end;
         end;
@@ -18471,7 +18683,6 @@ var
       else
         Break;
     end;
-    Delete(Result, 1, 1);
   end;
 
   procedure AddRouterToList(ls: TStringList; NodeType: TNodeType; NoLimit: Boolean = False);
@@ -18491,11 +18702,11 @@ var
           PRIORITY_BALANCED:
           begin
             ls.AddObject(Router.Key, TObject(Router.Value.Bandwidth));
-            if not UniqueList.ContainsKey(Router.Key) then
+            if not UniqueList.Contains(Router.Key) then
             begin
               if (PingData <= udAutoSelMaxPing.Position) then
               begin
-                UniqueList.AddOrSetValue(Router.Key, 0);
+                UniqueList.Add(Router.Key);
                 Inc(PingSum, PingData);
                 Inc(PingCount);
               end;
@@ -18526,7 +18737,7 @@ begin
   MiddleNodes := TStringList.Create;
   ExitNodes := TStringList.Create;
   FallbackDirs := TStringList.Create;
-  UniqueList := TDictionary<string, Byte>.Create;
+  UniqueList := THashSet<string>.Create;
 
   if (PingNodesCount = 0) and (PriorityType in [PRIORITY_BALANCED, PRIORITY_PING]) then
     PriorityType := PRIORITY_WEIGHT
@@ -18556,7 +18767,6 @@ begin
       Flags := Router.Value.Flags;
       CountryID := DEFAULT_COUNTRY_ID;
       PingData := MAXWORD;
-      PortsData := '';
       FilterNodeTypes := [ntEntry, ntMiddle, ntExit];
 
       if PingNodesCount > 0 then
@@ -18565,12 +18775,11 @@ begin
         begin
           CountryID := GeoIpInfo.cc;
           case GeoIpInfo.ping of
-            -1: PingData := MAXINT;
-            0: PingData := MAXWORD;
+            PING_DEAD: PingData := MAXINT;
+            PING_NONE: PingData := MAXWORD;
             else
               PingData := GeoIpInfo.ping;
           end;
-          PortsData := GeoIpInfo.ports;
         end;
       end;
 
@@ -18594,7 +18803,7 @@ begin
           begin
             if CheckEntryPorts then
             begin
-              if PortsDic.ContainsKey(Router.Value.Port) then
+              if PortsMap.Contains(Router.Value.Port) then
               begin
                 if rfGuard in Flags then
                   AddRouterToList(EntryNodes, ntEntry);
@@ -18659,11 +18868,11 @@ begin
         if ValidHash(NodeItem.Key) then
         begin
           if not cbAutoSelEntryEnabled.Checked and (ntEntry in NodeItem.Value) then
-            UniqueList.AddOrSetValue(NodeItem.Key, 0);
+            UniqueList.Add(NodeItem.Key);
           if not cbAutoSelMiddleEnabled.Checked and (ntMiddle in NodeItem.Value) then
-            UniqueList.AddOrSetValue(NodeItem.Key, 0);
+            UniqueList.Add(NodeItem.Key);
           if not cbAutoSelExitEnabled.Checked and (ntExit in NodeItem.Value) then
-            UniqueList.AddOrSetValue(NodeItem.Key, 0);
+            UniqueList.Add(NodeItem.Key);
         end;
       end;
     end;
@@ -18700,9 +18909,9 @@ begin
       FallbackStr := ListToStr(FallbackDirs, udAutoSelFallbackDirCount.Position);
       cbUseFallbackDirs.Checked := True;
       cbxFallbackDirsType.ItemIndex := FALLBACK_TYPE_USER;
-      ParseStr := Explode(',', FallbackStr);
+      ParseStr := FallbackStr.Split([',']);
       UsedFallbackDirsList.Clear;
-      for i := 0 to Length(ParseStr) - 1 do
+      for i := 0 to High(ParseStr) do
       begin
         if RoutersDic.TryGetValue(ParseStr[i], RouterInfo) then
           UsedFallbackDirsList.AddOrSetValue(RouterInfo.IPv4 + '|' + IntToStr(RouterInfo.Port), GetFallbackStr(ParseStr[i], RouterInfo));
@@ -18723,7 +18932,7 @@ begin
     FallbackDirs.Free;
     UniqueList.Free;
     if CheckEntryPorts then
-      PortsDic.Clear;
+      PortsMap.Clear;
   end;
 end;
 
@@ -18750,7 +18959,7 @@ begin
     if TryParseFallbackDir(Data[i], FallbackDir, False) then
     begin
       if CheckEntryPorts then
-        cdPorts := PortsDic.ContainsKey(FallbackDir.OrPort)
+        cdPorts := PortsMap.Contains(FallbackDir.OrPort)
       else
         cdPorts := True;
 
@@ -18778,9 +18987,9 @@ begin
       if GeoIpDic.TryGetValue(FallbackDir.IPv4, GeoIpInfo) then
       begin
         CountryID := GeoIpInfo.cc;
-        PortData := GetPortsValue(GeoIpInfo.ports, IntToStr(FallbackDir.OrPort));
-        cdAlive := PortData <> -1;
-        NeedAlive := PortData = 0;
+        PortData := GetPortsValue(GeoIpInfo.ports, FallbackDir.OrPort);
+        cdAlive := PortData <> PORT_DEAD;
+        NeedAlive := PortData = PORT_NONE;
         NeedCountry := CountryID = DEFAULT_COUNTRY_ID;
         FindCountry := NeedCountry and cdAlive;
       end
@@ -18808,7 +19017,7 @@ begin
   end;
 
   if CheckEntryPorts then
-    PortsDic.Clear;
+    PortsMap.Clear;
 end;
 
 procedure TTcp.RoutersAutoSelectClick(Sender: TObject);
@@ -18820,7 +19029,7 @@ procedure TTcp.SaveFallbackDirsData(ini: TMemIniFile = nil; UseDic: Boolean = Fa
 var
   AutoSave: Boolean;
   Item: Tpair<string, string>;
-  FallbackDir: TFallbackDir; 
+  FallbackDir: TFallbackDir;
   ls: TStringList;
   DataStr: string;
   i: Integer;
@@ -18832,7 +19041,7 @@ begin
   begin
     MissingFallbackDirCount := 0;
     UnknownFallbackDirCountriesCount := 0;
-    DeleteTorConfig('FallbackDir', [cfMultiLine]);
+    DeleteTorConfig(['FallbackDir']);
   end;
 
   ls := TStringList.Create;
@@ -18844,12 +19053,12 @@ begin
       SortList(ls, ltFallbackDir, meFallbackDirs.SortType);
     end
     else
-      MemoToList(meFallbackDirs, meFallbackDirs.SortType, ls);
+      MemoToList(meFallbackDirs, ls, meFallbackDirs.SortType);
     meFallbackDirs.SetTextData(ls.Text);
     if cbExcludeUnsuitableFallbackDirs.Checked then
     begin
       ExcludeUnsuitableFallbackDirs(ls);
-      LastFallbackDirsHash := Crc32(AnsiString(ls.Text));
+      LastFallbackDirsHash := THashBobJenkins.GetHashValue(ls.Text);
     end;
 
     if not UseDic then
@@ -18871,7 +19080,7 @@ begin
     if AutoSave then
     begin
       if cbUseFallbackDirs.Checked then
-        SetTorConfig('FallbackDir', ls)
+        AddTorConfig('FallbackDir', ls)
       else
         UsedFallbackDirsList.Clear;
 
@@ -19005,8 +19214,8 @@ begin
   begin
     GeoIpInfo := GeoIpItem.Value;
     case ClearType of
-      1: GeoIpInfo.ping := 0;
-      2: GeoIpInfo.ports := '';
+      1: GeoIpInfo.ping := PING_NONE;
+      2: GeoIpInfo.ports := nil;
     end;
     GeoIpDic.AddOrSetValue(GeoIpItem.Key, GeoIpInfo);
   end;
@@ -19050,11 +19259,11 @@ begin
   end;
 end;
 
-procedure TTcp.LoadStaticArray(Data: array of TStaticPair);
+procedure TTcp.LoadStaticArray(const Data: array of TStaticPair);
 var
   i: Integer;
 begin
-  for i := 0 to Length(Data) - 1 do
+  for i := 0 to High(Data) do
     ConstDic.AddOrSetValue(Data[i].Key, Data[i].Value);
 end;
 
@@ -19206,8 +19415,8 @@ var
   i: Integer;
   Filter: TFilterInfo;
 begin
-  TorVersionProcess := cDefaultTProcessInfo;
-  TorMainProcess := cDefaultTProcessInfo;
+  TorVersionProcess := cDefaultProcessInfo;
+  TorMainProcess := cDefaultProcessInfo;
   LastTrayIconType := MAXWORD;
   WindowsShutdown := False;
   FirstLoad := True;
@@ -19259,10 +19468,10 @@ begin
   tc.FileName := TorConfigFile;
   tc.Encoding := EncodingNoBom;
   tc.Data := nil;
+  tc.Idx := nil;
 
   UsedFallbackDirsList := TDictionary<string, string>.Create;
   NewBridgesList := TDictionary<string, string>.Create;
-  UsedBridgesList := TDictionary<string, Byte>.Create;
   CompBridgesDic := TDictionary<string, string>.Create;
   GeoIpDic := TDictionary<string, TGeoIpInfo>.Create;
   CircuitsDic := TDictionary<string, TCircuitInfo>.Create;
@@ -19270,18 +19479,22 @@ begin
   RoutersDic := TDictionary<string, TRouterInfo>.Create;
   FilterDic := TDictionary<string, TFilterInfo>.Create;
   NodesDic := TDictionary<string, TNodeTypes>.Create;
-  TrackHostDic := TDictionary<string, Byte>.Create;
-  VersionsDic := TDictionary<string, Byte>.Create;
-  CidrsDic := TDictionary<string, TCidrInfo>.Create;
-  PortsDic := TDictionary<Word, Byte>.Create;
-  ConstDic := TDictionary<string, Integer>.Create;
+  ConstDic := TDictionary<string, ShortInt>.Create;
+  PrefixesDic := TDictionary<string, Int64>.Create;
   TransportsDic := TDictionary<string, TTransportInfo>.Create;
   BridgesDic := TDictionary<string, TBridgeInfo>.Create;
   DirFetches := TDictionary<string, TFetchInfo>.Create;
   ConfluxLinks := TDictionary<string, string>.Create;
-  TransportsList := TDictionary<string, Byte>.Create;
-  UserScanList := TDictionary<string, Byte>.Create;
+  PortsMap := THashSet<Word>.Create;
+  TrackHostMap := THashSet<string>.Create;
+  UserScanMap := THashSet<string>.Create;
+  UsedBridgesMap := THashSet<string>.Create;
+  VersionsMap := THashSet<string>.Create;
+  TransportsMap := THashSet<string>.Create;
   RandomBridges := TStringList.Create;
+  IPv4CidrNodes := TIPv4RadixTree.Create;
+  IPv4ReservedRanges := TIPv4RadixTree.Create;
+  IPv6ReservedRanges := TIPv6RadixTree.Create;
 
   DefaultsDic := TDictionary<string, string>.Create;
   DefaultsDic.AddOrSetValue('MaxCircuitDirtiness', '600');
@@ -19335,6 +19548,14 @@ begin
   LoadStaticArray(StreamStatuses);
   LoadStaticArray(StreamPurposes);
   LoadStaticArray(ClientProtocols);
+
+  for i := 0 to High(ReservedRanges) do
+  begin
+    case ReservedRanges[i].AddrType of
+      atIPv4Cidr: IPv4ReservedRanges.AddOrSetCIDR(ReservedRanges[i].Cidr, TValueSet([ReservedRanges[i].Group]));
+      atIPv6Cidr: IPv6ReservedRanges.AddOrSetCIDR(ReservedRanges[i].Cidr, TValueSet([ReservedRanges[i].Group]));
+    end;
+  end;
 
   sgHs.ColsDefaultAlignment[HS_VERSION] := taCenter;
   sgHs.ColsDefaultAlignment[HS_INTRO_POINTS] := taCenter;
@@ -19509,12 +19730,12 @@ begin
   end;
 end;
 
-function TTCP.GetTorVersion(FirstStart: Boolean): Boolean;
+function TTcp.GetTorVersion(FirstStart: Boolean): Boolean;
 var
   Fail: Boolean;
   i: Integer;
   ls: TStringList;
-  ParseStr: ArrOfStr;
+  ParseStr: TArray<string>;
   ini: TMemIniFile;
   TempVersion: string;
   TorFileExists: Boolean;
@@ -19532,9 +19753,9 @@ begin
       ls.LoadFromFile(TorStateFile);
       for i := ls.Count - 1 downto 0 do
       begin
-        if InsensPosEx('TorVersion ', ls[i]) = 1 then
+        if ls[i].StartsWith('TorVersion ', True) then
         begin
-          ParseStr := Explode(' ', ls[i]);
+          ParseStr := ls[i].Split([' ']);
           if Length(ParseStr) > 1 then
           begin
             TempVersion := ParseStr[2];
@@ -19611,7 +19832,7 @@ begin
   end;
 end;
 
-procedure TTcp.FindInCircuits(CircID, NodeID: string; AutoSelect: Boolean = False);
+procedure TTcp.FindInCircuits(const CircID, NodeID: string; AutoSelect: Boolean = False);
 var
   CircuitIndex: Integer;
   NodeIndex: Integer;
@@ -19721,12 +19942,12 @@ begin
       begin
         IntToMenu(miRtFilters, RoutersFilters);
         RoutersCustomFilter := LastRoutersCustomFilter;
-        LastRoutersCustomFilter := 0;
+        LastRoutersCustomFilter := NONE_ID;
       end
       else
       begin
         if RoutersCustomFilter in [ENTRY_ID..FALLBACK_DIR_ID] then
-          LastRoutersCustomFilter := 0
+          LastRoutersCustomFilter := NONE_ID
         else
           LastRoutersCustomFilter := RoutersCustomFilter;
         RoutersCustomFilter := FavoritesID;
@@ -19776,23 +19997,26 @@ begin
   RoutersDic.Free;
   GeoIpDic.Free;
   NodesDic.Free;
-  TrackHostDic.Free;
-  VersionsDic.Free;
+  TrackHostMap.Free;
+  VersionsMap.Free;
   TransportsDic.Free;
-  TransportsList.Free;
+  TransportsMap.Free;
   BridgesDic.Free;
   NewBridgesList.Free;
-  UsedBridgesList.Free;
+  UsedBridgesMap.Free;
   CompBridgesDic.Free;
   RandomBridges.Free;
   UsedFallbackDirsList.Free;
-  UserScanList.Free;
-  CidrsDic.Free;
+  UserScanMap.Free;
   DirFetches.Free;
-  PortsDic.Free;
+  PortsMap.Free;
   ConstDic.Free;
   DefaultsDic.Free;
   LangStr.Free;
+  PrefixesDic.Free;
+  IPv4CidrNodes.Free;
+  IPv4ReservedRanges.Free;
+  IPv6ReservedRanges.Free;
   FreeAndNil(tc.Data);
   EncodingNoBom.Free;
   ExitProcess(Handle);
@@ -19949,40 +20173,40 @@ end;
 procedure TTcp.miSaveTemplateClick(Sender: TObject);
 var
   ini: TMemIniFile;
-  TemplateName, EntryNodes, MiddleNodes, ExitNodes: string;
-  FavoritesEntry, FavoritesMiddle, FavoritesExit, ExcludeNodes: string;
+  TemplateName: string;
+  sbTemplateData, sbEntryNodes, sbMiddleNodes, sbExitNodes,
+  sbFavoritesEntry, sbFavoritesMiddle, sbFavoritesExit, sbExcludeNodes: TStringBuilder;
   Item: TPair<string, TFilterInfo>;
   NodeItem: TPair<string, TNodeTypes>;
+  IPv4Cidrs: TCidrValuePairs;
+  i: Integer;
 begin
   TemplateName := InputBox(TransStr('256'), TransStr('257') + ':', '');
   if Trim(TemplateName) <> '' then
   begin
     if Pos(';', TemplateName) = 0 then
     begin
+      sbTemplateData := TStringBuilder.Create;
+      sbEntryNodes := TStringBuilder.Create;
+      sbMiddleNodes := TStringBuilder.Create;
+      sbExitNodes := TStringBuilder.Create;
+      sbFavoritesEntry := TStringBuilder.Create;
+      sbFavoritesMiddle := TStringBuilder.Create;
+      sbFavoritesExit := TStringBuilder.Create;
+      sbExcludeNodes := TStringBuilder.Create;
       ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
       try
-        EntryNodes := '';
-        MiddleNodes := '';
-        ExitNodes := '';
-        FavoritesEntry := '';
-        FavoritesMiddle := '';
-        FavoritesExit := '';
-        ExcludeNodes := '';
-
         if miTplSaveCountries.Checked then
         begin
           for Item in FilterDic do
           begin
             if ntEntry in Item.Value.Data then
-              EntryNodes := EntryNodes + ',' + Item.Key;
+              AppendWithDelims(sbEntryNodes, Item.Key);
             if ntMiddle in Item.Value.Data then
-              MiddleNodes := MiddleNodes + ',' + Item.Key;
+              AppendWithDelims(sbMiddleNodes, Item.Key);
             if ntExit in Item.Value.Data then
-              ExitNodes := ExitNodes + ',' + Item.Key;
+              AppendWithDelims(sbExitNodes, Item.Key);
           end;
-          Delete(EntryNodes, 1, 1);
-          Delete(MiddleNodes, 1, 1);
-          Delete(ExitNodes, 1, 1);
         end;
 
         if miTplSaveRouters.Checked or miTplSaveExcludes.Checked then
@@ -19992,34 +20216,57 @@ begin
             if miTplSaveRouters.Checked then
             begin
               if ntEntry in NodeItem.Value then
-                FavoritesEntry := FavoritesEntry + ',' + NodeItem.Key;
+                AppendWithDelims(sbFavoritesEntry, NodeItem.Key);
               if ntMiddle in NodeItem.Value then
-                FavoritesMiddle := FavoritesMiddle + ',' + NodeItem.Key;
+                AppendWithDelims(sbFavoritesMiddle, NodeItem.Key);
               if ntExit in NodeItem.Value then
-                FavoritesExit := FavoritesExit + ',' + NodeItem.Key;
+                AppendWithDelims(sbFavoritesExit, NodeItem.Key);
             end;
             if miTplSaveExcludes.Checked then
+            begin
               if ntExclude in NodeItem.Value then
-                ExcludeNodes := ExcludeNodes + ',' + NodeItem.Key;
+                AppendWithDelims(sbExcludeNodes, NodeItem.Key);
+            end;
           end;
-          if miTplSaveRouters.Checked then
+          IPv4CidrNodes.EnumerateAllNodes(IPv4Cidrs);
+          for i := 0 to High(IPv4Cidrs) do
           begin
-            Delete(FavoritesEntry, 1, 1);
-            Delete(FavoritesMiddle, 1, 1);
-            Delete(FavoritesExit, 1, 1);
+            if miTplSaveRouters.Checked then
+            begin
+              if ntEntry in IPv4Cidrs[i].Value then
+                AppendWithDelims(sbFavoritesEntry, IPv4Cidrs[i].Cidr);
+              if ntMiddle in IPv4Cidrs[i].Value then
+                AppendWithDelims(sbFavoritesMiddle, IPv4Cidrs[i].Cidr);
+              if ntExit in IPv4Cidrs[i].Value then
+                AppendWithDelims(sbFavoritesExit, IPv4Cidrs[i].Cidr);
+            end;
+            if miTplSaveExcludes.Checked then
+            begin
+              if ntExclude in IPv4Cidrs[i].Value then
+                AppendWithDelims(sbExcludeNodes, IPv4Cidrs[i].Cidr);
+            end;
           end;
-          if miTplSaveExcludes.Checked then
-            Delete(ExcludeNodes, 1, 1);
         end;
-
-        SetSettings('Templates', IntToStr(DateTimeToUnix(Now)), TemplateName + ';' +
-          IntToStr(cbxFilterMode.ItemIndex) + ';' +
-          EntryNodes + ';' + MiddleNodes + ';' + ExitNodes + ';' +
-          FavoritesEntry + ';' + FavoritesMiddle + ';' + FavoritesExit + ';' + ExcludeNodes,
-        ini);
-
+        sbTemplateData.Append(TemplateName); sbTemplateData.Append(';');
+        sbTemplateData.Append(cbxFilterMode.ItemIndex); sbTemplateData.Append(';');
+        sbTemplateData.Append(sbEntryNodes.ToString); sbTemplateData.Append(';');
+        sbTemplateData.Append(sbMiddleNodes.ToString); sbTemplateData.Append(';');
+        sbTemplateData.Append(sbExitNodes.ToString); sbTemplateData.Append(';');
+        sbTemplateData.Append(sbFavoritesEntry.ToString); sbTemplateData.Append(';');
+        sbTemplateData.Append(sbFavoritesMiddle.ToString); sbTemplateData.Append(';');
+        sbTemplateData.Append(sbFavoritesExit.ToString); sbTemplateData.Append(';');
+        sbTemplateData.Append(sbExcludeNodes.ToString);
+        SetSettings('Templates', IntToStr(DateTimeToUnix(Now)), sbTemplateData.ToString, ini);
       finally
         UpdateConfigFile(ini);
+        sbTemplateData.Free;
+        sbEntryNodes.Free;
+        sbMiddleNodes.Free;
+        sbExitNodes.Free;
+        sbFavoritesEntry.Free;
+        sbFavoritesMiddle.Free;
+        sbFavoritesExit.Free;
+        sbExcludeNodes.Free;
       end;
       ShowBalloon(Format(TransStr('363'), [TemplateName]));
     end
@@ -20118,20 +20365,21 @@ begin
   StateFile.FileName := TorStateFile;
   StateFile.Encoding := TEncoding.Default;
   StateFile.Data := nil;
-  DeleteConfig(StateFile, 'Guard' + TypeStr, [cfMultiLine, cfAutoSave]);
+  StateFile.Idx := nil;
+  DeleteConfig(StateFile, ['Guard' + TypeStr], [cfAutoSave, cfParamWithSpace]);
   miResetGuards.Tag := 0;
 end;
 
 procedure TTcp.SetResetGuards(Sender: TObject);
 var
-  Temp: string;
+  Msg: string;
 begin
   miResetGuards.Tag := TMenuItem(Sender).Tag;
   if ConnectState = 2 then
-    Temp := TransStr('164') + '. '
+    Msg := TransStr('164') + '. '
   else
-    Temp := '';
-  if ShowMsg(Format(TransStr('346'), [Temp]), '', mtWarning, True) then
+    Msg := '';
+  if ShowMsg(Format(TransStr('346'), [Msg]), '', mtWarning, True) then
   begin
     if ConnectState = 2 then
       RestartTor(1)
@@ -20160,22 +20408,18 @@ procedure TTcp.miRtResetFilterClick(Sender: TObject);
 var
   ini: TMemIniFile;
   Data: string;
-  ParseStr: ArrOfStr;
-  i: Integer;
+  ParseStr: TArray<string>;
 begin
   ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
   try
     Data := GetSettings('Routers', 'DefaultFilter', DEFAULT_ROUTERS_FILTER_DATA, ini);
     LoadRoutersFilterData(Data);
-    ParseStr := Explode(';', Data);
+    ParseStr := Data.Split([';']);
     if Length(ParseStr) > RF_QUERY_TYPE then
     begin
       if Trim(ParseStr[RF_QUERY_TEXT]) = '' then
         ParseStr[RF_QUERY_TYPE] := IntToStr(cbxRoutersQuery.ItemIndex);
-      Data := '';
-      for i := 0 to Length(ParseStr) - 1 do
-        Data := Data + ';' + ParseStr[i];
-      Delete(Data, 1, 1);
+      Data := string.Join(';', ParseStr);
     end;
     LastRoutersFilter := Data;
   finally
@@ -20220,7 +20464,7 @@ begin
   CheckSelectRowOptions(sgRouters, miRoutersSelectRow.Checked, True);
 end;
 
-procedure TTcp.OpenMetricsUrl(Page, Query: string);
+procedure TTcp.OpenMetricsUrl(const Page, Query: string);
 begin
   if Query = '' then
     Exit;
@@ -20240,18 +20484,18 @@ end;
 procedure TTcp.miDestroyExitCircuitsClick(Sender: TObject);
 var
   Item: TPair<string, TCircuitInfo>;
-  ls: TStringList;
-  CommandStr: string;
+  ls: TList<string>;
+  CommandStr, DataStr: string;
   i: Integer;
 begin
   if (ConnectState <> 2) then
     Exit;
-  ls := TStringList.Create;
+  ls := TList<string>.Create;
   try
     for Item in CircuitsDic do
     begin
       if not (bfInternal in Item.Value.BuildFlags) then
-        ls.Append(Item.Key);
+        ls.Add(Item.Key);
     end;
     if ls.Count > 0 then
     begin
@@ -20261,9 +20505,12 @@ begin
       for i := 0 to ls.Count - 1 do
       begin
         CloseCircuitInternal(ls[i]);
-        CommandStr := CommandStr + BR + 'CLOSECIRCUIT ' + ls[i];
+        DataStr := 'CLOSECIRCUIT ' + ls[i];
+        if CommandStr <> '' then
+          CommandStr := CommandStr + BR + DataStr
+        else
+          CommandStr := DataStr;
       end;
-      Delete(CommandStr, 1, Length(BR));
       SendCommand(CommandStr);
       UpdateCircuitsData;
     end;
@@ -20272,7 +20519,7 @@ begin
   end;
 end;
 
-function TTcp.CloseCircuitInternal(CircuitID: string): Boolean;
+function TTcp.CloseCircuitInternal(const CircuitID: string): Boolean;
 var
   CircuitInfo: TCircuitInfo;
   StreamInfo: TStreamInfo;
@@ -20314,7 +20561,7 @@ begin
   end;
 end;
 
-procedure TTcp.CloseCircuit(CircuitID: string; AutoUpdate: Boolean = True);
+procedure TTcp.CloseCircuit(const CircuitID: string; AutoUpdate: Boolean = True);
 begin
   if (CircuitID = '') or (ConnectState = 0) then
     Exit;
@@ -20326,18 +20573,18 @@ end;
 
 procedure TTcp.ClearBridgesCache(Sender: TObject);
 var
-  IpList: TDictionary<string, Byte>;
+  IpList: THashSet<string>;
   Item: TPair<string, TBridgeInfo>;
   GeoIpInfo: TGeoIpInfo;
   RouterInfo: TRouterInfo;
   ClearAll, Deleted: Boolean;
   Bridge: TBridge;
   i: Integer;
-  ls: TStringList;
+  ls: TList<string>;
 
   procedure AddToRemoveList;
   begin
-    ls.Append(Item.Key);
+    ls.Add(Item.Key);
     Deleted := True;
   end;
 
@@ -20356,7 +20603,7 @@ begin
         if not (rfRelay in RouterInfo.Flags) then
         begin
           if GeoIpDic.TryGetValue(RouterInfo.IPv4, GeoIpInfo) then
-            SetPortsValue(RouterInfo.IPv4, IntToStr(RouterInfo.Port), 0);
+            SetPortsValue(RouterInfo.IPv4, RouterInfo.Port, PORT_NONE);
           RoutersDic.Remove(Item.Key);
         end;
       end
@@ -20366,8 +20613,8 @@ begin
   end
   else
   begin
-    IpList := TDictionary<string, Byte>.Create;
-    ls := TStringList.Create;
+    IpList := THashSet<string>.Create;
+    ls := TList<string>.Create;
     try
       if cbxBridgesType.ItemIndex <> BRIDGES_TYPE_BUILTIN then
       begin
@@ -20376,12 +20623,12 @@ begin
           if TryParseBridge(meBridges.Lines[i], Bridge) then
           begin
             if Bridge.Hash <> '' then
-              IpList.AddOrSetValue(Bridge.Hash, 0);
+              IpList.Add(Bridge.Hash);
           end;
         end;
       end;
       if TryParseBridge(Trim(edPreferredBridge.Text), Bridge) then
-        IpList.AddOrSetValue(Bridge.Hash, 0);
+        IpList.Add(Bridge.Hash);
 
       for Item in BridgesDic do
       begin
@@ -20390,7 +20637,7 @@ begin
         begin
           if rfRelay in RouterInfo.Flags then
           begin
-            if not IpList.ContainsKey(Item.Key) then
+            if not IpList.Contains(Item.Key) then
               AddToRemoveList;
           end;
         end
@@ -20403,7 +20650,7 @@ begin
         begin
           if GeoIpDic.TryGetValue(Item.Value.Router.IPv4, GeoIpInfo) then
           begin
-            if GetPortsValue(GeoIpInfo.ports, IntToStr(Item.Value.Router.Port)) = -1 then
+            if GetPortsValue(GeoIpInfo.ports, Item.Value.Router.Port) = PORT_DEAD then
               AddToRemoveList;
           end;
         end;
@@ -20415,6 +20662,8 @@ begin
       end;
       for i := 0 to ls.Count - 1 do
         BridgesDic.Remove(ls[i]);
+      BridgesDic.TrimExcess;
+      CompBridgesDic.TrimExcess;
     finally
       ls.Free;
       IpList.Free;
@@ -20570,13 +20819,13 @@ begin
   CloseCircuit(sgCircuits.Cells[CIRC_ID, sgCircuits.SelRow]);
 end;
 
-procedure TTcp.CloseStreams(CircuitID: string; CloseType: TCloseType);
+procedure TTcp.CloseStreams(const CircuitID: string; CloseType: TCloseType);
 var
-  Targets: TDictionary<string, Byte>;
+  Targets: THashSet<string>;
   Item: TPair<string, TStreamInfo>;
   CircuitInfo: TCircuitInfo;
-  Temp: string;
-  ParseStr: ArrOfStr;
+  DataStr, Str: string;
+  ParseStr: TArray<string>;
   NeedClose: Boolean;
   StreamsCount, i: Integer;
 begin
@@ -20586,7 +20835,7 @@ begin
     Exit;
   if CloseType in [ctTarget, ctStream] then
   begin
-    Targets := TDictionary<string, Byte>.Create;
+    Targets := THashSet<string>.Create;
     case CloseType of
       ctTarget:
       begin
@@ -20594,9 +20843,9 @@ begin
         begin
           if sgStreams.Cells[STREAMS_COUNT, i] <> EXCLUDE_CHAR then
           begin
-            Temp := sgStreams.Cells[STREAMS_TARGET, i];
-            if Temp <> '' then
-              Targets.AddOrSetValue(Temp, 0);
+            DataStr := sgStreams.Cells[STREAMS_TARGET, i];
+            if DataStr <> '' then
+              Targets.Add(DataStr);
           end;
         end;
       end;
@@ -20604,9 +20853,9 @@ begin
       begin
         for i := sgStreamsInfo.Selection.Top to sgStreamsInfo.Selection.Bottom do
         begin
-          Temp := sgStreamsInfo.Cells[STREAMS_INFO_ID, i];
-          if Temp <> '' then
-            Targets.AddOrSetValue(Temp, 0);
+          DataStr := sgStreamsInfo.Cells[STREAMS_INFO_ID, i];
+          if DataStr <> '' then
+            Targets.Add(DataStr);
         end;
       end;
     end;
@@ -20616,35 +20865,42 @@ begin
   else
     Targets := nil;
   StreamsCount := 0;
-  Temp := '';
+  DataStr := '';
   for Item in StreamsDic do
   begin
     if Item.Value.CircuitID = CircuitID then
     begin
       case CloseType of
-        ctTarget: NeedClose := Targets.ContainsKey(Item.Value.Target);
-        ctStream: NeedClose := Targets.ContainsKey(Item.Key);
+        ctTarget: NeedClose := Targets.Contains(Item.Value.Target);
+        ctStream: NeedClose := Targets.Contains(Item.Key);
         else
           NeedClose := True;
       end;
       if NeedClose then
       begin
-        Temp := Temp + ',' + Item.Key;
+        if DataStr <> '' then
+          DataStr := DataStr + ',' + Item.Key
+        else
+          DataStr := Item.Key;
         Inc(StreamsCount);
       end;
     end;
   end;
-  Delete(Temp, 1, 1);
+
   if StreamsCount > 0 then
   begin
-    ParseStr := Explode(',', Temp);
-    Temp := '';
-    for i := 0 to Length(ParseStr) - 1 do
+    ParseStr := DataStr.Split([',']);
+    DataStr := '';
+    for i := 0 to High(ParseStr) do
     begin
       StreamsDic.Remove(ParseStr[i]);
-      Temp := Temp + BR + 'CLOSESTREAM ' + ParseStr[i] + ' 1';
+      Str := 'CLOSESTREAM ' + ParseStr[i] + ' 1';
+      if DataStr <> '' then
+        DataStr := DataStr + BR + Str
+      else
+        DataStr := Str;
     end;
-    Delete(Temp, 1, Length(BR));
+
     if CircuitsDic.TryGetValue(CircuitID, CircuitInfo) then
     begin
       Dec(CircuitInfo.Streams, StreamsCount);
@@ -20652,7 +20908,7 @@ begin
         CircuitInfo.Streams := 0;
       CircuitsDic.AddOrSetValue(CircuitID, CircuitInfo);
     end;
-    SendCommand(Temp);
+    SendCommand(DataStr);
     UpdateCircuitsData;
   end;
   Targets.Free;

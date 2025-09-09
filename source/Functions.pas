@@ -3,16 +3,12 @@
 interface
 
 uses
-  Winapi.Windows, Winapi.Messages, Winapi.ActiveX, Winapi.ShlObj, System.Classes, Winapi.TlHelp32,
-  Winapi.ShellApi, Winapi.WinSock, System.StrUtils, System.SysUtils, System.IniFiles,
-  System.Variants, System.Masks, System.DateUtils, System.Generics.Collections, System.Math,
-  System.Win.ComObj, System.Win.Registry, Vcl.Graphics, Vcl.Forms, Vcl.Controls, Vcl.Grids,
+  Winapi.Windows, Winapi.ActiveX, Winapi.ShlObj, System.Classes, Winapi.TlHelp32,
+  Winapi.ShellApi, Winapi.WinSock, System.StrUtils, System.SysUtils, System.IniFiles, System.Hash,
+  System.Variants, System.Masks, System.DateUtils, System.Generics.Collections, System.Generics.Defaults,
+  System.Math, System.Win.ComObj, System.Win.Registry, Vcl.Graphics, Vcl.Forms, Vcl.Controls, Vcl.Grids,
   Vcl.Menus, Vcl.Imaging.pngimage, Vcl.ComCtrls, Vcl.StdCtrls, Vcl.Clipbrd, Vcl.Dialogs,
-  Vcl.Buttons, Vcl.Themes, synacode, blcksock, synautil, ConstData, Addons;
-
-const
-  JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = $00002000;
-  CREATE_BREAKAWAY_FROM_JOB = $01000000;
+  Vcl.Buttons, Vcl.Themes, blcksock, synautil, ConstData, Addons, ClassData;
 
 type
   TPeData = record
@@ -58,10 +54,21 @@ type
     Hash: string;
   end;
 
+  TIndexData = record
+    Index: Integer;
+    IsComment: Boolean;
+  end;
+
   TConfigFile = record
     FileName: string;
     Encoding: TEncoding;
     Data: TStringList;
+    Idx: TDictionary<string, TArray<TIndexData>>;
+  end;
+
+  TPortInfo = record
+    Port: Word;
+    Value: ShortInt;
   end;
 
   TCharUpCaseTable = array [Char] of Char;
@@ -73,135 +80,146 @@ var
   function CreateJob(lpJobAttributes: PSecurityAttributes; lpName: LPCSTR): THandle; stdcall;
     external 'kernel32.dll' name 'CreateJobObjectA';
 
-  function CompareNaturalText(psz1, psz2: PWideChar): Integer; stdcall;
-    external 'shlwapi.dll' name 'StrCmpLogicalW';
-
   function BoolToStrDef(Value: Boolean): string;
   function GetCommandLineFileName(const CommandLine: string): string;
   function CheckSplitButton(Button: TButton; DirectClick: Boolean): Boolean;
-  function GetAssocUpDown(AName: string): TUpdown;
-  function GetCountryValue(IpStr: string): Byte;
-  function GetIntDef(const Value, Default, Min, Max: Integer): Integer;
+  function GetAssocUpDown(const AName: string): TUpdown;
+  function GetCountryValue(const IpStr: string): Byte;
+  function GetIntDef(Value, Default, Min, Max: Integer): Integer;
   function GetPortProtocol(PortID: Word): string;
   function GetFileVersionStr(const FileName: string): string;
-  function FindStr(Mask, Str: string): Boolean;
+  function FindStr(const Mask, Str: string): Boolean;
   function CtrlKeyPressed(Key: Char): Boolean;
-  function GetArrayIndex(Data: array of string; Value: string): Integer;
-  function GetConstantIndex(Key: string): Integer;
-  function GetDefaultsValue(Key: string; Default: string = ''): string;
+  function GetArrayIndex(const Data: array of string; const Value: string): Integer;
+  function GetConstantIndex(const Key: string): ShortInt;
+  function GetDefaultsValue(const Key: string; const Default: string = ''): string;
   function GetSystemDir(CSIDL: Integer): string;
-  function RegistryFileExists(Root: HKEY; Key, Param: string): Boolean;
-  function RegistryGetValue(Root: HKEY; Key, Param: string): string;
+  function RegistryFileExists(Root: HKEY; const Key, Param: string): Boolean;
+  function RegistryGetValue(Root: HKEY; const Key, Param: string): string;
   function CreateShortcut(const CmdLine, Args, WorkDir, LinkFile, IconFile: string): IPersistFile;
-  function GetFullFileName(FileName: string): string;
-  function GetHost(Host: string): string;
-  function GetAddressFromSocket(SocketStr: string; UseFormatHost: Boolean = False): string;
-  function GetPortFromSocket(SocketStr: string): Word;
-  function GetRouterBySocket(SocketStr: string): string;
-  function FormatHost(HostStr: string; Validate: Boolean = True): string;
-  function ExtractDomain(Url: string; HasPort: Boolean = False): string;
+  function GetFullFileName(const FileName: string): string;
+  function GetHost(const Host: string): string;
+  function GetAddressFromSocket(const SocketStr: string; UseFormatHost: Boolean = False): string;
+  function GetPortFromSocket(const SocketStr: string): Word;
+  function GetRouterBySocket(const SocketStr: string): string;
+  function FormatHost(const HostStr: string; Validate: Boolean = True): string;
+  function ExtractDomain(const Url: string; HasPort: Boolean = False): string;
   function GetAvailPhysMemory: Cardinal;
   function GetCPUCount: Integer;
-  function AnsiStrToHex(const Value: AnsiString): string;
-  function StrToHex(Value: string): string;
-  function HexToStr(hex: string): string;
-  function Crypt(str, Key: string): string;
-  function Decrypt(str, Key: string): string;
-  function FileGetString(Filename: string; Hex: Boolean = False): string;
+  function BytesToHex(const Bytes: TBytes): string;
+  function StrToHex(const Value: string): string;
+  function HexToStr(const hex: string): string;
+  function Crypt(const Str, Key: string): string;
+  function Decrypt(const Str, Key: string): string;
+  function FileGetString(const Filename: string; Hex: Boolean = False): string;
   function ProcessExists(var ProcessInfo: TProcessInfo; FindChild: Boolean = True; AutoTerminate: Boolean = False): Boolean;
   function ExecuteProcess(CmdLine: string; Flags: TProcessFlags = []; JobHandle: THandle = 0): TProcessInfo;
   function RandomString(StrLen: Integer): string;
   function GetPasswordHash(const password: string): string;
-  function CheckFileVersion(FileVersion, StaticVersion: string): Boolean;
-  function Explode(sPart, sInput: string): ArrOfStr;
-  function GetDirFromArray(Data: array of string; FileName: string = ''; ShowFileName: Boolean = False): string;
+  function CheckFileVersion(const FileVersion, StaticVersion: string): Boolean;
+  function GetDirFromArray(const Data: array of string; const FileName: string = ''; ShowFileName: Boolean = False): string;
   function GetLogFileName(SeparateType: Integer): string;
   function GetRoutersParamsCount(Mask: Integer): Integer;
   function GetCircuitsParamsCount(PurposeID: Integer): Integer;
-  function GetTorConfig(const Param, Default: string; Flags: TConfigFlags = []; ParamType: TParamType = ptString; MinValue: Integer = 0; MaxValue: Integer = 0; Prefix: string = ''): string;
+  function GetTorConfig(const Param, Default: string; Flags: TConfigFlags = []; ParamType: TParamType = ptString; MinValue: Integer = 0; MaxValue: Integer = 0; const Prefix: string = ''): string; overload;
+  function GetTorConfig(const Param: string; Flags: TConfigFlags = []): TStringList; overload;
   function BytesFormat(Bytes: Double): string;
-  function FormatSizeToBytes(SizeStr: string): Int64;
-  function CheckEditSymbols(Key: Char; UserSymbols: AnsiString = ''; EditMsg: string = ''): string;
-  function CheckEditString(Str: string; UserSymbols: AnsiString = ''; AllowNumbersFirst: Boolean = True; EditMsg: string = ''; edComponent: TEdit = nil): string;
+  function FormatSizeToBytes(const SizeStr: string): Int64;
+  function CheckEditSymbols(Key: Char; const UserSymbols: AnsiString = ''; const EditMsg: string = ''): string;
+  function CheckEditString(const Str: string; const UserSymbols: AnsiString = ''; AllowNumbersFirst: Boolean = True; const EditMsg: string = ''; edComponent: TEdit = nil): string;
   function IsDirectoryWritable(const Dir: string): Boolean;
-  function PortTCPIsOpen(Port: Word; IpStr: string; Timeout: Integer): Boolean;
+  function PortTCPIsOpen(Port: Word; const IpStr: string; Timeout: Integer): Boolean;
   function GetBridgeCert: string;
   function InsensPosEx(const SubStr, S: string; Offset: Integer = 1): Integer;
-  function GetPrefixSize(Prefix: string; Localize: Boolean = False): Int64;
-  function HasBrackets(Str: string): Boolean;
-  function IsIPv4(IpStr: string): Boolean;
-  function IsIPv6(IpStr: string): Boolean;
+  function HasBrackets(const Str: string; BracketsType: TBracketsType): Boolean;
+  function GetAddressType(const IpStr: string; UseCidr: Boolean = False): TAddressType;
+  function IpInReservedRanges(const IpStr: string; RangeType: TIPRangeType): Boolean;
+  function IsIPv4(const IpStr: string): Boolean;
+  function IsIPv6(const IpStr: string): Boolean;
   function ValidKeyValue(const Str: string): Boolean;
-  function ValidData(Str: string; ListType: TListType): Boolean;
-  function ValidInt(IntStr: string; Min, Max: Integer): Boolean; overload;
-  function ValidInt(IntStr: string; Min, Max: Int64): Boolean; overload;
-  function ValidFloat(FloatStr: string; Min, Max: Double): Boolean;
-  function ValidHash(HashStr: string): Boolean;
-  function ValidNode(const NodeStr: string): TNodeDataType;
-  function ValidAddress(AddrStr: string; AllowCidr: Boolean = False; ReqBrackets: Boolean = False): TAddressType;
-  function ValidHost(HostStr: string; AllowRootDomain: Boolean = False; AllowIp: Boolean = True; ReqBrackets: Boolean = False; DenySpecialDomains: Boolean = True): THostType;
-  function ValidBridge(BridgeStr: string; StrictTransport: Boolean = False): Boolean;
-  function ValidTransport(TransportStr: string; StrictTransport: Boolean = False): Boolean;
-  function ValidSocket(SocketStr: string; AllowHostNames: Boolean = False): TSocketType;
-  function ValidPolicy(PolicyStr: string): Boolean;
-  function ValidFallbackDir(FallbackStr: string): Boolean;
-  function GetMsgCaption(Caption: string; MsgType: TMsgType): string;
-  function TryParseBridge(BridgeStr: string; out Bridge: TBridge; Validate: Boolean = True; UseFormatHost: Boolean = False): Boolean;
-  function TryParseFallbackDir(FallbackStr: string; out FallbackDir: TFallbackDir; Validate: Boolean = True; UseFormatHost: Boolean = False): Boolean;
-  function TryParseTarget(TargetStr: string; out Target: TTarget): Boolean;
-  function CompDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
+  function ValidData(const Str: string; ListType: TListType; Validate: Boolean = True): Boolean;
+  function ValidInt(const IntStr: string; Min, Max: Integer): Boolean; overload;
+  function ValidInt(const IntStr: string; Min, Max: Int64): Boolean; overload;
+  function ValidInt(const IntStr: string; Min, Max: Integer; out n: Integer): Boolean; overload;
+  function ValidFloat(const FloatStr: string; Min, Max: Double): Boolean;
+  function ValidHash(const HashStr: string): Boolean; overload;
+  function ValidHash(const HashStr: string; HashLength: Integer): Boolean; overload;
+  function ValidNode(const NodeStr: string; Validate: Boolean = True): TNodeDataType;
+  function ValidAddress(const AddrStr: string; AllowCidr: Boolean = False; ReqBrackets: Boolean = False): TAddressType;
+  function ValidHost(const HostStr: string; AllowRootDomain: Boolean = False; AllowIp: Boolean = True; ReqBrackets: Boolean = False; DenySpecialDomains: Boolean = True): THostType;
+  function ValidBridge(const BridgeStr: string; StrictTransport: Boolean = False): Boolean;
+  function ValidTransport(const TransportStr: string; StrictTransport: Boolean = False): Boolean;
+  function ValidSocket(const SocketStr: string; AllowHostNames: Boolean = False): TSocketType;
+  function ValidPolicy(const PolicyStr: string): Boolean;
+  function ValidFallbackDir(const FallbackStr: string): Boolean;
+  function GetMsgCaption(const Caption: string; MsgType: TMsgType): string;
+  function TryParseBridge(const BridgeStr: string; out Bridge: TBridge; Validate: Boolean = True; UseFormatHost: Boolean = False): Boolean;
+  function TryParseFallbackDir(const FallbackStr: string; out FallbackDir: TFallbackDir; Validate: Boolean = True; UseFormatHost: Boolean = False): Boolean;
+  function TryParseTarget(const TargetStr: string; out Target: TTarget): Boolean;
+  function CompareNaturalText(const S1, S2: string; CaseSensitive: Boolean = False): Integer;
+  function CompAsc(aSl: TStringList; aIndex1, aIndex2: Integer): Integer; overload;
+  function CompAsc(const A, B: string) : Integer; overload;
+  function CompDesc(aSl: TStringList; aIndex1, aIndex2: Integer): Integer; overload;
+  function CompDesc(const A, B: string) : Integer; overload;
   function CompIntObjectAsc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
   function CompIntObjectDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
   function CompIntDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
   function CompIntAsc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
-  function CompTextAsc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
-  function CompTextDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
+  function CompTextAsc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer; overload;
+  function CompTextAsc(const A, B: string): Integer; overload;
+  function CompTextDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer; overload;
   function CompSizeAsc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
+  function CompTextDesc(const A, B: string): Integer;  overload;
   function CompSizeDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
   function CompParamsAsc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
   function CompParamsDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
   function CompFlagsAsc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
   function CompFlagsDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
   function GetTaskBarPos: TTaskBarPos;
-  function RemoveBrackets(Str: string; BracketsType: TBracketsType): string;
+  function RemoveBrackets(const Str: string; BracketsType: TBracketsType; TrimOnly: Boolean = True): string;
   function SearchEdit(EditControl: TCustomEdit; const SearchString: String; Options: TFindOptions; FindFirst: Boolean = False): Boolean;
-  function ShowMsg(Msg: string; Caption: string = ''; MsgType: TMsgType = mtInfo; Question: Boolean = False): Boolean;
-  function MemoToLine(Memo: TMemo; SortType: Byte = SORT_NONE; Separator: string = ','): string;
-  procedure MemoToList(Memo: TMemo; SortType: Byte; out ls: TStringList);
+  function ShowMsg(const Msg: string; Caption: string = ''; MsgType: TMsgType = mtInfo; Question: Boolean = False): Boolean;
   function MenuToInt(Menu: TMenuItem): Integer;
   function TryUpdateMask(var Mask: Word; Param: Word; Condition: Boolean): Boolean;
-  function TryGetDataFromStr(Str: string; DataType: TListType; out DatatStr: string; Separator: string = ''): Boolean;
-  function SampleDown(Data: ArrOfPoint; Threshold: Integer): ArrOfPoint;
+  function TryGetDataFromStr(const Str: string; DataType: TListType; out DatatStr: string; const Separator: string = ''): Boolean;
+  function SampleDown(const Data: ArrOfPoint; Threshold: Integer): ArrOfPoint;
   function FileTimeToDateTime(const FileTime: TFileTime): TDateTime;
-  function GetPortsValue(const PortsData, PortStr: string): Integer;
-  function GetBridgeIp(Bridge: TBridge): string;
-  function GetFileID(FileName: string; SkipFileExists: Boolean = False; ConstData: string = ''): TFileID;
-  procedure GetPeData(FileName: string; var Data: TPEData);
-  procedure SetPortsValue(IpStr, PortStr: string; Value: Integer);
+  function GetPortsValue(const PortsData: TArray<TPortInfo>; Port: Word): Integer;
+  function GetBridgeIp(const Bridge: TBridge): string;
+  function GetFileID(const FileName: string; SkipFileExists: Boolean = False; const ConstData: string = ''): TFileID;
+  function ListToStr(ls: TStringList; const Delimiter: string): string;
+  function MemoToLine(Memo: TMemo; SortType: Byte = SORT_NONE; const Separator: string = ','): string;
+  procedure MemoToList(Memo: TMemo; out ls: TStringList; SortType: Byte = SORT_NONE);
+  procedure LineToMemo(const Line: string; Memo: TMemo; SortType: Byte = SORT_NONE; const Separator: string = ','; RemoveDuplicates: Boolean = True; Validate: Boolean = True);
+  procedure GetPeData(const FileName: string; var Data: TPEData);
+  procedure SetPortsValue(const IpStr: string; Port: Word; Value: ShortInt);
+  procedure SetPingValue(const IpStr: string; Value: SmallInt);
+  procedure SetCountryValue(const IpStr: string; Value: Byte);
   procedure DeleteFiles(const FileMask: string; TimeOffset: Integer = 0);
   procedure DeleteDir(const DirName: string);
-  procedure LineToMemo(Line: string; Memo: TMemo; SortType: Byte = SORT_NONE; Separator: string = ',');
+  procedure AppendWithDelims(sb: TStringBuilder; const Value: string; const Delimiter: string = ',');
   procedure IntToMenu(Menu: TMenuItem; Mask: Integer; DisableUnchecked: Boolean = False);
-  procedure GetNodes(var Nodeslist: string; NodeType: TNodeType; Favorites: Boolean; ini: TMemIniFile = nil);
+  procedure GetNodes(var Nodeslist: string; NodeType: TNodeType; Favorites: Boolean; Validate: Boolean = True; ini: TMemIniFile = nil);
   procedure SetTorConfig(const Param, Value: string; Flags: TConfigFlags = []); overload;
-  procedure SetTorConfig(const Param: string; Values: TStringList; Flags: TConfigFlags = []); overload;
-  procedure DeleteTorConfig(const Param: string; Flags: TConfigFlags = []);
-  procedure SetConfigBoolean(Section, Ident: string; Value: Boolean);
-  procedure SetConfigInteger(Section, Ident: string; Value: Integer); overload;
-  procedure SetConfigInteger(Section, Ident: string; Value: Int64); overload;
-  procedure SetConfigString(Section, Ident: string; Value: string);
-  procedure SaveToLog(str: string; LogFile: string);
-  procedure AddUPnPEntry(Port: Integer; Desc, LanIp: string; Test: Boolean; var Msg: string);
-  procedure RemoveUPnPEntry(PortList: array of Word);
+  procedure AddTorConfig(const Param: string; Values: TStringList; Flags: TConfigFlags = []); overload;
+  procedure AddTorConfig(const Param, Value: string; Flags: TConfigFlags = []); overload;
+  procedure DeleteTorConfig(const Params: TArray<string>; Flags: TConfigFlags = []);
+  procedure SetConfigBoolean(const Section, Ident: string; Value: Boolean);
+  procedure SetConfigInteger(const Section, Ident: string; Value: Integer); overload;
+  procedure SetConfigInteger(const Section, Ident: string; Value: Int64); overload;
+  procedure SetConfigString(const Section, Ident: string; Value: string);
+  procedure SaveToLog(const str, LogFile: string);
+  procedure AddUPnPEntry(Port: Integer; const Desc, LanIp: string; Test: Boolean; var Msg: string);
+  procedure RemoveUPnPEntry(const PortList: array of Word);
   procedure SetGridLastCell(aSg: TStringGrid; Show: Boolean = True; ScrollTop: Boolean = False; ManualSort: Boolean = False; ARow: Integer = -1; ACol: Integer = -1; FindCol: Integer = -1);
   procedure FindInGridColumn(aSg: TStringGrid; ACol: Integer; Key: Char);
   procedure InitCharUpCaseTable(var Table: TCharUpCaseTable);
-  procedure CheckFileEncoding(FileName, BackupFile: string);
-  procedure Flush(FileName: string);
+  procedure CheckFileEncoding(const FileName, BackupFile: string);
+  procedure Flush(const FileName: string);
   procedure UpdateConfigFile(ini: TMemIniFile);
   procedure CheckLabelEndEllipsis(lbComponent: TLabel; MaxWidth: Integer; EllipsisType: TEllipsisPosition; UseHint: Boolean; IgnoreFormSize: Boolean);
   procedure sgSort(aSg: TStringGrid; aCol: Integer; aCompare: TStringListSortCompare);
-  procedure GetLocalInterfaces(ComboBox: TComboBox; RecentHost: string = '');
+  procedure GetLocalInterfaces(ComboBox: TComboBox; const RecentHost: string = '');
   procedure GridDrawIcon(aSg: TStringGrid; Rect: TRect; ls: TImageList; Index: Integer; W: Integer = 16; H: Integer = 16);
   procedure GridDrawSortArrows(aSg: TStringGrid; Rect: TRect);
   procedure GridSetKeyboardLayout(aSg: TStringGrid; ACol: Integer);
@@ -211,12 +229,12 @@ var
   procedure GridScrollCheck(aSg: TStringGrid; ACol, ColWidth: Integer);
   procedure GridSelectCell(aSg: TStringGrid; ACol, ARow: Integer);
   function GetRouterStrFlags(Flags: TRouterFlags): string;
-  function GetRouterStrParams(const Params: Word; Flags: TRouterFlags): string;
-  function GridGetSpecialData(aSg: TStringGrid; ACol, ARow: Integer; KeyStr: string): string;
+  function GetRouterStrParams(Params: Word; Flags: TRouterFlags): string;
+  function GridGetSpecialData(aSg: TStringGrid; ACol, ARow: Integer; const KeyStr: string): string;
   procedure GridKeyDown(aSg: TStringGrid; Shift: TShiftState; var Key: Word);
   procedure GridCheckAutoPopup(aSg: TStringGrid; ARow: Integer; AllowEmptyRows: Boolean = False);
-  procedure GoToInvalidOption(PageID: TTabSheet; Msg: string = ''; edComponent: TCustomEdit = nil);
-  procedure DeleteDuplicatesFromList(var List: TStringList; ListType: TListType = ltNone);
+  procedure GoToInvalidOption(PageID: TTabSheet; const Msg: string = ''; edComponent: TCustomEdit = nil);
+  procedure DeleteDuplicatesFromList(var ls: TStringList; ListType: TListType = ltNone);
   procedure SortList(var ls: TStringList; ListType: TListType; SortType: Byte);
   procedure SortHostsList(var ls: TStringList; SortType: Byte = SORT_ASC);
   procedure SortNodesList(var ls: TStringList; SortType: Byte = SORT_ASC);
@@ -224,68 +242,64 @@ var
   procedure ControlsEnable(Control: TWinControl);
   procedure LoadTorConfig;
   procedure SaveTorConfig;
-  function LoadIconsFromResource(ImageList: TImageList; ResourceName: string; UseFile: Boolean = False): Boolean;
-  procedure LoadThemesList(ThemesList: TComboBox; LastStyle: string);
+  function LoadIconsFromResource(ImageList: TImageList; const ResourceName: string; UseFile: Boolean = False): Boolean;
+  procedure LoadThemesList(ThemesList: TComboBox; const LastStyle: string);
   procedure LoadStyle(ThemesList: TCombobox);
   procedure EditMenuHandle(MenuType: TEditMenuType);
   procedure EditMenuEnableCheck(MenuItem: TMenuItem; MenuType: TEditMenuType);
   procedure MenuSelectPrepare(SelMenu: TMenuItem = nil; UnSelMenu: TMenuItem = nil; HandleDisabled: Boolean = False);
-  procedure ShellOpen(Url: string);
+  procedure ShellOpen(const Url: string);
   procedure SetMaskData(var Mask: Integer; CheckBoxControl: TCheckBox);
   procedure GetMaskData(var Mask: Integer; CheckBoxControl: TCheckBox);
-  procedure GetSettings(Section: string; UpDownControl: TUpDown; ini: TMemIniFile); overload;
-  procedure GetSettings(Section: string; CheckBoxControl: TCheckBox; ini: TMemIniFile); overload;
-  procedure GetSettings(Section: string; MenuControl: TMenuItem; ini: TMemIniFile; Default: Boolean = True); overload;
-  procedure GetSettings(Section: string; ComboBoxControl: TComboBox; ini: TMemIniFile; Default: Integer = 0); overload;
-  procedure GetSettings(Section: string; EditControl: TEdit; ini: TMemIniFile; RemoveSquareBrackets: Boolean = False); overload;
-  procedure GetSettings(Section: string; SpeedButtonControl: TSpeedButton; ini: TMemIniFile); overload;
+  procedure GetSettings(const Section: string; UpDownControl: TUpDown; ini: TMemIniFile); overload;
+  procedure GetSettings(const Section: string; CheckBoxControl: TCheckBox; ini: TMemIniFile); overload;
+  procedure GetSettings(const Section: string; MenuControl: TMenuItem; ini: TMemIniFile; Default: Boolean = True); overload;
+  procedure GetSettings(const Section: string; ComboBoxControl: TComboBox; ini: TMemIniFile; Default: Integer = 0); overload;
+  procedure GetSettings(const Section: string; EditControl: TEdit; ini: TMemIniFile); overload;
+  procedure GetSettings(const Section: string; SpeedButtonControl: TSpeedButton; ini: TMemIniFile); overload;
   procedure GetSettings(UpDownControl: TUpDown; Flags: TConfigFlags = []); overload;
   procedure GetSettings(CheckBoxControl: TCheckBox; Flags: TConfigFlags = []); overload;
   procedure GetSettings(SpeedButtonControl: TSpeedButton; Flags: TConfigFlags = []); overload;
   procedure GetSettings(MenuControl: TMenuItem; Flags: TConfigFlags = []; Default: Boolean = True); overload;
-  procedure SetSettings(Section: string; UpDownControl: TUpDown; ini: TMemIniFile); overload;
-  procedure SetSettings(Section: string; CheckBoxControl: TCheckBox; ini: TMemIniFile); overload;
-  procedure SetSettings(Section: string; SpeedButtonControl: TSpeedButton; ini: TMemIniFile); overload;
-  procedure SetSettings(Section: string; MenuControl: TMenuItem; ini: TMemIniFile); overload;
-  procedure SetSettings(Section: string; ComboBoxControl: TComboBox; ini: TMemIniFile; SaveIndex: Boolean = True; UseFormatHost: Boolean = False); overload;
-  procedure SetSettings(Section: string; EditControl: TEdit; ini: TMemIniFile; UseFormatHost: Boolean = False); overload;
-  procedure SetSettings(Section, Ident: string; Value: string; ini: TMemIniFile); overload;
-  procedure SetSettings(Section, Ident: string; Value: Integer; ini: TMemIniFile); overload;
-  procedure SetSettings(Section, Ident: string; Value: Int64; ini: TMemIniFile); overload;
-  procedure SetSettings(Section, Ident: string; Value: Boolean; ini: TMemIniFile); overload;
-  procedure DeleteSettings(Section, Ident: string; ini: TMemIniFile);
-  function GetSettings(Section, Ident: string; Default: string; ini: TMemIniFile): string; overload;
-  function GetSettings(Section, Ident: string; Default: Integer; ini: TMemIniFile): Integer; overload;
-  function GetSettings(Section, Ident: string; Default: Int64; ini: TMemIniFile): Int64; overload;
-  function GetSettings(Section, Ident: string; Default: Boolean; ini: TMemIniFile): Boolean; overload;
+  procedure SetSettings(const Section: string; UpDownControl: TUpDown; ini: TMemIniFile); overload;
+  procedure SetSettings(const Section: string; CheckBoxControl: TCheckBox; ini: TMemIniFile); overload;
+  procedure SetSettings(const Section: string; SpeedButtonControl: TSpeedButton; ini: TMemIniFile); overload;
+  procedure SetSettings(const Section: string; MenuControl: TMenuItem; ini: TMemIniFile); overload;
+  procedure SetSettings(const Section: string; ComboBoxControl: TComboBox; ini: TMemIniFile; SaveIndex: Boolean = True; UseFormatHost: Boolean = False); overload;
+  procedure SetSettings(const Section: string; EditControl: TEdit; ini: TMemIniFile); overload;
+  procedure SetSettings(const Section, Ident, Value: string; ini: TMemIniFile); overload;
+  procedure SetSettings(const Section, Ident: string; Value: Integer; ini: TMemIniFile); overload;
+  procedure SetSettings(const Section, Ident: string; Value: Int64; ini: TMemIniFile); overload;
+  procedure SetSettings(const Section, Ident: string; Value: Boolean; ini: TMemIniFile); overload;
+  procedure DeleteSettings(const Section, Ident: string; ini: TMemIniFile);
+  function GetSettings(const Section, Ident, Default: string; ini: TMemIniFile): string; overload;
+  function GetSettings(const Section, Ident: string; Default: Integer; ini: TMemIniFile): Integer; overload;
+  function GetSettings(const Section, Ident: string; Default: Int64; ini: TMemIniFile): Int64; overload;
+  function GetSettings(const Section, Ident: string; Default: Boolean; ini: TMemIniFile): Boolean; overload;
   procedure EnableComposited(WinControl: TWinControl);
-  function ExpandIPv6(IpStr: string): string;
-  function IntToBin(Value: Integer; Digits: Byte): string;
-  function IpStrToBin(const IpStr: string; Delimiter: Char; Digits: Byte): string;
-  function BinIpInCidr(const BinIpStr: string; CidrInfo: TCidrInfo; AddressType: TAddressType): Boolean;
-  function GetAddressType(const IpStr: string; UseCidr: Boolean = False): TAddressType;
-  function CidrStrToInfo(const CidrStr: string; AddressType: TAddressType): TCidrInfo;
-  function IpInCidr(const IpStr: string; CidrInfo: TCidrInfo; AddressType: TAddressType): Boolean;
-  function IpInRanges(const IpStr: string; RangesData: array of string): Boolean;
-  function InsertMenuItem(ParentMenu: TMenuItem; FTag, FImageIndex: Integer;
-    FCaption: string = ''; FOnClick: TNotifyEvent = nil; FChecked: Boolean = False;
-    FAutoCheck: Boolean = False; FRadioItem: Boolean = False; FEnabled: Boolean = True;
-    FVisible: Boolean = True; FHelpContext: THelpContext = 0; FHint: string = ''): TMenuItem;
-  function GetConfig(var Config: TConfigFile; const Param, Default: string; Flags: TConfigFlags = []; ParamType: TParamType = ptString; MinValue: Integer = 0; MaxValue: Integer = 0; Prefix: string = ''): string;
-  procedure SetConfig(var Config: TConfigFile; const Param, Value: string; Flags: TConfigFlags = []); overload;
-  procedure SetConfig(var Config: TConfigFile; const Param: string; Values: TStringList; Flags: TConfigFlags = []); overload;
-  procedure DeleteConfig(var Config: TConfigFile; const Param: string; Flags: TConfigFlags = []);
+  function GetConfig(var Config: TConfigFile; const Param, Default: string; Flags: TConfigFlags = []; ParamType: TParamType = ptString; MinValue: Integer = 0; MaxValue: Integer = 0): string; overload;
+  function GetConfig(var Config: TConfigFile; const Param: string; Flags: TConfigFlags = []): TStringList; overload;
+  procedure SetConfig(var Config: TConfigFile; const Param, Value: string; Flags: TConfigFlags = []);
+  procedure AddConfig(var Config: TConfigFile; const Param: string; Values: TStringList; Flags: TConfigFlags = []); overload;
+  procedure AddConfig(var Config: TConfigFile; const Param, Value: string; Flags: TConfigFlags = []); overload;
+  procedure DeleteConfig(var Config: TConfigFile; const Params: TArray<string>; Flags: TConfigFlags = []);
   procedure LoadConfig(var Config: TConfigFile; Flags: TConfigFlags = []);
   procedure SaveConfig(var Config: TConfigFile; Flags: TConfigFlags = []);
-  function TryGetStrFromIndex(var Data: ArrOfStr; out Str: string; Index: Integer): Boolean;
-  function ParsedDataToStr(var Data: ArrOfStr; Delimiter: Char = ','): string;
+  procedure AddOptionToIndex(var Config: TConfigFile; const OptionName: string; LineIndex: Integer; IsComment: Boolean);
+  function TryGetStrFromIndex(const Data: TArray<string>; out Str: string; Index: Integer): Boolean;
+  function TryGetOption(const Line, OptionName: string; out Value: string; FindComments: Boolean = False; FindOnly: Boolean = False): Boolean;
+  function GetOptionName(const Line: string; out IsComment: Boolean; FindComments: Boolean = False): string;
+  function InsertMenuItem(ParentMenu: TMenuItem; FTag, FImageIndex: Integer;
+    const FCaption: string = ''; FOnClick: TNotifyEvent = nil; FChecked: Boolean = False;
+    FAutoCheck: Boolean = False; FRadioItem: Boolean = False; FEnabled: Boolean = True;
+    FVisible: Boolean = True; FHelpContext: THelpContext = 0; const FHint: string = ''): TMenuItem;
 
 implementation
 
 uses
   Main, Languages;
 
-function TryGetStrFromIndex(var Data: ArrOfStr; out Str: string; Index: Integer): Boolean;
+function TryGetStrFromIndex(const Data: TArray<string>; out Str: string; Index: Integer): Boolean;
 begin
   Result := Length(Data) > Index;
   if Result then
@@ -294,20 +308,10 @@ begin
     Str := '';
 end;
 
-function ParsedDataToStr(var Data: ArrOfStr; Delimiter: Char = ','): string;
-var
-  i: Integer;
-begin
-  Result := '';
-  for i := 0 to Length(Data) - 1 do
-    Result := Result + Delimiter + Data[i];
-  Delete(Result, 1, 1);
-end;
-
 function InsertMenuItem(ParentMenu: TMenuItem; FTag, FImageIndex: Integer;
-  FCaption: string = ''; FOnClick: TNotifyEvent = nil; FChecked: Boolean = False;
+  const FCaption: string = ''; FOnClick: TNotifyEvent = nil; FChecked: Boolean = False;
   FAutoCheck: Boolean = False; FRadioItem: Boolean = False; FEnabled: Boolean = True;
-  FVisible: Boolean = True; FHelpContext: THelpContext = 0; FHint: string = ''): TMenuItem;
+  FVisible: Boolean = True; FHelpContext: THelpContext = 0; const FHint: string = ''): TMenuItem;
 begin
   Result := TMenuItem.Create(ParentMenu.Owner);
   Result.ImageIndex := FImageIndex;
@@ -325,135 +329,6 @@ begin
   ParentMenu.Add(Result);
 end;
 
-function ExpandIPv6(IpStr: string): string;
-var
-  Count: Integer;
-begin
-  Result := '';
-  if IpStr = '' then
-    Exit;
-  Count := CountOfChar(IpStr, ':');
-  if Count > 7 then
-    Exit;
-  if IpStr[1] = ':' then
-    IpStr := '0' + IpStr;
-  if IpStr[Length(IpStr)] = ':' then
-    IpStr := IpStr + '0';
-  Result := StringReplace(IpStr, '::', DupeString(':0', 8 - Count) + ':', []);
-end;
-
-function IntToBin(Value: Integer; Digits: Byte): string;
-begin
-  SetLength(Result, Digits);
-  while Digits > 0 do
-  begin
-    if Odd(Value) then
-      Result[Digits] := '1'
-    else
-      Result[Digits] := '0';
-    Value := Value shr 1;
-    Dec(Digits);
-  end;
-end;
-
-function IpStrToBin(const IpStr: string; Delimiter: Char; Digits: Byte): string;
-var
-  i, j: Integer;
-  Str: string;
-begin
-  Result := '';
-  if Delimiter = ':' then
-    Str := '$'
-  else
-    Str := '';
-  j := 1;
-  for i := 1 to Length(IpStr) do
-  begin
-    if IpStr[i] = Delimiter then
-    begin
-      Result := Result + IntToBin(StrToIntDef(Str + Copy(IpStr, j, i - j), 0), Digits);
-      j := i + 1;
-    end;
-  end;
-  Result := Result + IntToBin(StrToIntDef(Str + Copy(IpStr, j), 0), Digits);
-end;
-
-function GetAddressType(const IpStr: string; UseCidr: Boolean = False): TAddressType;
-begin
-  if Pos(':', IpStr) = 0 then
-  begin
-    if UseCidr then
-      Result := atIPv4Cidr
-    else
-      Result := atIPv4;
-  end
-  else
-  begin
-    if UseCidr then
-      Result := atIPv6Cidr
-    else
-      Result := atIPv6;
-  end;
-end;
-
-function IpInCidr(const IpStr: string; CidrInfo: TCidrInfo; AddressType: TAddressType): Boolean;
-begin
-  Result := False;
-  if IpStr = '' then
-    Exit;
-  if AddressType <> CidrInfo.CidrType then
-    Exit;
-  if AddressType = atIPv4Cidr then
-    Result := Copy(IpStrToBin(IpStr, '.', 8), 1, CidrInfo.Prefix) = Copy(CidrInfo.Bits, 1, CidrInfo.Prefix)
-  else
-    Result := Copy(IpStrToBin(ExpandIPv6(RemoveBrackets(IpStr, btSquare)), ':', 16), 1, CidrInfo.Prefix) = Copy(CidrInfo.Bits, 1, CidrInfo.Prefix);
-end;
-
-function BinIpInCidr(const BinIpStr: string; CidrInfo: TCidrInfo; AddressType: TAddressType): Boolean;
-begin
-  if AddressType <> CidrInfo.CidrType then
-  begin
-    Result := False;
-    Exit;
-  end;
-  Result := Copy(BinIpStr, 1, CidrInfo.Prefix) = Copy(CidrInfo.Bits, 1, CidrInfo.Prefix)
-end;
-
-function IpInRanges(const IpStr: string; RangesData: array of string): Boolean;
-var
-  i: Integer;
-  IpBits: string;
-  AddressType: TAddressType;
-begin
-  AddressType := GetAddressType(IpStr, True);
-  if AddressType = atIPv4Cidr then
-    IpBits := IpStrToBin(IpStr, '.', 8)
-  else
-    IpBits := IpStrToBin(ExpandIPv6(IpStr), ':', 16);
-  for i := 0 to Length(RangesData) - 1 do
-  begin
-    if BinIpInCidr(IpBits, CidrStrToInfo(RangesData[i], AddressType), AddressType) then
-    begin
-      Result := True;
-      Exit;
-    end;
-  end;
-  Result := False;
-end;
-
-function CidrStrToInfo(const CidrStr: string; AddressType: TAddressType): TCidrInfo;
-var
-  Subnet: string;
-begin
-  Result.CidrType := AddressType;
-  Result.Prefix := StrToIntDef(Copy(CidrStr, Pos('/', CidrStr) + 1), 0);
-  Subnet := Copy(CidrStr, 1, Pos('/', CidrStr) - 1);
-  if AddressType = atIPv4Cidr then
-    Result.Bits := IpStrToBin(Subnet, '.', 8)
-  else
-    Result.Bits := IpStrToBin(ExpandIPv6(RemoveBrackets(Subnet, btSquare)), ':', 16);
-end;
-
 procedure SetMaskData(var Mask: Integer; CheckBoxControl: TCheckBox);
 begin
   if CheckBoxControl.Checked then
@@ -467,76 +342,102 @@ begin
   CheckBoxControl.Checked := Mask and CheckBoxControl.Tag <> 0;
 end;
 
-function GetPortsValue(const PortsData, PortStr: string): Integer;
+function GetPortsValue(const PortsData: TArray<TPortInfo>; Port: Word): Integer;
 var
-  ParseStr: ArrOfStr;
-  Search, i: Integer;
+  i: Integer;
 begin
-  if PortsData <> '' then
+  Result := PORT_NONE;
+  if PortsData = nil then
+    Exit;
+  for i := 0 to High(PortsData) do
   begin
-    ParseStr := Explode('|', PortsData);
-    for i := 0 to Length(ParseStr) - 1 do
-    begin
-      Search := Pos(PortStr + ':', ParseStr[i]);
-      if Search = 1 then
-      begin
-        Result := StrToIntDef(Copy(ParseStr[i], Length(PortStr) + 2), 0);
-        Exit;
-      end;
-    end;
+    if PortsData[i].Port = Port then
+      Exit(PortsData[i].Value);
   end;
-  Result := 0;
 end;
 
-procedure SetPortsValue(IpStr, PortStr: string; Value: Integer);
+procedure SetPortsValue(const IpStr: string; Port: Word; Value: ShortInt);
 var
   GeoIpInfo: TGeoIpInfo;
-  ParseStr: ArrOfStr;
-  PortsData: string;
-  PortsCount, Search, i: Integer;
+  PortDataLen, i: Integer;
+  Search: Boolean;
+  PortInfo: TPortInfo;
 begin
   if GeoIpDic.TryGetValue(IpStr, GeoIpInfo) then
   begin
-    if GeoIpInfo.ports = '' then
-      GeoIpInfo.ports := PortStr + ':' + IntToStr(Value)
+    PortInfo.Port := Port;
+    PortInfo.Value := Value;
+    PortDataLen := Length(GeoIpInfo.ports);
+    if PortDataLen = 0 then
+      TArrayHelper.AddToArray<TPortInfo>(GeoIpInfo.ports, PortInfo)
     else
     begin
-      ParseStr := Explode('|', GeoIpInfo.ports);
-      Search := -1;
-      PortsCount := Length(ParseStr);
-      for i := 0 to PortsCount - 1 do
+      Search := False;
+      for i := 0 to PortDataLen - 1 do
       begin
-        if Pos(PortStr + ':', ParseStr[i]) = 1 then
+        if GeoIpInfo.ports[i].Port = Port then
         begin
-          Search := i;
+          GeoIpInfo.ports[i].Value := Value;
+          Search := True;
           Break;
         end;
       end;
-      if Search < 0 then
-        GeoIpInfo.ports := GeoIpInfo.ports + '|' + PortStr + ':' + IntToStr(Value)
-      else
-      begin
-        ParseStr[Search] := PortStr + ':' + IntToStr(Value);
-        PortsData := '';
-        for i := 0 to PortsCount - 1 do
-          PortsData := PortsData + '|' + ParseStr[i];
-        Delete(PortsData, 1, 1);
-        GeoIpInfo.ports := PortsData;
-      end;
+      if not Search then
+        TArrayHelper.AddToArray<TPortInfo>(GeoIpInfo.ports, PortInfo);
     end;
     GeoIpDic.AddOrSetValue(IpStr, GeoIpInfo);
   end
   else
   begin
-    GeoIpInfo.ping := 0;
-    GeoIpInfo.ports := PortStr + ':' + IntToStr(Value);
     GeoIpInfo.cc := DEFAULT_COUNTRY_ID;
+    GeoIpInfo.ping := PING_NONE;
+    PortInfo.Port := Port;
+    PortInfo.Value := Value;
+    TArrayHelper.AddToArray<TPortInfo>(GeoIpInfo.ports, PortInfo);
     GeoIpDic.AddOrSetValue(IpStr, GeoIpInfo);
   end;
   GeoIpModified := True;
 end;
 
-function GetBridgeIp(Bridge: TBridge): string;
+procedure SetPingValue(const IpStr: string; Value: SmallInt);
+var
+  GeoIpInfo: TGeoIpInfo;
+begin
+  if GeoIpDic.TryGetValue(IpStr, GeoIpInfo) then
+  begin
+    GeoIpInfo.ping := Value;
+    GeoIpDic.AddOrSetValue(IpStr, GeoIpInfo);
+  end
+  else
+  begin
+    GeoIpInfo.cc := DEFAULT_COUNTRY_ID;
+    GeoIpInfo.ping := Value;
+    GeoIpInfo.ports := nil;
+    GeoIpDic.AddOrSetValue(IpStr, GeoIpInfo);
+  end;
+  GeoIpModified := True;
+end;
+
+procedure SetCountryValue(const IpStr: string; Value: Byte);
+var
+  GeoIpInfo: TGeoIpInfo;
+begin
+  if GeoIpDic.TryGetValue(IpStr, GeoIpInfo) then
+  begin
+    GeoIpInfo.cc := Value;
+    GeoIpDic.AddOrSetValue(IpStr, GeoIpInfo);
+  end
+  else
+  begin
+    GeoIpInfo.cc := Value;
+    GeoIpInfo.ping := PING_NONE;
+    GeoIpInfo.ports := nil;
+    GeoIpDic.AddOrSetValue(IpStr, GeoIpInfo);
+  end;
+  GeoIpModified := True;
+end;
+
+function GetBridgeIp(const Bridge: TBridge): string;
 var
   BridgeInfo: TBridgeInfo;
   RouterInfo: TRouterInfo;
@@ -576,10 +477,10 @@ begin
   Result := Bridge.Ip;
   if GeoIpDic.TryGetValue(Bridge.Ip, GeoIpInfo) then
   begin
-    if GetPortsValue(GeoIpInfo.ports, IntToStr(Bridge.Port)) < -1 then
+    if GetPortsValue(GeoIpInfo.ports, Bridge.Port) < PORT_DEAD then
       Exit;
   end;
-  if IpInRanges(Bridge.Ip, DocRanges) then
+  if IpInReservedRanges(Bridge.Ip, rtDoc) then
     Result := '';
 end;
 
@@ -591,12 +492,12 @@ begin
     Result := '0'
 end;
 
-function GetAssocUpDown(AName: string): TUpdown;
+function GetAssocUpDown(const AName: string): TUpdown;
 begin
   Result := TUpdown(Tcp.FindComponent('ud' + copy(AName, 3)));
 end;
 
-function GetCountryValue(IpStr: string): Byte;
+function GetCountryValue(const IpStr: string): Byte;
 var
   GeoIpInfo: TGeoIpInfo;
 begin
@@ -606,47 +507,37 @@ begin
     Result := DEFAULT_COUNTRY_ID;
 end;
 
-function GetArrayIndex(Data: array of string; Value: string): Integer;
+function GetArrayIndex(const Data: array of string; const Value: string): Integer;
 var
   i: Integer;
 begin
-  for i := 0 to Length(Data) - 1 do
+  for i := 0 to High(Data) do
   begin
     if Data[i] = Value  then
-    begin
-      Result := i;
-      Exit;
-    end;
+      Exit(i);
   end;
   Result := -1;
 end;
 
-function GetConstantIndex(Key: string): Integer;
-var
-  Index: Integer;
+function GetConstantIndex(const Key: string): ShortInt;
 begin
-  if ConstDic.TryGetValue(Key, Index) then
-    Result := Index
-  else
+  if not ConstDic.TryGetValue(Key, Result) then
     Result := -1;
 end;
 
-function GetDefaultsValue(Key: string; Default: string = ''): string;
+function GetDefaultsValue(const Key: string; const Default: string = ''): string;
 var
   Value: string;
 begin
   if DefaultsDic.TryGetValue(Key, Value) then
   begin
     if Trim(Value) <> '' then
-    begin
-      Result := Value;
-      Exit;
-    end;
+      Exit(Value);
   end;
   Result := Default;
 end;
 
-function FindStr(Mask, Str: string): Boolean;
+function FindStr(const Mask, Str: string): Boolean;
 begin
   if not MatchesMask(Mask, '*[*?-!]*') then
     Result := InsensPosEx(Mask, Str) <> 0
@@ -654,14 +545,14 @@ begin
     Result := MatchesMask(Str, Mask);
 end;
 
-procedure ShellOpen(Url: string);
+procedure ShellOpen(const Url: string);
 var
   Port: Word;
   Address: string;
 begin
   if Url = '' then
     Exit;
-  if (Pos('://', Url) <> 0) or (Pos(':\', Url) <> 0) or (Pos('mailto:', Url) = 1) then
+  if (Pos('://', Url) <> 0) or (Pos(':\', Url) <> 0) or Url.StartsWith('mailto:') then
     ShellExecute(Application.Handle, 'open', PChar(Url), nil, nil, SW_NORMAL)
   else
   begin
@@ -806,8 +697,8 @@ begin
   Result := Trim(Result);
 end;
 
-function GetRouterStrParams(const Params: Word; Flags: TRouterFlags): string;
-  procedure InsertData(const Key: Word; Data: string);
+function GetRouterStrParams(Params: Word; Flags: TRouterFlags): string;
+  procedure InsertData(Key: Word; const Data: string);
   begin
     if Params and Key <> 0 then
       Result := Result + Data;    
@@ -838,7 +729,7 @@ begin
   Result := Trim(Result);
 end;
 
-function GridGetSpecialData(aSg: TStringGrid; ACol, ARow: Integer; KeyStr: string): string;
+function GridGetSpecialData(aSg: TStringGrid; ACol, ARow: Integer; const KeyStr: string): string;
 var
   RouterInfo: TRouterInfo;
   StreamInfo: TStreamInfo;
@@ -1198,32 +1089,33 @@ end;
 
 function InsensPosEx(const SubStr, S: string; Offset: Integer = 1): Integer;
 var
-  n: Integer;
-  SubStrLength: Integer;
-  SLength: Integer;
-label
-  Fail;
+  PSubStr, PS, PEnd: PChar;
+  SubStrLen, n: Integer;
 begin
   Result := 0;
-  if S = '' then Exit;
-  if Offset <= 0 then Exit;
+  if (S = '') or (SubStr = '') or (Offset <= 0) then Exit;
 
-  SubStrLength := Length(SubStr);
-  SLength := Length(s);
+  SubStrLen := Length(SubStr);
+  if SubStrLen > Length(S) - Offset + 1 then Exit;
 
-  if SubStrLength > SLength then Exit;
+  PSubStr := PChar(SubStr);
+  PS := PChar(S) + Offset - 1;
+  PEnd := PChar(S) + Length(S) - SubStrLen;
 
-  Result := Offset;
-  while SubStrLength <= (SLength - Result + 1) do
+  while PS <= PEnd do
   begin
-    for n := 1 to SubStrLength do
-      if CharUpCaseTable[SubStr[n]] <> CharUpCaseTable[s[Result+n-1]] then
-        goto Fail;
-      Exit;
-Fail:
-    Inc(Result);
+    if CharUpCaseTable[PS^] = CharUpCaseTable[PSubStr^] then
+    begin
+      n := 1;
+      while (n < SubStrLen) and
+            (CharUpCaseTable[(PS + n)^] = CharUpCaseTable[(PSubStr + n)^]) do
+        Inc(n);
+
+      if n = SubStrLen then
+        Exit(PS - PChar(S) + 1);
+    end;
+    Inc(PS);
   end;
-  Result := 0;
 end;
 
 procedure FindInGridColumn(aSg: TStringGrid; ACol: Integer; Key: Char);
@@ -1246,7 +1138,7 @@ begin
   end;
 end;
 
-procedure GoToInvalidOption(PageID: TTabSheet; Msg: string = ''; edComponent: TCustomEdit = nil);
+procedure GoToInvalidOption(PageID: TTabSheet; const Msg: string = ''; edComponent: TCustomEdit = nil);
 begin
   if LastPlace <> 0 then
     Tcp.sbShowOptions.Click;
@@ -1264,10 +1156,10 @@ begin
   SetConfigInteger('Main', 'OptionsPage', PageID.TabIndex);
 end;
 
-function CheckEditString(Str: string; UserSymbols: AnsiString = ''; AllowNumbersFirst: Boolean = True; EditMsg: string = ''; edComponent: TEdit = nil): string;
+function CheckEditString(const Str: string; const UserSymbols: AnsiString = ''; AllowNumbersFirst: Boolean = True; const EditMsg: string = ''; edComponent: TEdit = nil): string;
 var
   i: Integer;
-  Temp: string;
+  Msg: string;
   ParentBox: TGroupBox;
 begin
   Result := '';
@@ -1277,10 +1169,10 @@ begin
     if edComponent.GetParentComponent is TGroupBox then
     begin
       ParentBox := TGroupBox(edComponent.GetParentComponent);
-      EditMsg := TTabSheet(ParentBox.GetParentComponent).Caption + ' - ' + ParentBox.Caption + ' - ' + EditMsg + BR + BR
+      Msg := TTabSheet(ParentBox.GetParentComponent).Caption + ' - ' + ParentBox.Caption + ' - ' + EditMsg + BR + BR
     end
     else
-      EditMsg := TTabSheet(edComponent.GetParentComponent).Caption + ' - ' + EditMsg + BR + BR;
+      Msg := TTabSheet(edComponent.GetParentComponent).Caption + ' - ' + EditMsg + BR + BR;
   end;
   if Length(Str) > 0 then
   begin
@@ -1293,12 +1185,9 @@ begin
     begin
       for i := 1 to Length(Str) do
       begin
-        Temp := CheckEditSymbols(Str[i], UserSymbols, EditMsg);
-        if Temp <> '' then
-        begin
-          Result := Temp;
+        Result := CheckEditSymbols(Str[i], UserSymbols, Msg);
+        if Result <> '' then
           Break;
-        end;
       end;
     end;
 
@@ -1312,7 +1201,7 @@ begin
   end;
 end;
 
-function CheckEditSymbols(Key: Char; UserSymbols: AnsiString = ''; EditMsg: string = ''): string;
+function CheckEditSymbols(Key: Char; const UserSymbols: AnsiString = ''; const EditMsg: string = ''): string;
 var
   i: Integer;
   UserCharSet: TSysCharSet;
@@ -1354,10 +1243,10 @@ begin
   Default := 0;
   Max := 0;
   case Menu.Tag of
-    1: begin Default := SHOW_NODES_FILTER_DEFAULT; Max := SHOW_NODES_FILTER_MAX; end;
-    2: begin Default := ROUTER_FILTER_DEFAULT; Max := ROUTER_FILTER_MAX; end;
-    3: begin Default := CIRCUIT_FILTER_DEFAULT; Max := CIRCUIT_FILTER_MAX;end;
-  4,5: begin Default := TPL_MENU_DEFAULT; Max := TPL_MENU_MAX; end;
+     1: begin Default := SHOW_NODES_FILTER_DEFAULT; Max := SHOW_NODES_FILTER_MAX; end;
+     2: begin Default := ROUTER_FILTER_DEFAULT; Max := ROUTER_FILTER_MAX; end;
+     3: begin Default := CIRCUIT_FILTER_DEFAULT; Max := CIRCUIT_FILTER_MAX;end;
+  4..5: begin Default := TPL_MENU_DEFAULT; Max := TPL_MENU_MAX; end;
   end;
   if (Mask < 0) or (Mask > Max) then
     Mask := Default;
@@ -1425,126 +1314,189 @@ begin
   end;
 end;
 
-function HasBrackets(Str: string): Boolean;
+function HasBrackets(const Str: string; BracketsType: TBracketsType): Boolean;
 var
   StrLen: Integer;
+  StartChar, EndChar: Char;
 begin
   StrLen := Length(Str);
   if StrLen > 1 then
-    Result := (Str[1] = '[') and (Str[StrLen] = ']')
+  begin
+    case BracketsType of
+      btCurly: begin StartChar := '{'; EndChar := '}' end;
+      btSquare: begin StartChar := '['; EndChar := ']' end;
+      btRound: begin StartChar := '('; EndChar := ')' end;
+      else
+        Exit(False);
+    end;
+    Result := (Str[1] = StartChar) and (Str[StrLen] = EndChar)
+  end
   else
     Result := False;
 end;
 
-function RemoveBrackets(Str: string; BracketsType: TBracketsType): string;
+function RemoveBrackets(const Str: string; BracketsType: TBracketsType; TrimOnly: Boolean = True): string;
 begin
-  case BracketsType of
-    btCurly: Result := StringReplace(StringReplace(Str, '{', '', [rfReplaceAll]), '}', '', [rfReplaceAll]);
-    btSquare: Result := StringReplace(StringReplace(Str, '[', '', [rfReplaceAll]), ']', '', [rfReplaceAll]);
-    btRound: Result := StringReplace(StringReplace(Str, '(', '', [rfReplaceAll]), ')', '', [rfReplaceAll]);
-    else
-      Result := Str;
-  end;
-end;
-
-function ValidNode(const NodeStr: string): TNodeDataType;
-begin
-  Result := dtNone;
-  if Length(NodeStr) < 2 then
-    Exit;
-  if ValidHash(NodeStr) then
-    Result := dtHash
+  if TrimOnly then
+  begin
+    case BracketsType of
+      btCurly: Result := Str.Trim(['{','}']);
+      btSquare: Result := Str.Trim(['[',']']);
+      btRound: Result := Str.Trim(['(',')']);
+      else
+        Result := Str;
+    end;
+  end
   else
   begin
-    case ValidAddress(NodeStr, True, True) of
-      atIPv4: Result := dtIPv4;
-      atIPv4Cidr: Result := dtIPv4Cidr;
+    case BracketsType of
+      btCurly: Result := StringReplace(StringReplace(Str, '{', '', [rfReplaceAll]), '}', '', [rfReplaceAll]);
+      btSquare: Result := StringReplace(StringReplace(Str, '[', '', [rfReplaceAll]), ']', '', [rfReplaceAll]);
+      btRound: Result := StringReplace(StringReplace(Str, '(', '', [rfReplaceAll]), ')', '', [rfReplaceAll]);
       else
-      begin
-        if FilterDic.ContainsKey(LowerCase(NodeStr)) then
-          Result := dtCode
-      end;
+        Result := Str;
     end;
   end;
 end;
 
-procedure GetNodes(var Nodeslist: string; NodeType: TNodeType; Favorites: Boolean; ini: TMemIniFile = nil);
+function ValidNode(const NodeStr: string; Validate: Boolean = True): TNodeDataType;
+begin
+  if Validate then
+  begin
+    case Length(NodeStr) of
+    0..1: Exit(dtNone);
+       2: if FilterDic.ContainsKey(LowerCase(NodeStr)) then Exit(dtCode);
+      40: if ValidHash(NodeStr, 40) then Exit(dtHash);
+      else
+      begin
+        case ValidAddress(NodeStr, True, True) of
+          atIPv4: Exit(dtIPv4);
+          atIPv4Cidr: Exit(dtIPv4Cidr);
+        end;
+      end;
+    end;
+  end
+  else
+  begin
+    case Length(NodeStr) of
+    0..1: Exit(dtNone);
+       2: Exit(dtCode);
+      40: Exit(dtHash);
+      else
+      begin
+        if Pos('/', NodeStr) = 0 then
+          Exit(dtIPv4)
+        else
+          Exit(dtIPv4Cidr);
+      end;
+    end;
+  end;
+  Result := dtNone;
+end;
+
+procedure AppendWithDelims(sb: TStringBuilder; const Value: string; const Delimiter: string = ',');
+begin
+  if sb.Length > 0 then
+    sb.Append(Delimiter);
+  sb.Append(Value);
+end;
+
+procedure GetNodes(var Nodeslist: string; NodeType: TNodeType; Favorites: Boolean; Validate: Boolean = True; ini: TMemIniFile = nil);
 var
   Count, i: Integer;
-  Nodes: ArrOfStr;
+  Nodes: TArray<string>;
   FilterInfo: TFilterInfo;
   FNodeType: TNodeTypes;
   NodeStr: string;
   lbComponent: TLabel;
+  NodeDataType: TNodeDataType;
+  sb: TStringBuilder;
 begin
+  if Nodeslist = '' then
+    Exit;
   Count := 0;
-  if Nodeslist <> '' then
+  if Favorites then
   begin
-    if Favorites then
+    Nodes := Nodeslist.Split([',']);
+    for i := 0 to High(Nodes) do
     begin
-      Nodes := Explode(',', UpperCase(RemoveBrackets(Nodeslist, btCurly)));
-      for i := 0 to Length(Nodes) - 1 do
-      begin
-        case ValidNode(Nodes[i]) of
-          dtNone: Nodes[i] := '';
-          dtCode: Nodes[i] := LowerCase(Nodes[i]);
-          dtIPv4Cidr: CidrsDic.AddOrSetValue(Nodes[i], CidrStrToInfo(Nodes[i], atIPv4Cidr));
-        end;
-
-        if Nodes[i] <> '' then
-        begin
-          NodesDic.TryGetValue(Nodes[i], FNodeType);
-          Include(FNodeType, NodeType);
-          NodesDic.AddOrSetValue(Nodes[i], FNodeType);
-          Inc(Count);
-        end;
+      NodeStr := Trim(Nodes[i]);
+      if HasBrackets(NodeStr, btCurly) then
+        NodeStr := RemoveBrackets(NodeStr, btCurly);
+      NodeDataType := ValidNode(NodeStr, Validate);
+      case NodeDataType of
+        dtNone: NodeStr := '';
+        dtCode: NodeStr := LowerCase(NodeStr);
       end;
-      lbComponent := Tcp.GetFavoritesLabel(Byte(NodeType));
-      if (lbComponent.Tag = 0) and (lbComponent.HelpContext = 0) and (Count > 0) then
-        lbComponent.HelpContext := 1;
-      lbComponent.Tag := Count;
-    end
-    else
-    begin
-      Nodes := Explode(',', LowerCase(RemoveBrackets(Nodeslist, btCurly)));
-      for i := 0 to Length(Nodes) - 1 do
+      if NodeStr <> '' then
       begin
-        if FilterDic.TryGetValue(Nodes[i], FilterInfo) then
+        if NodeDataType <> dtIPv4Cidr then
         begin
-          Include(FilterInfo.Data, NodeType);
-          FilterDic.AddOrSetValue(Nodes[i], FilterInfo);
-          Inc(Count);
+          NodesDic.TryGetValue(NodeStr, FNodeType);
+          Include(FNodeType, NodeType);
+          NodesDic.AddOrSetValue(NodeStr, FNodeType);
         end
         else
-          Nodes[i] := '';
-      end;
-    end;
-
-    Nodeslist := '';
-    for i := 0 to Length(Nodes) - 1 do
-    begin
-      if Nodes[i] <> '' then
-      begin
-        if Length(Nodes[i]) = 2 then
-          Nodes[i] := '{' + Nodes[i] + '}';
-        Nodeslist := Nodeslist + ',' + Nodes[i];
-      end;
-    end;
-    Delete(Nodeslist, 1, 1);
-
-    if (ini <> nil) and (Length(Nodes) <> Count) then
-    begin
-      NodeStr := '';
-      case NodeType of
-        ntEntry: NodeStr := 'EntryNodes';
-        ntMiddle: NodeStr := 'MiddleNodes';
-        ntExit: NodeStr := 'ExitNodes';
-        ntExclude: NodeStr := 'ExcludeNodes';
-      end;
-      if Favorites then
-        SetSettings('Routers', NodeStr, Nodeslist, ini)
+        begin
+          if IPv4CidrNodes.FindExactCIDR(NodeStr, FNodeType) then
+            Include(FNodeType, NodeType)
+          else
+            FNodeType := [NodeType];
+          IPv4CidrNodes.AddOrSetCIDR(NodeStr, FNodeType);
+        end;
+        Inc(Count);
+      end
       else
-        SetSettings('Filter', NodeStr, Nodeslist, ini);
+        Nodes[i] := '';
+    end;
+    lbComponent := Tcp.GetFavoritesLabel(Byte(NodeType));
+    if (lbComponent.Tag = 0) and (lbComponent.HelpContext = 0) and (Count > 0) then
+      lbComponent.HelpContext := 1;
+    lbComponent.Tag := Count;
+  end
+  else
+  begin
+    Nodes := Nodeslist.Split([',']);
+    for i := 0 to High(Nodes) do
+    begin
+      NodeStr := LowerCase(RemoveBrackets(Nodes[i], btCurly));
+      if FilterDic.TryGetValue(NodeStr, FilterInfo) then
+      begin
+        Include(FilterInfo.Data, NodeType);
+        FilterDic.AddOrSetValue(NodeStr, FilterInfo);
+        Inc(Count);
+      end
+      else
+        Nodes[i] := '';
+    end;
+  end;
+
+  if (ini <> nil) and (Length(Nodes) <> Count) then
+  begin
+    NodeStr := '';
+    case NodeType of
+      ntEntry: NodeStr := 'EntryNodes';
+      ntMiddle: NodeStr := 'MiddleNodes';
+      ntExit: NodeStr := 'ExitNodes';
+      ntExclude: NodeStr := 'ExcludeNodes';
+    end;
+    if NodeStr <> '' then
+    begin
+      sb := TStringBuilder.Create;
+      try
+        for i := 0 to High(Nodes) do
+        begin
+          if Nodes[i] <> '' then
+            AppendWithDelims(sb, Nodes[i]);
+        end;
+        Nodeslist := sb.ToString;
+        if Favorites then
+          SetSettings('Routers', NodeStr, Nodeslist, ini)
+        else
+          SetSettings('Filter', NodeStr, Nodeslist, ini);
+      finally
+        sb.Free;
+      end;
     end;
   end;
 end;
@@ -1562,20 +1514,28 @@ begin
   Result := FloatToStrF(Bytes, ffFixed, 4, 1) + ' ' + Prefixes[i];
 end;
 
-function FormatSizeToBytes(SizeStr: string): Int64;
+function FormatSizeToBytes(const SizeStr: string): Int64;
+var
+  SpacePos: Integer;
+  PrefixSize: Int64;
 begin
-  Result := Round(GetPrefixSize(SeparateRight(SeparateLeft(SizeStr, '/'), ' '), True) * StrToFloatDef(SeparateLeft(SizeStr, ' '), 0.0));
+  SpacePos := Pos(' ', SizeStr);
+  if not PrefixesDic.TryGetValue(Copy(SizeStr, SpacePos + 1, Pos('/', SizeStr) - SpacePos - 1), PrefixSize) then
+    PrefixSize := 0;
+  Result := Round(StrToFloatDef(Copy(SizeStr, 1, SpacePos - 1), 0.0) * PrefixSize);
 end;
 
-function GetHost(Host: string): string;
+function GetHost(const Host: string): string;
 begin
   if Host = '0.0.0.0' then
     Result := '127.0.0.1'
   else
+  begin
     if Host = '::' then
       Result := '::1'
     else
       Result := Host;
+  end;
 end;
 
 function GetAvailPhysMemory: Cardinal;
@@ -1595,16 +1555,21 @@ begin
   Result := s.dwNumberOfProcessors;
 end;
 
-function AnsiStrToHex(const Value: AnsiString): string;
+function BytesToHex(const Bytes: TBytes): string;
+const
+  HexChars: array[0..15] of Char = '0123456789ABCDEF';
 var
   i: Integer;
 begin
-  Result := '';
-  for i := 1 to Length(Value) do
-    Result := Result + IntToHex(Byte(Value[i]), 2);
+  SetLength(Result, Length(Bytes) * 2);
+  for I := 0 to High(Bytes) do
+  begin
+    Result[I * 2 + 1] := HexChars[Bytes[i] shr 4];
+    Result[I * 2 + 2] := HexChars[Bytes[i] and $0F];
+  end;
 end;
 
-function StrToHex(Value: string): string;
+function StrToHex(const Value: string): string;
 var
   i: Integer;
   c: Char;
@@ -1617,7 +1582,7 @@ begin
   end;
 end;
 
-function HexToStr(hex: string): string;
+function HexToStr(const hex: string): string;
 var
   i: Integer;
 begin
@@ -1625,36 +1590,51 @@ begin
     Result := Result + Char(StrToInt('$' + copy(hex, (i - 1) * 2 + 1, 2)));
 end;
 
-function Crypt(str, Key: string): string;
+function Crypt(const Str, Key: string): string;
 var
   i, T: Integer;
+  KeyLen, StrLen: Integer;
+  Data: string;
 begin
-  if (str = '') or (Key = '') then
-    Exit;
-  for i := 1 to Length(str) do
+  if (Str = '') or (Key = '') then
+    Exit('');
+
+  StrLen := Length(Str);
+  KeyLen := Length(Key);
+  Data := Str;
+
+  for i := 1 to StrLen do
   begin
-    T := (ord(str[i]) + (ord(Key[(pred(i) mod Length(Key)) + 1]) - ord('0')));
-    str[i] := Char(T);
+    T := (Ord(Data[i]) + (Ord(Key[(i-1) mod KeyLen + 1]) - Ord('0')));
+    Data[i] := Char(T);
   end;
-  Result := StrToHex(str);
+
+  Result := StrToHex(Data);
 end;
 
-function Decrypt(str, Key: string): string;
+function Decrypt(const Str, Key: string): string;
 var
   i, T: Integer;
+  KeyLen, StrLen: Integer;
+  Data: string;
 begin
-  if (str = '') or (Key = '') then
-    Exit;
-  str := HexToStr(str);
-  for i := 1 to Length(str) do
+  if (Str = '') or (Key = '') then
+    Exit('');
+
+  Data := HexToStr(Str);
+  StrLen := Length(Data);
+  KeyLen := Length(Key);
+
+  for i := 1 to StrLen do
   begin
-    T := (ord(str[i]) - (ord(Key[(pred(i) mod Length(Key)) + 1]) - ord('0')));
-    str[i] := Chr(T);
+    T := (Ord(Data[i]) - (Ord(Key[(i-1) mod KeyLen + 1]) - Ord('0')));
+    Data[i] := Chr(T);
   end;
-  Result := str;
+
+  Result := Data;
 end;
 
-function FileGetString(Filename: string; Hex: Boolean = False): string;
+function FileGetString(const Filename: string; Hex: Boolean = False): string;
 var
   Buf: array of Byte;
   F: File of Byte;
@@ -1690,7 +1670,7 @@ var
   i: Integer;
 begin
   Result := False;
-  if ProcessInfo.ProcessID = INVALID_HANDLE_VALUE then
+  if ProcessInfo.ProcessID = 0 then
     Exit;
   ls := TStringList.Create;
   SnapshotHandle := CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -1725,7 +1705,7 @@ begin
           CloseHandle(ProcessHandle);
         end;
       end;
-      ProcessInfo := cDefaultTProcessInfo;
+      ProcessInfo := cDefaultProcessInfo;
     end;
   finally
     CloseHandle(SnapshotHandle);
@@ -1741,8 +1721,9 @@ var
   PI: PROCESS_INFORMATION;
   CreationFlags: Cardinal;
   ErrorMode: DWORD;
+
 begin
-  Result := cDefaultTProcessInfo;
+  Result := cDefaultProcessInfo;
   UniqueString(CmdLine);
   SA.nLength := SizeOf(SECURITY_ATTRIBUTES);
   SA.bInheritHandle := True;
@@ -1819,23 +1800,10 @@ begin
     end;
   end;
   salt := salt + Chr(96);
-  Result := '16:' + StrToHex(salt) + AnsiStrToHex(SHA1(AnsiString(hash)));
+  Result := '16:' + StrToHex(salt) + (UpperCase(THashSHA1.GetHashString(hash)));
 end;
 
-function Explode(sPart, sInput: string): ArrOfStr;
-begin
-  Result := nil;
-  while Pos(sPart, sInput) <> 0 do
-  begin
-    SetLength(Result, Length(Result) + 1);
-    Result[Length(Result) - 1] := copy(sInput, 0, Pos(sPart, sInput) - 1);
-    Delete(sInput, 1, Pos(sPart, sInput));
-  end;
-  SetLength(Result, Length(Result) + 1);
-  Result[Length(Result) - 1] := sInput;
-end;
-
-function GetDirFromArray(Data: array of string; FileName: string = ''; ShowFileName: Boolean = False): string;
+function GetDirFromArray(const Data: array of string; const FileName: string = ''; ShowFileName: Boolean = False): string;
 var
   i, DataLength: Integer;
   Dir: string;
@@ -1882,7 +1850,7 @@ begin
   Result := LogsDir + FileName + '.log';
 end;
 
-procedure SaveToLog(str: string; LogFile: string);
+procedure SaveToLog(const str, LogFile: string);
 var
   log: TextFile;
 begin
@@ -1942,7 +1910,7 @@ begin
   end;
 end;
 
-function GetIntDef(const Value, Default, Min, Max: Integer): Integer;
+function GetIntDef(Value, Default, Min, Max: Integer): Integer;
 begin
   if InRange(Value, Min, Max) then
     Result := Value
@@ -1950,32 +1918,19 @@ begin
     Result := Default;
 end;
 
-procedure GetSettings(Section: string; EditControl: TEdit; ini: TMemIniFile; RemoveSquareBrackets: Boolean = False);
-var
-  Str: string;
+procedure GetSettings(const Section: string; EditControl: TEdit; ini: TMemIniFile);
 begin
   if FirstLoad then
     EditControl.ResetValue := EditControl.Text;
-  Str := ini.ReadString(Section, StringReplace(EditControl.Name, 'ed', '', [rfIgnoreCase]), EditControl.ResetValue);
-
-  if RemoveSquareBrackets then
-    EditControl.Text := RemoveBrackets(Str, btSquare)
-  else
-    EditControl.Text := Str;
+  EditControl.Text := ini.ReadString(Section, StringReplace(EditControl.Name, 'ed', '', [rfIgnoreCase]), EditControl.ResetValue);
 end;
 
-procedure SetSettings(Section: string; EditControl: TEdit; ini: TMemIniFile; UseFormatHost: Boolean = False); overload;
-var
-  Str: string;
+procedure SetSettings(const Section: string; EditControl: TEdit; ini: TMemIniFile); overload;
 begin
-  if UseFormatHost then
-    Str := FormatHost(EditControl.Text)
-  else
-    Str := EditControl.Text;
-  ini.WriteString(Section, StringReplace(EditControl.Name, 'ed', '', [rfIgnoreCase]), Str);
+  ini.WriteString(Section, StringReplace(EditControl.Name, 'ed', '', [rfIgnoreCase]), EditControl.Text);
 end;
 
-procedure GetSettings(Section: string; ComboBoxControl: TComboBox; ini: TMemIniFile; Default: Integer = 0);
+procedure GetSettings(const Section: string; ComboBoxControl: TComboBox; ini: TMemIniFile; Default: Integer = 0);
 var
   Value: Integer;
 begin
@@ -1989,7 +1944,7 @@ begin
     ComboBoxControl.ItemIndex := Default;
 end;
 
-procedure SetSettings(Section: string; ComboBoxControl: TComboBox; ini: TMemIniFile; SaveIndex: Boolean = True; UseFormatHost: Boolean = False);
+procedure SetSettings(const Section: string; ComboBoxControl: TComboBox; ini: TMemIniFile; SaveIndex: Boolean = True; UseFormatHost: Boolean = False);
 var
   Ident, Str: string;
 begin
@@ -2006,7 +1961,7 @@ begin
   end;
 end;
 
-procedure GetSettings(Section: string; UpDownControl: TUpDown; ini: TMemIniFile);
+procedure GetSettings(const Section: string; UpDownControl: TUpDown; ini: TMemIniFile);
 var
   Value: Integer;
   Ident: string;
@@ -2022,7 +1977,7 @@ begin
     UpDownControl.Position := UpDownControl.ResetValue;
 end;
 
-procedure SetSettings(Section: string; UpDownControl: TUpDown; ini: TMemIniFile); overload;
+procedure SetSettings(const Section: string; UpDownControl: TUpDown; ini: TMemIniFile); overload;
 begin
   ini.WriteInteger(Section, StringReplace(UpDownControl.Name, 'ud', '', [rfIgnoreCase]), UpDownControl.Position)
 end;
@@ -2034,19 +1989,19 @@ begin
   UpDownControl.Position := StrToInt(GetTorConfig(StringReplace(UpDownControl.Name, 'ud', '', [rfIgnoreCase]), IntToStr(UpDownControl.ResetValue), Flags, ptInteger, UpDownControl.Min, UpDownControl.Max));
 end;
 
-procedure GetSettings(Section: string; CheckBoxControl: TCheckBox; ini: TMemIniFile);
+procedure GetSettings(const Section: string; CheckBoxControl: TCheckBox; ini: TMemIniFile);
 begin
   if FirstLoad then
     CheckBoxControl.ResetValue := CheckBoxControl.Checked;
   CheckBoxControl.Checked := ini.ReadBool(Section, StringReplace(CheckBoxControl.Name, 'cb', '', [rfIgnoreCase]), CheckBoxControl.ResetValue)
 end;
 
-procedure SetSettings(Section: string; CheckBoxControl: TCheckBox; ini: TMemIniFile);
+procedure SetSettings(const Section: string; CheckBoxControl: TCheckBox; ini: TMemIniFile);
 begin
   ini.WriteBool(Section, StringReplace(CheckBoxControl.Name, 'cb', '', [rfIgnoreCase]), CheckBoxControl.Checked);
 end;
 
-procedure SetSettings(Section: string; SpeedButtonControl: TSpeedButton; ini: TMemIniFile);
+procedure SetSettings(const Section: string; SpeedButtonControl: TSpeedButton; ini: TMemIniFile);
 begin
   ini.WriteBool(Section, StringReplace(SpeedButtonControl.Name, 'sb', '', [rfIgnoreCase]), SpeedButtonControl.Down);
 end;
@@ -2065,19 +2020,19 @@ begin
   SpeedButtonControl.Down := StrToBool(GetTorConfig(StringReplace(SpeedButtonControl.Name, 'sb', '', [rfIgnoreCase]), BoolToStrDef(SpeedButtonControl.ResetValue), Flags, ptBoolean));
 end;
 
-procedure GetSettings(Section: string; SpeedButtonControl: TSpeedButton; ini: TMemIniFile);
+procedure GetSettings(const Section: string; SpeedButtonControl: TSpeedButton; ini: TMemIniFile);
 begin
   if FirstLoad then
     SpeedButtonControl.ResetValue := SpeedButtonControl.Down;
   SpeedButtonControl.Down := ini.ReadBool(Section, StringReplace(SpeedButtonControl.Name, 'sb', '', [rfIgnoreCase]), SpeedButtonControl.ResetValue)
 end;
 
-procedure GetSettings(Section: string; MenuControl: TMenuItem; ini: TMemIniFile; Default: Boolean = True);
+procedure GetSettings(const Section: string; MenuControl: TMenuItem; ini: TMemIniFile; Default: Boolean = True);
 begin
   MenuControl.Checked := ini.ReadBool(Section, StringReplace(MenuControl.Name, 'mi', '', [rfIgnoreCase]), Default)
 end;
 
-procedure SetSettings(Section: string; MenuControl: TMenuItem; ini: TMemIniFile);
+procedure SetSettings(const Section: string; MenuControl: TMenuItem; ini: TMemIniFile);
 begin
   ini.WriteBool(Section, StringReplace(MenuControl.Name, 'cb', '', [rfIgnoreCase]), MenuControl.Checked);
 end;
@@ -2087,67 +2042,90 @@ begin
   MenuControl.Checked := StrToBool(GetTorConfig(StringReplace(MenuControl.Name, 'mi', '', [rfIgnoreCase]), BoolToStrDef(Default), Flags, ptBoolean));
 end;
 
-procedure SetSettings(Section, Ident: string; Value: string; ini: TMemIniFile);
+procedure SetSettings(const Section, Ident, Value: string; ini: TMemIniFile);
 begin
   ini.WriteString(Section, Ident, Value)
 end;
 
-procedure SetSettings(Section, Ident: string; Value: Integer; ini: TMemIniFile);
+procedure SetSettings(const Section, Ident: string; Value: Integer; ini: TMemIniFile);
 begin
   ini.WriteInteger(Section, Ident, Value)
 end;
 
-procedure SetSettings(Section, Ident: string; Value: Int64; ini: TMemIniFile);
+procedure SetSettings(const Section, Ident: string; Value: Int64; ini: TMemIniFile);
 begin
   ini.WriteInt64(Section, Ident, Value)
 end;
 
-procedure SetSettings(Section, Ident: string; Value: Boolean; ini: TMemIniFile);
+procedure SetSettings(const Section, Ident: string; Value: Boolean; ini: TMemIniFile);
 begin
   ini.WriteBool(Section, Ident, Value)
 end;
 
-procedure DeleteSettings(Section, Ident: string; ini: TMemIniFile);
+procedure DeleteSettings(const Section, Ident: string; ini: TMemIniFile);
 begin
   ini.DeleteKey(Section, Ident)
 end;
 
-function GetSettings(Section, Ident: string; Default: string; ini: TMemIniFile): string;
+function GetSettings(const Section, Ident, Default: string; ini: TMemIniFile): string;
 begin
   Result := ini.ReadString(Section, Ident, Default)
 end;
 
-function GetSettings(Section, Ident: string; Default: Integer; ini: TMemIniFile): Integer;
+function GetSettings(const Section, Ident: string; Default: Integer; ini: TMemIniFile): Integer;
 begin
   Result := ini.ReadInteger(Section, Ident, Default)
 end;
 
-function GetSettings(Section, Ident: string; Default: Int64; ini: TMemIniFile): Int64;
+function GetSettings(const Section, Ident: string; Default: Int64; ini: TMemIniFile): Int64;
 begin
   Result := ini.ReadInt64(Section, Ident, Default)
 end;
 
-function GetSettings(Section, Ident: string; Default: Boolean; ini: TMemIniFile): Boolean;
+function GetSettings(const Section, Ident: string; Default: Boolean; ini: TMemIniFile): Boolean;
 begin
   Result := ini.ReadBool(Section, Ident, Default)
+end;
+
+procedure AddOptionToIndex(var Config: TConfigFile; const OptionName: string; LineIndex: Integer; IsComment: Boolean);
+var
+  Data: TArray<TIndexData>;
+  Element: TIndexData;
+begin
+  Element.Index := LineIndex;
+  Element.IsComment := IsComment;
+  if Config.Idx.TryGetValue(OptionName, Data) then
+  begin
+    TArrayHelper.AddToArray<TIndexData>(Data, Element);
+    Config.Idx.AddOrSetValue(OptionName, Data);
+  end
+  else
+  begin
+    TArrayHelper.AddToArray<TIndexData>(Data, Element);
+    Config.Idx.Add(OptionName, Data);
+  end;
 end;
 
 procedure LoadConfig(var Config: TConfigFile; Flags: TConfigFlags = []);
 var
   i: Integer;
+  OptionName: string;
+  IsComment: Boolean;
 begin
   if Assigned(Config.Data) then
     Exit
   else
   begin
     Config.Data := TStringList.Create;
+    Config.Idx := TDictionary<string, TArray<TIndexData>>.Create;
     if FileExists(Config.FileName) then
     begin
       Config.Data.LoadFromFile(Config.FileName, Config.Encoding);
-      if cfTrimLines in Flags then
+      for i := 0 to Config.Data.Count - 1 do
       begin
-        for i := 0 to Config.Data.Count - 1 do
-          Config.Data[i] := Trim(Config.Data[i]);
+        OptionName := LowerCase(GetOptionName(Config.Data[i], IsComment, True));
+        if OptionName <> '' then
+          AddOptionToIndex(Config, OptionName, i, IsComment);
       end;
     end;
   end;
@@ -2155,22 +2133,24 @@ end;
 
 procedure LoadTorConfig;
 begin
-  LoadConfig(tc, [cfTrimLines]);
+  LoadConfig(tc);
 end;
 
 procedure SaveConfig(var Config: TConfigFile; Flags: TConfigFlags = []);
 var
   i: Integer;
+  DeleteBlankLines: Boolean;
 begin
   LoadConfig(Config);
-  if cfDeleteBlankLines in Flags then
-  begin
-    for i := Config.Data.Count - 1 downto 0 do
-      if (i <> 1) and (Config.Data[i] = '') then
-        Config.Data.Delete(i);
-  end;
+  DeleteBlankLines := cfDeleteBlankLines in Flags;
+
+  for i := Config.Data.Count - 1 downto 0 do
+    if (Config.Data[i] = #0) or ((Config.Data[i] = '') and (i <> 1) and DeleteBlankLines) then
+      Config.Data.Delete(i);
+
   Config.Data.SaveToFile(Config.FileName, Config.Encoding);
   FreeAndNil(Config.Data);
+  FreeAndNil(Config.Idx);
 end;
 
 procedure SaveTorConfig;
@@ -2179,183 +2159,342 @@ begin
   TorrcFileID := GetFileID(tc.FileName, True).Data;
 end;
 
-function GetConfig(var Config: TConfigFile; const Param, Default: string; Flags: TConfigFlags = []; ParamType: TParamType = ptString; MinValue: Integer = 0; MaxValue: Integer = 0; Prefix: string = ''): string;
+function GetOptionName(const Line: string; out IsComment: Boolean; FindComments: Boolean = False): string;
 var
-  i, p, ParamSize, CommentPos: Integer;
-  ls: TStringList;
-  Values: set of Byte;
-  Search: Boolean;
+  P, PEnd, NameStart, NameEnd: PChar;
+  HadCommentMark: Boolean;
+begin
+  Result := '';
+  IsComment := False;
+  if Line = '' then Exit;
+
+  P := PChar(Line);
+  PEnd := P + Length(Line);
+  HadCommentMark := False;
+
+  while (P < PEnd) and (P^ = ' ') do
+    Inc(P);
+
+  if P >= PEnd then Exit;
+
+  if P^ = '#' then
+  begin
+    HadCommentMark := True;
+    if not FindComments then
+    begin
+      IsComment := True;
+      Exit;
+    end;
+  end;
+
+  if FindComments then
+    while (P < PEnd) and (P^ = '#') do
+      Inc(P);
+
+  while (P < PEnd) and (P^ = ' ') do
+    Inc(P);
+
+  NameStart := P;
+  while (NameStart < PEnd) and (NameStart^ = ' ') do
+    Inc(NameStart);
+
+  NameEnd := NameStart;
+  while (NameEnd < PEnd) and (NameEnd^ <> ' ') and (NameEnd^ <> #9) do
+    Inc(NameEnd);
+
+  if NameEnd > NameStart then
+  begin
+    SetString(Result, NameStart, NameEnd - NameStart);
+    IsComment := HadCommentMark and FindComments;
+  end
+  else
+  begin
+    IsComment := HadCommentMark;
+  end;
+end;
+
+function TryGetOption(const Line, OptionName: string; out Value: string; FindComments: Boolean = False; FindOnly: Boolean = False): Boolean;
+var
+  P, PEnd, ValueStart, ValueEnd: PChar;
+  OptionLen: Integer;
+  InCommentSection: Boolean;
+begin
+  Result := False;
+  Value := '';
+  if (Line = '') or (OptionName = '') then Exit;
+
+  OptionLen := Length(OptionName);
+  P := PChar(Line);
+  PEnd := P + Length(Line);
+  InCommentSection := False;
+
+  while (P < PEnd) and (P^ = ' ') do
+    Inc(P);
+
+  if not FindComments then
+  begin
+    while (P < PEnd) and (P^ = '#') do
+    begin
+      InCommentSection := True;
+      Inc(P);
+      if (P < PEnd) and (P^ <> ' ') then
+        Exit;
+    end;
+    if InCommentSection then Exit;
+  end
+  else
+  begin
+    while (P < PEnd) and (P^ = '#') do
+      Inc(P);
+  end;
+
+  while (P < PEnd) and (P^ = ' ') do
+    Inc(P);
+
+  if (PEnd - P) < OptionLen + 1 then Exit;
+
+  if not (CompareText(OptionName, Copy(Line, P - PChar(Line) + 1, OptionLen)) = 0) then
+    Exit;
+
+  if (P + OptionLen)^ <> ' ' then
+    Exit;
+
+  if FindOnly then
+    Exit(True);
+
+  ValueStart := P + OptionLen + 1;
+  while (ValueStart < PEnd) and (ValueStart^ = ' ') do
+    Inc(ValueStart);
+
+  ValueEnd := ValueStart;
+  while (ValueEnd < PEnd) and (ValueEnd^ <> '#') do
+    Inc(ValueEnd);
+
+  while (ValueEnd > ValueStart) and ((ValueEnd - 1)^ = ' ') do
+    Dec(ValueEnd);
+
+  if ValueEnd > ValueStart then
+  begin
+    SetString(Value, ValueStart, ValueEnd - ValueStart);
+    Result := True;
+  end;
+end;
+
+function GetConfig(var Config: TConfigFile; const Param, Default: string; Flags: TConfigFlags = []; ParamType: TParamType = ptString; MinValue: Integer = 0; MaxValue: Integer = 0): string;
+var
+  LineIndex, i: Integer;
+  Search, FindComments, FindOnly: Boolean;
+  IdxData: TArray<TIndexData>;
+  InsensParam: string;
 
   procedure Reset;
   begin
-    if (Default <> '') and (GetDefaultsValue(Param) <> Default) then
-      Config.Data[i] := Param + ' ' + Default
-    else
-      Config.Data[i] := '';
+    if not IdxData[i].IsComment then
+    begin
+      if (Default <> '') and (GetDefaultsValue(Param) <> Default) then
+        Config.Data[LineIndex] := Param + ' ' + Default
+      else
+      begin
+        Config.Data[LineIndex] := #0;
+        if Length(IdxData) = 1 then
+          Config.Idx.Remove(InsensParam)
+        else
+        begin
+          IdxData[i].Index := -1;
+          Config.Idx.AddOrSetValue(InsensParam, IdxData);
+        end;
+      end;
+    end;
     Result := Default;
   end;
 
 begin
   LoadConfig(Config);
-
-  if cfFindComments in Flags then
-    Values := [1,2,3]
-  else
-    Values := [1];
   Search := False;
+  FindComments := cfFindComments in Flags;
+  FindOnly := cfExistCheck in Flags;
+  InsensParam := LowerCase(Param);
 
-  if cfMultiLine in Flags then
-    ls := TStringList.Create
-  else
-    ls := nil;
-
-  for i := 0 to Config.Data.Count - 1 do
+  if Config.Idx.TryGetValue(InsensParam, IdxData) then
   begin
-    p := InsensPosEx(Param + ' ', Config.Data[i]);
-    Search := p in Values;
-    if Search then
+    for i := 0 to High(IdxData) do
     begin
-      if cfExistCheck in Flags then
+      if IdxData[i].IsComment and not FindComments then
+        Continue;
+      LineIndex := IdxData[i].Index;
+      if (LineIndex > -1) and (LineIndex < Config.Data.Count) then
       begin
-        Result := '1';
-        Exit;
-      end;
-      ParamSize := Length(Param);
-      CommentPos := Pos('#', Config.Data[i]);
-      if CommentPos > p + ParamSize then
-        Result := Trim(copy(Config.Data[i], p + ParamSize + 1, CommentPos - ParamSize - 2))
-      else
-        Result := Trim(copy(Config.Data[i], p + ParamSize + 1, Length(Config.Data[i]) - ParamSize - 1));
-      case ParamType of
-        ptString:
-          if (MinValue > 0) or (MaxValue > 0) then
-          begin
-            ParamSize := Length(Result);
-            if (ParamSize < MinValue) or (ParamSize > MaxValue) then
-              Reset;
-          end;
-        ptInteger:
-          if not ValidInt(Result, MinValue, MaxValue) then
-            Reset;
-        ptBoolean:
+        Search := TryGetOption(Config.Data[LineIndex], Param, Result, FindComments, FindOnly);
+        if Search then
         begin
-          if not ValidInt(Result, 0, 1) then
-            Reset
-          else
+          if FindOnly then
           begin
-            if cfBoolInvert in Flags then
-              Result := BoolToStrDef(not StrToBool(Result));
+            Result := '1';
+            Break;
           end;
+          case ParamType of
+            ptInteger:
+              if not ValidInt(Result, MinValue, MaxValue) then
+                Reset;
+            ptBoolean:
+            begin
+              if not ValidInt(Result, 0, 1) then
+                Reset
+              else
+              begin
+                if cfBoolInvert in Flags then
+                  Result := BoolToStrDef(not StrToBool(Result));
+              end;
+            end;
+          end;
+          Break;
         end;
-        ptSocket:
-          if ValidSocket(Result, Boolean(MinValue)) = soNone then
-            Reset;
-        ptHost:
-          if ValidHost(Result, False, True, Boolean(MinValue)) = htNone then
-            Reset;
-        ptBridge:
-          if not ValidBridge(Result) then
-          begin
-            Config.Data[i] := '';
-            Continue;
-          end;
       end;
-      if cfMultiLine in Flags then
-      begin
-        if Result <> '' then
-          ls.Append(Result)
-      end
-      else
-        Break;
     end;
   end;
 
-  if cfMultiLine in Flags then
+  if not Search then
   begin
-    if ls.Count = 0 then
-      Result := Default
-    else
-    begin
-      Result := '';
-      DeleteDuplicatesFromList(ls);
-      for i := 0 to ls.Count - 1 do
-        Result := Result + '|' + ls[i];
-      Delete(Result, 1, 1);
-    end;
-    ls.Free;
-  end
-  else
-  begin
-    if not Search then
-    begin
-      Result := Default;
-      if cfAutoAppend in Flags then
-        Config.Data.Append(Param + ' ' + Default);
-    end;
+    Result := Default;
+    if cfAutoAppend in Flags then
+      AddOptionToIndex(Config, InsensParam, Config.Data.Add(Param + ' ' + Default), False);
   end;
-
   if cfAutoSave in Flags then
     SaveConfig(Config);
 end;
 
-function GetTorConfig(const Param, Default: string; Flags: TConfigFlags = []; ParamType: TParamType = ptString; MinValue: Integer = 0; MaxValue: Integer = 0; Prefix: string = ''): string;
+function GetConfig(var Config: TConfigFile; const Param: string; Flags: TConfigFlags = []): TStringList;
+var
+  LineIndex, i: Integer;
+  DataStr, InsensParam: string;
+  FindComments: Boolean;
+  IdxData: TArray<TIndexData>;
 begin
-  Result := GetConfig(tc, Param, Default, Flags, ParamType, MinValue, MaxValue, Prefix);
+  Result := nil;
+  LoadConfig(Config);
+  FindComments := cfFindComments in Flags;
+  InsensParam := LowerCase(Param);
+
+  if Config.Idx.TryGetValue(InsensParam, IdxData) then
+  begin
+    for i := 0 to High(IdxData) do
+    begin
+      if IdxData[i].IsComment and not FindComments then
+        Continue;
+      LineIndex := IdxData[i].Index;
+      if (LineIndex > -1) and (LineIndex < Config.Data.Count) then
+      begin
+        if TryGetOption(Config.Data[LineIndex], Param, DataStr, FindComments) then
+        begin
+          if DataStr <> '' then
+          begin
+            if Result = nil then
+              Result := TStringList.Create;
+            Result.Append(DataStr);
+          end;
+        end;
+      end;
+    end;
+  end;
+  if cfAutoSave in Flags then
+    SaveConfig(Config);
 end;
 
-procedure SetConfig(var Config: TConfigFile; const Param: string; Values: TStringList; Flags: TConfigFlags = []);
+function GetTorConfig(const Param, Default: string; Flags: TConfigFlags = []; ParamType: TParamType = ptString; MinValue: Integer = 0; MaxValue: Integer = 0; const Prefix: string = ''): string;
+begin
+  Result := GetConfig(tc, Param, Default, Flags, ParamType, MinValue, MaxValue);
+end;
+
+function GetTorConfig(const Param: string; Flags: TConfigFlags = []): TStringList;
+begin
+  Result := GetConfig(tc, Param, Flags);
+end;
+
+procedure AddConfig(var Config: TConfigFile; const Param: string; Values: TStringList; Flags: TConfigFlags = []);
 var
   DataCount, i: Integer;
+  InsensParam: string;
 begin
   LoadConfig(Config);
   DataCount := Values.Count;
+
   if DataCount > 0 then
   begin
+    InsensParam := LowerCase(Param);
     for i := 0 to DataCount - 1 do
     begin
       if Values[i] <> '' then
-        Config.Data.Append(Param + ' ' + Values[i]);
+        AddOptionToIndex(Config, InsensParam, Config.Data.Add(Param + ' ' + Values[i]), False);
     end;
   end
   else
-    DeleteConfig(Config, Param, [cfMultiLine]);
+    DeleteConfig(Config, [Param]);
   if cfAutoSave in Flags then
     SaveConfig(Config);
 end;
 
-procedure SetTorConfig(const Param: string; Values: TStringList; Flags: TConfigFlags = []);
+procedure AddConfig(var Config: TConfigFile; const Param, Value: string; Flags: TConfigFlags = []);
 begin
-  SetConfig(tc, Param, Values, Flags);
+  LoadConfig(Config);
+  if Value <> '' then
+    AddOptionToIndex(Config, LowerCase(Param), Config.Data.Add(Param + ' ' + Value), False);
+  if cfAutoSave in Flags then
+    SaveConfig(Config);
+end;
+
+procedure AddTorConfig(const Param: string; Values: TStringList; Flags: TConfigFlags = []);
+begin
+  AddConfig(tc, Param, Values, Flags);
+end;
+
+procedure AddTorConfig(const Param, Value: string; Flags: TConfigFlags = []);
+begin
+  AddConfig(tc, Param, Value, Flags);
 end;
 
 procedure SetConfig(var Config: TConfigFile; const Param, Value: string; Flags: TConfigFlags = []);
 var
-  i, p: Integer;
-  Values: set of Byte;
+  LineIndex, i: Integer;
+  Search, FindComments: Boolean;
+  InsensParam: string;
+  IdxData: TArray<TIndexData>;
 begin
   LoadConfig(Config);
-  p := 0;
-  if cfFindComments in Flags then
-    Values := [1,2,3]
-  else
-    Values := [1];
-  for i := Config.Data.Count - 1 downto 0 do
+  Search := False;
+  FindComments := cfFindComments in Flags;
+  InsensParam := LowerCase(Param);
+
+  if Config.Idx.TryGetValue(InsensParam, IdxData) then
   begin
-    p := InsensPosEx(Param + ' ', Config.Data[i]);
-    if p in Values then
-      Break;
+    for i := 0 to High(IdxData) do
+    begin
+      if IdxData[i].IsComment and not FindComments then
+        Continue;
+      LineIndex := IdxData[i].Index;
+      if (LineIndex > -1) and (LineIndex < Config.Data.Count) then
+      begin
+        Search := True;
+        if (Value <> '') and (GetDefaultsValue(Param) <> Value) then
+          Config.Data[LineIndex] := Param + ' ' + Value
+        else
+        begin
+          Config.Data[LineIndex] := #0;
+          if Length(IdxData) = 1 then
+            Config.Idx.Remove(InsensParam)
+          else
+          begin
+            IdxData[i].Index := -1;
+            Config.Idx.AddOrSetValue(InsensParam, IdxData);
+          end;
+        end;
+        Break;
+      end;
+    end;
   end;
-  if p in Values then
+  if not Search then
   begin
     if (Value <> '') and (GetDefaultsValue(Param) <> Value) then
-      Config.Data[i] := Param + ' ' + Value
-    else
-      Config.Data.Delete(i);
-  end
-  else
-  begin
-    if (Value <> '') and (GetDefaultsValue(Param) <> Value) then
-      Config.Data.Append(Param + ' ' + Value);
+      AddOptionToIndex(Config, InsensParam, Config.Data.Add(Param + ' ' + Value), False);
   end;
   if cfAutoSave in Flags then
     SaveConfig(Config);
@@ -2366,40 +2505,57 @@ begin
   SetConfig(tc, Param, Value, Flags);
 end;
 
-procedure DeleteConfig(var Config: TConfigFile; const Param: string; Flags: TConfigFlags = []);
+procedure DeleteConfig(var Config: TConfigFile; const Params: TArray<string>; Flags: TConfigFlags = []);
 var
-  i,j: Integer;
-  Values: set of Byte;
-  ParseStr: ArrOfStr;
+  LineIndex, i, j: Integer;
+  FindComments, CommentsFound, ParamWithoutSpace: Boolean;
+  InsensParam, DataStr: string;
+  IdxData: TArray<TIndexData>;
 begin
   LoadConfig(Config);
-  if cfFindComments in Flags then
-    Values := [1,2,3]
-  else
-    Values := [1];
-  ParseStr := Explode(',', Param);
-  for i := Config.Data.Count - 1 downto 0 do
+  FindComments := cfFindComments in Flags;
+  ParamWithoutSpace := not (cfParamWithSpace in Flags);
+
+  for i := 0 to High(Params) do
   begin
-    for j := 0 to Length(ParseStr) - 1 do
+    InsensParam := LowerCase(SeparateLeft(Params[i], ' '));
+    if Config.Idx.TryGetValue(InsensParam, IdxData) then
     begin
-      if InsensPosEx(ParseStr[j] + ' ', Config.Data[i]) in Values then
+      CommentsFound := False;
+      for j := 0 to High(IdxData) do
       begin
-        Config.Data.Delete(i);
-        if not (cfMultiLine in Flags) then
-          Break;
+        if IdxData[j].IsComment and not FindComments then
+        begin
+          CommentsFound := True;
+          Continue;
+        end;
+        LineIndex := IdxData[j].Index;
+        if (LineIndex > -1) and (LineIndex < Config.Data.Count) then
+        begin
+          if ParamWithoutSpace or TryGetOption(Config.Data[LineIndex], Params[i], DataStr, FindComments, True) then
+          begin
+            Config.Data[LineIndex] := #0;
+            IdxData[j].Index := -1;
+          end;
+        end;
       end;
+      if CommentsFound then
+        Config.Idx.AddOrSetValue(InsensParam, IdxData)
+      else
+        Config.Idx.Remove(InsensParam);
     end;
   end;
+
   if cfAutoSave in Flags then
     SaveConfig(Config);
 end;
 
-procedure DeleteTorConfig(const Param: string; Flags: TConfigFlags = []);
+procedure DeleteTorConfig(const Params: TArray<string>; Flags: TConfigFlags = []);
 begin
-  DeleteConfig(tc, Param, Flags);
+  DeleteConfig(tc, Params, Flags);
 end;
 
-procedure SetConfigBoolean(Section, Ident: string; Value: Boolean);
+procedure SetConfigBoolean(const Section, Ident: string; Value: Boolean);
 var
   ini: TMemIniFile;
 begin
@@ -2411,7 +2567,7 @@ begin
   end;
 end;
 
-procedure SetConfigInteger(Section, Ident: string; Value: Int64); overload;
+procedure SetConfigInteger(const Section, Ident: string; Value: Int64); overload;
 var
   ini: TMemIniFile;
 begin
@@ -2423,7 +2579,7 @@ begin
   end;
 end;
 
-procedure SetConfigInteger(Section, Ident: string; Value: Integer); overload;
+procedure SetConfigInteger(const Section, Ident: string; Value: Integer); overload;
 var
   ini: TMemIniFile;
 begin
@@ -2435,7 +2591,7 @@ begin
   end;
 end;
 
-procedure SetConfigString(Section, Ident: string; Value: string);
+procedure SetConfigString(const Section, Ident: string; Value: string);
 var
   ini: TMemIniFile;
 begin
@@ -2447,152 +2603,156 @@ begin
   end;
 end;
 
-procedure DeleteDuplicatesFromList(var List: TStringList; ListType: TListType = ltNone);
+procedure DeleteDuplicatesFromList(var ls: TStringList; ListType: TListType = ltNone);
 var
-  ls: TDictionary<string, Byte>;
+  Duplicates: THashSet<string>;
+  List: TStringList;
   SocketStr: string;
   i: Integer;
 
-  procedure UpdateList(Str: string);
+  procedure UpdateList(const Str: string);
   begin
-    if ls.ContainsKey(Str) then
-      List.Delete(i)
-    else
-      ls.AddOrSetValue(Str, 0);
+    if not Duplicates.Contains(Str) then
+    begin
+      Duplicates.Add(Str);
+      List.Append(ls[i]);
+    end;
   end;
 
 begin
-  if List.Count < 2 then
+  if ls.Count < 2 then
     Exit;
-  ls := TDictionary<string, Byte>.Create;
+  Duplicates := THashSet<string>.Create(ls.Count);
+  List := TStringList.Create;
   try
     if ListType = ltBridge then
     begin
-      for i := List.Count - 1 downto 0 do
+      for i := 0 to ls.Count - 1 do
       begin
-        if TryGetDataFromStr(List[i], ltSocket, SocketStr) then
+        if TryGetDataFromStr(ls[i], ltSocket, SocketStr) then
           UpdateList(SocketStr)
         else
-          UpdateList(List[i]);
+          UpdateList(ls[i]);
       end;
     end
     else
     begin
-      for i := List.Count - 1 downto 0 do
-        UpdateList(List[i]);
+      for i := 0 to ls.Count - 1 do
+        UpdateList(ls[i]);
     end;
+    ls.SetStrings(List);
   finally
-    ls.Free;
+    Duplicates.Free;
+    List.Free;
   end;
 end;
 
 procedure SortHostsList(var ls: TStringList; SortType: Byte = SORT_ASC);
 var
   i: Integer;
-  IpV4Addresses, IpV6Addresses, Hosts: TStringList;
+  IPv4Addrs, IPv6Addr, Hosts: TArray<string>;
+  IPv4AddrsCount, IPv6AddrsCount, HostsCount: Integer;
 begin
   if (SortType = SORT_NONE) or (ls.Count < 2)  then
     Exit;
-  IpV4Addresses := TStringList.Create;
-  IpV6Addresses := TStringList.Create;
-  Hosts := TStringList.Create;
-  try
-    for i := 0 to ls.Count - 1 do
+  IPv4AddrsCount := 0;
+  IPv6AddrsCount := 0;
+  HostsCount := 0;
+  for i := 0 to ls.Count - 1 do
+  begin
+    case ValidAddress(ls[i]) of
+      atIPv4: TArrayHelper.AddToArray<string>(IPv4Addrs, IPv4AddrsCount, ls[i]);
+      atIPv6: TArrayHelper.AddToArray<string>(IPv6Addr, IPv6AddrsCount, ls[i]);
+      else
+        TArrayHelper.AddToArray<string>(Hosts, HostsCount, ls[i]);
+    end;
+  end;
+  SetLength(IPv4Addrs, IPv4AddrsCount);
+  SetLength(IPv6Addr, IPv6AddrsCount);
+  SetLength(Hosts, HostsCount);
+  ls.Clear;
+  case SortType of
+    SORT_ASC:
     begin
-      case ValidAddress(ls[i]) of
-        atIPv4: IpV4Addresses.Append(ls[i]);
-        atIPv6: IpV6Addresses.Append(ls[i]);
-        else
-          Hosts.Append(ls[i]);
-      end;
+      TArray.Sort<string>(IPv4Addrs, TComparer<string>.Construct(CompTextAsc));
+      TArray.Sort<string>(IPv6Addr, TComparer<string>.Construct(CompTextAsc));
+      TArray.Sort<string>(Hosts, TComparer<string>.Construct(CompTextAsc));
+      ls.AddStrings(IPv4Addrs);
+      ls.AddStrings(IPv6Addr);
+      ls.AddStrings(Hosts);
     end;
-    ls.Clear;
-    case SortType of
-      SORT_ASC:
-      begin
-        IpV4Addresses.CustomSort(CompTextAsc);
-        IpV6Addresses.CustomSort(CompTextAsc);
-        Hosts.CustomSort(CompTextAsc);
-        ls.AddStrings(IpV4Addresses);
-        ls.AddStrings(IpV6Addresses);
-        ls.AddStrings(Hosts);
-      end;
-      SORT_DESC:
-      begin
-        IpV4Addresses.CustomSort(CompTextDesc);
-        IpV6Addresses.CustomSort(CompTextDesc);
-        Hosts.CustomSort(CompTextDesc);
-        ls.AddStrings(Hosts);
-        ls.AddStrings(IpV6Addresses);
-        ls.AddStrings(IpV4Addresses);
-      end;
+    SORT_DESC:
+    begin
+      TArray.Sort<string>(IPv4Addrs, TComparer<string>.Construct(CompTextDesc));
+      TArray.Sort<string>(IPv6Addr, TComparer<string>.Construct(CompTextDesc));
+      TArray.Sort<string>(Hosts, TComparer<string>.Construct(CompTextDesc));
+      ls.AddStrings(Hosts);
+      ls.AddStrings(IPv6Addr);
+      ls.AddStrings(IPv4Addrs);
     end;
-  finally
-    IpV4Addresses.Free;
-    IpV6Addresses.Free;
-    Hosts.Free;
   end;
 end;
 
 procedure SortNodesList(var ls: TStringList; SortType: Byte = SORT_ASC);
 var
-  i: Integer;
-  Hashes, Addresses, CountryCodes: TStringList;
+  i, HashesCount, IPv4AddrsCount, IPv4CidrsCount, CountryCodesCount: Integer;
+  Hashes, IPv4Addrs, IPv4Cidrs, CountryCodes: TArray<string>;
 begin
   if (SortType = SORT_NONE) or (ls.Count < 2) then
     Exit;
-  Addresses := TStringList.Create;
-  CountryCodes := TStringList.Create;
-  Hashes := TStringList.Create;
-  try
-    for i := 0 to ls.Count - 1 do
+  HashesCount := 0;
+  IPv4AddrsCount := 0;
+  IPv4CidrsCount := 0;
+  CountryCodesCount := 0;
+  for i := 0 to ls.Count - 1 do
+  begin
+    case ValidNode(ls[i], False) of
+      dtHash: TArrayHelper.AddToArray<string>(Hashes, HashesCount, ls[i]);
+      dtIPv4: TArrayHelper.AddToArray<string>(IPv4Addrs, IPv4AddrsCount, ls[i]);
+      dtIPv4Cidr: TArrayHelper.AddToArray<string>(IPv4Cidrs, IPv4CidrsCount, ls[i]);
+      dtCode: TArrayHelper.AddToArray<string>(CountryCodes, CountryCodesCount, ls[i]);
+    end;
+  end;
+  SetLength(Hashes, HashesCount);
+  SetLength(IPv4Addrs, IPv4AddrsCount);
+  SetLength(IPv4Cidrs, IPv4CidrsCount);
+  SetLength(CountryCodes, CountryCodesCount);
+
+  ls.Clear;
+  case SortType of
+    SORT_ASC:
     begin
-      if ValidHash(ls[i]) then
-        Hashes.Append(ls[i])
-      else
-      begin
-        if FilterDic.ContainsKey(LowerCase(ls[i])) then
-          CountryCodes.Append(ls[i])
-        else
-          Addresses.Append(ls[i])
-      end;
+      TArray.Sort<string>(IPv4Addrs, TComparer<string>.Construct(CompTextAsc));
+      TArray.Sort<string>(IPv4Cidrs, TComparer<string>.Construct(CompTextAsc));
+      TArray.Sort<string>(CountryCodes, TComparer<string>.Construct(CompAsc));
+      TArray.Sort<string>(Hashes, TComparer<string>.Construct(CompAsc));
+      ls.AddStrings(CountryCodes);
+      ls.AddStrings(IPv4Cidrs);
+      ls.AddStrings(IPv4Addrs);
+      ls.AddStrings(Hashes);
     end;
-    ls.Clear;
-    case SortType of
-      SORT_ASC:
-      begin
-        Addresses.CustomSort(CompTextAsc);
-        CountryCodes.Sort;
-        Hashes.Sort;
-        ls.AddStrings(CountryCodes);
-        ls.AddStrings(Addresses);
-        ls.AddStrings(Hashes);
-      end;
-      SORT_DESC:
-      begin
-        Addresses.CustomSort(CompTextDesc);
-        CountryCodes.CustomSort(CompDesc);
-        Hashes.CustomSort(CompDesc);
-        ls.AddStrings(Hashes);
-        ls.AddStrings(Addresses);
-        ls.AddStrings(CountryCodes);
-      end;
+    SORT_DESC:
+    begin
+      TArray.Sort<string>(IPv4Addrs, TComparer<string>.Construct(CompTextDesc));
+      TArray.Sort<string>(IPv4Cidrs, TComparer<string>.Construct(CompTextDesc));
+      TArray.Sort<string>(CountryCodes,TComparer<string>.Construct(CompDesc));
+      TArray.Sort<string>(Hashes,TComparer<string>.Construct(CompDesc));
+      ls.AddStrings(Hashes);
+      ls.AddStrings(IPv4Addrs);
+      ls.AddStrings(IPv4Cidrs);
+      ls.AddStrings(CountryCodes);
     end;
-  finally
-    Hashes.Free;
-    Addresses.Free;
-    CountryCodes.Free;
   end;
 end;
 
-function ValidData(Str: string; ListType: TListType): Boolean;
+function ValidData(const Str: string; ListType: TListType; Validate: Boolean = True): Boolean;
 begin
   case ListType of
     ltHost: Result := ValidHost(Str, True, True) <> htNone;
     ltHash: Result := ValidHash(Str);
     ltPolicy: Result := ValidPolicy(Str);
     ltBridge: Result := ValidBridge(Str);
-    ltNode: Result := ValidNode(Str) <> dtNone;
+    ltNode: Result := ValidNode(Str, Validate) <> dtNone;
     ltSocket: Result := ValidSocket(Str) <> soNone;
     ltTransport: Result := ValidTransport(Str);
     ltFallbackDir: Result := ValidFallbackDir(Str);
@@ -2611,7 +2771,7 @@ begin
     ltHash:
     begin
       case SortType of
-        SORT_ASC: ls.Sort;
+        SORT_ASC: ls.CustomSort(CompAsc);
         SORT_DESC: ls.CustomSort(CompDesc);
       end;
     end;
@@ -2625,43 +2785,43 @@ begin
   end;
 end;
 
-procedure LineToMemo(Line: string; Memo: TMemo; SortType: Byte = SORT_NONE; Separator: string = ',');
+procedure LineToMemo(const Line: string; Memo: TMemo; SortType: Byte = SORT_NONE; const Separator: string = ','; RemoveDuplicates: Boolean = True; Validate: Boolean = True);
 var
-  ParseStr: ArrOfStr;
+  ParseStr: TArray<string>;
   ListType: TListType;
-  i, DataCount: Integer;
+  i: Integer;
   ls: TStringList;
   Str: string;
 begin
   ListType := Memo.ListType;
-  ParseStr := Explode(Separator, Line);
-  DataCount := Length(ParseStr);
-  if (DataCount = 1) and (Trim(ParseStr[0]) = '') then
-    DataCount := 0;
+  if ListType = ltNode then
+    ParseStr := UpperCase(Line).Split([Separator])
+  else
+    ParseStr := Line.Split([Separator]);
   ls := TStringList.Create;
   try
     if ListType = ltNone then
     begin
-      if DataCount <> 0 then
+      for i := 0 to High(ParseStr) do
       begin
-        for i := 0 to Length(ParseStr) - 1 do
-          ls.Append(ParseStr[i]);
+        Str := Trim(ParseStr[i]);
+        if Str <> '' then
+          ls.Append(Str);
       end;
     end
     else
     begin
-      for i := 0 to Length(ParseStr) - 1 do
+      for i := 0 to High(ParseStr) do
       begin
         Str := Trim(ParseStr[i]);
         if Str <> '' then
         begin
-          if ListType = ltNode then
-            Str := UpperCase(Str);
-          if ValidData(Str, ListType) then
+          if ValidData(Str, ListType, Validate) then
             ls.Append(Str);
         end;
       end;
-      DeleteDuplicatesFromList(ls, ListType);
+      if RemoveDuplicates then
+        DeleteDuplicatesFromList(ls, ListType);
       SortList(ls, ListType, SortType);
     end;
     Memo.SetTextData(ls.Text);
@@ -2670,27 +2830,20 @@ begin
   end;
 end;
 
-function MemoToLine(Memo: TMemo; SortType: Byte = SORT_NONE; Separator: string = ','): string;
+function MemoToLine(Memo: TMemo; SortType: Byte = SORT_NONE; const Separator: string = ','): string;
 var
   ls: TStringList;
-  i: Integer;
 begin
   ls := TStringList.Create;
   try
-    MemoToList(Memo, SortType, ls);
-    Result := '';
-    if ls.Count > 0 then
-    begin
-      for i := 0 to ls.Count - 1 do
-        Result := Result + Separator + ls[i];
-      Delete(Result, 1, Length(Separator));
-    end;
+    MemoToList(Memo, ls, SortType);
+    Result := ListToStr(ls, Separator);
   finally
     ls.Free;
   end;
 end;
 
-procedure MemoToList(Memo: TMemo; SortType: Byte; out ls: TStringList);
+procedure MemoToList(Memo: TMemo; out ls: TStringList; SortType: Byte = SORT_NONE);
 var
   i: Integer;
   ListType: TListType;
@@ -2705,9 +2858,10 @@ begin
       ls.Text := Memo.Text
     else
     begin
-      ls.Text := StringReplace(Memo.Text, ',', BR, [rfReplaceAll]);
       if ListType = ltNode then
-        ls.Text := UpperCase(RemoveBrackets(ls.Text, btCurly));
+        ls.Text := UpperCase(RemoveBrackets(StringReplace(Memo.Text, ',', BR, [rfReplaceAll]), btCurly, False))
+      else
+        ls.Text := StringReplace(Memo.Text, ',', BR, [rfReplaceAll]);
     end;
     for i := ls.Count - 1 downto 0 do
     begin
@@ -2721,7 +2875,7 @@ begin
           ltHash: Str := UpperCase(Str);
           ltPolicy: Str := LowerCase(Str);
           ltBridge:
-            if InsensPosEx('Bridge ', Str) = 1 then
+            if Str.StartsWith('Bridge ', True) then
               Str := Copy(Str, 8);
         end;
         if ValidData(Str, ListType) then
@@ -2736,11 +2890,45 @@ begin
   end;
 end;
 
-procedure AddUPnPEntry(Port: Integer; Desc, LanIp: string; Test: Boolean; var Msg: string);
+function ListToStr(ls: TStringList; const Delimiter: string): string;
+var
+  i, Len, DelimLen: Integer;
+  p: PChar;
+begin
+  if ls.Count = 0 then
+    Exit('');
+
+  DelimLen := Length(Delimiter);
+  Len := 0;
+  for i := 0 to ls.Count - 1 do
+    Len := Len + Length(ls[i]);
+  Len := Len + (ls.Count - 1) * DelimLen;
+
+  SetLength(Result, Len);
+  p := PChar(Result);
+
+  for i := 0 to ls.Count - 1 do
+  begin
+    if (i > 0) and (DelimLen > 0) then
+    begin
+      Move(Delimiter[1], p^, DelimLen * SizeOf(Char));
+      Inc(p, DelimLen);
+    end;
+
+    Len := Length(ls[i]);
+    if Len > 0 then
+    begin
+      Move(ls[i][1], p^, Len * SizeOf(Char));
+      Inc(p, Len);
+    end;
+  end;
+end;
+
+procedure AddUPnPEntry(Port: Integer; const Desc, LanIp: string; Test: Boolean; var Msg: string);
 var
   Nat: OleVariant;
   Ports: OleVariant;
-  procedure FormatMsg(Str: string);
+  procedure FormatMsg(const Str: string);
   begin
     Msg := Msg + LanIp + ' : ' + inttostr(Port) + ' - ' + Str + BR;
   end;
@@ -2768,7 +2956,7 @@ begin
   end;
 end;
 
-procedure RemoveUPnPEntry(PortList: array of Word);
+procedure RemoveUPnPEntry(const PortList: array of Word);
 var
   Nat: Variant;
   Ports: Variant;
@@ -2801,15 +2989,15 @@ end;
 
 function IsDirectoryWritable(const Dir: string): Boolean;
 var
-  TempFile: array[0..MAX_PATH] of Char;
+  FileName: array[0..MAX_PATH] of Char;
 begin
-  if GetTempFileName(PChar(Dir), 'Tmp', 0, TempFile) <> 0 then
-    Result := DeleteFile(TempFile)
+  if GetTempFileName(PChar(Dir), 'Tmp', 0, FileName) <> 0 then
+    Result := DeleteFile(FileName)
   else
     Result := False;
 end;
 
-function GetFullFileName(FileName: string): string;
+function GetFullFileName(const FileName: string): string;
 var
    ppshf: IShellFolder;
    lpItemID: PItemIDList;
@@ -2875,12 +3063,12 @@ begin
   Result := '';
 end;
 
-function RegistryFileExists(Root: HKEY; Key, Param: string): Boolean;
+function RegistryFileExists(Root: HKEY; const Key, Param: string): Boolean;
 begin
   Result := FileExists(GetCommandLineFileName(RegistryGetValue(Root, Key, Param)));
 end;
 
-function RegistryGetValue(Root: HKEY; Key, Param: string): string;
+function RegistryGetValue(Root: HKEY; const Key, Param: string): string;
 var
   Reg: TRegistry;
 begin
@@ -2899,16 +3087,16 @@ begin
   end;
 end;
 
-function TryGetDataFromStr(Str: string; DataType: TListType; out DatatStr: string; Separator: string = ''): Boolean;
+function TryGetDataFromStr(const Str: string; DataType: TListType; out DatatStr: string; const Separator: string = ''): Boolean;
 var
   i: Integer;
-  ParseStr: ArrOfStr;
+  ParseStr: TArray<string>;
   Data: string;
 begin
   if Str <> '' then
   begin
-    ParseStr := Explode(' ', Str);
-    for i := 0 to Length(ParseStr) - 1 do
+    ParseStr := Str.Split([' ']);
+    for i := 0 to High(ParseStr) do
     begin
       if Separator = '' then
         Data := ParseStr[i]
@@ -2926,7 +3114,7 @@ begin
   DatatStr := '';
 end;
 
-function PortTCPIsOpen(Port: Word; IpStr: string; Timeout: Integer): Boolean;
+function PortTCPIsOpen(Port: Word; const IpStr: string; Timeout: Integer): Boolean;
 var
   Socket: TTCPBlockSocket;
 begin
@@ -2970,7 +3158,7 @@ begin
   end;
 end;
 
-function GetMsgCaption(Caption: string; MsgType: TMsgType): string;
+function GetMsgCaption(const Caption: string; MsgType: TMsgType): string;
 begin
   if Caption = '' then
   begin
@@ -2989,7 +3177,7 @@ begin
     Result := Caption;
 end;
 
-function ShowMsg(Msg: string; Caption: string = ''; MsgType: TMsgType = mtInfo; Question: Boolean = False): Boolean;
+function ShowMsg(const Msg: string; Caption: string = ''; MsgType: TMsgType = mtInfo; Question: Boolean = False): Boolean;
 var
   MsgCode, MsgButtons, MsgResult: Integer;
 begin
@@ -3021,7 +3209,7 @@ begin
     Result := False;
 end;
 
-procedure CheckFileEncoding(FileName, BackupFile: string);
+procedure CheckFileEncoding(const FileName, BackupFile: string);
 var
   AStream: TFileStream;
   Options: TStringList;
@@ -3069,7 +3257,7 @@ begin
   end;
 end;
 
-procedure Flush(FileName: string);
+procedure Flush(const FileName: string);
 var
   Handle: HFILE;
 begin
@@ -3107,6 +3295,67 @@ begin
   end;
 end;
 
+function CompareNaturalText(const S1, S2: string; CaseSensitive: Boolean = False): Integer;
+var
+  P1, P2: PChar;
+  Num1, Num2: Integer;
+  IsDigit1, IsDigit2: Boolean;
+begin
+  P1 := PChar(S1);
+  P2 := PChar(S2);
+
+  while True do
+  begin
+    if P1^ = #0 then
+      Exit(IfThen(P2^ = #0, 0, -1));
+    if P2^ = #0 then
+      Exit(1);
+
+    IsDigit1 := (P1^ >= '0') and (P1^ <= '9');
+    IsDigit2 := (P2^ >= '0') and (P2^ <= '9');
+
+    if IsDigit1 and IsDigit2 then
+    begin
+      Num1 := 0;
+      Num2 := 0;
+
+      while (P1^ >= '0') and (P1^ <= '9') do
+      begin
+        if Num1 > (MaxInt - 10) div 10 then Break;
+        Num1 := Num1 * 10 + (Ord(P1^) - Ord('0'));
+        Inc(P1);
+      end;
+
+      while (P2^ >= '0') and (P2^ <= '9') do
+      begin
+        if Num2 > (MaxInt - 10) div 10 then Break;
+        Num2 := Num2 * 10 + (Ord(P2^) - Ord('0'));
+        Inc(P2);
+      end;
+
+      if Num1 < Num2 then Exit(-1);
+      if Num1 > Num2 then Exit(1);
+    end
+    else
+    begin
+      if CaseSensitive then
+      begin
+        if P1^ < P2^ then Exit(-1);
+        if P1^ > P2^ then Exit(1);
+      end
+      else
+      begin
+        if (P1^ <> P2^) and ((Ord(P1^) or $20) <> (Ord(P2^) or $20)) then
+        begin
+          if (Ord(P1^) or $20) < (Ord(P2^) or $20) then Exit(-1) else Exit(1);
+        end;
+      end;
+      Inc(P1);
+      Inc(P2);
+    end;
+  end;
+end;
+
 function CompIntObjectAsc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
 begin
   Result := CompareValue(Integer(aSl.Objects[aIndex1]), Integer(aSl.Objects[aIndex2]));
@@ -3117,9 +3366,24 @@ begin
   Result := CompareValue(Integer(aSl.Objects[aIndex2]), Integer(aSl.Objects[aIndex1]));
 end;
 
+function CompAsc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
+begin
+  Result := CompareStr(aSl[aIndex1], aSl[aIndex2]);
+end;
+
 function CompDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
 begin
-  Result := AnsiCompareText(aSl[aIndex2], aSl[aIndex1]);
+  Result := CompareStr(aSl[aIndex2], aSl[aIndex1]);
+end;
+
+function CompAsc(const A, B: string) : Integer;
+begin
+  Result := CompareStr(A, B);
+end;
+
+function CompDesc(const A, B: string) : Integer;
+begin
+  Result := CompareStr(B, A);
 end;
 
 function CompIntAsc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
@@ -3134,12 +3398,22 @@ end;
 
 function CompTextAsc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
 begin
-  Result := CompareNaturalText(PWideChar(aSl[aIndex1]), PWideChar(aSl[aIndex2]));
+  Result := CompareNaturalText(aSl[aIndex1], aSl[aIndex2]);
 end;
 
 function CompTextDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
 begin
-  Result := CompareNaturalText(PWideChar(aSl[aIndex2]), PWideChar(aSl[aIndex1]));
+  Result := CompareNaturalText(aSl[aIndex2], aSl[aIndex1]);
+end;
+
+function CompTextAsc(const A, B: string) : Integer;
+begin
+  Result := CompareNaturalText(A, B);
+end;
+
+function CompTextDesc(const A, B: string) : Integer;
+begin
+  Result := CompareNaturalText(B, A);
 end;
 
 function CompSizeAsc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
@@ -3174,26 +3448,44 @@ end;
 
 procedure SgSort(aSg: TStringGrid; aCol: Integer; aCompare: TStringListSortCompare);
 var
-  SlSort, SlRow: TStringList;
-  i, j: Integer;
+  SlSort: TStringList;
+  RowData: array of TStringList;
+  SortKeys: array of string;
+  i, j, RowStart, RowEnd, RowCount: Integer;
 begin
+  RowStart := aSg.FixedRows;
+  RowEnd := aSg.RowCount - 1;
+  RowCount := RowEnd - RowStart + 1;
+
+  SetLength(RowData, RowCount);
+  SetLength(SortKeys, RowCount);
+
+  for i := 0 to RowCount - 1 do
+  begin
+    RowData[i] := TStringList.Create;
+    RowData[i].Assign(aSg.Rows[i + RowStart]);
+    SortKeys[i] := aSg.Cells[aCol, i + RowStart];
+  end;
+
   SlSort := TStringList.Create;
-  for i := aSg.FixedRows to aSg.RowCount - 1 do
-  begin
-    SlRow := TStringList.Create;
-    SlRow.Assign(aSg.Rows[i]);
-    SlSort.AddObject(aSg.Cells[aCol, i], SlRow);
+  try
+    SlSort.Capacity := RowCount;
+    SlSort.Duplicates := dupAccept;
+
+    for i := 0 to RowCount - 1 do
+      SlSort.AddObject(SortKeys[i], TObject(i));
+
+    SlSort.CustomSort(aCompare);
+    for i := 0 to RowCount - 1 do
+    begin
+      j := Integer(SlSort.Objects[i]);
+      aSg.Rows[i + RowStart].Assign(RowData[j]);
+    end;
+  finally
+    SlSort.Free;
+    for i := 0 to RowCount - 1 do
+      RowData[i].Free;
   end;
-  SlSort.CustomSort(aCompare);
-  j := 0;
-  for i := aSg.FixedRows to aSg.RowCount - 1 do
-  begin
-    SlRow := Pointer(SlSort.Objects[j]);
-    aSg.Rows[i].Assign(SlRow);
-    SlRow.Free;
-    Inc(j);
-  end;
-  FreeAndNil(SlSort);
 end;
 
 function GetTaskBarPos: TTaskBarPos;
@@ -3220,17 +3512,20 @@ begin
   end;
 end;
 
-procedure LoadThemesList(ThemesList: TComboBox; LastStyle: string);
+procedure LoadThemesList(ThemesList: TComboBox; const LastStyle: string);
 var
   Search: TSearchRec;
   ls: TStringList;
   Index: Integer;
+  Style: string;
 begin
   if LastStyle = 'Windows' then
-    LastStyle := TransStr('104')
+    Style := TransStr('104')
   else
     if LastStyle = '' then
-      LastStyle := ThemesList.Text;
+      Style := ThemesList.Text
+    else
+      Style := LastStyle;
   ls := TStringList.Create;
   try
     ls.Append(TransStr('104'));
@@ -3246,7 +3541,7 @@ begin
       end;
     end;
     ThemesList.Items := ls;
-    Index := ThemesList.Items.IndexOf(LastStyle);
+    Index := ThemesList.Items.IndexOf(Style);
     if Index = -1 then
       ThemesList.ItemIndex := 0
     else
@@ -3279,7 +3574,7 @@ begin
       end;
     end;
   end;
-  for i := Length(TStyleManager.StyleNames) - 1 downto 0 do
+  for i := High(TStyleManager.StyleNames) downto 0 do
   begin
     StyleName := TStyleManager.StyleNames[i];
     if (StyleName <> 'Windows') and (StyleName <> TStyleManager.ActiveStyle.Name) then
@@ -3287,14 +3582,15 @@ begin
   end;
 end;
 
-procedure GetLocalInterfaces(ComboBox: TComboBox; RecentHost: string = '');
+procedure GetLocalInterfaces(ComboBox: TComboBox; const RecentHost: string = '');
 var
   i, Index: Integer;
   ls: TStringList;
   TcpSock: TTCPBlockSocket;
   FindIPv6, ShowIPv6, ShowMask: Boolean;
+  Host: string;
 
-  procedure AddToList(Str: string);
+  procedure AddToList(const Str: string);
   var
     Search: Integer;
   begin
@@ -3307,9 +3603,9 @@ var
 
 begin
   if RecentHost = '' then
-    RecentHost := Combobox.Text
+    Host := Combobox.Text
   else
-    RecentHost := RemoveBrackets(RecentHost, btSquare);
+    Host := RemoveBrackets(RecentHost, btSquare);
   ShowMask := ComboBox <> Tcp.cbxHsAddress;
   FindIPv6 := False;
 
@@ -3342,7 +3638,7 @@ begin
       AddToList('::');
 
     ComboBox.items := ls;
-    ComboBox.ItemIndex := ComboBox.Items.IndexOf(RecentHost);
+    ComboBox.ItemIndex := ComboBox.Items.IndexOf(Host);
     if ComboBox.ItemIndex = -1 then
       ComboBox.ItemIndex := 0;
   finally
@@ -3350,7 +3646,7 @@ begin
   end;
 end;
 
-function ExtractDomain(Url: string; HasPort: Boolean = False): string;
+function ExtractDomain(const Url: string; HasPort: Boolean = False): string;
 var
   Search: Integer;
 begin
@@ -3382,7 +3678,7 @@ begin
     SetLength(Result, Pred(Search));
 end;
 
-function GetAddressFromSocket(SocketStr: string; UseFormatHost: Boolean = False): string;
+function GetAddressFromSocket(const SocketStr: string; UseFormatHost: Boolean = False): string;
 var
   Search: Integer;
 begin
@@ -3398,13 +3694,15 @@ begin
     Result := SocketStr;
 end;
 
-function GetPortFromSocket(SocketStr: string): Word;
+function GetPortFromSocket(const SocketStr: string): Word;
 begin
   Result := StrToIntDef(Copy(SocketStr, RPos(':', SocketStr) + 1), 0);
 end;
 
-function FormatHost(HostStr: string; Validate: Boolean = True): string;
+function FormatHost(const HostStr: string; Validate: Boolean = True): string;
 begin
+  if HostStr = '' then
+    Exit('');
   if Validate then
   begin
     if IsIPv6(HostStr) then
@@ -3414,14 +3712,14 @@ begin
   end
   else
   begin
-    if (HostStr = '') or HasBrackets(HostStr) then
+    if HasBrackets(HostStr, btSquare) then
       Result := HostStr
     else
       Result := '[' + HostStr + ']'
   end;
 end;
 
-function GetRouterBySocket(SocketStr: string): string;
+function GetRouterBySocket(const SocketStr: string): string;
 var
   RoutersItem: TPair<string, TRouterInfo>;
   BridgesItem: TPair<string, TBridgeInfo>;
@@ -3429,7 +3727,7 @@ var
   IpStr: string;
   Port: Word;
 
-  function FindData(RouterInfo: TRouterInfo): Boolean;
+  function FindData(const RouterInfo: TRouterInfo): Boolean;
   begin
     case SocketType of
       soIPv4: Result := (RouterInfo.IPv4 = IpStr) and (RouterInfo.Port = Port);
@@ -3465,61 +3763,41 @@ begin
   end;
 end;
 
-function GetPrefixSize(Prefix: string; Localize: Boolean = False): Int64;
-var
-  Index: Integer;
+function ValidInt(const IntStr: string; Min, Max: Integer; out n: Integer): Boolean; overload;
 begin
-  if Localize then
-    ConstDic.TryGetValue(Prefix, Index)
-  else
+  if TryStrToInt(IntStr, n) then
   begin
-    if Length(Prefix) > 1 then
-      Index := GetArrayIndex(PrefixSizes, Prefix)
-    else
-      Index := GetArrayIndex(PrefixShortSizes, Prefix)
+    if (n >= Min) and (n <= Max) then
+      Exit(True);
   end;
-  case Index of
-    0: Result := Int64(1);
-    1: Result := Int64(1) shl 10;
-    2: Result := Int64(1) shl 20;
-    3: Result := Int64(1) shl 30;
-    4: Result := Int64(1) shl 40;
-    else
-      Result := -1;
-  end;
+  Result := False;
 end;
 
-function ValidInt(IntStr: string; Min, Max: Integer): Boolean; overload;
+function ValidInt(const IntStr: string; Min, Max: Integer): Boolean; overload;
 var
   n: Integer;
 begin
   if TryStrToInt(IntStr, n) then
   begin
     if (n >= Min) and (n <= Max) then
-    begin
-      Result := True;
-      Exit;
-    end;
+      Exit(True);
   end;
   Result := False;
 end;
 
-function ValidInt(IntStr: string; Min, Max: Int64): Boolean; overload;
+function ValidInt(const IntStr: string; Min, Max: Int64): Boolean; overload;
 var
   n: Int64;
 begin
   if TryStrToInt64(IntStr, n) then
   begin
     if (n >= Min) and (n <= Max) then
-    begin
-      Result := True;
-      Exit;
-    end;
+      Exit(True);
   end;
   Result := False;
 end;
 
-function ValidFloat(FloatStr: string; Min, Max: Double): Boolean;
+function ValidFloat(const FloatStr: string; Min, Max: Double): Boolean;
 var
   n: Double;
 begin
@@ -3537,96 +3815,194 @@ begin
   Result := False;
 end;
 
-function ValidHash(HashStr: string): Boolean;
+function ValidHash(const HashStr: string; HashLength: Integer): Boolean;
 var
   i: Integer;
 begin
-  Result := False;
-  if Length(HashStr) = 40 then
+  for i := 1 to HashLength do
   begin
-    for i := 1 to Length(HashStr) do
-      if not CharInSet(HashStr[i], ['0'..'9', 'A'..'F']) then
-        Exit;
-    Result := True;
+    case HashStr[i] of
+      '0'..'9', 'A'..'F': ;
+    else
+      Exit(False);
+    end;
+  end;
+  Result := True;
+end;
+
+function ValidHash(const HashStr: string): Boolean;
+var
+  i, HashLength: Integer;
+begin
+  HashLength := Length(HashStr);
+  if HashLength <> 40 then
+    Exit(False);
+  for i := 1 to HashLength do
+  begin
+    case HashStr[i] of
+      '0'..'9', 'A'..'F': ;
+    else
+      Exit(False);
+    end;
+  end;
+  Result := True;
+end;
+
+function GetAddressType(const IpStr: string; UseCidr: Boolean = False): TAddressType;
+begin
+  if Pos(':', IpStr) = 0 then
+  begin
+    if UseCidr then
+      Result := atIPv4Cidr
+    else
+      Result := atIPv4;
+  end
+  else
+  begin
+    if UseCidr then
+      Result := atIPv6Cidr
+    else
+      Result := atIPv6;
   end;
 end;
 
-function IsIPv4(IpStr: string): Boolean;
+function IpInReservedRanges(const IpStr: string; RangeType: TIPRangeType): Boolean;
 var
-  ParseStr: ArrOfStr;
-  n, i: Integer;
+  Value: TValueSet;
 begin
   Result := False;
-  ParseStr := Explode('.', IpStr);
-  if Length(ParseStr) <> 4 then
-    Exit;
-  for i := 0 to 3 do
+  case GetAddressType(IpStr, True) of
+    atIPv4Cidr: Result := IPv4ReservedRanges.FindBestMatchIP(IpStr, Value);
+    atIPv6Cidr: Result := IPv6ReservedRanges.FindBestMatchIP(IpStr, Value);
+  end;
+  if Result then
   begin
-    if TryStrToInt(ParseStr[i], n) then
+    if RangeType = rtNone then
+      Exit(True);
+    Exit(RangeType in TIPRangeTypes(Value));
+  end;
+end;
+
+function IsIPv4(const IpStr: string): Boolean;
+var
+  P: PChar;
+  i, Octet, DigitCount: Integer;
+begin
+  P := PChar(IpStr);
+  i := 0;
+
+  while i < 4 do
+  begin
+    DigitCount := 0;
+    Octet := 0;
+
+    while (P^ >= '0') and (P^ <= '9') do
     begin
-      if (n < 0) or (n > 255) then
-        Exit;
-      if ParseStr[i][1] = '$' then
-        Exit;
-      if ParseStr[i][1] = '-' then
-        Exit;
-      if ParseStr[i][1] = '0' then
-      begin
-        if n <> 0 then
-          Exit
-        else
-          if Length(ParseStr[i]) > 1 then
-            Exit;
-      end;
+      Octet := Octet * 10 + (Ord(P^) - Ord('0'));
+      Inc(P);
+      Inc(DigitCount);
+      if DigitCount > 3 then Exit(False);
+    end;
+
+    if (DigitCount = 0) or (DigitCount > 1) and (P[-DigitCount] = '0') or (Octet > 255) then
+      Exit(False);
+
+    if i < 3 then
+    begin
+      if P^ <> '.' then Exit(False);
+      Inc(P);
+    end;
+
+    Inc(i);
+  end;
+
+  Result := P^ = #0;
+end;
+
+function IsIPv6(const IpStr: string): Boolean;
+var
+  P: PChar;
+  WordCount, ColonCount, WordValue, i: Integer;
+  HasDoubleColon: Boolean;
+  Ch: Char;
+  ConsecutiveColons: Integer;
+begin
+  P := PChar(IpStr);
+  WordCount := 0;
+  ColonCount := 0;
+  HasDoubleColon := False;
+  ConsecutiveColons := 0;
+
+  if (IpStr = '::') then Exit(True);
+
+  while P^ <> #0 do
+  begin
+    if P^ = ':' then
+    begin
+      Inc(ConsecutiveColons);
+      if ConsecutiveColons > 2 then Exit(False);
     end
     else
-      Exit;
-  end;
-  Result := True;
-end;
+      ConsecutiveColons := 0;
 
-function IsIPv6(IpStr: string): Boolean;
-var
-  Parts, Words: ArrOfStr;
-  i, j, n, WordCount, PartsCount, Totals: Integer;
-begin
-  Result := IpStr = '::';
-  if Result then
-    Exit;
-  IpStr := StringReplace(IpStr, '::', '|', [rfReplaceAll]);
-  Parts := Explode('|', IpStr);
-  PartsCount := Length(Parts);
-  if PartsCount > 2 then
-    Exit;
-  Totals := 0;
-  for i := 0 to PartsCount - 1 do
-  begin
-    if Parts[i] = '' then
-      Continue;
-    Words := Explode(':', Parts[i]);
-    WordCount := Length(Words);
-    for j := 0 to WordCount - 1 do
+    WordValue := 0;
+    i := 0;
+    while True do
     begin
-      if TryStrToInt('$' + Words[j], n) then
-      begin
-        if (n < 0) or (n > 65535) then
-          Exit;
-      end
+      Ch := P^;
+      case Ch of
+        '0'..'9': WordValue := (WordValue shl 4) or (Ord(Ch) - Ord('0'));
+        'A'..'F': WordValue := (WordValue shl 4) or (Ord(Ch) - Ord('A') + 10);
+        'a'..'f': WordValue := (WordValue shl 4) or (Ord(Ch) - Ord('a') + 10);
+        ':': Break;
+        #0: Break;
       else
-        Exit;
+        Exit(False);
+      end;
+
+      Inc(i);
+      Inc(P);
+      if i > 4 then Exit(False);
     end;
-    Inc(Totals, WordCount);
+
+    if i > 0 then
+    begin
+      if WordValue > $FFFF then Exit(False);
+      Inc(WordCount);
+    end;
+
+    if P^ = ':' then
+    begin
+      Inc(P);
+      Inc(ColonCount);
+      if P^ = ':' then
+      begin
+        if HasDoubleColon then Exit(False);
+        HasDoubleColon := True;
+        Inc(P);
+        Inc(ColonCount);
+        ConsecutiveColons := 2;
+      end;
+    end;
   end;
-  if not Assigned(Words) then
-    Exit;
-  case PartsCount of
-    1: if Totals <> 8 then Exit;
-    2: if (Totals + 1) > 8 then Exit;
+
+  if HasDoubleColon then
+  begin
+    if (WordCount > 7) then Exit(False);
+  end
+  else
+  begin
+    if (WordCount <> 8) or (ColonCount <> 7) then Exit(False);
   end;
+
+  if (ColonCount > 8) or
+     (not HasDoubleColon and (ColonCount <> 7)) then
+    Exit(False);
+
   Result := True;
 end;
 
-function ValidAddress(AddrStr: string; AllowCidr: Boolean = False; ReqBrackets: Boolean = False): TAddressType;
+function ValidAddress(const AddrStr: string; AllowCidr: Boolean = False; ReqBrackets: Boolean = False): TAddressType;
 var
   Search: Integer;
   Mask: Byte;
@@ -3642,7 +4018,7 @@ begin
     begin
       if ReqBrackets then
       begin
-        if not HasBrackets(AddrStr) then
+        if not HasBrackets(AddrStr, btSquare) then
           Exit;
         if IsIPv6(Copy(AddrStr, 2, Length(AddrStr) - 2)) then
           Result := atIPv6;
@@ -3663,7 +4039,7 @@ begin
       begin
         if ReqBrackets then
         begin
-          if not HasBrackets(IpStr) then
+          if not HasBrackets(IpStr, btSquare) then
             Exit;
           IpStr := Copy(IpStr, 2, Length(IpStr) - 2);
         end;
@@ -3683,18 +4059,15 @@ begin
   end;
 end;
 
-function ValidHost(HostStr: string; AllowRootDomain: Boolean = False; AllowIp: Boolean = True; ReqBrackets: Boolean = False; DenySpecialDomains: Boolean = True): THostType;
+function ValidHost(const HostStr: string; AllowRootDomain: Boolean = False; AllowIp: Boolean = True; ReqBrackets: Boolean = False; DenySpecialDomains: Boolean = True): THostType;
 var
   i, j, SubLen, Count: Integer;
   AddressType: TAddressType;
-  SubDomains: ArrOfStr;
+  SubDomains: TArray<string>;
 begin
   Result := htNone;
   if AllowRootDomain and (HostStr = '.') then
-  begin
-    Result := htRoot;
-    Exit;
-  end;
+    Exit(htRoot);
   AddressType := ValidAddress(HostStr, False, ReqBrackets);
   if AddressType <> atNone then
   begin
@@ -3711,7 +4084,7 @@ begin
   end;
   if Length(HostStr) > 255 then
     Exit;
-  SubDomains := Explode('.', HostStr);
+  SubDomains := HostStr.Split(['.']);
   Count := Length(SubDomains);
   if Count < 2 then
     Exit;
@@ -3749,7 +4122,7 @@ begin
     Result := htDomain;
 end;
 
-function ValidSocket(SocketStr: string; AllowHostNames: Boolean = False): TSocketType;
+function ValidSocket(const SocketStr: string; AllowHostNames: Boolean = False): TSocketType;
 var
   Search: Integer;
 begin
@@ -3776,9 +4149,9 @@ begin
   end;
 end;
 
-function TryParseFallbackDir(FallbackStr: string; out FallbackDir: TFallbackDir; Validate: Boolean = True; UseFormatHost: Boolean = False): Boolean;
+function TryParseFallbackDir(const FallbackStr: string; out FallbackDir: TFallbackDir; Validate: Boolean = True; UseFormatHost: Boolean = False): Boolean;
 var
-  ParseStr: ArrOfStr;
+  ParseStr: TArray<string>;
   Search, i: Integer;
   Key, Data: string;
   FindOrPort, FindHash, FindIPv4, FindIPv6, FindWeight: Boolean;
@@ -3800,8 +4173,8 @@ begin
     FindIPv4 := True;
     FindIPv6 := True;
     FindWeight := True;
-    ParseStr := Explode(' ', FallbackStr);
-    for i := 0 to Length(ParseStr) - 1 do
+    ParseStr := FallbackStr.Split([' ']);
+    for i := 0 to High(ParseStr) do
     begin
       Search := Pos('=', ParseStr[i]);
       if Search > 0 then
@@ -3852,24 +4225,24 @@ begin
   end;
 end;
 
-function ValidFallbackDir(FallbackStr: string): Boolean;
+function ValidFallbackDir(const FallbackStr: string): Boolean;
 var
-  i, DataLenght, Search: Integer;
-  ParseStr: ArrOfStr;
+  i, DataLength, Search: Integer;
+  ParseStr: TArray<string>;
   Key, Data: string;
   FindIPv4, FindIPv6, FindPort, FindHash, FindWeight: Boolean;
 begin
   Result := False;
-  ParseStr := Explode(' ', FallbackStr);
-  DataLenght := Length(ParseStr);
-  if DataLenght < 3 then
+  ParseStr := FallbackStr.Split([' ']);
+  DataLength := Length(ParseStr);
+  if DataLength < 3 then
     Exit;
   FindIPv4 := True;
   FindPort := True;
   FindHash := True;
   FindIPv6 := True;
   FindWeight := True;
-  for i := 0 to DataLenght - 1 do
+  for i := 0 to DataLength - 1 do
   begin
     Search := Pos('=', ParseStr[i]);
     if Search > 0 then
@@ -3931,15 +4304,15 @@ begin
   Result := not (FindIPv4 or FindPort or FindHash)
 end;
 
-function ValidPolicy(PolicyStr: string): Boolean;
+function ValidPolicy(const PolicyStr: string): Boolean;
 var
-  ParseStr, Ports: ArrOfStr;
+  ParseStr, Ports: TArray<string>;
   Search, i: Integer;
   Address, Port: string;
   PolicyType, MaskType: Integer;
 begin
   Result := False;
-  ParseStr := Explode(' ', PolicyStr);
+  ParseStr := PolicyStr.Split([' ']);
   if Length(ParseStr) <> 2 then
     Exit;
   PolicyType := GetArrayIndex(PolicyTypes, ParseStr[0]);
@@ -3953,10 +4326,10 @@ begin
     Port := Copy(ParseStr[1], Search + 1);
     if Port <> '*' then
     begin
-      Ports := Explode('-', Port);
+      Ports := Port.Split(['-']);
       if Length(Ports) > 2 then
         Exit;
-      for i := 0 to Length(Ports) - 1 do
+      for i := 0 to High(Ports) do
         if not ValidInt(Ports[i], 1, 65535) then
           Exit;
     end;
@@ -3970,7 +4343,7 @@ begin
           atIPv4: if PolicyType > 1 then Exit;
         end;
       end;
-      1,3: if PolicyType > 1 then Exit;
+      1, 3: if PolicyType > 1 then Exit;
     end;
   end;
   Result := True;
@@ -3992,7 +4365,7 @@ begin
   Result := True;  
 end;
 
-function TryParseTarget(TargetStr: string; out Target: TTarget): Boolean;
+function TryParseTarget(const TargetStr: string; out Target: TTarget): Boolean;
 var
   PortIndex, ExitIndex, TargetLength: Integer;
 begin
@@ -4028,9 +4401,9 @@ begin
   end;
 end;
 
-function TryParseBridge(BridgeStr: string; out Bridge: TBridge; Validate: Boolean = True; UseFormatHost: Boolean = False): Boolean;
+function TryParseBridge(const BridgeStr: string; out Bridge: TBridge; Validate: Boolean = True; UseFormatHost: Boolean = False): Boolean;
 var
-  ParseStr: ArrOfStr;
+  ParseStr: TArray<string>;
   ParamsState: Byte;
   SocketType: TSocketType;
   ParamsStr: string;
@@ -4050,8 +4423,8 @@ begin
   begin
     ParamsState := 0;
     ParamsStr := '';
-    ParseStr := Explode(' ', BridgeStr);
-    for i := 0 to Length(ParseStr) - 1 do
+    ParseStr := BridgeStr.Split([' ']);
+    for i := 0 to High(ParseStr) do
     begin
       case ParamsState of
         1:
@@ -4085,7 +4458,7 @@ begin
   end;
 end;
 
-function ValidTransport(TransportStr: string; StrictTransport: Boolean = False): Boolean;
+function ValidTransport(const TransportStr: string; StrictTransport: Boolean = False): Boolean;
 begin
   if TransportStr = '' then
     Result := False
@@ -4098,16 +4471,15 @@ begin
   end;
 end;
 
-function ValidBridge(BridgeStr: string; StrictTransport: Boolean = False): Boolean;
+function ValidBridge(const BridgeStr: string; StrictTransport: Boolean = False): Boolean;
 var
-  ParseStr: ArrOfStr;
+  ParseStr: TArray<string>;
   ParamCount: Integer;
 begin
   Result := False;
-  BridgeStr := Trim(BridgeStr);
   if (BridgeStr = '') or (Pos('|', BridgeStr) <> 0)  then
     Exit;
-  ParseStr := Explode(' ', BridgeStr);
+  ParseStr := BridgeStr.Split([' ']);
   ParamCount := Length(ParseStr);
   if ParamCount > 1 then
   begin
@@ -4187,7 +4559,7 @@ begin
   end;
 end;
 
-function LoadIconsFromResource(ImageList: TImageList; ResourceName: string; UseFile: Boolean = False): Boolean;
+function LoadIconsFromResource(ImageList: TImageList; const ResourceName: string; UseFile: Boolean = False): Boolean;
 var
   Bmp: TBitmap;
   Png: TPngImage;
@@ -4350,11 +4722,11 @@ begin
   end;
 end;
 
-function CheckFileVersion(FileVersion, StaticVersion: string): Boolean;
+function CheckFileVersion(const FileVersion, StaticVersion: string): Boolean;
 begin
-  FileVersion := SeparateLeft(FileVersion, '-');
-  StaticVersion := SeparateLeft(StaticVersion, '-');
-  Result := CompareNaturalText(PWideChar(FileVersion), PWideChar(StaticVersion)) <> -1;
+  Result := CompareNaturalText(
+    PWideChar(SeparateLeft(FileVersion, '-')),
+    PWideChar(SeparateLeft(StaticVersion, '-'))) <> -1;
 end;
 
 function TryUpdateMask(var Mask: Word; Param: Word; Condition: Boolean): Boolean;
@@ -4437,7 +4809,7 @@ begin
   Result := -1;
 end;
 
-procedure GetPeData(FileName: string; var Data: TPEData);
+procedure GetPeData(const FileName: string; var Data: TPEData);
 var
   fs: TFilestream;
   NtSignature: DWORD;
@@ -4477,7 +4849,7 @@ begin
   end;
 end;
 
-function GetFileID(FileName: string; SkipFileExists: Boolean = False; ConstData: string = ''): TFileID;
+function GetFileID(const FileName: string; SkipFileExists: Boolean = False; const ConstData: string = ''): TFileID;
 var
   F: TSearchRec;
   PeData: TPeData;
@@ -4502,11 +4874,11 @@ begin
           IntToStr(PeData.MajorOSVersion) + '.' + IntToStr(PeData.MinorOSVersion)
         );
         {$WARN SYMBOL_PLATFORM OFF}
-        Result.Data := IntToHex(Crc32(AnsiString(IntToStr(F.Size) +
+        Result.Data := IntToHex(THashBobJenkins.GetHashValue(IntToStr(F.Size) +
           IntToStr(DateTimeToUnix(F.TimeStamp)) +
           IntToStr(DateTimeToUnix(FileTimeToDateTime(F.FindData.ftCreationTime))) +
           IntToStr(DateTimeToUnix(FileTimeToDateTime(F.FindData.ftLastAccessTime))) +
-          IntToStr(PeData.CheckSum) + ConstData)
+          IntToStr(PeData.CheckSum) + ConstData
         ));
         {$WARN SYMBOL_PLATFORM ON}
       end;
@@ -4516,7 +4888,7 @@ begin
   end;
 end;
 
-function SampleDown(Data: ArrOfPoint; Threshold: Integer): ArrOfPoint;
+function SampleDown(const Data: ArrOfPoint; Threshold: Integer): ArrOfPoint;
 var
   i, DataLength, SampledIndex: Integer;
   a, NextA: Integer;

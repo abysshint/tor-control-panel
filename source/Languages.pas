@@ -3,18 +3,17 @@
 interface
 
 uses
-  Winapi.Windows, System.Classes, System.SysUtils, System.IniFiles, System.DateUtils,
-  System.Generics.Collections, Vcl.Forms, Vcl.Graphics, Vcl.StdCtrls,
-  synautil, ConstData, Functions;
+  Winapi.Windows, System.Classes, System.SysUtils, System.IniFiles, System.Generics.Collections,
+  Vcl.Forms, Vcl.Graphics, Vcl.StdCtrls, synautil, ConstData, Functions;
 
   function GetLangList: Integer;
-  function Load(Key, Default: string): string;
+  function Load(const Key, Default: string): string;
   function TransStr(const StrID: string): string;
   function TranslateTime(Number, TimeType: Integer; ShowNumber: Boolean = True; IsAbbr: Boolean = False): string;
-  procedure LoadLns(Key, Default: string);
-  procedure LoadStr(Key, Default: string);
-  procedure Translate(Section: string);
-  procedure TranslateArray(var HeaderArray: array of string; Header: string);
+  procedure LoadLns(const Key, Default: string);
+  procedure LoadStr(const Key, Default: string);
+  procedure Translate(const Section: string);
+  procedure TranslateArray(var Arr: array of string; const StrID: string);
 
 var
   CircuitInfoHeader: array [0..6] of string;
@@ -37,19 +36,17 @@ implementation
 uses
   Main;
 
-procedure TranslateArray(var HeaderArray: array of string; Header: string);
+procedure TranslateArray(var Arr: array of string; const StrID: string);
 var
-  i: Integer;
-  ls: TStringList;
+  i, Count: Integer;
+  ParseStr: TArray<string>;
 begin
-  ls := TStringList.Create;
-  try
-    ParseParametersEx(Header, ',', ls);
-    for i := 0 to Length(HeaderArray) - 1 do
-      if i < ls.Count then
-        HeaderArray[i] := ls[i];
-  finally
-    ls.Free;
+  ParseStr := StrID.Split([',']);
+  Count := Length(ParseStr);
+  for i := 0 to High(Arr) do
+  begin
+    if i < Count then
+      Arr[i] := ParseStr[i];
   end;
 end;
 
@@ -115,14 +112,14 @@ begin
   LangStr.TryGetValue(StrID, Result);
 end;
 
-function Load(Key, Default: string): string;
+function Load(const Key, Default: string): string;
 begin
   Result := LangIniFile.ReadString(CurrentTranslate, Key, Default)
 end;
 
 function TranslateTime(Number, TimeType: Integer; ShowNumber: Boolean = True; IsAbbr: Boolean = False): string;
 var
-  ParseStr: ArrOfStr;
+  ParseStr: TArray<string>;
   MaxIndex, Index, Tens: Integer;
   TimeData: string;
 begin
@@ -136,8 +133,8 @@ begin
     TIME_MONTH: TimeData := TransStr('628');
     TIME_YEAR: TimeData := TransStr('629');
   end;
-  ParseStr := Explode('|', TimeData);
-  MaxIndex := Length(ParseStr) - 1;
+  ParseStr := TimeData.Split(['|']);
+  MaxIndex := High(ParseStr);
   if IsAbbr then
     Index := 0
   else
@@ -176,17 +173,17 @@ begin
   ls.ItemIndex := Index;
 end;
 
-procedure LoadStr(Key, Default: string);
+procedure LoadStr(const Key, Default: string);
 begin
   LangStr.AddOrSetValue(Key, LangIniFile.ReadString(CurrentTranslate, Key, Default));
 end;
 
-procedure LoadLns(Key, Default: string);
+procedure LoadLns(const Key, Default: string);
 begin
   LangStr.AddOrSetValue(Key, StringReplace(LangIniFile.ReadString(CurrentTranslate, Key, Default), '\n', BR, [rfReplaceAll]));
 end;
 
-procedure Translate(Section: string);
+procedure Translate(const Section: string);
 var
   i: Integer;
 begin
@@ -365,7 +362,7 @@ begin
     LoadStr('380', 'Автоматический режим');
     LoadStr('381', 'Ручной режим');
     LoadStr('382', 'Измерение пинга');
-    LoadStr('383', 'Определение живых узлов');
+    LoadStr('383', 'Проверка доступности узлов');
     LoadStr('384', 'Мост (Узел вне консенсуса)');
     LoadStr('385', 'Корневой каталог');
     LoadStr('386', 'Живой (отвечает на соединения)');
@@ -378,7 +375,7 @@ begin
     LoadStr('393', 'Транспорты,Обработчик,,,Тип');
     LoadStr('394', 'Список транспортов не может содержать пустые данные');
     LoadLns('395', 'Не найден файл обработчика "%s"\n\nСкопируйте его в каталог транспортов и повторите');
-    LoadStr('396', 'Определение живых мостов');
+    LoadStr('396', 'Проверка доступности мостов');
     LoadStr('397', 'Запуск обработчика "%s" не поддерживается вашей операционной системой');
     LoadStr('398', 'Цифры в начале слова запрещены');
     LoadStr('399', 'Транспорт с таким названием и типом уже существует');
@@ -437,7 +434,7 @@ begin
     LoadStr('655', 'Мост (Неактивный узел консенсуса)');
     LoadStr('656', 'Все каталоги');
     LoadStr('657', 'Неподходящие каталоги');
-    LoadStr('658', 'Определение живых каталогов');
+    LoadStr('658', 'Проверка доступности каталогов');
     LoadLns('659', 'Идёт сканирование мостов');
     LoadLns('660', 'Идёт сканирование каталогов');
     LoadStr('661', 'Пользовательская цепочка');
@@ -460,7 +457,7 @@ begin
     LoadLns('682', '\n Список опций в формате: k=v\n разделённых пробелом');
     LoadStr('684', 'Поддерживает Conflux');
     LoadStr('686', 'Измерить пинг');
-    LoadStr('687', 'Определить доступность');
+    LoadStr('687', 'Проверить доступность');
     LoadStr('688', 'Показывать полное меню');
     LoadStr('692', 'Виртуальный порт должен быть уникальным!');
     LoadLns('693', 'Выполнено: %d из %d\n\nЩёлкните здесь, чтобы остановить \nсканирование');
@@ -479,11 +476,10 @@ begin
     TranslateArray(StreamsInfoHeader, TransStr('244'));
     TranslateArray(TransportsHeader, TransStr('393'));
 
-    for i := 0 to Length(Prefixes) - 1 do
-      ConstDic.Remove(Prefixes[i]);
+    PrefixesDic.Clear;
     TranslateArray(Prefixes, TransStr('234'));
-    for i := 0 to Length(Prefixes) - 1 do
-      ConstDic.AddOrSetValue(Prefixes[i], i);
+    for i := 0 to High(Prefixes) do
+      PrefixesDic.AddOrSetValue(Prefixes[i], Int64(1) shl (i * 10));
 
     if UserProfile = 'User' then
       Tcp.lbUserDir.Caption := TransStr('104')
@@ -704,7 +700,7 @@ begin
     Tcp.meFallbackDirs.TextHint.Text := TransStr('654');
 
     Tcp.gbNetworkScanner.Caption := TransStr('444');
-    Tcp.cbEnableDetectAliveNodes.Caption := Load('445', 'Включить определение живых узлов');
+    Tcp.cbEnableDetectAliveNodes.Caption := Load('445', 'Включить проверку доступности узлов');
     Tcp.cbEnablePingMeasure.Caption := Load('446', 'Включить измерение пинга');
     Tcp.lbScanPortTimeout.Caption := Load('447', 'Таймаут подключения к порту');
     Tcp.lbScanPortAttempts.Caption := Load('448', 'Количество попыток соединения с портом');
@@ -714,7 +710,7 @@ begin
     Tcp.lbScanMaxThread.Caption := Load('452', 'Количество потоков сканирования');
     Tcp.lbScanPortionTimeout.Caption := Load('453', 'Задержка между порциями');
     Tcp.lbScanPortionSize.Caption := Load('454', 'Количество сканирований на порцию');
-    Tcp.cbAutoScanNewNodes.Caption := Load('455', 'Автоматически определять пинг и живые узлы');
+    Tcp.cbAutoScanNewNodes.Caption := Load('455', 'Автоматическая проверка пинга и доступности');
     Tcp.lbFullScanInterval.Caption := Load('456', 'Полное сканирование каждые');
     Tcp.lbPartialScanInterval.Caption := Load('457', 'Частичное сканирование каждые');
     Tcp.lbPartialScansCounts.Caption := Load('458', 'Количество частичных сканирований');
@@ -853,7 +849,7 @@ begin
     Tcp.miClearBridgeCacheUnnecessary.Caption := Load('481', 'Очистить кэш от ненужных мостов');
     Tcp.miClearBridgesCacheAll.Caption := Load('482', 'Очистить кэш всех мостов');
     Tcp.miClearPingCache.Caption := Load('483', 'Очистить кэш пинг-запросов');
-    Tcp.miClearAliveCache.Caption := Load('484', 'Очистить кэш живых узлов');
+    Tcp.miClearAliveCache.Caption := Load('484', 'Очистить кэш доступности узлов');
     Tcp.miClearUnusedNetworkCache.Caption := Load('485', 'Очистить неиспользуемый сетевой кэш');
     Tcp.miResetScannerSchedule.Caption := Load('486', 'Сбросить расписание сканирования узлов');
     Tcp.miStartScan.Caption := Load('488', 'Запустить сканирование');
@@ -864,7 +860,7 @@ begin
     Tcp.miScanGuards.Caption := Load('602', 'Сторожевые узлы');
     Tcp.miScanAliveNodes.Caption := Load('605', 'Живые узлы');
     Tcp.miManualPingMeasure.Caption := Load('493', 'Измерять пинг');
-    Tcp.miManualDetectAliveNodes.Caption := Load('494', 'Определять живые узлы');
+    Tcp.miManualDetectAliveNodes.Caption := Load('494', 'Определять доступность');
     Tcp.miStopScan.Caption := TransStr('495');
     Tcp.miResetGuards.Caption := Load('496', 'Сбросить сторожевые узлы');
     Tcp.miResetGuardsAll.Caption := Load('497', 'Все сторожевые узлы');
@@ -1096,7 +1092,7 @@ begin
     Tcp.miEnableConvertNodesOnAddToNodesList.Caption := Load('573', 'При добавлении в список узлов');
     Tcp.miEnableConvertNodesOnRemoveFromNodesList.Caption := Load('574', 'При удалении из списка узлов');
     Tcp.miConvertIpNodes.Caption := Load('575', 'Преобразовывать IP-адреса');
-    Tcp.miConvertCidrNodes.Caption := Load('576', 'Преобразовывать CIDR-маски');
+    Tcp.miConvertCidrNodes.Caption := Load('576', 'Преобразовывать CIDR-диапазоны');
     Tcp.miConvertCountryNodes.Caption := Load('577', 'Преобразовывать коды стран');
     Tcp.miIgnoreConvertExcludeNodes.Caption := Load('578', 'Исключить список запрещённых узлов');
     Tcp.miAvoidAddingIncorrectNodes.Caption := Load('579', 'Избегать добавление неправильных узлов');
