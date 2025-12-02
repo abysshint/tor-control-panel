@@ -35,7 +35,7 @@ const
 
   LOOPBACK_ADDRESS = '127.0.0.1';
 
-  CURRENT_CONFIG_VERSION = 14;
+  CURRENT_CONFIG_VERSION = 15;
   MAX_SPEED_DATA_LENGTH = 24 * 60 * 60;
   BUFSIZE = 1024 * 1024;
 
@@ -107,6 +107,14 @@ const
   PRIORITY_THROUGHPUT = 0;
   PRIORITY_LATENCY = 1;
 
+  UNIQUE_TYPE_NONE = 0;
+  UNIQUE_TYPE_HASH = 1;
+  UNIQUE_TYPE_IP = 2;
+  UNIQUE_TYPE_CIDR_24 = 3;
+  UNIQUE_TYPE_CIDR_16 = 4;
+  UNIQUE_TYPE_CIDR_8 = 5;
+  UNIQUE_TYPE_COUNTRY = 6;
+
   CONFLUX_TYPE_AUTO = 0;
   CONFLUX_TYPE_ENABLED = 1;
   CONFLUX_TYPE_DISABLED = 2;
@@ -148,6 +156,9 @@ const
   FILTER_TYPE_NONE = 0;
   FILTER_TYPE_COUNTRIES = 1;
   FILTER_TYPE_FAVORITES = 2;
+
+  COUNTRY_TYPE_ALL = -1;
+  COUNTRY_TYPE_FILTER = -2;
 
   NL_TYPE_ENTRY = 0;
   NL_TYPE_MIDDLE = 1;
@@ -502,8 +513,15 @@ type
     Value: Byte;
   end;
 
+  TStringPair = record
+    Key: string;
+    Value: string;
+  end;
+
 const
   cDefaultProcessInfo: TProcessInfo = (ProcessID: 0; hProcess: INVALID_HANDLE_VALUE; hStdOutput: INVALID_HANDLE_VALUE);
+  cDefaultStringPair: TStringPair = (Key: ''; Value: '');
+
 var
   CountryCodes: array [0..MAX_COUNTRIES - 1] of string = (
     'au','at','az','ax','al','dz','as','ai','ao','ad','aq','ag','ar','am','aw',

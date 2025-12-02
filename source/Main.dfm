@@ -1231,10 +1231,10 @@ object Tcp: TTcp
       ItemIndex = 0
       ParentDoubleBuffered = False
       TabOrder = 5
-      Text = #1061#1077#1096
+      Text = #1061#1101#1096
       OnChange = cbxRoutersQueryChange
       Items.Strings = (
-        #1061#1077#1096
+        #1061#1101#1096
         #1053#1080#1082
         'IPv4'
         'IPv6'
@@ -2112,7 +2112,7 @@ object Tcp: TTcp
       end
       object lbBridgesLimit: TLabel
         Left = 28
-        Top = 403
+        Top = 379
         Width = 49
         Height = 13
         Alignment = taRightJustify
@@ -2121,8 +2121,8 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbBridgesPriority: TLabel
-        Left = 144
-        Top = 403
+        Left = 158
+        Top = 379
         Width = 55
         Height = 13
         Alignment = taRightJustify
@@ -2132,7 +2132,7 @@ object Tcp: TTcp
       end
       object lbMaxDirFails: TLabel
         Left = 539
-        Top = 403
+        Top = 379
         Width = 163
         Height = 13
         Alignment = taRightJustify
@@ -2142,7 +2142,7 @@ object Tcp: TTcp
       end
       object lbBridgesCheckDelay: TLabel
         Left = 552
-        Top = 380
+        Top = 356
         Width = 150
         Height = 13
         Alignment = taRightJustify
@@ -2152,7 +2152,7 @@ object Tcp: TTcp
       end
       object lbSeconds5: TLabel
         Left = 762
-        Top = 379
+        Top = 355
         Width = 21
         Height = 13
         Caption = #1089#1077#1082'.'
@@ -2161,7 +2161,7 @@ object Tcp: TTcp
       end
       object lbCount4: TLabel
         Left = 762
-        Top = 403
+        Top = 379
         Width = 18
         Height = 13
         Caption = #1096#1090'.'
@@ -2170,7 +2170,7 @@ object Tcp: TTcp
       end
       object lbBridgesQueueSize: TLabel
         Left = 621
-        Top = 426
+        Top = 402
         Width = 81
         Height = 13
         Alignment = taRightJustify
@@ -2180,7 +2180,7 @@ object Tcp: TTcp
       end
       object lbCount5: TLabel
         Left = 763
-        Top = 426
+        Top = 402
         Width = 18
         Height = 13
         Caption = #1096#1090'.'
@@ -2212,6 +2212,16 @@ object Tcp: TTcp
         Transparent = False
         OnClick = sbBridgesFileClick
       end
+      object lbBridgesUniqueType: TLabel
+        Left = 141
+        Top = 403
+        Width = 72
+        Height = 13
+        Alignment = taRightJustify
+        Caption = #1059#1085#1080#1082#1072#1083#1100#1085#1086#1089#1090#1100
+        Enabled = False
+        Transparent = True
+      end
       object edBridgesFile: TEdit
         Left = 240
         Top = 124
@@ -2231,7 +2241,7 @@ object Tcp: TTcp
         Left = 10
         Top = 150
         Width = 770
-        Height = 224
+        Height = 200
         Enabled = False
         PopupMenu = EditMenu
         ScrollBars = ssVertical
@@ -2529,7 +2539,7 @@ object Tcp: TTcp
       end
       object cbExcludeUnsuitableBridges: TCheckBox
         Left = 352
-        Top = 378
+        Top = 354
         Width = 160
         Height = 17
         Caption = #1048#1089#1082#1083#1102#1095#1072#1090#1100' '#1085#1077#1087#1086#1076#1093#1086#1076#1103#1097#1080#1077
@@ -2541,7 +2551,7 @@ object Tcp: TTcp
       end
       object cbUseBridgesLimit: TCheckBox
         Left = 10
-        Top = 380
+        Top = 356
         Width = 300
         Height = 14
         Caption = #1054#1075#1088#1072#1085#1080#1095#1080#1090#1100' '#1082#1086#1083#1080#1095#1077#1089#1090#1074#1086' '#1080#1089#1087#1086#1083#1100#1079#1091#1077#1084#1099#1093' '#1084#1086#1089#1090#1086#1074
@@ -2553,7 +2563,7 @@ object Tcp: TTcp
       end
       object edBridgesLimit: TEdit
         Left = 80
-        Top = 400
+        Top = 376
         Width = 42
         Height = 21
         HelpType = htKeyword
@@ -2569,7 +2579,7 @@ object Tcp: TTcp
       object udBridgesLimit: TUpDown
         Tag = 2
         Left = 122
-        Top = 400
+        Top = 376
         Width = 13
         Height = 21
         Associate = edBridgesLimit
@@ -2582,8 +2592,8 @@ object Tcp: TTcp
         OnClick = udBridgesLimitClick
       end
       object cbxBridgesPriority: TComboBox
-        Left = 201
-        Top = 400
+        Left = 215
+        Top = 376
         Width = 120
         Height = 21
         AutoDropDown = True
@@ -2603,7 +2613,7 @@ object Tcp: TTcp
       end
       object cbCacheNewBridges: TCheckBox
         Left = 352
-        Top = 404
+        Top = 380
         Width = 155
         Height = 14
         Caption = #1050#1101#1096#1080#1088#1086#1074#1072#1090#1100' '#1085#1086#1074#1099#1077
@@ -2615,7 +2625,7 @@ object Tcp: TTcp
       end
       object edMaxDirFails: TEdit
         Left = 705
-        Top = 400
+        Top = 376
         Width = 42
         Height = 21
         Enabled = False
@@ -2628,7 +2638,7 @@ object Tcp: TTcp
       end
       object udMaxDirFails: TUpDown
         Left = 747
-        Top = 400
+        Top = 376
         Width = 13
         Height = 21
         Associate = edMaxDirFails
@@ -2642,7 +2652,7 @@ object Tcp: TTcp
       end
       object edBridgesCheckDelay: TEdit
         Left = 705
-        Top = 377
+        Top = 353
         Width = 42
         Height = 21
         Enabled = False
@@ -2655,7 +2665,7 @@ object Tcp: TTcp
       end
       object udBridgesCheckDelay: TUpDown
         Left = 747
-        Top = 377
+        Top = 353
         Width = 13
         Height = 21
         Associate = edBridgesCheckDelay
@@ -2670,7 +2680,7 @@ object Tcp: TTcp
       end
       object edBridgesQueueSize: TEdit
         Left = 705
-        Top = 423
+        Top = 399
         Width = 42
         Height = 21
         HelpType = htKeyword
@@ -2686,7 +2696,7 @@ object Tcp: TTcp
       object udBridgesQueueSize: TUpDown
         Tag = 2
         Left = 747
-        Top = 423
+        Top = 399
         Width = 13
         Height = 21
         Associate = edBridgesQueueSize
@@ -2701,7 +2711,7 @@ object Tcp: TTcp
       end
       object cbScanNewBridges: TCheckBox
         Left = 368
-        Top = 425
+        Top = 401
         Width = 165
         Height = 17
         Caption = #1057#1085#1072#1095#1072#1083#1072' '#1089#1082#1072#1085#1080#1088#1086#1074#1072#1090#1100' '#1087#1086#1088#1090#1099
@@ -2724,6 +2734,29 @@ object Tcp: TTcp
         OnChange = cbxBridgesListChange
         OnCloseUp = cbxBridgesListCloseUp
         OnKeyDown = cbxBridgesListKeyDown
+      end
+      object cbxBridgesUniqueType: TComboBox
+        Left = 215
+        Top = 400
+        Width = 120
+        Height = 21
+        AutoDropDown = True
+        Style = csDropDownList
+        DoubleBuffered = False
+        Enabled = False
+        ItemIndex = 0
+        ParentDoubleBuffered = False
+        TabOrder = 38
+        Text = #1053#1077' '#1080#1089#1087#1086#1083#1100#1079#1086#1074#1072#1090#1100
+        OnChange = cbxBridgesUniqueTypeChange
+        Items.Strings = (
+          #1053#1077' '#1080#1089#1087#1086#1083#1100#1079#1086#1074#1072#1090#1100
+          #1061#1101#1096
+          'IP-'#1072#1076#1088#1077#1089
+          'CIDR /24'
+          'CIDR /16'
+          'CIDR /8'
+          #1057#1090#1088#1072#1085#1072)
       end
     end
     object tsFilter: TTabSheet
@@ -4361,12 +4394,12 @@ object Tcp: TTcp
           Transparent = True
         end
         object lbAutoScanType: TLabel
-          Left = 76
+          Left = 15
           Top = 311
-          Width = 122
+          Width = 183
           Height = 13
           Alignment = taRightJustify
-          Caption = #1059#1079#1083#1099' '#1076#1083#1103' '#1089#1082#1072#1085#1080#1088#1086#1074#1072#1085#1080#1103
+          Caption = #1059#1079#1083#1099' '#1076#1083#1103' '#1095#1072#1089#1090#1080#1095#1085#1086#1075#1086' '#1089#1082#1072#1085#1080#1088#1086#1074#1072#1085#1080#1103
           Transparent = True
         end
         object lbAutoSelRoutersAfterScanType: TLabel
@@ -4995,6 +5028,29 @@ object Tcp: TTcp
           Caption = #1084#1089'.'
           Transparent = True
         end
+        object lbAutoSelUniqueType: TLabel
+          Left = 185
+          Top = 45
+          Width = 72
+          Height = 13
+          Alignment = taRightJustify
+          Caption = #1059#1085#1080#1082#1072#1083#1100#1085#1086#1089#1090#1100
+          Transparent = True
+        end
+        object sbAutoSelUniqueByNodeType: TSpeedButton
+          Left = 373
+          Top = 42
+          Width = 21
+          Height = 22
+          AllowAllUp = True
+          GroupIndex = 3
+          ImageIndex = 31
+          Images = lsMenus
+          Flat = True
+          ParentShowHint = False
+          ShowHint = True
+          OnClick = OptionsChange
+        end
         object edAutoSelExitCount: TEdit
           Left = 87
           Top = 68
@@ -5081,39 +5137,28 @@ object Tcp: TTcp
         end
         object cbAutoSelNodesWithPingOnly: TCheckBox
           Left = 178
-          Top = 149
+          Top = 153
           Width = 222
           Height = 17
           Caption = #1058#1086#1083#1100#1082#1086' '#1086#1090#1074#1077#1095#1072#1102#1097#1080#1077' '#1085#1072' '#1087#1080#1085#1075
           Checked = True
           Enabled = False
           State = cbChecked
-          TabOrder = 23
-          OnClick = OptionsChange
-        end
-        object cbAutoSelUniqueNodes: TCheckBox
-          Left = 178
-          Top = 95
-          Width = 222
-          Height = 17
-          Caption = #1058#1086#1083#1100#1082#1086' '#1091#1085#1080#1082#1072#1083#1100#1085#1099#1077
-          Checked = True
-          State = cbChecked
-          TabOrder = 20
+          TabOrder = 22
           OnClick = OptionsChange
         end
         object cbAutoSelStableOnly: TCheckBox
           Left = 178
-          Top = 113
+          Top = 117
           Width = 222
           Height = 17
           Caption = #1058#1086#1083#1100#1082#1086' '#1089#1090#1072#1073#1080#1083#1100#1085#1099#1077
-          TabOrder = 21
+          TabOrder = 20
           OnClick = OptionsChange
         end
         object cbAutoSelFilterCountriesOnly: TCheckBox
           Left = 178
-          Top = 77
+          Top = 99
           Width = 222
           Height = 17
           Caption = #1058#1086#1083#1100#1082#1086' '#1089#1090#1088#1072#1085#1099' '#1080#1079' '#1092#1080#1083#1100#1090#1088#1072
@@ -5143,7 +5188,7 @@ object Tcp: TTcp
         end
         object cbAutoSelMiddleNodesWithoutDir: TCheckBox
           Left = 178
-          Top = 59
+          Top = 81
           Width = 222
           Height = 17
           Caption = #1057#1088#1077#1076#1085#1080#1077' '#1091#1079#1083#1099' '#1073#1077#1079' '#1082#1072#1090#1072#1083#1086#1075#1086#1074
@@ -5182,7 +5227,7 @@ object Tcp: TTcp
         end
         object cbAutoSelFallbackDirNoLimit: TCheckBox
           Left = 178
-          Top = 41
+          Top = 63
           Width = 222
           Height = 17
           Caption = #1053#1077' '#1086#1075#1088#1072#1085#1080#1095#1080#1074#1072#1090#1100' '#1087#1086#1076#1073#1086#1088' '#1082#1072#1090#1072#1083#1086#1075#1086#1074
@@ -5295,7 +5340,6 @@ object Tcp: TTcp
           Width = 13
           Height = 21
           Associate = edAutoSelMinWeight
-          Min = 1
           Max = 10240
           Increment = 5
           Position = 10
@@ -5305,12 +5349,34 @@ object Tcp: TTcp
         end
         object cbAutoSelConfluxOnly: TCheckBox
           Left = 178
-          Top = 131
+          Top = 135
           Width = 222
           Height = 17
           Caption = #1058#1086#1083#1100#1082#1086' '#1089' '#1087#1086#1076#1076#1077#1088#1078#1082#1086#1081' '#1088#1072#1079#1076#1077#1083#1077#1085#1080#1103
-          TabOrder = 22
+          TabOrder = 21
           OnClick = OptionsChange
+        end
+        object cbxAutoSelUniqueType: TComboBox
+          Left = 260
+          Top = 42
+          Width = 110
+          Height = 21
+          AutoDropDown = True
+          Style = csDropDownList
+          DoubleBuffered = False
+          ItemIndex = 4
+          ParentDoubleBuffered = False
+          TabOrder = 23
+          Text = 'CIDR /16'
+          OnChange = AutoSelOptionsUpdate
+          Items.Strings = (
+            #1053#1077' '#1080#1089#1087#1086#1083#1100#1079#1086#1074#1072#1090#1100
+            #1061#1101#1096
+            'IP-'#1072#1076#1088#1077#1089
+            'CIDR /24'
+            'CIDR /16'
+            'CIDR /8'
+            #1057#1090#1088#1072#1085#1072)
         end
       end
     end

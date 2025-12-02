@@ -186,6 +186,7 @@ end;
 procedure Translate(const Section: string);
 var
   i: Integer;
+  DataSize: int64;
 begin
   CurrentTranslate := Section;
   if Assigned(LangStr) then
@@ -223,7 +224,7 @@ begin
     LoadStr('164', 'Эта операция требует перезапуска Tor');
     LoadStr('172', 'Разделение трафика: Привязано');
     LoadStr('175', 'Максимум');
-    LoadStr('180', 'c');
+    LoadStr('180', 'с');
     LoadStr('181', 'Проверка переадресации портов');
     LoadStr('184', 'Разделение трафика: Ожидание');
     LoadStr('197', 'мин|минута|минуты|минут');
@@ -339,7 +340,7 @@ begin
     LoadStr('357', 'Эта программа является свободным программным обеспечением и распространяется по лицензии MIT');
     LoadLns('358', 'Узлы, отсутствующие в консенсусе, будут удалены из пользовательских списков.\n\nИгнорировать список исключенных узлов при сканировании?');
     LoadStr('359', 'Удалить из списков');
-    LoadStr('360', 'Автоподбор роутеров');
+    LoadStr('360', 'Выполнить автоподбор');
     LoadLns('361', 'Вы действительно хотите удалить:\n\n%s\n\nиз всех списков узлов?%s');
     LoadLns('362', 'Вы действительно хотите удалить:\n\n%s\n\nиз списка "%s узлы"?%s');
     LoadStr('363', 'Шаблон "%s" успешно сохранён');
@@ -383,7 +384,7 @@ begin
     LoadStr('401', 'Нет соединения');
     LoadStr('402', 'Начало учёта: %s');
     LoadStr('404', 'Остановка сканирования..');
-    LoadLns('405', 'Вы действительно хотите: "%s"\n\nВыбранное действие нельзя будет отменить!');
+    LoadLns('405', 'Вы действительно хотите: "%s"?\n\nВыбранное действие нельзя будет отменить!');
     LoadStr('406', 'Удалить все');
     LoadStr('419', 'Список');
     LoadStr('423', 'Найти...');
@@ -392,6 +393,7 @@ begin
     LoadStr('459', 'мс|миллисекунда|миллисекунды|миллисекунд');
     LoadStr('470', 'шт');
     LoadStr('471', 'Приоритет');
+    LoadStr('475', 'Уникальность');
     LoadStr('477', 'ч|час|часа|часов');
     LoadLns('479', 'Настройки программы не удалось обновить до текущей версии. Возможно, у вас недостаточно прав на запись в каталог с программой.\n\nПопробуйте запустить программу от имени Администратора');
     LoadStr('495', 'Остановить сканирование');
@@ -465,6 +467,7 @@ begin
     LoadStr('695', 'Нестабильный');
     LoadLns('697', 'Вы собираетесь выключить режим "Только чтение".\n\nЛюбые изменения списка мостов в программе будут перезаписывать выбранный вами файл.\n\nВы действительно хотите это сделать?');
     LoadStr('702', 'Показывать IPv6 адрес и флаг');
+    LoadStr('703', '"Не использовать","Хэш","IP-адрес","CIDR /24","CIDR /16","CIDR /8","Страна"');
 
     TranslateArray(HsHeader, TransStr('230'));
     TranslateArray(HsPortsHeader, TransStr('231'));
@@ -479,7 +482,11 @@ begin
     PrefixesDic.Clear;
     TranslateArray(Prefixes, TransStr('234'));
     for i := 0 to High(Prefixes) do
-      PrefixesDic.AddOrSetValue(Prefixes[i], Int64(1) shl (i * 10));
+    begin
+      DataSize := Int64(1) shl (i * 10);
+      PrefixesDic.AddOrSetValue(Prefixes[i], DataSize);
+      PrefixesDic.AddOrSetValue(Prefixes[i] + '/' + TransStr('180'), DataSize);
+    end;
 
     if UserProfile = 'User' then
       Tcp.lbUserDir.Caption := TransStr('104')
@@ -604,6 +611,8 @@ begin
     Tcp.lbBridgesLimit.Caption := TransStr('175');
     Tcp.lbBridgesPriority.Caption := TransStr('471');
     LoadList(Tcp.cbxBridgesPriority, '636', '"Порядок в списке","Скорость канала","Пинг до моста","Случайный"');
+    Tcp.lbBridgesUniqueType.Caption := TransStr('475');
+    LoadList(Tcp.cbxBridgesUniqueType, '703', TransStr('703'));
     Tcp.lbMaxDirFails.Caption := Load('638', 'Максимум ошибок подключения');
     Tcp.cbCacheNewBridges.Caption := Load('637', 'Кэшировать новые');
     Tcp.lbBridgesCheckDelay.Caption := Load('639', 'Задержка между проверками');
@@ -722,7 +731,7 @@ begin
     Tcp.lbHours2.Caption := TranslateTime(0, TIME_HOUR, False, True);
     Tcp.lbAutoSelRoutersAfterScanType.Caption := Load('592', 'Автоподбор после сканирования');
     LoadList(Tcp.cbxAutoSelRoutersAfterScanType, '677', '"Выключен","Любого","Полного","Частичного","Новых узлов"');
-    Tcp.lbAutoScanType.Caption := Load('603', 'Узлы для сканирования');
+    Tcp.lbAutoScanType.Caption := Load('603', 'Узлы для частичного сканирования');
     LoadList(Tcp.cbxAutoScanType, '604', '"Автовыбор","Новые и без ответа","Новые и живые","Новые и мосты","Только новые"');
 
     Tcp.gbTransports.Caption := Load('460', 'Подключаемые транспорты');
@@ -754,7 +763,9 @@ begin
     LoadList(Tcp.cbxAutoSelPriority, '472', '"Сбалансированный","Вес в консенсусе","Пинг до узла","Случайный"');
     Tcp.cbAutoSelStableOnly.Caption := Load('473', 'Только стабильные');
     Tcp.cbAutoSelFilterCountriesOnly.Caption := Load('474', 'Только страны из фильтра');
-    Tcp.cbAutoSelUniqueNodes.Caption := Load('475', 'Только уникальные');
+    Tcp.lbAutoSelUniqueType.Caption := TransStr('475');
+    LoadList(Tcp.cbxAutoSelUniqueType, '703', TransStr('703'));
+    Tcp.sbAutoSelUniqueByNodeType.Hint := Load('704', 'Отдельно для каждого списка');
     Tcp.cbAutoSelNodesWithPingOnly.Caption := Load('476', 'Только отвечающие на пинг');
     Tcp.cbAutoSelMiddleNodesWithoutDir.Caption := Load('591', 'Средние узлы без каталогов');
     Tcp.cbAutoSelFallbackDirNoLimit.Caption := Load('653', 'Не ограничивать подбор каталогов');
@@ -815,7 +826,7 @@ begin
 
     Tcp.lbSpeed3.Caption := Prefixes[2] + '/' + TransStr('180');
     Tcp.btnShowNodes.Caption := TransStr('547');
-    LoadList(Tcp.cbxRoutersQuery, '548', '"Хеш","Ник","IPv4","IPv6","Порт","Версия","Пинг","Транспорт"');
+    LoadList(Tcp.cbxRoutersQuery, '548', '"Хэш","Ник","IPv4","IPv6","Порт","Версия","Пинг","Транспорт"');
     Tcp.edRoutersQuery.TextHint := Load('549', 'Введите запрос');
     Tcp.lbFavoritesTotalSelected.Caption := TransStr('643') + ':';
     Tcp.imFavoritesEntry.Hint := TransStr('288');

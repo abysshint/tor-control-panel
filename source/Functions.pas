@@ -134,6 +134,7 @@ var
   function HasBrackets(const Str: string; BracketsType: TBracketsType): Boolean;
   function GetAddressType(const IpStr: string; UseCidr: Boolean = False): TAddressType;
   function IpInReservedRanges(const IpStr: string; RangeType: TIPRangeType): Boolean;
+  function IpToMask(const IpStr: string; Mask: Byte): string;
   function IsIPv4(const IpStr: string): Boolean;
   function IsIPv6(const IpStr: string): Boolean;
   function ValidKeyValue(const Str: string): Boolean;
@@ -161,8 +162,6 @@ var
   function CompAsc(const A, B: string) : Integer; overload;
   function CompDesc(aSl: TStringList; aIndex1, aIndex2: Integer): Integer; overload;
   function CompDesc(const A, B: string) : Integer; overload;
-  function CompIntObjectAsc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
-  function CompIntObjectDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
   function CompIntDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
   function CompIntAsc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
   function CompTextAsc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer; overload;
@@ -1520,7 +1519,7 @@ var
   PrefixSize: Int64;
 begin
   SpacePos := Pos(' ', SizeStr);
-  if not PrefixesDic.TryGetValue(Copy(SizeStr, SpacePos + 1, Pos('/', SizeStr) - SpacePos - 1), PrefixSize) then
+  if not PrefixesDic.TryGetValue(Copy(SizeStr, SpacePos + 1), PrefixSize) then
     PrefixSize := 0;
   Result := Round(StrToFloatDef(Copy(SizeStr, 1, SpacePos - 1), 0.0) * PrefixSize);
 end;
@@ -2607,38 +2606,20 @@ procedure DeleteDuplicatesFromList(var ls: TStringList; ListType: TListType = lt
 var
   Duplicates: THashSet<string>;
   List: TStringList;
-  SocketStr: string;
   i: Integer;
-
-  procedure UpdateList(const Str: string);
-  begin
-    if not Duplicates.Contains(Str) then
-    begin
-      Duplicates.Add(Str);
-      List.Append(ls[i]);
-    end;
-  end;
-
 begin
   if ls.Count < 2 then
     Exit;
   Duplicates := THashSet<string>.Create(ls.Count);
   List := TStringList.Create;
   try
-    if ListType = ltBridge then
+    for i := 0 to ls.Count - 1 do
     begin
-      for i := 0 to ls.Count - 1 do
+      if not Duplicates.Contains(ls[i]) then
       begin
-        if TryGetDataFromStr(ls[i], ltSocket, SocketStr) then
-          UpdateList(SocketStr)
-        else
-          UpdateList(ls[i]);
+        Duplicates.Add(ls[i]);
+        List.Append(ls[i]);
       end;
-    end
-    else
-    begin
-      for i := 0 to ls.Count - 1 do
-        UpdateList(ls[i]);
     end;
     ls.SetStrings(List);
   finally
@@ -3356,16 +3337,6 @@ begin
   end;
 end;
 
-function CompIntObjectAsc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
-begin
-  Result := CompareValue(Integer(aSl.Objects[aIndex1]), Integer(aSl.Objects[aIndex2]));
-end;
-
-function CompIntObjectDesc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
-begin
-  Result := CompareValue(Integer(aSl.Objects[aIndex2]), Integer(aSl.Objects[aIndex1]));
-end;
-
 function CompAsc(aSl: TStringList; aIndex1, aIndex2: Integer) : Integer;
 begin
   Result := CompareStr(aSl[aIndex1], aSl[aIndex2]);
@@ -3747,18 +3718,12 @@ begin
     for BridgesItem in BridgesDic do
     begin
       if FindData(BridgesItem.Value.Router) then
-      begin
-        Result := BridgesItem.Key;
-        Exit;
-      end;
+        Exit(BridgesItem.Key);
     end;
     for RoutersItem in RoutersDic do
     begin
       if FindData(RoutersItem.Value) then
-      begin
-        Result := RoutersItem.Key;
-        Exit;
-      end;
+        Exit(RoutersItem.Key);
     end;
   end;
 end;
@@ -3881,6 +3846,64 @@ begin
       Exit(True);
     Exit(RangeType in TIPRangeTypes(Value));
   end;
+end;
+
+function IpToMask(const IpStr: string; Mask: Byte): string;
+var
+  PosIdx, OctetIdx: Integer;
+  Octets: array[0..3] of Byte;
+  CurrentValue: Integer;
+begin
+  if IpStr = '' then
+    Exit('');
+
+  OctetIdx := 0;
+  CurrentValue := 0;
+
+  for PosIdx := 1 to Length(IpStr) do
+  begin
+    case IpStr[PosIdx] of
+      '0'..'9':
+        CurrentValue := CurrentValue * 10 + (Ord(IpStr[PosIdx]) - Ord('0'));
+      '.':
+        begin
+          Octets[OctetIdx] := CurrentValue;
+          Inc(OctetIdx);
+          CurrentValue := 0;
+          if OctetIdx = 3 then Break;
+        end;
+    end;
+  end;
+  Octets[3] := CurrentValue;
+
+  if Mask < 32 then
+  begin
+    if Mask <= 8 then
+    begin
+      Octets[0] := Octets[0] and (256 - (1 shl (8 - Mask)));
+      Octets[1] := 0;
+      Octets[2] := 0;
+      Octets[3] := 0;
+    end
+    else if Mask <= 16 then
+    begin
+      Octets[1] := Octets[1] and (256 - (1 shl (16 - Mask)));
+      Octets[2] := 0;
+      Octets[3] := 0;
+    end
+    else if Mask <= 24 then
+    begin
+      Octets[2] := Octets[2] and (256 - (1 shl (24 - Mask)));
+      Octets[3] := 0;
+    end
+    else
+    begin
+      Octets[3] := Octets[3] and (256 - (1 shl (32 - Mask)));
+    end;
+  end;
+  SetLength(Result, 15 + Length(IntToStr(Mask)));
+  Result := IntToStr(Octets[0]) + '.' + IntToStr(Octets[1]) + '.' +
+            IntToStr(Octets[2]) + '.' + IntToStr(Octets[3]) + '/' + IntToStr(Mask);
 end;
 
 function IsIPv4(const IpStr: string): Boolean;
