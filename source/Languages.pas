@@ -197,6 +197,7 @@ begin
   LangIniFile := TMemIniFile.Create(LangFile, TEncoding.UTF8);
   try
     LoadStr('Locale', '1049');
+    LoadStr('Translator', '');
     LoadStr('100', 'Старт');
     LoadStr('101', 'Запуск...');
     LoadStr('102', 'Стоп');
@@ -871,7 +872,7 @@ begin
     Tcp.miScanGuards.Caption := Load('602', 'Сторожевые узлы');
     Tcp.miScanAliveNodes.Caption := Load('605', 'Живые узлы');
     Tcp.miManualPingMeasure.Caption := Load('493', 'Измерять пинг');
-    Tcp.miManualDetectAliveNodes.Caption := Load('494', 'Определять доступность');
+    Tcp.miManualDetectAliveNodes.Caption := Load('494', 'Проверять доступность');
     Tcp.miStopScan.Caption := TransStr('495');
     Tcp.miResetGuards.Caption := Load('496', 'Сбросить сторожевые узлы');
     Tcp.miResetGuardsAll.Caption := Load('497', 'Все сторожевые узлы');

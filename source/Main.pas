@@ -4353,7 +4353,7 @@ begin
           DrawText(sgHs.Canvas.Handle, PChar(HsHeader[ACol]), Length(HsHeader[ACol]), Rect, DT_CENTER);
     end;
   end;
-  GridScrollCheck(sgHs, HS_NAME, 212);
+  GridScrollCheck(sgHs, HS_NAME, 208);
 
   if ACol = sgHs.SelCol then
   begin
@@ -7706,7 +7706,7 @@ begin
   PriorityType := cbxBridgesPriority.ItemIndex;
   UniqueType := cbxBridgesUniqueType.ItemIndex;
   BridgeKeys := THashSet<string>.Create;
-  UniqueDataKeys := THashSet<string>.Create;;
+  UniqueDataKeys := THashSet<string>.Create;
   try
     WeightCount := 0;
     PingCount := 0;
@@ -13208,7 +13208,6 @@ begin
   State := ScanStage > 0;
   lbScanProgress.Caption := TransStr('631');
   lbScanType.Caption := GetScanTypeStr;
-  lbScanType.Left := lbScanProgress.Left;
   lbScanType.Visible := State;
   lbScanProgress.Visible := State;
   pbScanProgress.Visible := State;
@@ -19211,18 +19210,21 @@ end;
 procedure TTcp.miAboutClick(Sender: TObject);
 var
   Data: TPeData;
-  BitStr: string;
+  BitStr, Translator: string;
 begin
   GetPeData(Paramstr(0), Data);
   if Data.Bits <> 0 then
     BitStr := ' (' + IntToStr(Data.Bits) + ' bit)'
   else
     BitStr := '';
+  Translator := TransStr('Translator');
+  if Translator <> '' then
+    Translator := BR + BR + Translator;
   if ShowMsg(Format(TransStr('356'),
   [
     'Tor Control Panel',
     GetFileVersionStr(Paramstr(0)) + BitStr,
-    'Copyright © 2020-2025, abysshint & contributors',
+    'Copyright © 2020-2025, abysshint & contributors' + Translator,
     TransStr('357')
   ]), TransStr('355'), mtInfo, True) then
   begin
@@ -19429,7 +19431,7 @@ begin
     Scale := PixelsPerInch / USER_DEFAULT_SCREEN_DPI;
 
   sgHs.ColWidths[HS_VERSION] := Round(50 * Scale);
-  sgHs.ColWidths[HS_INTRO_POINTS] := Round(80 * Scale);
+  sgHs.ColWidths[HS_INTRO_POINTS] := Round(84 * Scale);
   sgHs.ColWidths[HS_MAX_STREAMS] := Round(90 * Scale);
   sgHs.ColWidths[HS_STATE] := Round(24 * Scale);
   sgHs.ColWidths[HS_PORTS_DATA] := -1;
