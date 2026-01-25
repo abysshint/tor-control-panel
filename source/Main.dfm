@@ -563,17 +563,17 @@ object Tcp: TTcp
       OnClick = sbDecreaseFormClick
     end
     object lbScanType: TLabel
-      Left = 617
+      Left = 607
       Top = 11
-      Width = 181
+      Width = 187
       Height = 13
-      Alignment = taRightJustify
+      AutoSize = False
       Caption = #1055#1088#1086#1074#1077#1088#1082#1072' '#1076#1086#1089#1090#1091#1087#1085#1086#1089#1090#1080' '#1082#1072#1090#1072#1083#1086#1075#1086#1074'..'
       Transparent = True
       Visible = False
     end
     object lbScanProgress: TLabel
-      Left = 627
+      Left = 607
       Top = 26
       Width = 46
       Height = 13
@@ -628,9 +628,9 @@ object Tcp: TTcp
       OnClick = btnSwitchTorClick
     end
     object pbScanProgress: TProgressBar
-      Left = 676
+      Left = 656
       Top = 27
-      Width = 120
+      Width = 140
       Height = 13
       Cursor = crHandPoint
       ParentShowHint = False
@@ -1260,7 +1260,7 @@ object Tcp: TTcp
     Top = 93
     Width = 794
     Height = 506
-    ActivePage = tsMain
+    ActivePage = tsNetwork
     DoubleBuffered = True
     Images = lsMain
     ParentDoubleBuffered = False

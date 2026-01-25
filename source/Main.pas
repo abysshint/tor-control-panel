@@ -1177,6 +1177,7 @@ type
     procedure ScanStart(ScanType: TScanType; ScanPurpose: TScanPurpose);
     procedure ScanNetwork(ScanType: TScanType; ScanPurpose: TScanPurpose);
     procedure UpdateScannerControls;
+    procedure UpdateScanTypeCaption;
     procedure CheckBridgeFileSave;
     function GetScanTypeStr: string;
     procedure LoadConsensusData;
@@ -1214,7 +1215,8 @@ type
     procedure SaveServerTransportOptions(const Key, Value: string; UpdateControls: Boolean = False);
     procedure LoadServerTransportOptions(const Key: string; UpdateControls: Boolean = False);
     procedure LoadProxyPorts(PortControl: TUpdown; HostControl: TCombobox; EnabledControl: TCheckBox; ini: TMemIniFile);
-    procedure SaveReachableAddresses(var ini: TMemIniFile);
+    procedure SaveReachableAddresses(ini: TMemIniFile = nil);
+    function LoadPortsMapFromStr(const PortsData: string; const PortsMap: THashSet<Word>): TArray<string>;
     procedure SaveProxyData(var ini: TMemIniFile);
     procedure SaveTransportsData(var ini: TMemIniFile; ReloadServerTransport: Boolean);
     procedure SaveBridgesData(ini: TMemIniFile = nil; FastUpdate: Boolean = False);
@@ -1721,8 +1723,7 @@ var
   UserScanMap: THashSet<string>;
   UsedBridgesMap: THashSet<string>;
   VersionsMap: THashSet<string>;
-  PortsMap: THashSet<Word>;
-  TransportsMap: THashSet<string>;
+  ReachablePortsMap: THashSet<Word>;
   IPv4ReservedRanges, IPv4CidrNodes: TIPv4RadixTree;
   IPv6ReservedRanges: TIPv6RadixTree;
 
@@ -1753,7 +1754,7 @@ var
   Logger, VersionChecker: TReadPipeThread;
   OptionsLocked, OptionsChanged, ShowNodesChanged, Connected, AlreadyStarted, SearchFirst, StopScan, LogHasSel: Boolean;
   ConsensusUpdated, FilterUpdated, RoutersUpdated, ExcludeUpdated, OpenDNSUpdated, LanguageUpdated,
-  BridgesUpdated, BridgesRecalculate, BridgesFileUpdated, BridgesFileNeedSave, BridgesFileIsCompat: Boolean;
+  ReachableAddressesUpdated, BridgesUpdated, BridgesRecalculate, BridgesFileUpdated, BridgesFileNeedSave, BridgesFileIsCompat: Boolean;
   SelectExitCircuit, TotalsNeedSave: Boolean;
   SupportVanguardsLite, SupportBridgesTesting, SupportConflux, SupportCircuitPadding: Boolean;
   FallbackDirsRecalculate, FallbackDirsUpdated, ServerTransportOptionsUpdated: Boolean;
@@ -5788,7 +5789,6 @@ var
   BridgesChanged, FallbackDirsChanged, TransportsChanged,
   NeedReset: Boolean;
 begin
-
   DefaultsChanged := DefaultsFileID <> GetFileID(DefaultsFile).Data;
   TorrcChanged := TorrcFileID <> GetFileID(TorConfigFile).Data;
   PathChanged := not CheckRequiredFiles;
@@ -7557,7 +7557,7 @@ begin
           cdTransport := True;
 
         if CheckEntryPorts then
-          cdPorts := PortsMap.Contains(Bridge.Port)
+          cdPorts := ReachablePortsMap.Contains(Bridge.Port)
         else
           cdPorts := True;
 
@@ -7675,10 +7675,6 @@ begin
       Data.Append(DataItem.Value.DataStr);
       Inc(SuitableBridgesCount);
     end;
-
-    if CheckEntryPorts then
-      PortsMap.Clear;
-
   finally
     IPv4Bridges.Free;
     IPv6Bridges.Free;
@@ -8080,66 +8076,87 @@ begin
 end;
 
 function TTcp.ReachablePortsExists: Boolean;
-var
-  ParseStr: TArray<string>;
-  i: Integer;
 begin
-  if cbUseReachableAddresses.Checked then
-  begin
-    PortsMap.Clear;
-    ParseStr := StringReplace(edReachableAddresses.Text, ' ', '', [rfReplaceAll]).Split([',']);
-    for i := 0 to High(ParseStr) do
-    begin
-      if ValidInt(ParseStr[i], 1, 65535) then
-        PortsMap.Add(StrToInt(ParseStr[i]));
-    end;
-  end;
-  Result := PortsMap.Count > 0;
+  Result := cbUseReachableAddresses.Checked and (ReachablePortsMap.Count > 0);
 end;
 
-procedure TTcp.SaveReachableAddresses(var ini: TMemIniFile);
+function TTcp.LoadPortsMapFromStr(const PortsData: string; const PortsMap: THashSet<Word>): TArray<string>;
 var
-  AllowedPorts: TStringList;
-  DataStr, Str: string;
-  i: Integer;
+  ParseStr, RangeStr: TArray<string>;
+  i, j, x, PortOne, PortTwo: Integer;
 begin
-  DeleteTorConfig(['ReachableAddresses']);
-  AllowedPorts := TStringList.Create;
-  try
-    AllowedPorts.CommaText := edReachableAddresses.Text;
-    for i := AllowedPorts.Count - 1 downto 0 do
+  PortsMap.Clear;
+  ParseStr := PortsData.Split([',']);
+  for i := 0 to High(ParseStr) do
+  begin
+    ParseStr[i] := Trim(ParseStr[i]);
+    if ValidInt(ParseStr[i], 1, 65535, PortOne) then
     begin
-      AllowedPorts[i] := Trim(AllowedPorts[i]);
-      if not ValidInt(AllowedPorts[i], 1, 65535) or (AllowedPorts.IndexOf(AllowedPorts[i]) <> i) then
-        AllowedPorts.Delete(i);
-    end;
-
-    if AllowedPorts.Count > 0 then
+      PortsMap.Add(PortOne);
+      TArrayHelper.AddToArray<string>(Result, ParseStr[i]);
+    end
+    else
     begin
-      AllowedPorts.CustomSort(CompTextAsc);
-      edReachableAddresses.Text := AllowedPorts.CommaText;
-      DataStr := '';
-      for i := 0 to AllowedPorts.Count - 1 do
+      RangeStr :=  ParseStr[i].Split(['-']);
+      if Length(RangeStr) = 2 then
       begin
-        Str := '*:' + AllowedPorts[i];
+        if ValidInt(RangeStr[0], 1, 65535, PortOne) and ValidInt(RangeStr[1], 1, 65535, PortTwo) then
+        begin
+          if PortOne > PortTwo then
+          begin
+            x := PortOne;
+            PortOne := PortTwo;
+            PortTwo := x;
+            ParseStr[i] := IntToStr(PortOne) + '-' + IntToStr(PortTwo)
+          end;
+          for j := PortOne to PortTwo do
+            PortsMap.Add(j);
+          TArrayHelper.AddToArray<string>(Result, ParseStr[i]);
+        end;
+      end;
+    end;
+  end;
+  TArray.Sort<string>(Result, TComparer<string>.Construct(CompTextAsc));
+end;
+
+procedure TTcp.SaveReachableAddresses(ini: TMemIniFile = nil);
+var
+  ParseStr: TArray<string>;
+  DataStr, Str: string;
+  i, PortsCount: Integer;
+  AutoSave: Boolean;
+begin
+  AutoSave := ini <> nil;
+  ParseStr := LoadPortsMapFromStr(edReachableAddresses.Text, ReachablePortsMap);
+  PortsCount := Length(ParseStr);
+  if PortsCount > 0 then
+    edReachableAddresses.Text := TArray.ToString<string>(ParseStr, ',');
+
+  if AutoSave then
+  begin
+    DeleteTorConfig(['ReachableAddresses']);
+    if PortsCount = 0 then
+    begin
+      edReachableAddresses.Text := DEFAULT_ALLOWED_PORTS;
+      cbUseReachableAddresses.Checked := False;
+    end;
+    if cbUseReachableAddresses.Checked then
+    begin
+      DataStr := '';
+      for i := 0 to High(ParseStr) do
+      begin
+        Str := '*:' + ParseStr[i];
         if DataStr <> '' then
           DataStr := DataStr + ',' + Str
         else
           DataStr := Str
       end;
-      if cbUseReachableAddresses.Checked then
-        SetTorConfig('ReachableAddresses', DataStr);
-    end
-    else
-    begin
-      cbUseReachableAddresses.Checked := False;
-      edReachableAddresses.Text := DEFAULT_ALLOWED_PORTS;
+      SetTorConfig('ReachableAddresses', DataStr);
     end;
     SetSettings('Network', cbUseReachableAddresses, ini);
     SetSettings('Network', edReachableAddresses, ini);
-  finally
-    AllowedPorts.Free;
   end;
+  ReachableAddressesUpdated := False;
 end;
 
 procedure TTcp.LoadProxyPorts(PortControl: TUpdown; HostControl: TCombobox; EnabledControl: TCheckBox; ini: TMemIniFile);
@@ -13201,6 +13218,26 @@ begin
     Result := Result + '..';
 end;
 
+procedure TTcp.UpdateScanTypeCaption;
+var
+  MaxStrSize, CurrentStrSize: Integer;
+begin
+  CurrentStrSize := lbScanType.Canvas.TextWidth(lbScanType.Caption);
+  MaxStrSize := Round(187 * Scale);
+  if CurrentStrSize > MaxStrSize then
+  begin
+    lbScanType.Alignment := taRightJustify;
+    lbScanType.Width := CurrentStrSize;
+    lbScanType.Left := lbScanProgress.Left - (CurrentStrSize - MaxStrSize);
+  end
+  else
+  begin
+    lbScanType.Left := lbScanProgress.Left;
+    lbScanType.Width := MaxStrSize;
+    lbScanType.Alignment := taLeftJustify;
+  end;
+end;
+
 procedure TTcp.UpdateScannerControls;
 var
   State: Boolean;
@@ -13208,6 +13245,7 @@ begin
   State := ScanStage > 0;
   lbScanProgress.Caption := TransStr('631');
   lbScanType.Caption := GetScanTypeStr;
+  UpdateScanTypeCaption;
   lbScanType.Visible := State;
   lbScanProgress.Visible := State;
   pbScanProgress.Visible := State;
@@ -13503,7 +13541,10 @@ begin
     if TotalScans > 0 then
     begin
       if StopScan then
-        lbScanType.Caption := TransStr('404')
+      begin
+        lbScanType.Caption := TransStr('404');
+        UpdateScanTypeCaption;
+      end
       else
       begin
         lbScanType.Caption := GetScanTypeStr;
@@ -13511,6 +13552,7 @@ begin
         pbScanProgress.Position := CurrentScans - ScanThreads;
         pbScanProgress.ProgressText := IntToStr(Round((CurrentScans - ScanThreads) / TotalScans * 100)) + ' %';
         pbScanProgress.Hint := Format(TransStr('693'), [CurrentScans - ScanThreads, TotalScans]);
+        UpdateScanTypeCaption;
       end;
     end;
   end;
@@ -13735,6 +13777,8 @@ var
   GeoIpInfo: TGeoIpInfo;
   BridgeInfo: TBridgeInfo;
   FindIPv4Cidr: TCidrValuePairs;
+  PortsMap: THashSet<Word>;
+  TransportsMap: THashSet<string>;
 
   procedure UpdateSelectNodes(ACol: Integer);
   begin
@@ -13811,352 +13855,318 @@ begin
     Exit;
   WrongQuery := False;
   Query := StringReplace(Trim(edRoutersQuery.Text), ';', '', [rfReplaceAll]);
-  if miRtFiltersQuery.Checked and (Query <> '') then
-  begin
-    case cbxRoutersQuery.ItemIndex of
-      USER_QUERY_PORT:
-      begin
-        PortsMap.Clear;
-        ParseStr := Query.Split([',']);
-        DataStr := '';
-        for i := 0 to High(ParseStr) do
+  try
+    if miRtFiltersQuery.Checked and (Query <> '') then
+    begin
+      case cbxRoutersQuery.ItemIndex of
+        USER_QUERY_PORT:
         begin
-          ParseStr[i] := Trim(ParseStr[i]);
-          if ValidInt(ParseStr[i], 0, 65535) then
-            PortsMap.Add(StrToInt(ParseStr[i]))
-          else
-          begin
-            RangeStr :=  ParseStr[i].Split(['-']);
-            if Length(RangeStr) <> 2 then
-              ParseStr[i] := ''
-            else
-            begin
-              if ValidInt(RangeStr[0], 0, 65535) and ValidInt(RangeStr[1], 1, 65535) then
-              begin
-                if StrToInt(RangeStr[0]) <= StrToInt(RangeStr[1]) then
-                begin
-                  for j := StrToInt(RangeStr[0]) to StrToInt(RangeStr[1]) do
-                    PortsMap.Add(j);
-                end
-                else
-                  ParseStr[i] := '';
-              end
-              else
-                ParseStr[i] := '';
-            end;
-          end;
-          if ParseStr[i] <> '' then
-          begin
-            if DataStr <> '' then
-              DataStr := DataStr + ',' + ParseStr[i]
-            else
-              DataStr :=  ParseStr[i];
-          end;
+          if PortsMap = nil then
+            PortsMap := THashSet<Word>.Create;
+           Query := TArray.ToString<string>(LoadPortsMapFromStr(Query, PortsMap), ',');
         end;
-        Query := DataStr;
-      end;
-      USER_QUERY_PING:
-      begin
-        if not (ValidInt(Query, -1, 65535) or (CharInSet(AnsiChar(Query[1]), [NONE_CHAR, INFINITY_CHAR]) and (Length(Query) = 1))) then
-          WrongQuery := True;
-      end;
-      USER_QUERY_TRANSPORT:
-      begin
-        if Query <> NONE_CHAR then
+        USER_QUERY_PING:
         begin
-          WrongQuery := True;
-          TransportsMap.Clear;
-          for Transport in TransportsDic do
-          begin
-            if FindStr(Query, Transport.Key) then
-            begin
-              TransportsMap.Add(Transport.Key);
-              WrongQuery := False;
-            end;
-          end;
-        end;
-      end;
-      else
-      begin
-        try
-          MatchesMask('', Query);
-        except
-          on E:Exception do
+          if not (ValidInt(Query, -1, 65535) or (CharInSet(AnsiChar(Query[1]), [NONE_CHAR, INFINITY_CHAR]) and (Length(Query) = 1))) then
             WrongQuery := True;
         end;
-      end;
-    end;
-
-    edRoutersQuery.Text := Query;
-    edRoutersQuery.SelStart := Length(Query);
-    if Query = '' then
-      WrongQuery := True;
-  end;
-
-  RoutersIPv6Count := 0;
-  RoutersDifferentCountriesCount := 0;
-  RoutersCount := 0;
-  if sgRouters.SelRow = 0 then
-    sgRouters.SelRow := 1;
-  sgRouters.SaveRowID;
-  sgRouters.BeginUpdateRows;
-  sgRouters.Clear(False);
-
-  if not WrongQuery then
-  begin
-    for Item in RoutersDic do
-    begin
-      SelectedBridgeFound := False;
-      FindIPv4Cidr := nil;
-      IPv4CountryID := GetCountryValue(Item.Value.IPv4);
-      IPv4CountryCode := CountryCodes[IPv4CountryID];
-      if miRtFiltersCountry.Checked then
-      begin
-        case cbxRoutersCountry.Tag of
-          COUNTRY_TYPE_ALL: cdCountry := True;
-          COUNTRY_TYPE_FILTER: cdCountry := FilterDic.Items[IPv4CountryCode].Data <> [];
-          else
-            cdCountry := IPv4CountryID = cbxRoutersCountry.Tag;
-        end;
-      end
-      else
-        cdCountry := True;
-
-      if miRtFiltersWeight.Checked then
-        cdWeight := Item.Value.Bandwidth >= udRoutersWeight.Position * 1024
-      else
-        cdWeight := True;
-
-      if miRtFiltersQuery.Checked and (Query <> '') then
-      begin
-        case cbxRoutersQuery.ItemIndex of
-          USER_QUERY_HASH: cdQuery := FindStr(Query, Item.Key);
-          USER_QUERY_NICKNAME: cdQuery := FindStr(Query, Item.Value.Name);
-          USER_QUERY_IPV4: cdQuery := FindStr(Query, Item.Value.IPv4);
-          USER_QUERY_IPV6:
-          begin
-            if Query <> NONE_CHAR then
-              cdQuery := FindStr(RemoveBrackets(Query, btSquare), Item.Value.IPv6)
-            else
-              cdQuery := Item.Value.IPv6 = '';
-          end;
-          USER_QUERY_PORT: cdQuery := PortsMap.Contains(Item.Value.Port);
-          USER_QUERY_VERSION: cdQuery := FindStr(Query, Item.Value.Version);
-          USER_QUERY_PING:
-          begin
-            if GeoIpDic.TryGetValue(Item.Value.IPv4, GeoIpInfo) then
-            begin
-              case AnsiChar(Query[1]) of
-                NONE_CHAR: cdQuery := GeoIpInfo.ping = PING_NONE;
-                INFINITY_CHAR: cdQuery := GeoIpInfo.ping = PING_DEAD;
-                else
-                  cdQuery := (GeoIpInfo.ping <= StrToInt(Query)) and (GeoIpInfo.ping > PING_NONE);
-              end;
-            end
-            else
-              cdQuery := False;
-          end;
-          USER_QUERY_TRANSPORT:
-          begin
-            if BridgesDic.TryGetValue(Item.Key, BridgeInfo) then
-            begin
-              if Query <> NONE_CHAR then
-                cdQuery := TransportsMap.Contains(BridgeInfo.Transport)
-              else
-                cdQuery := BridgeInfo.Transport = '';
-            end
-            else
-              cdQuery := False;
-          end;
-          else
-            cdQuery := True;
-        end;
-      end
-      else
-        cdQuery := True;
-
-      if miRtFiltersType.Checked then
-      begin
-        cdBridge := CheckRouterType(miShowBridge, rfBridge in Item.Value.Flags);
-        cdAuthority := CheckRouterType(miShowAuthority, rfAuthority in Item.Value.Flags);
-        cdExit := CheckRouterType(miShowExit, rfExit in Item.Value.Flags);
-        cdGuard := CheckRouterType(miShowGuard, rfGuard in Item.Value.Flags);
-        cdOther := CheckRouterType(miShowOther, not (rfExit in Item.Value.Flags) and not (rfGuard in Item.Value.Flags) and not (rfBridge in Item.Value.Flags) and not (rfAuthority in Item.Value.Flags));
-        cdConsensus := CheckRouterType(miShowConsensus, rfRelay in Item.Value.Flags);
-        cdFast := CheckRouterType(miShowFast, rfFast in Item.Value.Flags);
-        cdStable := CheckRouterType(miShowStable, rfStable in Item.Value.Flags);
-        cdHSDir := CheckRouterType(miShowHSDir, rfHSDir in Item.Value.Flags);
-        cdV2Dir := CheckRouterType(miShowV2Dir, rfV2Dir in Item.Value.Flags);
-        cdAlive := CheckRouterType(miShowAlive, Item.Value.Params and ROUTER_ALIVE <> 0);
-        cdRecommended := CheckRouterType(miShowRecommend, VersionsMap.Contains(Item.Value.Version));
-
-        cdRouterType := cdExit and cdGuard and cdBridge and cdAuthority and cdOther and cdConsensus and cdFast and cdStable and cdV2Dir and cdHSDir and cdRecommended and cdAlive;
-      end
-      else
-        cdRouterType := True;
-
-      case RoutersCustomFilter of
-        ENTRY_ID..FAVORITES_ID:
+        USER_QUERY_TRANSPORT:
         begin
-          if CheckNodesDic(Item.Key) then
-            cdFavorites := True
-          else
+          if Query <> NONE_CHAR then
           begin
-            if CheckNodesDic(Item.Value.IPv4) then
-              cdFavorites := True
-            else
+            WrongQuery := True;
+            if TransportsMap = nil then
+              TransportsMap := THashSet<string>.Create;
+            for Transport in TransportsDic do
             begin
-              if CheckNodesDic(IPv4CountryCode) then
-                cdFavorites := True
-              else
+              if FindStr(Query, Transport.Key) then
               begin
-                FindIPv4Cidr := IPv4CidrNodes.FindAllMatchesIP(Item.Value.IPv4);
-                if FindIPv4Cidr <> nil then
-                begin
-                  cdFavorites := False;
-                  for i := 0 to High(FindIPv4Cidr) do
-                  begin
-                    if not cdFavorites then
-                      cdFavorites := CheckNodeTypes(FindIPv4Cidr[i].Value)
-                    else
-                      Break;
-                  end;
-                end
-                else
-                  cdFavorites := False;
+                TransportsMap.Add(Transport.Key);
+                WrongQuery := False;
               end;
             end;
           end;
         end;
-        BRIDGES_ID: cdFavorites := cbUseBridges.Checked and FindSelectedBridge(Item.Key, Item.Value);
-        FALLBACK_DIR_ID: cdFavorites := cbUseFallbackDirs.Checked and (UsedFallbackDirsList.ContainsKey(Item.Value.IPv4 + '|' + IntToStr(Item.Value.Port)));
         else
-          cdFavorites := True;
+        begin
+          try
+            MatchesMask('', Query);
+          except
+            on E:Exception do
+              WrongQuery := True;
+          end;
+        end;
       end;
 
-      if cdRouterType and cdWeight and cdCountry and cdFavorites and cdQuery then
+      edRoutersQuery.Text := Query;
+      edRoutersQuery.SelStart := Length(Query);
+      if Query = '' then
+        WrongQuery := True;
+    end;
+
+    RoutersIPv6Count := 0;
+    RoutersDifferentCountriesCount := 0;
+    RoutersCount := 0;
+    if sgRouters.SelRow = 0 then
+      sgRouters.SelRow := 1;
+    sgRouters.SaveRowID;
+    sgRouters.BeginUpdateRows;
+    sgRouters.Clear(False);
+
+    if not WrongQuery then
+    begin
+      for Item in RoutersDic do
       begin
-        Inc(RoutersCount);
-        if Item.Value.IPv6 <> '' then
+        SelectedBridgeFound := False;
+        FindIPv4Cidr := nil;
+        IPv4CountryID := GetCountryValue(Item.Value.IPv4);
+        IPv4CountryCode := CountryCodes[IPv4CountryID];
+        if miRtFiltersCountry.Checked then
         begin
-          Inc(RoutersIPv6Count);
-          IPv6CountryID := GetCountryValue(Item.Value.IPv6);
-          if IPv6CountryID <> IPv4CountryID then
-            Inc(RoutersDifferentCountriesCount);
-        end;
-        sgRouters.Cells[ROUTER_ID, RoutersCount] := Item.Key;
-        sgRouters.Cells[ROUTER_NAME, RoutersCount] := Item.Value.Name;
-        sgRouters.Cells[ROUTER_ADDR_IPV4, RoutersCount] := Item.Value.IPv4;
-        sgRouters.Cells[ROUTER_COUNTRY_NAME, RoutersCount] := TransStr(IPv4CountryCode);
-        sgRouters.Cells[ROUTER_ADDR_IPV6, RoutersCount] := Item.Value.IPv6;
-        sgRouters.Cells[ROUTER_WEIGHT, RoutersCount] := BytesFormat(Item.Value.Bandwidth * 1024) + '/' + TransStr('180');
-        sgRouters.Cells[ROUTER_PORT, RoutersCount] := IntToStr(Item.Value.Port);
-        if Item.Value.Version <> '' then
-          sgRouters.Cells[ROUTER_VERSION, RoutersCount] := Item.Value.Version
-        else
-          sgRouters.Cells[ROUTER_VERSION, RoutersCount] := NONE_CHAR;
-        if GeoIpDic.TryGetValue(Item.Value.IPv4, GeoIpInfo) then
-        begin
-          if GeoIpInfo.ping > PING_NONE then
-            sgRouters.Cells[ROUTER_PING, RoutersCount] := IntToStr(GeoIpInfo.ping) + ' ' + TransStr('379')
-          else
-          begin
-            if GeoIpInfo.ping < PING_NONE then
-              sgRouters.Cells[ROUTER_PING, RoutersCount] := INFINITY_CHAR
+          case cbxRoutersCountry.Tag of
+            COUNTRY_TYPE_ALL: cdCountry := True;
+            COUNTRY_TYPE_FILTER: cdCountry := FilterDic.Items[IPv4CountryCode].Data <> [];
             else
-              sgRouters.Cells[ROUTER_PING, RoutersCount] := NONE_CHAR;
+              cdCountry := IPv4CountryID = cbxRoutersCountry.Tag;
           end;
         end
         else
-          sgRouters.Cells[ROUTER_PING, RoutersCount] := NONE_CHAR;
+          cdCountry := True;
 
-        if Item.Value.Params = 0 then
-          sgRouters.Cells[ROUTER_FLAGS, RoutersCount] := NONE_CHAR;
+        if miRtFiltersWeight.Checked then
+          cdWeight := Item.Value.Bandwidth >= udRoutersWeight.Position * 1024
+        else
+          cdWeight := True;
 
-        IsNativeBridge := (rfBridge in Item.Value.Flags) and not (rfRelay in Item.Value.Flags);
-        IsSelectedBridge := cbUseBridges.Checked and FindSelectedBridge(Item.Key, Item.Value);
-
-        if not (rfGuard in Item.Value.Flags) or IsNativeBridge then
-          sgRouters.Cells[ROUTER_ENTRY_NODES, RoutersCount] := NONE_CHAR;
-        if not (rfExit in Item.Value.Flags) or (rfBadExit in Item.Value.Flags) or IsNativeBridge then
-          sgRouters.Cells[ROUTER_EXIT_NODES, RoutersCount] := NONE_CHAR;
-        if IsNativeBridge then
-          sgRouters.Cells[ROUTER_MIDDLE_NODES, RoutersCount] := NONE_CHAR;
-
-        FindHash := NodesDic.ContainsKey(Item.Key);
-        FindIPv4Country := NodesDic.ContainsKey(IPv4CountryCode);
-        FindIPv4 := NodesDic.ContainsKey(Item.Value.IPv4);
-        if FindIPv4Cidr = nil then
-          FindIPv4Cidr := IPv4CidrNodes.FindAllMatchesIP(Item.Value.IPv4);
-        IsExclude := False;
-
-        if FindHash then
-          if ntExclude in NodesDic.Items[Item.Key] then
-            IsExclude := True;
-        if FindIPv4Country then
-          if ntExclude in NodesDic.Items[IPv4CountryCode] then
-            IsExclude := True;
-        if FindIPv4 then
-          if ntExclude in NodesDic.Items[Item.Value.IPv4] then
-            IsExclude := True;
-        if FindIPv4Cidr <> nil then
+        if miRtFiltersQuery.Checked and (Query <> '') then
         begin
-          for i := 0 to High(FindIPv4Cidr) do
-          begin
-            if ntExclude in FindIPv4Cidr[i].Value then
+          case cbxRoutersQuery.ItemIndex of
+            USER_QUERY_HASH: cdQuery := FindStr(Query, Item.Key);
+            USER_QUERY_NICKNAME: cdQuery := FindStr(Query, Item.Value.Name);
+            USER_QUERY_IPV4: cdQuery := FindStr(Query, Item.Value.IPv4);
+            USER_QUERY_IPV6:
             begin
-              IsExclude := True;
-              Break;
+              if Query <> NONE_CHAR then
+                cdQuery := FindStr(RemoveBrackets(Query, btSquare), Item.Value.IPv6)
+              else
+                cdQuery := Item.Value.IPv6 = '';
+            end;
+            USER_QUERY_PORT: cdQuery := PortsMap.Contains(Item.Value.Port);
+            USER_QUERY_VERSION: cdQuery := FindStr(Query, Item.Value.Version);
+            USER_QUERY_PING:
+            begin
+              if GeoIpDic.TryGetValue(Item.Value.IPv4, GeoIpInfo) then
+              begin
+                case AnsiChar(Query[1]) of
+                  NONE_CHAR: cdQuery := GeoIpInfo.ping = PING_NONE;
+                  INFINITY_CHAR: cdQuery := GeoIpInfo.ping = PING_DEAD;
+                  else
+                    cdQuery := (GeoIpInfo.ping <= StrToInt(Query)) and (GeoIpInfo.ping > PING_NONE);
+                end;
+              end
+              else
+                cdQuery := False;
+            end;
+            USER_QUERY_TRANSPORT:
+            begin
+              if BridgesDic.TryGetValue(Item.Key, BridgeInfo) then
+              begin
+                if Query <> NONE_CHAR then
+                  cdQuery := TransportsMap.Contains(BridgeInfo.Transport)
+                else
+                  cdQuery := BridgeInfo.Transport = '';
+              end
+              else
+                cdQuery := False;
+            end;
+            else
+              cdQuery := True;
+          end;
+        end
+        else
+          cdQuery := True;
+
+        if miRtFiltersType.Checked then
+        begin
+          cdBridge := CheckRouterType(miShowBridge, rfBridge in Item.Value.Flags);
+          cdAuthority := CheckRouterType(miShowAuthority, rfAuthority in Item.Value.Flags);
+          cdExit := CheckRouterType(miShowExit, rfExit in Item.Value.Flags);
+          cdGuard := CheckRouterType(miShowGuard, rfGuard in Item.Value.Flags);
+          cdOther := CheckRouterType(miShowOther, not (rfExit in Item.Value.Flags) and not (rfGuard in Item.Value.Flags) and not (rfBridge in Item.Value.Flags) and not (rfAuthority in Item.Value.Flags));
+          cdConsensus := CheckRouterType(miShowConsensus, rfRelay in Item.Value.Flags);
+          cdFast := CheckRouterType(miShowFast, rfFast in Item.Value.Flags);
+          cdStable := CheckRouterType(miShowStable, rfStable in Item.Value.Flags);
+          cdHSDir := CheckRouterType(miShowHSDir, rfHSDir in Item.Value.Flags);
+          cdV2Dir := CheckRouterType(miShowV2Dir, rfV2Dir in Item.Value.Flags);
+          cdAlive := CheckRouterType(miShowAlive, Item.Value.Params and ROUTER_ALIVE <> 0);
+          cdRecommended := CheckRouterType(miShowRecommend, VersionsMap.Contains(Item.Value.Version));
+
+          cdRouterType := cdExit and cdGuard and cdBridge and cdAuthority and cdOther and cdConsensus and cdFast and cdStable and cdV2Dir and cdHSDir and cdRecommended and cdAlive;
+        end
+        else
+          cdRouterType := True;
+
+        case RoutersCustomFilter of
+          ENTRY_ID..FAVORITES_ID:
+          begin
+            if CheckNodesDic(Item.Key) then
+              cdFavorites := True
+            else
+            begin
+              if CheckNodesDic(Item.Value.IPv4) then
+                cdFavorites := True
+              else
+              begin
+                if CheckNodesDic(IPv4CountryCode) then
+                  cdFavorites := True
+                else
+                begin
+                  FindIPv4Cidr := IPv4CidrNodes.FindAllMatchesIP(Item.Value.IPv4);
+                  if FindIPv4Cidr <> nil then
+                  begin
+                    cdFavorites := False;
+                    for i := 0 to High(FindIPv4Cidr) do
+                    begin
+                      if not cdFavorites then
+                        cdFavorites := CheckNodeTypes(FindIPv4Cidr[i].Value)
+                      else
+                        Break;
+                    end;
+                  end
+                  else
+                    cdFavorites := False;
+                end;
+              end;
             end;
           end;
+          BRIDGES_ID: cdFavorites := cbUseBridges.Checked and FindSelectedBridge(Item.Key, Item.Value);
+          FALLBACK_DIR_ID: cdFavorites := cbUseFallbackDirs.Checked and (UsedFallbackDirsList.ContainsKey(Item.Value.IPv4 + '|' + IntToStr(Item.Value.Port)));
+          else
+            cdFavorites := True;
         end;
 
-        if IsExclude then
-          sgRouters.Cells[ROUTER_EXCLUDE_NODES, RoutersCount] := EXCLUDE_CHAR;
-
-        if IsSelectedBridge and not IsExclude then
+        if cdRouterType and cdWeight and cdCountry and cdFavorites and cdQuery then
         begin
-          sgRouters.Cells[ROUTER_ENTRY_NODES, RoutersCount] := BOTH_CHAR;
-          sgRouters.Cells[ROUTER_MIDDLE_NODES, RoutersCount] := NONE_CHAR;
-          sgRouters.Cells[ROUTER_EXIT_NODES, RoutersCount] := NONE_CHAR;
-        end;
-
-        if FindHash then
-          SelectNodes(Item.Key);
-        if FindIPv4Country then
-          SelectNodes(IPv4CountryCode);
-        if FindIPv4 then
-          SelectNodes(Item.Value.IPv4);
-        if FindIPv4Cidr <> nil then
-        begin
-          for i := 0 to High(FindIPv4Cidr) do
+          Inc(RoutersCount);
+          if Item.Value.IPv6 <> '' then
           begin
-            for j := ROUTER_ENTRY_NODES to ROUTER_EXIT_NODES do
+            Inc(RoutersIPv6Count);
+            IPv6CountryID := GetCountryValue(Item.Value.IPv6);
+            if IPv6CountryID <> IPv4CountryID then
+              Inc(RoutersDifferentCountriesCount);
+          end;
+          sgRouters.Cells[ROUTER_ID, RoutersCount] := Item.Key;
+          sgRouters.Cells[ROUTER_NAME, RoutersCount] := Item.Value.Name;
+          sgRouters.Cells[ROUTER_ADDR_IPV4, RoutersCount] := Item.Value.IPv4;
+          sgRouters.Cells[ROUTER_COUNTRY_NAME, RoutersCount] := TransStr(IPv4CountryCode);
+          sgRouters.Cells[ROUTER_ADDR_IPV6, RoutersCount] := Item.Value.IPv6;
+          sgRouters.Cells[ROUTER_WEIGHT, RoutersCount] := BytesFormat(Item.Value.Bandwidth * 1024) + '/' + TransStr('180');
+          sgRouters.Cells[ROUTER_PORT, RoutersCount] := IntToStr(Item.Value.Port);
+          if Item.Value.Version <> '' then
+            sgRouters.Cells[ROUTER_VERSION, RoutersCount] := Item.Value.Version
+          else
+            sgRouters.Cells[ROUTER_VERSION, RoutersCount] := NONE_CHAR;
+          if GeoIpDic.TryGetValue(Item.Value.IPv4, GeoIpInfo) then
+          begin
+            if GeoIpInfo.ping > PING_NONE then
+              sgRouters.Cells[ROUTER_PING, RoutersCount] := IntToStr(GeoIpInfo.ping) + ' ' + TransStr('379')
+            else
             begin
-              if GetNodeTypeByGridCol(sgRouters, j) in FindIPv4Cidr[i].Value then
-                UpdateSelectNodes(j);
+              if GeoIpInfo.ping < PING_NONE then
+                sgRouters.Cells[ROUTER_PING, RoutersCount] := INFINITY_CHAR
+              else
+                sgRouters.Cells[ROUTER_PING, RoutersCount] := NONE_CHAR;
+            end;
+          end
+          else
+            sgRouters.Cells[ROUTER_PING, RoutersCount] := NONE_CHAR;
+
+          if Item.Value.Params = 0 then
+            sgRouters.Cells[ROUTER_FLAGS, RoutersCount] := NONE_CHAR;
+
+          IsNativeBridge := (rfBridge in Item.Value.Flags) and not (rfRelay in Item.Value.Flags);
+          IsSelectedBridge := cbUseBridges.Checked and FindSelectedBridge(Item.Key, Item.Value);
+
+          if not (rfGuard in Item.Value.Flags) or IsNativeBridge then
+            sgRouters.Cells[ROUTER_ENTRY_NODES, RoutersCount] := NONE_CHAR;
+          if not (rfExit in Item.Value.Flags) or (rfBadExit in Item.Value.Flags) or IsNativeBridge then
+            sgRouters.Cells[ROUTER_EXIT_NODES, RoutersCount] := NONE_CHAR;
+          if IsNativeBridge then
+            sgRouters.Cells[ROUTER_MIDDLE_NODES, RoutersCount] := NONE_CHAR;
+
+          FindHash := NodesDic.ContainsKey(Item.Key);
+          FindIPv4Country := NodesDic.ContainsKey(IPv4CountryCode);
+          FindIPv4 := NodesDic.ContainsKey(Item.Value.IPv4);
+          if FindIPv4Cidr = nil then
+            FindIPv4Cidr := IPv4CidrNodes.FindAllMatchesIP(Item.Value.IPv4);
+          IsExclude := False;
+
+          if FindHash then
+            if ntExclude in NodesDic.Items[Item.Key] then
+              IsExclude := True;
+          if FindIPv4Country then
+            if ntExclude in NodesDic.Items[IPv4CountryCode] then
+              IsExclude := True;
+          if FindIPv4 then
+            if ntExclude in NodesDic.Items[Item.Value.IPv4] then
+              IsExclude := True;
+          if FindIPv4Cidr <> nil then
+          begin
+            for i := 0 to High(FindIPv4Cidr) do
+            begin
+              if ntExclude in FindIPv4Cidr[i].Value then
+              begin
+                IsExclude := True;
+                Break;
+              end;
+            end;
+          end;
+
+          if IsExclude then
+            sgRouters.Cells[ROUTER_EXCLUDE_NODES, RoutersCount] := EXCLUDE_CHAR;
+
+          if IsSelectedBridge and not IsExclude then
+          begin
+            sgRouters.Cells[ROUTER_ENTRY_NODES, RoutersCount] := BOTH_CHAR;
+            sgRouters.Cells[ROUTER_MIDDLE_NODES, RoutersCount] := NONE_CHAR;
+            sgRouters.Cells[ROUTER_EXIT_NODES, RoutersCount] := NONE_CHAR;
+          end;
+
+          if FindHash then
+            SelectNodes(Item.Key);
+          if FindIPv4Country then
+            SelectNodes(IPv4CountryCode);
+          if FindIPv4 then
+            SelectNodes(Item.Value.IPv4);
+          if FindIPv4Cidr <> nil then
+          begin
+            for i := 0 to High(FindIPv4Cidr) do
+            begin
+              for j := ROUTER_ENTRY_NODES to ROUTER_EXIT_NODES do
+              begin
+                if GetNodeTypeByGridCol(sgRouters, j) in FindIPv4Cidr[i].Value then
+                  UpdateSelectNodes(j);
+              end;
             end;
           end;
         end;
       end;
     end;
+
+    if RoutersCount > 0 then
+      sgRouters.RowCount := RoutersCount + 1
+    else
+      sgRouters.RowCount := 2;
+
+    GridSort(sgRouters);
+    SetGridLastCell(sgRouters, True, miRoutersScrollTop.Checked);
+    RoutersScrollCheck;
+    sgRouters.EndUpdateRows;
+    lbRoutersCount.Caption := Format(TransStr('321'), [RoutersCount, RoutersDic.Count]);
+  finally
+    PortsMap.Free;
+    TransportsMap.Free;
   end;
-
-  if RoutersCount > 0 then
-    sgRouters.RowCount := RoutersCount + 1
-  else
-    sgRouters.RowCount := 2;
-
-  GridSort(sgRouters);
-  SetGridLastCell(sgRouters, True, miRoutersScrollTop.Checked);
-  RoutersScrollCheck;
-  sgRouters.EndUpdateRows;
-  lbRoutersCount.Caption := Format(TransStr('321'), [RoutersCount, RoutersDic.Count]);
-
-  if PortsMap.Count > 0 then
-    PortsMap.Clear;
-  if TransportsMap.Count > 0 then
-    TransportsMap.Clear;
 end;
 
 procedure TTcp.CheckCountryIndexInList;
@@ -15408,6 +15418,7 @@ begin
   lbReachableAddresses.Enabled := State;
   if cbUseReachableAddresses.Focused then
   begin
+    SaveReachableAddresses;
     BridgesUpdated := True;
     SaveBridgesData;
     FallbackDirsUpdated := True;
@@ -16796,14 +16807,21 @@ begin
   begin
     BridgesUpdated := True;
     BridgesRecalculate := True;
+    FallbackDirsUpdated := True;
+    FallbackDirsRecalculate := True;
+    ReachableAddressesUpdated := True;
     EnableOptionButtons;
   end;
 end;
 
 procedure TTcp.edReachableAddressesExit(Sender: TObject);
 begin
+  if ReachableAddressesUpdated then
+    SaveReachableAddresses;
   if BridgesRecalculate then
     SaveBridgesData;
+  if FallbackDirsRecalculate then
+    SaveFallbackDirsData;
 end;
 
 procedure TTcp.edReachableAddressesKeyDown(Sender: TObject; var Key: Word;
@@ -16811,15 +16829,19 @@ procedure TTcp.edReachableAddressesKeyDown(Sender: TObject; var Key: Word;
 begin
   if Key = VK_RETURN then
   begin
+    if ReachableAddressesUpdated then
+      SaveReachableAddresses;
     if BridgesRecalculate then
       SaveBridgesData;
+    if FallbackDirsRecalculate then
+      SaveFallbackDirsData;
   end;
 end;
 
 procedure TTcp.edReachableAddressesKeyPress(Sender: TObject;
   var Key: Char);
 begin
-  if not CharInSet(Key, ['0'..'9', #44, #8]) then
+  if not CharInSet(Key, ['0'..'9', #8, #44, #45]) then
     Key := #0;
 end;
 
@@ -18028,16 +18050,12 @@ begin
   if (HashData = '') and RoutersDic.TryGetValue(RouterID, Router) then
   begin
     if ReachablePortsExists then
-    begin
-      FindPorts := PortsMap.Contains(Router.Port);
-      PortsMap.Clear;
-    end
+      FindPorts := ReachablePortsMap.Contains(Router.Port)
     else
       FindPorts := True;
     BridgeState := DataState and not aSg.IsMultiRow and (cbxServerMode.ItemIndex = SERVER_MODE_NONE) and
-      (((Router.Params and ROUTER_ALIVE <> 0) and
-        FindPorts and not RouterInNodesList(RouterID, Router.IPv4, ntExclude)) or not
-      miDisableSelectionUnSuitableAsBridge.Checked);
+      (((Router.Params and ROUTER_ALIVE <> 0) and FindPorts and not RouterInNodesList(RouterID, Router.IPv4, ntExclude))
+        or not miDisableSelectionUnSuitableAsBridge.Checked);
   end
   else
     BridgeState := DataState and not aSg.IsMultiRow;
@@ -18892,7 +18910,7 @@ begin
           begin
             if CheckEntryPorts then
             begin
-              if PortsMap.Contains(Router.Value.Port) then
+              if ReachablePortsMap.Contains(Router.Value.Port) then
               begin
                 if rfGuard in Flags then
                   AddRouterToList(EntryNodes, ntEntry);
@@ -19002,8 +19020,6 @@ begin
 
   finally
     UniqueList.Free;
-    if CheckEntryPorts then
-      PortsMap.Clear;
   end;
 end;
 
@@ -19050,7 +19066,7 @@ begin
     if TryParseFallbackDir(Data[i], FallbackDir, False) then
     begin
       if CheckEntryPorts then
-        cdPorts := PortsMap.Contains(FallbackDir.OrPort)
+        cdPorts := ReachablePortsMap.Contains(FallbackDir.OrPort)
       else
         cdPorts := True;
 
@@ -19106,9 +19122,6 @@ begin
     else
       Data.Delete(i);
   end;
-
-  if CheckEntryPorts then
-    PortsMap.Clear;
 end;
 
 procedure TTcp.RoutersAutoSelectClick(Sender: TObject);
@@ -19224,7 +19237,7 @@ begin
   [
     'Tor Control Panel',
     GetFileVersionStr(Paramstr(0)) + BitStr,
-    'Copyright © 2020-2025, abysshint & contributors' + Translator,
+    'Copyright © 2020-2026, abysshint & contributors' + Translator,
     TransStr('357')
   ]), TransStr('355'), mtInfo, True) then
   begin
@@ -19579,12 +19592,11 @@ begin
   BridgesDic := TDictionary<string, TBridgeInfo>.Create;
   DirFetches := TDictionary<string, TFetchInfo>.Create;
   ConfluxLinks := TDictionary<string, string>.Create;
-  PortsMap := THashSet<Word>.Create;
+  ReachablePortsMap := THashSet<Word>.Create;
   TrackHostMap := THashSet<string>.Create;
   UserScanMap := THashSet<string>.Create;
   UsedBridgesMap := THashSet<string>.Create;
   VersionsMap := THashSet<string>.Create;
-  TransportsMap := THashSet<string>.Create;
   IPv4CidrNodes := TIPv4RadixTree.Create;
   IPv4ReservedRanges := TIPv4RadixTree.Create;
   IPv6ReservedRanges := TIPv6RadixTree.Create;
@@ -20093,7 +20105,6 @@ begin
   TrackHostMap.Free;
   VersionsMap.Free;
   TransportsDic.Free;
-  TransportsMap.Free;
   BridgesDic.Free;
   NewBridgesList.Free;
   UsedBridgesMap.Free;
@@ -20101,7 +20112,7 @@ begin
   UsedFallbackDirsList.Free;
   UserScanMap.Free;
   DirFetches.Free;
-  PortsMap.Free;
+  ReachablePortsMap.Free;
   ConstDic.Free;
   DefaultsDic.Free;
   LangStr.Free;

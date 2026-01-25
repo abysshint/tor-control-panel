@@ -596,7 +596,7 @@ begin
     Tcp.lbProxyPassword.Caption := TransStr('130');
     Tcp.cbUseBridges.Caption := Load('155', 'Использовать мосты');
     Tcp.edControlPassword.TextHint := Load('156', 'Введите пароль');
-    Tcp.edReachableAddresses.TextHint := Load('157', 'Значения, разделённые запятыми');
+    Tcp.edReachableAddresses.TextHint := Load('157', 'Значения или диапазоны, разделённые запятыми');
     Tcp.edProxyAddress.TextHint := Load('158', 'IP-адрес или имя узла');
     Tcp.edProxyUser.TextHint := TransStr('159');
     Tcp.edProxyPassword.TextHint := TransStr('159');
