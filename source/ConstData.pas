@@ -35,7 +35,7 @@ const
 
   LOOPBACK_ADDRESS = '127.0.0.1';
 
-  CURRENT_CONFIG_VERSION = 15;
+  CURRENT_CONFIG_VERSION = 16;
   MAX_SPEED_DATA_LENGTH = 24 * 60 * 60;
   BUFSIZE = 1024 * 1024;
 
@@ -221,17 +221,15 @@ const
   MEMO_EXIT_POLICY = 6;
 
   EXTRACT_PREVIEW = 0;
-  EXTRACT_PORT = 1;
-  EXTRACT_IPV4 = 2;
-  EXTRACT_IPV6 = 3;
+  EXTRACT_IPV4_PORT = 1;
+  EXTRACT_IPV4_ADDR = 2;
+  EXTRACT_IPV6_ADDR = 3;
   EXTRACT_HASH = 4;
   EXTRACT_IPV4_BRIDGE = 5;
   EXTRACT_IPV6_BRIDGE = 6;
   EXTRACT_FALLBACK_DIR = 7;
   EXTRACT_NICKNAME = 8;
   EXTRACT_COUNTRY_CODE = 9;
-  EXTRACT_IPV4_COUNTRY_CODE = 17;
-  EXTRACT_IPV6_COUNTRY_CODE = 18;
   EXTRACT_CSV = 10;
   EXTRACT_IPV4_SOCKET = 11;
   EXTRACT_IPV6_SOCKET = 12;
@@ -239,6 +237,9 @@ const
   EXTRACT_HOST_SOCKET = 14;
   EXTRACT_HOST_ROOT = 15;
   EXTRACT_IPV4_CIDR = 16;
+  EXTRACT_IPV4_COUNTRY_CODE = 17;
+  EXTRACT_IPV6_COUNTRY_CODE = 18;
+  EXTRACT_IPV6_PORT = 19;
 
   OPTION_FORMAT_IPV6 = 1;
   OPTION_SORT = 2;
@@ -410,10 +411,11 @@ const
   USER_QUERY_NICKNAME = 1;
   USER_QUERY_IPV4 = 2;
   USER_QUERY_IPV6 = 3;
-  USER_QUERY_PORT = 4;
-  USER_QUERY_VERSION = 5;
-  USER_QUERY_PING = 6;
-  USER_QUERY_TRANSPORT = 7;
+  USER_QUERY_IPV4_PORT = 4;
+  USER_QUERY_IPV6_PORT = 5;
+  USER_QUERY_VERSION = 6;
+  USER_QUERY_PING = 7;
+  USER_QUERY_TRANSPORT = 8;
 
   RF_CURRENT_TYPES = 0;
   RF_PREVIOUS_TYPES = 1;
@@ -468,7 +470,7 @@ type
   TGeoIpType = (gitNone, gitIPv4, gitIPv6, gitBoth);
   TCloseType = (ctCircuit, ctTarget, ctStream);
   TAddressType = (atNone, atIPv4, atIPv6, atIPv4Cidr, atIPv6Cidr);
-  TSocketType = (soNone, soIPv4, soIPv6, soHost);
+  TSocketType = (soNone, soIPv4, soIPv6);
   TTargetType = (ttNone, ttNormal, ttExit, ttOnion);
   THostType = (htNone, htDomain, htIPv4, htIPv6, htRoot);
   TEditMenuType = (emCopy, emCut, emPaste, emSelectAll, emClear, emDelete, emFind);
@@ -516,6 +518,11 @@ type
   TStringPair = record
     Key: string;
     Value: string;
+  end;
+
+  TSocketInfo = record
+    IpStr: string;
+    Port: Word;
   end;
 
 const

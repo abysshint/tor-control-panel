@@ -16,9 +16,10 @@ type
 
   TRouterInfo = record
     Name: string;
-    IPv4: string;
-    IPv6: string;
-    Port: Word;
+    IPv4Addr: string;
+    IPv6Addr: string;
+    IPv4Port: Word;
+    IPv6Port: Word;
     Flags: TRouterFlags;
     Version: string;
     Bandwidth: Integer;
@@ -84,11 +85,6 @@ type
     Protocol: ShortInt;
     BytesRead: int64;
     BytesWritten: int64;
-  end;
-
-  TSocketInfo = record
-    IpStr: string;
-    Port: Word;
   end;
 
   TNodeData = record
@@ -1068,6 +1064,7 @@ type
     sbAutoSelUniqueByNodeType: TSpeedButton;
     lbBridgesUniqueType: TLabel;
     cbxBridgesUniqueType: TComboBox;
+    miBridgesOptions: TMenuItem;
     function GetGridByIndex(GridIndex: Integer): TStringGrid;
     function GetMemoByIndex(MemoIndex: Integer): TMemo;
     function CheckOperationConfirmation(const OpStr: string; NoCancel: Boolean = True): Boolean;
@@ -1101,6 +1098,7 @@ type
     procedure UpdateFallbackDirControls;
     procedure ShowRoutersParamsHint;
     procedure ShowCircuitsFlagsHint;
+    procedure ShowRoutersPortsHint;
     procedure CalculateFilterNodes(AlwaysUpdate: Boolean = True);
     procedure CalculateTotalNodes(AlwaysUpdate: Boolean = True);
     function CloseCircuitInternal(const CircuitID: string): Boolean;
@@ -2283,7 +2281,7 @@ begin
           for i := 0 to Data.Count - 1 do
           begin
             if TryParseFallbackDir(Data[i], FallbackDir, False) then
-              AddToScanList(FallbackDir.IPv4, FallbackDir.OrPort);
+              AddToScanList(FallbackDir.IPv4Addr, FallbackDir.IPv4Port);
           end;
         finally
           Data.Free;
@@ -2296,13 +2294,13 @@ begin
           for HashStr in UserScanMap do
           begin
             if RoutersDic.TryGetValue(HashStr, RouterInfo) then
-              AddToScanList(RouterInfo.IPv4, RouterInfo.Port);
+              AddToScanList(RouterInfo.IPv4Addr, RouterInfo.IPv4Port);
           end;
         end
         else
         begin
           for Item in RoutersDic do
-            AddToScanList(Item.Value.IPv4, Item.Value.Port, Item.Value.Flags);
+            AddToScanList(Item.Value.IPv4Addr, Item.Value.IPv4Port, Item.Value.Flags);
         end;
       end;
     end;
@@ -2575,24 +2573,25 @@ var
   BridgeInfo: TBridgeInfo;
   HashList: TDictionary<string, byte>;
   LastRoutersCount: Integer;
+  SocketInfo: TSocketInfo;
 
   procedure RemoveMissingRouter;
   begin
     if RoutersDic.TryGetValue(HashItem.Key, Router) then
     begin
-      if not UsedFallbackDirsList.ContainsKey(Router.IPv4 + '|' + IntToStr(Router.Port)) then
-        SetPortsValue(Router.IPv4, Router.Port, PORT_DEAD);
+      if not UsedFallbackDirsList.ContainsKey(Router.IPv4Addr + '|' + IntToStr(Router.IPv4Port)) then
+        SetPortsValue(Router.IPv4Addr, Router.IPv4Port, PORT_DEAD);
       RoutersDic.Remove(HashItem.Key);
     end;
   end;
 
   procedure RemoveMissingFallbackDir;
   begin
-    if GeoIpDic.TryGetValue(FallbackDir.IPv4, GeoIpInfo) then
+    if GeoIpDic.TryGetValue(FallbackDir.IPv4Addr, GeoIpInfo) then
     begin
-      if GetPortsValue(GeoIpInfo.ports, FallbackDir.OrPort) <> PORT_DEAD then
+      if GetPortsValue(GeoIpInfo.ports, FallbackDir.IPv4Port) <> PORT_DEAD then
       begin
-        SetPortsValue(FallbackDir.IPv4, FallbackDir.OrPort, PORT_DEAD);
+        SetPortsValue(FallbackDir.IPv4Addr, FallbackDir.IPv4Port, PORT_DEAD);
         Inc(MissingFallbackDirCount);
       end;
     end
@@ -2623,9 +2622,10 @@ begin
         ParseStr := ls[i].Split([' ']);
         RouterID := BytesToHex(TNetEncoding.Base64.DecodeStringToBytes(ParseStr[2]));
         Router.Name := ParseStr[1];
-        Router.IPv4 := ParseStr[5];
-        Router.IPv6 := '';
-        Router.Port := StrToInt(ParseStr[6]);
+        Router.IPv4Addr := ParseStr[5];
+        Router.IPv6Addr := '';
+        Router.IPv4Port := StrToInt(ParseStr[6]);
+        Router.IPv6Port := 0;
         Router.Flags := [rfRelay];
         Router.Version := '';
         Router.Params := 0;
@@ -2633,9 +2633,13 @@ begin
       end;
       if ls[i].StartsWith('a ') then
       begin
-        Router.IPv6 := Copy(ls[i], 4, RPos(':', ls[i]) - 5);
-        Inc(Router.Params, ROUTER_REACHABLE_IPV6);
-        Continue;
+        if TryParseSocket(Copy(ls[i], 3), SocketInfo) = soIPv6 then
+        begin
+          Router.IPv6Addr := SocketInfo.IpStr;
+          Router.IPv6Port := SocketInfo.Port;
+          Inc(Router.Params, ROUTER_REACHABLE_IPV6);
+          Continue;
+        end;
       end;
       if ls[i].StartsWith('s ') then
       begin
@@ -2704,7 +2708,7 @@ begin
         else
         begin
           if LastRoutersCount > 0 then
-            SetPortsValue(Router.IPv4, Router.Port, PORT_NONE);
+            SetPortsValue(Router.IPv4Addr, Router.IPv4Port, PORT_NONE);
         end;
         Continue;
       end;
@@ -2761,7 +2765,7 @@ begin
         begin
           if RoutersDic.TryGetValue(FallbackDir.Hash, Router) then
           begin
-            if (FallbackDir.IPv4 <> Router.IPv4) or (FallbackDir.OrPort <> Router.Port) then
+            if (FallbackDir.IPv4Addr <> Router.IPv4Addr) or (FallbackDir.IPv4Port <> Router.IPv4Port) then
               RemoveMissingFallbackDir;
           end
           else
@@ -2784,9 +2788,10 @@ var
   DescRouter, Router: TRouterInfo;
   UserBridges: TDictionary<string, TBridge>;
   Bridge, PrevBridge: TBridge;
-  RouterID, BridgeID, Temp, SourceAddr: string;
+  RouterID, BridgeID, SourceAddr: string;
   BridgeRelay, UpdateFromDesc, DifferSource: Boolean;
   GeoIpInfo: TGeoIpInfo;
+  SocketInfo: TSocketInfo;
 
   procedure LoadDesc(const FileName: string);
   var
@@ -2830,7 +2835,9 @@ var
 
     procedure Update;
     begin
-      RouterInfo.Port := Bridge.Port;
+      RouterInfo.IPv4Port := Bridge.Port;
+      if RouterInfo.IPv6Addr <> '' then
+        RouterInfo.IPv6Port := Bridge.Port;
       BridgeInfo.Transport := Bridge.Transport;
       BridgeInfo.Params := Bridge.Params;
     end;
@@ -2845,11 +2852,11 @@ var
       Update
     else
     begin
-      if UserBridges.TryGetValue(RouterInfo.IPv4, Bridge) then
+      if UserBridges.TryGetValue(RouterInfo.IPv4Addr, Bridge) then
         Update
       else
       begin
-        if UserBridges.TryGetValue(RouterInfo.IPv6, Bridge) then
+        if UserBridges.TryGetValue(RouterInfo.IPv6Addr, Bridge) then
           Update
         else
         begin
@@ -2859,7 +2866,9 @@ var
           begin
             if BridgesDic.TryGetValue(RouterID, BridgeInfoDic) then
             begin
-              RouterInfo.Port := BridgeInfoDic.Router.Port;
+              RouterInfo.IPv4Port := BridgeInfoDic.Router.IPv4Port;
+              if RouterInfo.IPv6Addr <> '' then
+                RouterInfo.IPv6Port := BridgeInfoDic.Router.IPv6Port;
               BridgeInfo.Transport := BridgeInfoDic.Transport;
               BridgeInfo.Params := BridgeInfoDic.Params;
             end
@@ -2874,8 +2883,8 @@ var
     end;
     DifferSource := False;
     case ValidAddress(SourceAddr) of
-      atIPv4: DifferSource := SourceAddr <> RouterInfo.IPv4;
-      atIPv6: DifferSource := SourceAddr <> RouterInfo.IPv6;
+      atIPv4: DifferSource := SourceAddr <> RouterInfo.IPv4Addr;
+      atIPv6: DifferSource := SourceAddr <> RouterInfo.IPv6Addr;
     end;
     if DifferSource and IpInReservedRanges(SourceAddr, rtDoc) then
     begin
@@ -2889,9 +2898,9 @@ var
 
     if ConnectState <> 0 then
     begin
-      UpdateBridgeData(BridgeInfo.Router.IPv4, BridgeInfo.Router.Port, True);
-      UpdateBridgeData(BridgeInfo.Router.IPv6, BridgeInfo.Router.Port);
-      UpdateBridgeData(BridgeInfo.Source, BridgeInfo.Router.Port);
+      UpdateBridgeData(BridgeInfo.Router.IPv4Addr, BridgeInfo.Router.IPv4Port, True);
+      UpdateBridgeData(BridgeInfo.Router.IPv6Addr, BridgeInfo.Router.IPv6Port);
+      UpdateBridgeData(BridgeInfo.Source, BridgeInfo.Router.IPv4Port);
     end;
   end;
 
@@ -2956,9 +2965,10 @@ begin
         begin
           ParseStr := ls[i].Split([' ']);
           DescRouter.Name := ParseStr[1];
-          DescRouter.IPv4 := ParseStr[2];
-          DescRouter.IPv6 := '';
-          DescRouter.Port := StrToInt(ParseStr[3]);
+          DescRouter.IPv4Addr := ParseStr[2];
+          DescRouter.IPv6Addr := '';
+          DescRouter.IPv4Port := StrToInt(ParseStr[3]);
+          DescRouter.IPv6Port := 0;
           DescRouter.Flags := [rfBridge];
           DescRouter.Params := ROUTER_BRIDGE;
           DescRouter.Version := '';
@@ -2966,10 +2976,10 @@ begin
         end;
         if ls[i].StartsWith('or-address ') then
         begin
-          Temp := Copy(ls[i], 13, RPos(':', ls[i]) - 14);
-          if ValidAddress(Temp) = atIPv6 then
+          if TryParseSocket(Copy(ls[i], 12), SocketInfo) = soIPv6 then
           begin
-            DescRouter.IPv6 := Temp;
+            DescRouter.IPv6Addr := SocketInfo.IpStr;
+            DescRouter.IPv6Port := SocketInfo.Port;
             Inc(DescRouter.Params, ROUTER_REACHABLE_IPV6);
           end;
           Continue;
@@ -3338,11 +3348,11 @@ begin
               begin
                 if TryParseFallbackDir(ls[i], FallbackDir, False) then
                 begin
-                  if CheckCountryUpdate(FallbackDir.IPv4) then
+                  if CheckCountryUpdate(FallbackDir.IPv4Addr) then
                     Break;
-                  if FallbackDir.IPv6 <> '' then
+                  if FallbackDir.IPv6Addr <> '' then
                   begin
-                    if CheckCountryUpdate(FallbackDir.IPv6) then
+                    if CheckCountryUpdate(FallbackDir.IPv6Addr) then
                       Break;
                   end;
                 end;
@@ -3356,11 +3366,11 @@ begin
         begin
           for Router in RoutersDic do
           begin
-            if CheckCountryUpdate(Router.Value.IPv4) then
+            if CheckCountryUpdate(Router.Value.IPv4Addr) then
               Break;
-            if Router.Value.IPv6 <> '' then
+            if Router.Value.IPv6Addr <> '' then
             begin
-              if CheckCountryUpdate(Router.Value.IPv6) then
+              if CheckCountryUpdate(Router.Value.IPv6Addr) then
                 Break;
             end;
           end;
@@ -3650,7 +3660,7 @@ begin
                 begin
                   LastUserStreamProtocol := StreamInfo.Protocol;
                   Circuit := CircuitID;
-                  Ip := RouterInfo.IPv4;
+                  Ip := RouterInfo.IPv4Addr;
                   CountryID := GetCountryValue(Ip);
                   if ExitNodeID = '' then
                   begin
@@ -4779,8 +4789,8 @@ var
   begin
     NodesList.Clear;
     FindNode(Key, NodeType);
-    FindNode(RouterInfo.IPv4, NodeType);
-    IPv4Cidrs := IPv4CidrNodes.FindAllMatchesIP(RouterInfo.IPv4);
+    FindNode(RouterInfo.IPv4Addr, NodeType);
+    IPv4Cidrs := IPv4CidrNodes.FindAllMatchesIP(RouterInfo.IPv4Addr);
     if IPv4Cidrs <> nil then
     begin
       for i := 0 to High(IPv4Cidrs) do
@@ -4807,11 +4817,11 @@ begin
     DoubleCountry := False;
     FindCountry := False;
     NodeTypeID := GetNodeTypeByGridCol(sgRouters, sgRouters.SelCol);
-    IPv4CountryCode := CountryCodes[GetCountryValue(RouterInfo.IPv4)];
+    IPv4CountryCode := CountryCodes[GetCountryValue(RouterInfo.IPv4Addr)];
     IPv6CountryCode := '';
-    if RouterInfo.IPv6 <> '' then
+    if RouterInfo.IPv6Addr <> '' then
     begin
-      IPv6CountryCode := CountryCodes[GetCountryValue(RouterInfo.IPv6)];
+      IPv6CountryCode := CountryCodes[GetCountryValue(RouterInfo.IPv6Addr)];
       if IPv4CountryCode <> IPv6CountryCode then
         DoubleCountry := True;
     end;
@@ -4933,7 +4943,7 @@ begin
           if SelData <> ''  then
             sgRouters.Cells[ROUTER_ENTRY_NODES, sgRouters.SelRow] := BOTH_CHAR;
         end;
-        if UsedFallbackDirsList.ContainsKey(RouterInfo.IPv4 + '|' + IntToStr(RouterInfo.Port)) then
+        if UsedFallbackDirsList.ContainsKey(RouterInfo.IPv4Addr + '|' + IntToStr(RouterInfo.IPv4Port)) then
           SaveFallbackDirsData;
       end;
     end
@@ -4955,7 +4965,6 @@ end;
 
 procedure TTcp.ShowCircuitsFlagsHint;
 var
-  Fail: Boolean;
   Mask, MaxItems: Integer;
   Params: string;
   CellRect, CellPoint: TRect;
@@ -4970,8 +4979,8 @@ var
       Inc(MaxItems);
     end;
   end;
+
 begin
-  Fail := True;
   if not sgCircuits.IsEmptyRow(sgCircuits.MovRow) then
   begin
     Params := sgCircuits.Cells[CIRC_PARAMS, sgCircuits.MovRow];
@@ -5030,19 +5039,14 @@ begin
       end;
     end;
   end;
-
-  if Fail then
-  begin
-    Application.CancelHint;
-    sgCircuits.Hint := '';
-  end;
+  Application.CancelHint;
+  sgCircuits.Hint := '';
 end;
 
 procedure TTcp.ShowRoutersParamsHint;
 var
   RouterInfo: TRouterInfo;
   Mask, MaxItems: Integer;
-  Fail: Boolean;
   CellRect, CellPoint: TRect;
   Data: TArray<Word>;
   ArrayIndex: Integer;
@@ -5057,7 +5061,6 @@ var
   end;
 
 begin
-  Fail := True;
   if not sgRouters.IsEmptyRow(sgRouters.MovRow) then
   begin
     if RoutersDic.TryGetValue(sgRouters.Cells[ROUTER_ID, sgRouters.MovRow], RouterInfo) then
@@ -5114,12 +5117,30 @@ begin
       end;
     end;
   end;
+  Application.CancelHint;
+  sgRouters.Hint := '';
+end;
 
-  if Fail then
+procedure TTcp.ShowRoutersPortsHint;
+var
+  RouterInfo: TRouterInfo;
+begin
+  if not sgRouters.IsEmptyRow(sgRouters.MovRow) then
   begin
-    Application.CancelHint;
-    sgRouters.Hint := '';
+    if RoutersDic.TryGetValue(sgRouters.Cells[ROUTER_ID, sgRouters.MovRow], RouterInfo) then
+    begin
+      if (RouterInfo.IPv6Addr <> '') and (RouterInfo.IPv4Port <> RouterInfo.IPv6Port) then
+      begin
+        sgRouters.Hint :=
+          'IPv4: ' + IntToStr(RouterInfo.IPv4Port) + BR +
+          'IPv6: ' + IntToStr(RouterInfo.IPv6Port);
+        Application.ActivateHint(Mouse.CursorPos);
+        Exit;
+      end;
+    end;
   end;
+  Application.CancelHint;
+  sgRouters.Hint := '';
 end;
 
 procedure TTcp.sgRoutersMouseMove(Sender: TObject; Shift: TShiftState; X,
@@ -5131,6 +5152,7 @@ begin
 
   case sgRouters.MovCol of
     ROUTER_COUNTRY_FLAG: if miRoutersShowIPv6CountryFlag.Checked then GridShowCountryHint(sgRouters, ROUTER_ADDR_IPV4, ROUTER_ADDR_IPV6, ROUTER_COUNTRY_FLAG, False, RoutersHintGeoIpType);
+    ROUTER_PORT: ShowRoutersPortsHint;
     ROUTER_FLAGS: if miRoutersShowFlagsHint.Checked then ShowRoutersParamsHint;
     else
       GridShowHints(sgRouters);
@@ -6670,6 +6692,12 @@ begin
         DeleteSettings('AutoSelNodes', 'AutoSelUniqueNodes', ini);
         ConfigVersion := 15;
       end;
+      if ConfigVersion = 15 then
+      begin
+        UpdateSettingsParsedData('Routers', 'CurrentFilter', ';', RF_QUERY_TYPE, 5, 7, 1, ini);
+        UpdateSettingsParsedData('Routers', 'DefaultFilter', ';', RF_QUERY_TYPE, 5, 7, 1, ini);
+        ConfigVersion := 16;
+      end;
     end
     else
       ConfigVersion := CURRENT_CONFIG_VERSION;
@@ -6686,6 +6714,7 @@ var
   ParseStr: TArray<string>;
   Reset: Boolean;
   i, Min, Max: Integer;
+  SocketInfo: TSocketInfo;
 
   function GetParam(const Param, Str: string): string;
   var
@@ -6763,10 +6792,10 @@ begin
       end;
       if Length(ParseStr) > 1 then
       begin
-        if ValidSocket(ParseStr[1]) <> soNone then
+        if TryParseSocket(ParseStr[1], SocketInfo) <> soNone then
         begin
-          Address := GetAddressFromSocket(ParseStr[1]);
-          RealPort := IntToStr(GetPortFromSocket(ParseStr[1]));
+          Address := SocketInfo.IpStr;
+          RealPort := IntToStr(SocketInfo.Port);
           if Reset then
             VirtualPort := RealPort;
           if Tcp.cbxHsAddress.Items.IndexOf(Address) = -1 then
@@ -7608,8 +7637,8 @@ begin
           if rfRelay in RouterInfo.Flags then
           begin
             case Bridge.SocketType of
-              soIPv4: cdRelay := (RouterInfo.Port = Bridge.Port) and (Bridge.Ip = RouterInfo.IPv4);
-              soIPv6: cdRelay := (RouterInfo.Port = Bridge.Port) and (Bridge.Ip = RouterInfo.IPv6);
+              soIPv4: cdRelay := (RouterInfo.IPv4Port = Bridge.Port) and (Bridge.Ip = RouterInfo.IPv4Addr);
+              soIPv6: cdRelay := (RouterInfo.IPv6Port = Bridge.Port) and (Bridge.Ip = RouterInfo.IPv6Addr);
               else
                 cdRelay := False;
             end;
@@ -8165,6 +8194,7 @@ var
   Port, DataCount, i: Integer;
   Update: Boolean;
   ParseStr: TArray<string>;
+  SocketInfo: TSocketInfo;
 begin
   if FirstLoad then
   begin
@@ -8200,12 +8230,11 @@ begin
   end;
   HostControl.Hint := Params;
 
-
-  if ValidSocket(Data) <> soNone then
+  if TryParseSocket(Data, SocketInfo) <> soNone then
   begin
     EnabledControl.Checked := True;
-    Port := GetPortFromSocket(Data);
-    TempHost := GetAddressFromSocket(Data);
+    Port := SocketInfo.Port;
+    TempHost := SocketInfo.IpStr;
     if HostControl.Items.IndexOf(TempHost) <> -1 then
       Host := TempHost
     else
@@ -9089,26 +9118,29 @@ begin
           BridgeInfo.Router.Flags := [rfBridge];
           BridgeInfo.Router.Params := ROUTER_BRIDGE;
           BridgeInfo.Router.Name := ParseStr[1];
-          BridgeInfo.Router.IPv4 := '';
-          BridgeInfo.Router.IPv6 := '';
+          BridgeInfo.Router.IPv4Addr := '';
+          BridgeInfo.Router.IPv6Addr := '';
+          BridgeInfo.Router.IPv6Port := 0;
           BridgeInfo.Source := '';
           IpStr := ParseStr[2].Split([',']);
           for j := 0 to High(IpStr) do
           begin
             case GetAddressType(IpStr[j]) of
-              atIPv4: BridgeInfo.Router.IPv4 := IpStr[j];
+              atIPv4: BridgeInfo.Router.IPv4Addr := IpStr[j];
               atIPv6:
               begin
                 Data := RemoveBrackets(IpStr[j], btSquare);
                 if IsIPv6(Data) then
                 begin
-                  BridgeInfo.Router.IPv6 := Data;
+                  BridgeInfo.Router.IPv6Addr := Data;
                   Inc(BridgeInfo.Router.Params, ROUTER_REACHABLE_IPV6);
                 end;
               end;
             end;
           end;
-          BridgeInfo.Router.Port := StrToIntDef(ParseStr[3], 0);
+          BridgeInfo.Router.IPv4Port := StrToIntDef(ParseStr[3], 0);
+          if BridgeInfo.Router.IPv6Addr <> '' then
+            BridgeInfo.Router.IPv6Port := StrToIntDef(ParseStr[3], 0);
           BridgeInfo.Router.Bandwidth := StrToIntDef(ParseStr[4], 0);
           BridgeInfo.Router.Version := ParseStr[5];
           BridgeInfo.Kind := GetIntDef(StrToIntDef(ParseStr[6], BRIDGE_RELAY), BRIDGE_RELAY, BRIDGE_RELAY, BRIDGE_NATIVE);
@@ -9129,8 +9161,8 @@ begin
           end;
           BridgeStr := Trim(
             BridgeInfo.Transport + ' ' +
-            BridgeInfo.Router.IPv4 + ':' +
-            IntToStr(BridgeInfo.Router.Port) + ' ' +
+            BridgeInfo.Router.IPv4Addr + ':' +
+            IntToStr(BridgeInfo.Router.IPv4Port) + ' ' +
             ParseStr[0] + ' ' +
             BridgeInfo.Params
           );
@@ -9158,10 +9190,10 @@ begin
   try
     for Item in BridgesDic do
     begin
-      if Item.Value.Router.IPv6 = '' then
-        Address := Item.Value.Router.IPv4
+      if Item.Value.Router.IPv6Addr = '' then
+        Address := Item.Value.Router.IPv4Addr
       else
-        Address := Item.Value.Router.IPv4 + ',' + FormatHost(Item.Value.Router.IPv6, False);
+        Address := Item.Value.Router.IPv4Addr + ',' + FormatHost(Item.Value.Router.IPv6Addr, False);
 
       if Item.Value.Transport = '' then
         Transport := ''
@@ -9186,7 +9218,7 @@ begin
         Item.Key + '|' +
         Item.Value.Router.Name + '|' +
         Address + '|' +
-        IntToStr(Item.Value.Router.Port) + '|' +
+        IntToStr(Item.Value.Router.IPv4Port) + '|' +
         IntToStr(Item.Value.Router.Bandwidth) + '|' +
         Item.Value.Router.Version + '|' +
         IntToStr(Item.Value.Kind) + '|' +
@@ -9618,9 +9650,9 @@ begin
       begin
         if (rfGuard in Router.Value.Flags) then
         begin
-          if RouterInNodesList(Router.Key, Router.Value.IPv4, ntEntry, True) then
+          if RouterInNodesList(Router.Key, Router.Value.IPv4Addr, ntEntry, True) then
           begin
-            if not RouterInNodesList(Router.Key, Router.Value.IPv4, ntExclude) then
+            if not RouterInNodesList(Router.Key, Router.Value.IPv4Addr, ntExclude) then
               Inc(NodesCount);
           end;
         end;
@@ -10237,10 +10269,10 @@ begin
   try
     for Router in RoutersDic do
     begin
-      if not IPv4AddrsList.Contains(Router.Value.IPv4) then
+      if not IPv4AddrsList.Contains(Router.Value.IPv4Addr) then
       begin
-        IPv4AddrsList.Add(Router.Value.IPv4);
-        Cidrs := IPv4CidrNodes.FindAllMatchesIP(Router.Value.IPv4);
+        IPv4AddrsList.Add(Router.Value.IPv4Addr);
+        Cidrs := IPv4CidrNodes.FindAllMatchesIP(Router.Value.IPv4Addr);
         if Cidrs <> nil then
         begin
           for i := 0 to High(Cidrs) do
@@ -10341,7 +10373,7 @@ var
         Flags := RouterInfo.Flags;
         NodeIsBridge := (NodeTypes <> [ntExclude]) and (rfBridge in Flags) and not (rfRelay in Flags);
 
-        CountryCode := CountryCodes[GetCountryValue(RouterInfo.IPv4)];
+        CountryCode := CountryCodes[GetCountryValue(RouterInfo.IPv4Addr)];
         if NodesDic.TryGetValue(CountryCode, NodeValues) then
           NodeIsExcluded := ntExclude in NodeValues;
 
@@ -10564,22 +10596,22 @@ begin
 
     for RouterItem in RoutersDic do
     begin
-      if IpList.TryGetValue(RouterItem.Value.IPv4, Data) then
+      if IpList.TryGetValue(RouterItem.Value.IPv4Addr, Data) then
       begin
         TArrayHelper.AddToArray<string>(Data, RouterItem.Key);
-        IpList.AddOrSetValue(RouterItem.Value.IPv4, Data);
+        IpList.AddOrSetValue(RouterItem.Value.IPv4Addr, Data);
       end
       else
       begin
         TArrayHelper.AddToArray<string>(Data, RouterItem.Key);
-        IpList.Add(RouterItem.Value.IPv4, Data);
+        IpList.Add(RouterItem.Value.IPv4Addr, Data);
 
         if ConvertToHash then
-          ConvertNodesToHash(RouterItem.Value.IPv4, RouterItem.Key)
+          ConvertNodesToHash(RouterItem.Value.IPv4Addr, RouterItem.Key)
         else
         begin
-          CheckCountry(RouterItem.Value.IPv4, RouterItem.Key);
-          CheckRanges(RouterItem.Value.IPv4, [ntNone], RouterItem.Key);
+          CheckCountry(RouterItem.Value.IPv4Addr, RouterItem.Key);
+          CheckRanges(RouterItem.Value.IPv4Addr, [ntNone], RouterItem.Key);
         end;
       end;
     end;
@@ -10604,7 +10636,7 @@ begin
       begin
         if RoutersDic.ContainsKey(NodeItem.Key) then
         begin
-          Ip := RoutersDic.Items[NodeItem.Key].IPv4;
+          Ip := RoutersDic.Items[NodeItem.Key].IPv4Addr;
           if NodesDic.ContainsKey(Ip) then
             CheckIp(Ip, NodesDic.Items[Ip])
           else
@@ -10688,9 +10720,9 @@ begin
   try
     for Router in RoutersDic do
     begin
-      AddToIpList(Router.Value.IPv4, Router.Value.Port);
-      if Router.Value.IPv6 <> '' then
-        AddToIpList(Router.Value.IPv6, Router.Value.Port);
+      AddToIpList(Router.Value.IPv4Addr, Router.Value.IPv4Port);
+      if Router.Value.IPv6Addr <> '' then
+        AddToIpList(Router.Value.IPv6Addr, Router.Value.IPv6Port);
     end;
 
     BridgesList.Text := meBridges.Text;
@@ -11329,14 +11361,20 @@ end;
 
 function TTcp.GetBridgeStr(const RouterID: string; const RouterInfo: TRouterInfo; UseIPv6: Boolean; Preview: Boolean = False): string;
 var
-  IpStr, HashStr: string;
+  IpStr, PortStr, HashStr: string;
   BridgeInfo: TBridgeInfo;
 begin
   Result := '';
   if UseIPv6 then
-    IpStr := FormatHost(RouterInfo.IPv6, False)
+  begin
+    IpStr := FormatHost(RouterInfo.IPv6Addr, False);
+    PortStr := IntToStr(RouterInfo.IPv6Port);
+  end
   else
-    IpStr := RouterInfo.IPv4;
+  begin
+    IpStr := RouterInfo.IPv4Addr;
+    PortStr := IntToStr(RouterInfo.IPv4Port);
+  end;
   if IpStr = '' then
     Exit;
   if Preview then
@@ -11349,24 +11387,34 @@ begin
     begin
       if UseIPv6 and IpInReservedRanges(BridgeInfo.Source, rtDoc) then
         Exit;
-      if GetAddressType(IpStr) = atIPv6 then
-        IpStr := FormatHost(BridgeInfo.Source, False);
+      case GetAddressType(IpStr) of
+        atIPv4:
+        begin
+          PortStr := IntToStr(BridgeInfo.Router.IPv4Port);
+        end;
+      atIPv6:
+        begin
+          IpStr := FormatHost(BridgeInfo.Source, False);
+          PortStr := IntToStr(BridgeInfo.Router.IPv6Port);
+        end;
+      end;
     end;
-    Result := Trim(BridgeInfo.Transport + ' ' + IpStr + ':' + IntToStr(BridgeInfo.Router.Port) + ' ' + HashStr + ' ' + BridgeInfo.Params);
+    Result := Trim(BridgeInfo.Transport + ' ' + IpStr + ':' + PortStr + ' ' + HashStr + ' ' + BridgeInfo.Params);
     if Preview and (BridgeInfo.Params <> '') then
       Result := Copy(Result, 1, Pos(HashStr, Result) + 29) + '...';
   end
   else
-    Result := IpStr + ':' + IntToStr(RouterInfo.Port) + ' ' + HashStr;
+    Result := IpStr + ':' + PortStr + ' ' + HashStr;
 end;
 
 function TTcp.GetRouterCsvData(const RouterID: string; const RouterInfo: TRouterInfo; Preview: Boolean = False): string;
 var
-  HashStr, IPv6Str, IPv4CountryCode, IPv6CountryCode, CountryData, PingStr, FlagsStr, TypeStr, AliveStr: string;
+  HashStr, IPv6Str, IPv4CountryCode, IPv6CountryCode, CountryData, PingStr, FlagsStr, TypeStr, AliveStr, PortStr: string;
   GeoIpInfo: TGeoIpInfo;
   PingData: Integer;
+  SamePorts: Boolean;
 begin
-  if GeoIpDic.TryGetValue(RouterInfo.IPv4, GeoIpInfo) then
+  if GeoIpDic.TryGetValue(RouterInfo.IPv4Addr, GeoIpInfo) then
   begin
     PingData := GeoIpInfo.ping;
     IPv4CountryCode := CountryCodes[GeoIpInfo.cc]
@@ -11379,16 +11427,24 @@ begin
   PingStr := IntToStr(PingData);
   CountryData := IPv4CountryCode + ',' + TransStr(IPv4CountryCode);
 
-  if RouterInfo.IPv6 <> '' then
+  if RouterInfo.IPv6Addr <> '' then
   begin
-    if GeoIpDic.TryGetValue(RouterInfo.IPv6, GeoIpInfo) then
+    SamePorts := RouterInfo.IPv4Port = RouterInfo.IPv6Port;
+    if GeoIpDic.TryGetValue(RouterInfo.IPv6Addr, GeoIpInfo) then
       IPv6CountryCode := CountryCodes[GeoIpInfo.cc]
     else
       IPv6CountryCode := CountryCodes[DEFAULT_COUNTRY_ID];
 
     if IPv4CountryCode <> IPv6CountryCode then
       CountryData := IPv4CountryCode + '/' + IPv6CountryCode + ',' + TransStr(IPv4CountryCode) + '/' + TransStr(IPv6CountryCode);
-  end;
+  end
+  else
+    SamePorts := True;
+
+  if SamePorts then
+    PortStr := IntToStr(RouterInfo.IPv4Port)
+  else
+    PortStr := IntToStr(RouterInfo.IPv4Port) + '/' + IntToStr(RouterInfo.IPv6Port);
 
   if Preview then
   begin
@@ -11403,9 +11459,9 @@ begin
   begin
     HashStr := RouterID;
     if FormatIPv6OnExtract then
-      IPv6Str := FormatHost(RouterInfo.IPv6, False) + ','
+      IPv6Str := FormatHost(RouterInfo.IPv6Addr, False) + ','
     else
-      IPv6Str := RouterInfo.IPv6 + ',';
+      IPv6Str := RouterInfo.IPv6Addr + ',';
     PingStr := PingStr + ',';
     if rfRelay in RouterInfo.Flags then
       TypeStr := 'Relay,'
@@ -11419,10 +11475,10 @@ begin
   end;
   Result := HashStr + ',' +
     RouterInfo.Name + ',' +
-    RouterInfo.IPv4 + ',' + IPv6Str +
+    RouterInfo.IPv4Addr + ',' + IPv6Str +
     CountryData + ',' +
     IntToStr(RouterInfo.Bandwidth) + ',' +
-    IntToStr(RouterInfo.Port) + ',' +
+    PortStr + ',' +
     RouterInfo.Version + ',' +
     PingStr + TypeStr + AliveStr + FlagsStr;
 end;
@@ -11435,14 +11491,14 @@ begin
     Hash := Copy(RouterID, 1, 30) + '..'
   else
     Hash := RouterID;
-  Result := RouterInfo.IPv4;
-  Result := Result + ' orport=' + IntToStr(RouterInfo.Port) + ' id=' + Hash;
-  if RouterInfo.IPv6 <> '' then
+  Result := RouterInfo.IPv4Addr;
+  Result := Result + ' orport=' + IntToStr(RouterInfo.IPv4Port) + ' id=' + Hash;
+  if RouterInfo.IPv6Addr <> '' then
   begin
     if Preview then
       Result := Result + ' ipv6=..'
     else
-      Result := Result + ' ipv6=' + FormatHost(RouterInfo.IPv6, False) + ':' + IntToStr(RouterInfo.Port);
+      Result := Result + ' ipv6=' + FormatHost(RouterInfo.IPv6Addr, False) + ':' + IntToStr(RouterInfo.IPv6Port);
   end;
 end;
 
@@ -11817,8 +11873,7 @@ begin
     miExtractData.Visible := InsertExtractMenu(miExtractData, CONTROL_TYPE_MEMO, MemoID, EXTRACT_PREVIEW)
   else
     miExtractData.Visible := False;
-
-  miBridgesFileFormat.Visible := IsBridgeEdit and (cbxBridgesType.ItemIndex = BRIDGES_TYPE_FILE);
+  miBridgesOptions.Visible := IsBridgeEdit and (cbxBridgesType.ItemIndex = BRIDGES_TYPE_FILE);
   miBridgesFileFormat.Enabled := miBridgesFileFormat.Visible and not sbBridgesFileReadOnly.Down;
 
   if Control <> nil then
@@ -11941,10 +11996,10 @@ var
   BridgeInfo: TBridgeInfo;
   DataStr, Delimiter, PortData: string;
   UniqueList: THashSet<string>;
-  PortStr, IPv4Str, IPv6Str, HashStr, IPv4BridgesStr, IPv6BridgesStr,
+  IPv4PortStr, IPv6PortStr, IPv4Str, IPv6Str, HashStr, IPv4BridgesStr, IPv6BridgesStr,
   FallbackDirsStr, NicknameStr, CountryCodeStr, IPv4CountryCodeStr, IPv6CountryCodeStr, CsvStr, IPv4SocketStr, IPv6SocketStr, HostStr,
   HostSocketStr, HostRootStr, IPv4CidrStr: string;
-  PortCount, IPv4Count, IPv6Count, HashCount, IPv4BridgesCount, IPv6BridgesCount,
+  Ipv4PortCount, IPv6PortCount, IPv4Count, IPv6Count, HashCount, IPv4BridgesCount, IPv6BridgesCount,
   FallbackDirsCount, NicknameCount, CountryCodeCount, IPv4CountryCodeCount, IPv6CountryCodeCount, CsvCount, IPv4SocketCount, IPv6SocketCount,
   HostCount, HostSocketCount, HostRootCount, IPv4CidrCount: Integer;
 
@@ -11972,7 +12027,7 @@ var
     Data := DataStr;
     case CurrentType of
       EXTRACT_COUNTRY_CODE, EXTRACT_IPV4_COUNTRY_CODE, EXTRACT_IPV6_COUNTRY_CODE: if FormatCodesOnExtract then Data := '{' + Data + '}';
-      EXTRACT_IPV6: if FormatIPv6OnExtract then Data := FormatHost(Data, False);
+      EXTRACT_IPV6_ADDR: if FormatIPv6OnExtract then Data := FormatHost(Data, False);
     end;
     if PreviewState then
     begin
@@ -11980,7 +12035,7 @@ var
         Str := Data;
       if UseDuplicates and RemoveDuplicateOnExtract then
       begin
-        if CurrentType = EXTRACT_IPV6_COUNTRY_CODE  then
+        if CurrentType in [EXTRACT_IPV6_COUNTRY_CODE, EXTRACT_IPV6_PORT] then
           Data := Data + '6';
         if UniqueList.Contains(Data) then
           Exit
@@ -12019,7 +12074,8 @@ var
 
 begin
   Result := False;
-  PortCount := 0;
+  IPv4PortCount := 0;
+  IPv6PortCount := 0;
   IPv4Count := 0;
   IPv6Count := 0;
   HashCount := 0;
@@ -12037,7 +12093,8 @@ begin
   HostSocketCount := 0;
   HostRootCount := 0;
   IPv4CidrCount := 0;
-  PortStr := '';
+  IPv4PortStr := '';
+  IPv6PortStr := '';
   IPv4Str := '';
   IPv6Str := '';
   HashStr := '';
@@ -12058,7 +12115,6 @@ begin
   ParentMenu.Clear;
   ParentMenu.Tag := ControlID;
   ParentMenu.HelpContext := ControlType;
-  InsertMenuItem(ParentMenu, EXTRACT_PORT, 72, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, EXTRACT_COUNTRY_CODE, 57, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, EXTRACT_NICKNAME, 32, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, EXTRACT_HASH, 23, '', ExtractDataClick);
@@ -12068,14 +12124,16 @@ begin
   InsertMenuItem(ParentMenu, EXTRACT_HOST_SOCKET, 77, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, 0, -1, '-');
   InsertMenuItem(ParentMenu, EXTRACT_IPV4_COUNTRY_CODE, 79, '', ExtractDataClick);
-  InsertMenuItem(ParentMenu, EXTRACT_IPV4, 33, '', ExtractDataClick);
+  InsertMenuItem(ParentMenu, EXTRACT_IPV4_PORT, 81, '', ExtractDataClick);
+  InsertMenuItem(ParentMenu, EXTRACT_IPV4_ADDR, 33, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, EXTRACT_IPV4_CIDR, 48, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, EXTRACT_IPV4_SOCKET, 48, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, EXTRACT_IPV4_BRIDGE, 59, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, EXTRACT_FALLBACK_DIR, 54, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, 0, -1, '-');
   InsertMenuItem(ParentMenu, EXTRACT_IPV6_COUNTRY_CODE, 80, '', ExtractDataClick);
-  InsertMenuItem(ParentMenu, EXTRACT_IPV6, 34, '', ExtractDataClick);
+  InsertMenuItem(ParentMenu, EXTRACT_IPV6_PORT, 82, '', ExtractDataClick);
+  InsertMenuItem(ParentMenu, EXTRACT_IPV6_ADDR, 34, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, EXTRACT_IPV6_SOCKET, 49, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, EXTRACT_IPV6_BRIDGE, 60, '', ExtractDataClick);
   InsertMenuItem(ParentMenu, 0, -1, '-');
@@ -12092,7 +12150,7 @@ begin
   InsertMenuItem(DelimiterMenu, DELIM_NEW_LINE, -1, TransStr('675'), SetExtractDelimiter, ExtractDelimiterType = DELIM_NEW_LINE , False, True);
   InsertMenuItem(DelimiterMenu, DELIM_COMMA, -1, TransStr('676'), SetExtractDelimiter, ExtractDelimiterType = DELIM_COMMA, False, True);
 
-  if ((ExtractDelimiterType = DELIM_AUTO) and not (ExtractType in [EXTRACT_PORT, EXTRACT_COUNTRY_CODE, EXTRACT_IPV4_COUNTRY_CODE, EXTRACT_IPV6_COUNTRY_CODE]))
+  if ((ExtractDelimiterType = DELIM_AUTO) and not (ExtractType in [EXTRACT_IPV4_PORT, EXTRACT_COUNTRY_CODE, EXTRACT_IPV4_COUNTRY_CODE, EXTRACT_IPV6_COUNTRY_CODE, EXTRACT_IPV6_PORT]))
     or (ExtractDelimiterType = DELIM_NEW_LINE) or (ExtractType = EXTRACT_CSV) then
       Delimiter := BR
   else
@@ -12126,24 +12184,25 @@ begin
               begin
                 for i := 0 to ls.Count - 1 do
                 begin
-                  if TryParseBridge(Trim(ls[i]), Bridge, ValidateData, FormatIPv6OnExtract) then
+                  if TryParseBridge(Trim(ls[i]), Bridge, ValidateData) then
                   begin
                     PortData := IntToStr(Bridge.Port);
-                    FormatData(PortStr, PortCount, PortData, EXTRACT_PORT);
                     if Bridge.Hash <> '' then
                       FormatData(HashStr, HashCount, Bridge.Hash, EXTRACT_HASH);
                     if Bridge.SocketType = soIPv4 then
                     begin
+                      FormatData(IPv4PortStr, IPv4PortCount, PortData, EXTRACT_IPV4_PORT);
                       FormatData(IPv4CountryCodeStr, IPv4CountryCodeCount, CountryCodes[GetCountryValue(Bridge.Ip)], EXTRACT_IPV4_COUNTRY_CODE);
-                      FormatData(IPv4Str, IPv4Count, Bridge.Ip, EXTRACT_IPV4);
+                      FormatData(IPv4Str, IPv4Count, Bridge.Ip, EXTRACT_IPV4_ADDR);
                       FormatData(IPv4SocketStr, IPv4SocketCount, Bridge.Ip + ':' + PortData, EXTRACT_IPV4_SOCKET);
                       if (Bridge.Transport = '') and (Bridge.Hash <> '') then
                         FormatData(FallbackDirsStr, FallbackDirsCount, Bridge.Ip + ' orport=' + PortData + ' id=' + Bridge.Hash, EXTRACT_FALLBACK_DIR);
                     end
                     else
                     begin
-                      FormatData(IPv6CountryCodeStr, IPv6CountryCodeCount, CountryCodes[GetCountryValue(RemoveBrackets(Bridge.Ip, btSquare))], EXTRACT_IPV6_COUNTRY_CODE);
-                      FormatData(IPv6Str, IPv6Count, Bridge.Ip, EXTRACT_IPV6);
+                      FormatData(IPv6PortStr, IPv6PortCount, PortData, EXTRACT_IPV6_PORT);
+                      FormatData(IPv6CountryCodeStr, IPv6CountryCodeCount, CountryCodes[GetCountryValue(Bridge.Ip)], EXTRACT_IPV6_COUNTRY_CODE);
+                      FormatData(IPv6Str, IPv6Count, Bridge.Ip, EXTRACT_IPV6_ADDR);
                       FormatData(IPv6SocketStr, IPv6SocketCount, FormatHost(Bridge.Ip, False) + ':' + PortData, EXTRACT_IPV6_SOCKET);
                     end;
                   end;
@@ -12165,8 +12224,8 @@ begin
                   DataStr := Trim(ls[i]);
                   case ValidHost(DataStr, True, True) of
                     htDomain: FormatData(HostStr, HostCount, DataStr, EXTRACT_HOST);
-                    htIPv4: FormatData(IPv4Str, IPv4Count, DataStr, EXTRACT_IPV4);
-                    htIPv6: FormatData(IPv6Str, IPv6Count, FormatHost(DataStr, False), EXTRACT_IPV6);
+                    htIPv4: FormatData(IPv4Str, IPv4Count, DataStr, EXTRACT_IPV4_ADDR);
+                    htIPv6: FormatData(IPv6Str, IPv6Count, FormatHost(DataStr, False), EXTRACT_IPV6_ADDR);
                     htRoot: FormatData(HostRootStr, HostRootCount, DataStr, EXTRACT_HOST_ROOT);
                   end;
                 end;
@@ -12175,21 +12234,23 @@ begin
               begin
                 for i := 0 to ls.Count - 1 do
                 begin
-                  if TryParseFallbackDir(Trim(ls[i]), FallbackDir, ValidateData, FormatIPv6OnExtract) then
+                  if TryParseFallbackDir(Trim(ls[i]), FallbackDir, ValidateData) then
                   begin
-                    PortData := IntToStr(FallbackDir.OrPort);
-                    FormatData(IPv4CountryCodeStr, IPv4CountryCodeCount, CountryCodes[GetCountryValue(FallbackDir.IPv4)], EXTRACT_IPV4_COUNTRY_CODE);
-                    FormatData(PortStr, PortCount, PortData, EXTRACT_PORT);
+                    PortData := IntToStr(FallbackDir.IPv4Port);
+                    FormatData(IPv4CountryCodeStr, IPv4CountryCodeCount, CountryCodes[GetCountryValue(FallbackDir.IPv4Addr)], EXTRACT_IPV4_COUNTRY_CODE);
+                    FormatData(IPv4PortStr, IPv4PortCount, PortData, EXTRACT_IPV4_PORT);
                     FormatData(HashStr, HashCount, FallbackDir.Hash, EXTRACT_HASH);
-                    FormatData(IPv4Str, IPv4Count, FallbackDir.IPv4, EXTRACT_IPV4);
-                    FormatData(IPv4SocketStr, IPv4SocketCount, FallbackDir.IPv4 + ':' + PortData, EXTRACT_IPV4_SOCKET);
-                    FormatData(IPv4BridgesStr, IPv4BridgesCount, FallbackDir.IPv4 + ':' + PortData + ' ' + FallbackDir.Hash, EXTRACT_IPV4_BRIDGE);
-                    if FallbackDir.IPv6 <> '' then
+                    FormatData(IPv4Str, IPv4Count, FallbackDir.IPv4Addr, EXTRACT_IPV4_ADDR);
+                    FormatData(IPv4SocketStr, IPv4SocketCount, FallbackDir.IPv4Addr + ':' + PortData, EXTRACT_IPV4_SOCKET);
+                    FormatData(IPv4BridgesStr, IPv4BridgesCount, FallbackDir.IPv4Addr + ':' + PortData + ' ' + FallbackDir.Hash, EXTRACT_IPV4_BRIDGE);
+                    if FallbackDir.IPv6Addr <> '' then
                     begin
-                      FormatData(IPv6Str, IPv6Count, FallbackDir.IPv6, EXTRACT_IPV6);
-                      FormatData(IPv6SocketStr, IPv6SocketCount, FormatHost(FallbackDir.IPv6, False) + ':' + PortData, EXTRACT_IPV6_SOCKET);
-                      FormatData(IPv6BridgesStr, IPv6BridgesCount, FormatHost(FallbackDir.IPv6, False) + ':' + PortData + ' ' + FallbackDir.Hash, EXTRACT_IPV6_BRIDGE);
-                      FormatData(IPv6CountryCodeStr, IPv6CountryCodeCount, CountryCodes[GetCountryValue(RemoveBrackets(FallbackDir.IPv6, btSquare))], EXTRACT_IPV6_COUNTRY_CODE);
+                      PortData := IntToStr(FallbackDir.IPv6Port);
+                      FormatData(IPv6PortStr, IPv6PortCount, PortData, EXTRACT_IPV6_PORT);
+                      FormatData(IPv6Str, IPv6Count, FallbackDir.IPv6Addr, EXTRACT_IPV6_ADDR);
+                      FormatData(IPv6SocketStr, IPv6SocketCount, FormatHost(FallbackDir.IPv6Addr, False) + ':' + PortData, EXTRACT_IPV6_SOCKET);
+                      FormatData(IPv6BridgesStr, IPv6BridgesCount, FormatHost(FallbackDir.IPv6Addr, False) + ':' + PortData + ' ' + FallbackDir.Hash, EXTRACT_IPV6_BRIDGE);
+                      FormatData(IPv6CountryCodeStr, IPv6CountryCodeCount, CountryCodes[GetCountryValue(FallbackDir.IPv6Addr)], EXTRACT_IPV6_COUNTRY_CODE);
                     end;
                   end;
                 end;
@@ -12201,7 +12262,7 @@ begin
                   DataStr := Trim(ls[i]);
                   case ValidNode(DataStr, NodesListStage = 1) of
                     dtHash: FormatData(HashStr, HashCount, DataStr, EXTRACT_HASH, NodesListStage = 1);
-                    dtIPv4: FormatData(IPv4Str, IPv4Count, DataStr, EXTRACT_IPV4, NodesListStage = 1);
+                    dtIPv4: FormatData(IPv4Str, IPv4Count, DataStr, EXTRACT_IPV4_ADDR, NodesListStage = 1);
                     dtIPv4Cidr: FormatData(IPv4CidrStr, IPv4CidrCount, DataStr, EXTRACT_IPV4_CIDR, NodesListStage = 1);
                     dtCode: FormatData(CountryCodeStr, CountryCodeCount, LowerCase(DataStr), EXTRACT_COUNTRY_CODE, NodesListStage = 1);
                   end;
@@ -12233,19 +12294,21 @@ begin
                 begin
                   if RoutersDic.TryGetValue(ls[i], Router) then
                   begin
-                    PortData := IntToStr(Router.Port);
-                    FormatData(IPv4CountryCodeStr, IPv4CountryCodeCount, CountryCodes[GetCountryValue(Router.IPv4)], EXTRACT_IPV4_COUNTRY_CODE);
-                    FormatData(PortStr, PortCount, PortData, EXTRACT_PORT);
+                    PortData := IntToStr(Router.IPv4Port);
+                    FormatData(IPv4CountryCodeStr, IPv4CountryCodeCount, CountryCodes[GetCountryValue(Router.IPv4Addr)], EXTRACT_IPV4_COUNTRY_CODE);
+                    FormatData(IPv4PortStr, IPv4PortCount, PortData, EXTRACT_IPV4_PORT);
                     FormatData(NicknameStr, NicknameCount, Router.Name, EXTRACT_NICKNAME);
                     FormatData(HashStr, HashCount, ls[i], EXTRACT_HASH);
-                    FormatData(IPv4Str, IPv4Count, Router.IPv4, EXTRACT_IPV4);
-                    FormatData(IPv4SocketStr, IPv4SocketCount, Router.IPv4 + ':' + PortData, EXTRACT_IPV4_SOCKET);
+                    FormatData(IPv4Str, IPv4Count, Router.IPv4Addr, EXTRACT_IPV4_ADDR);
+                    FormatData(IPv4SocketStr, IPv4SocketCount, Router.IPv4Addr + ':' + PortData, EXTRACT_IPV4_SOCKET);
                     FormatData(IPv4BridgesStr, IPv4BridgesCount, GetBridgeStr(ls[i], Router, False, PreviewState), EXTRACT_IPV4_BRIDGE);
-                    if Router.IPv6 <> '' then
+                    if Router.IPv6Addr <> '' then
                     begin
-                      FormatData(IPv6Str, IPv6Count, Router.IPv6, EXTRACT_IPV6);
-                      FormatData(IPv6CountryCodeStr, IPv6CountryCodeCount, CountryCodes[GetCountryValue(Router.IPv6)], EXTRACT_IPV6_COUNTRY_CODE);
-                      FormatData(IPv6SocketStr, IPv6SocketCount, FormatHost(Router.IPv6, False) + ':' + PortData, EXTRACT_IPV6_SOCKET);
+                      PortData := IntToStr(Router.IPv6Port);
+                      FormatData(IPv6PortStr, IPv6PortCount, PortData, EXTRACT_IPV6_PORT);
+                      FormatData(IPv6Str, IPv6Count, Router.IPv6Addr, EXTRACT_IPV6_ADDR);
+                      FormatData(IPv6CountryCodeStr, IPv6CountryCodeCount, CountryCodes[GetCountryValue(Router.IPv6Addr)], EXTRACT_IPV6_COUNTRY_CODE);
+                      FormatData(IPv6SocketStr, IPv6SocketCount, FormatHost(Router.IPv6Addr, False) + ':' + PortData, EXTRACT_IPV6_SOCKET);
                       DataStr := GetBridgeStr(ls[i], Router, True, PreviewState);
                       if DataStr <> ''then
                         FormatData(IPv6BridgesStr, IPv6BridgesCount, DataStr, EXTRACT_IPV6_BRIDGE);
@@ -12280,18 +12343,19 @@ begin
                 end;
                 if TryParseTarget(DataStr, Target) then
                 begin
-                  FormatData(PortStr, PortCount, Target.Port, EXTRACT_PORT);
                   if Target.Hash <> '' then
                     FormatData(HashStr, HashCount, Target.Hash, EXTRACT_HASH);
                   case ValidAddress(Target.Hostname, False, ControlID = GRID_STREAMS_INFO) of
                     atIPv4:
                     begin
-                      FormatData(IPv4Str, IPv4Count, Target.Hostname, EXTRACT_IPV4);
+                      FormatData(IPv4PortStr, IPv4PortCount, Target.Port, EXTRACT_IPv4_PORT);
+                      FormatData(IPv4Str, IPv4Count, Target.Hostname, EXTRACT_IPV4_ADDR);
                       FormatData(IPv4SocketStr, IPv4SocketCount, Target.Hostname + ':' + Target.Port, EXTRACT_IPV4_SOCKET);
                     end;
                     atIPv6:
                     begin
-                      FormatData(IPv6Str, IPv6Count, FormatHost(Target.Hostname, False), EXTRACT_IPV6);
+                      FormatData(IPv6PortStr, IPv6PortCount, Target.Port, EXTRACT_IPv6_PORT);
+                      FormatData(IPv6Str, IPv6Count, FormatHost(Target.Hostname, False), EXTRACT_IPV6_ADDR);
                       FormatData(IPv6SocketStr, IPv6SocketCount, FormatHost(Target.Hostname, False) + ':' + Target.Port, EXTRACT_IPV6_SOCKET);
                     end
                     else
@@ -12317,9 +12381,9 @@ begin
           if ParentMenu.Items[i].ImageIndex <> -1 then
           begin
             case ParentMenu.Items[i].Tag of
-              EXTRACT_PORT: UpdateMenu(ParentMenu.Items[i], PortStr, PortCount, False);
-              EXTRACT_IPV4: UpdateMenu(ParentMenu.Items[i], IPv4Str, IPv4Count, True);
-              EXTRACT_IPV6: UpdateMenu(ParentMenu.Items[i], IPv6Str, IPv6Count, True);
+              EXTRACT_IPV4_PORT: UpdateMenu(ParentMenu.Items[i], IPv4PortStr, IPv4PortCount, False);
+              EXTRACT_IPV4_ADDR: UpdateMenu(ParentMenu.Items[i], IPv4Str, IPv4Count, True);
+              EXTRACT_IPV6_ADDR: UpdateMenu(ParentMenu.Items[i], IPv6Str, IPv6Count, True);
               EXTRACT_HASH: UpdateMenu(ParentMenu.Items[i], HashStr, HashCount, True);
               EXTRACT_IPV4_BRIDGE: UpdateMenu(ParentMenu.Items[i], IPv4BridgesStr, IPv4BridgesCount, True);
               EXTRACT_IPV6_BRIDGE: UpdateMenu(ParentMenu.Items[i], IPv6BridgesStr, IPv6BridgesCount, False);
@@ -12335,6 +12399,7 @@ begin
               EXTRACT_HOST_SOCKET: UpdateMenu(ParentMenu.Items[i], HostSocketStr, HostSocketCount, False);
               EXTRACT_HOST_ROOT: UpdateMenu(ParentMenu.Items[i], HostRootStr, HostRootCount, True);
               EXTRACT_IPV4_CIDR: UpdateMenu(ParentMenu.Items[i], IPv4CidrStr, IPv4CidrCount, True);
+              EXTRACT_IPV6_PORT: UpdateMenu(ParentMenu.Items[i], IPv6PortStr, IPv6PortCount, False);
             end;
           end;
         end;
@@ -12425,7 +12490,7 @@ end;
 procedure TTcp.lbStatusProxyAddrMouseMove(Sender: TObject; Shift: TShiftState;
   X, Y: Integer);
 begin
-  if ValidSocket(TLabel(Sender).Caption, False) <> soNone then
+  if ValidSocket(TLabel(Sender).Caption) <> soNone then
     TLabel(Sender).Cursor := crHandPoint
   else
     TLabel(Sender).Cursor := crDefault;
@@ -13438,7 +13503,7 @@ begin
                 for i := ls.Count - 1 downto 0 do
                 begin
                   if TryParseFallbackDir(ls[i], FallbackDir) then
-                    DeleteListData(FallbackDir.IPv4, FallbackDir.OrPort);
+                    DeleteListData(FallbackDir.IPv4Addr, FallbackDir.IPv4Port);
                 end;
               end;
               if DeleteCount > 0 then
@@ -13745,18 +13810,18 @@ var
   BridgeInfo: TBridgeInfo;
 begin
   Result := False;
-  if UsedBridgesMap.Contains(Router.IPv4 + IntToStr(Router.Port)) then
+  if UsedBridgesMap.Contains(Router.IPv4Addr + IntToStr(Router.IPv4Port)) then
     Result := True
   else
   begin
-    if UsedBridgesMap.Contains(Router.IPv6 + IntToStr(Router.Port)) then
+    if UsedBridgesMap.Contains(Router.IPv6Addr + IntToStr(Router.IPv6Port)) then
       Result := True
     else
     begin
       if BridgesDic.TryGetValue(RouterID, BridgeInfo) then
       begin
         if BridgeInfo.Source <> '' then
-          Result := UsedBridgesMap.Contains(BridgeInfo.Source + IntToStr(Router.Port));
+          Result := UsedBridgesMap.Contains(BridgeInfo.Source + IntToStr(Router.IPv4Port));
       end;
     end;
   end;
@@ -13766,14 +13831,13 @@ procedure TTcp.ShowRouters(BlockUpdate: Boolean = False);
 var
   RoutersCount, i, j: Integer;
   cdExit, cdGuard, cdAuthority, cdOther, cdBridge, cdFast, cdStable, cdV2Dir, cdHSDir, cdRecommended, cdAlive, cdConsensus: Boolean;
-  cdRouterType, cdCountry, cdWeight, cdQuery, cdFavorites: Boolean;
+  cdRouterType, cdCountry, cdWeight, cdQuery, cdFavorites, SamePorts: Boolean;
   Item: TPair<string, TRouterInfo>;
   Transport: TPair<string, TTransportInfo>;
   IPv4CountryCode: string;
   IPv4CountryID, IPv6CountryID: Byte;
   FindIPv4Country, FindHash, FindIPv4, IsExclude, IsNativeBridge, IsSelectedBridge, WrongQuery, SelectedBridgeFound: Boolean;
-  Query, DataStr: string;
-  ParseStr, RangeStr: TArray<string>;
+  Query: string;
   GeoIpInfo: TGeoIpInfo;
   BridgeInfo: TBridgeInfo;
   FindIPv4Cidr: TCidrValuePairs;
@@ -13854,12 +13918,14 @@ begin
   if Assigned(Consensus) or Assigned(Descriptors) then
     Exit;
   WrongQuery := False;
+  PortsMap := nil;
+  TransportsMap := nil;
   Query := StringReplace(Trim(edRoutersQuery.Text), ';', '', [rfReplaceAll]);
   try
     if miRtFiltersQuery.Checked and (Query <> '') then
     begin
       case cbxRoutersQuery.ItemIndex of
-        USER_QUERY_PORT:
+        USER_QUERY_IPV4_PORT, USER_QUERY_IPV6_PORT:
         begin
           if PortsMap = nil then
             PortsMap := THashSet<Word>.Create;
@@ -13919,7 +13985,7 @@ begin
       begin
         SelectedBridgeFound := False;
         FindIPv4Cidr := nil;
-        IPv4CountryID := GetCountryValue(Item.Value.IPv4);
+        IPv4CountryID := GetCountryValue(Item.Value.IPv4Addr);
         IPv4CountryCode := CountryCodes[IPv4CountryID];
         if miRtFiltersCountry.Checked then
         begin
@@ -13943,19 +14009,20 @@ begin
           case cbxRoutersQuery.ItemIndex of
             USER_QUERY_HASH: cdQuery := FindStr(Query, Item.Key);
             USER_QUERY_NICKNAME: cdQuery := FindStr(Query, Item.Value.Name);
-            USER_QUERY_IPV4: cdQuery := FindStr(Query, Item.Value.IPv4);
+            USER_QUERY_IPV4: cdQuery := FindStr(Query, Item.Value.IPv4Addr);
             USER_QUERY_IPV6:
             begin
               if Query <> NONE_CHAR then
-                cdQuery := FindStr(RemoveBrackets(Query, btSquare), Item.Value.IPv6)
+                cdQuery := FindStr(RemoveBrackets(Query, btSquare), Item.Value.IPv6Addr)
               else
-                cdQuery := Item.Value.IPv6 = '';
+                cdQuery := Item.Value.IPv6Addr = '';
             end;
-            USER_QUERY_PORT: cdQuery := PortsMap.Contains(Item.Value.Port);
+            USER_QUERY_IPV4_PORT: cdQuery := PortsMap.Contains(Item.Value.IPv4Port);
+            USER_QUERY_IPV6_PORT: cdQuery := PortsMap.Contains(Item.Value.IPv6Port);
             USER_QUERY_VERSION: cdQuery := FindStr(Query, Item.Value.Version);
             USER_QUERY_PING:
             begin
-              if GeoIpDic.TryGetValue(Item.Value.IPv4, GeoIpInfo) then
+              if GeoIpDic.TryGetValue(Item.Value.IPv4Addr, GeoIpInfo) then
               begin
                 case AnsiChar(Query[1]) of
                   NONE_CHAR: cdQuery := GeoIpInfo.ping = PING_NONE;
@@ -14013,7 +14080,7 @@ begin
               cdFavorites := True
             else
             begin
-              if CheckNodesDic(Item.Value.IPv4) then
+              if CheckNodesDic(Item.Value.IPv4Addr) then
                 cdFavorites := True
               else
               begin
@@ -14021,7 +14088,7 @@ begin
                   cdFavorites := True
                 else
                 begin
-                  FindIPv4Cidr := IPv4CidrNodes.FindAllMatchesIP(Item.Value.IPv4);
+                  FindIPv4Cidr := IPv4CidrNodes.FindAllMatchesIP(Item.Value.IPv4Addr);
                   if FindIPv4Cidr <> nil then
                   begin
                     cdFavorites := False;
@@ -14040,7 +14107,7 @@ begin
             end;
           end;
           BRIDGES_ID: cdFavorites := cbUseBridges.Checked and FindSelectedBridge(Item.Key, Item.Value);
-          FALLBACK_DIR_ID: cdFavorites := cbUseFallbackDirs.Checked and (UsedFallbackDirsList.ContainsKey(Item.Value.IPv4 + '|' + IntToStr(Item.Value.Port)));
+          FALLBACK_DIR_ID: cdFavorites := cbUseFallbackDirs.Checked and (UsedFallbackDirsList.ContainsKey(Item.Value.IPv4Addr + '|' + IntToStr(Item.Value.IPv4Port)));
           else
             cdFavorites := True;
         end;
@@ -14048,25 +14115,31 @@ begin
         if cdRouterType and cdWeight and cdCountry and cdFavorites and cdQuery then
         begin
           Inc(RoutersCount);
-          if Item.Value.IPv6 <> '' then
+          if Item.Value.IPv6Addr <> '' then
           begin
+            SamePorts := Item.Value.IPv4Port = Item.Value.IPv6Port;
             Inc(RoutersIPv6Count);
-            IPv6CountryID := GetCountryValue(Item.Value.IPv6);
+            IPv6CountryID := GetCountryValue(Item.Value.IPv6Addr);
             if IPv6CountryID <> IPv4CountryID then
               Inc(RoutersDifferentCountriesCount);
-          end;
+          end
+          else
+            SamePorts := True;
           sgRouters.Cells[ROUTER_ID, RoutersCount] := Item.Key;
           sgRouters.Cells[ROUTER_NAME, RoutersCount] := Item.Value.Name;
-          sgRouters.Cells[ROUTER_ADDR_IPV4, RoutersCount] := Item.Value.IPv4;
+          sgRouters.Cells[ROUTER_ADDR_IPV4, RoutersCount] := Item.Value.IPv4Addr;
           sgRouters.Cells[ROUTER_COUNTRY_NAME, RoutersCount] := TransStr(IPv4CountryCode);
-          sgRouters.Cells[ROUTER_ADDR_IPV6, RoutersCount] := Item.Value.IPv6;
+          sgRouters.Cells[ROUTER_ADDR_IPV6, RoutersCount] := Item.Value.IPv6Addr;
           sgRouters.Cells[ROUTER_WEIGHT, RoutersCount] := BytesFormat(Item.Value.Bandwidth * 1024) + '/' + TransStr('180');
-          sgRouters.Cells[ROUTER_PORT, RoutersCount] := IntToStr(Item.Value.Port);
+          if SamePorts then
+            sgRouters.Cells[ROUTER_PORT, RoutersCount] := IntToStr(Item.Value.IPv4Port)
+          else
+            sgRouters.Cells[ROUTER_PORT, RoutersCount] := IntToStr(Item.Value.IPv4Port) + ',' + IntToStr(Item.Value.IPv6Port);
           if Item.Value.Version <> '' then
             sgRouters.Cells[ROUTER_VERSION, RoutersCount] := Item.Value.Version
           else
             sgRouters.Cells[ROUTER_VERSION, RoutersCount] := NONE_CHAR;
-          if GeoIpDic.TryGetValue(Item.Value.IPv4, GeoIpInfo) then
+          if GeoIpDic.TryGetValue(Item.Value.IPv4Addr, GeoIpInfo) then
           begin
             if GeoIpInfo.ping > PING_NONE then
               sgRouters.Cells[ROUTER_PING, RoutersCount] := IntToStr(GeoIpInfo.ping) + ' ' + TransStr('379')
@@ -14096,9 +14169,9 @@ begin
 
           FindHash := NodesDic.ContainsKey(Item.Key);
           FindIPv4Country := NodesDic.ContainsKey(IPv4CountryCode);
-          FindIPv4 := NodesDic.ContainsKey(Item.Value.IPv4);
+          FindIPv4 := NodesDic.ContainsKey(Item.Value.IPv4Addr);
           if FindIPv4Cidr = nil then
-            FindIPv4Cidr := IPv4CidrNodes.FindAllMatchesIP(Item.Value.IPv4);
+            FindIPv4Cidr := IPv4CidrNodes.FindAllMatchesIP(Item.Value.IPv4Addr);
           IsExclude := False;
 
           if FindHash then
@@ -14108,7 +14181,7 @@ begin
             if ntExclude in NodesDic.Items[IPv4CountryCode] then
               IsExclude := True;
           if FindIPv4 then
-            if ntExclude in NodesDic.Items[Item.Value.IPv4] then
+            if ntExclude in NodesDic.Items[Item.Value.IPv4Addr] then
               IsExclude := True;
           if FindIPv4Cidr <> nil then
           begin
@@ -14137,7 +14210,7 @@ begin
           if FindIPv4Country then
             SelectNodes(IPv4CountryCode);
           if FindIPv4 then
-            SelectNodes(Item.Value.IPv4);
+            SelectNodes(Item.Value.IPv4Addr);
           if FindIPv4Cidr <> nil then
           begin
             for i := 0 to High(FindIPv4Cidr) do
@@ -14220,7 +14293,7 @@ begin
   for Item in RoutersDic do
   begin
     NeedCount := not miExcludeBridgesWhenCounting.Checked or (rfRelay in Item.Value.Flags);
-    if GeoIpDic.TryGetValue(Item.Value.IPv4, GeoIpInfo) then
+    if GeoIpDic.TryGetValue(Item.Value.IPv4Addr, GeoIpInfo) then
     begin
       CountryID := GeoIpInfo.cc;
       if (GeoIpInfo.ping > PING_NONE) and NeedCount then
@@ -14233,7 +14306,7 @@ begin
       begin
         for i := 0 to High(GeoIpInfo.ports) do
         begin
-          if (GeoIpInfo.ports[i].Port = Item.Value.Port) and (GeoIpInfo.ports[i].Value = PORT_ALIVE) then
+          if (GeoIpInfo.ports[i].Port = Item.Value.IPv4Port) and (GeoIpInfo.ports[i].Value = PORT_ALIVE) then
           begin
             if NeedCount then
             begin
@@ -14434,11 +14507,11 @@ begin
       inc(NodesCount);
       if RoutersDic.TryGetValue(NodesData[i], Router) then
       begin
-        CountryCodeIPv4 := GetCountryValue(Router.IPv4);
-        if Router.IPv6 <> '' then
+        CountryCodeIPv4 := GetCountryValue(Router.IPv4Addr);
+        if Router.IPv6Addr <> '' then
         begin
           Inc(CircuitsIPv6Count);
-          CountryCodeIPv6:= GetCountryValue(Router.IPv6);
+          CountryCodeIPv6:= GetCountryValue(Router.IPv6Addr);
           if CountryCodeIPv6 <> CountryCodeIPv4 then
             Inc(CircuitsDifferentCountriesCount);
         end;
@@ -14446,20 +14519,20 @@ begin
         sgCircuitInfo.Cells[CIRC_INFO_NAME, NodesCount] := Router.Name;
         if miShowPortAlongWithIp.Checked then
         begin
-          sgCircuitInfo.Cells[CIRC_INFO_ADDR_IPV4, NodesCount] := Router.IPv4 + ':' + IntToStr(Router.Port);
-          if Router.IPv6 <> '' then
-            sgCircuitInfo.Cells[CIRC_INFO_ADDR_IPV6, NodesCount] := FormatHost(Router.IPv6, False) + ':' + IntToStr(Router.Port)
+          sgCircuitInfo.Cells[CIRC_INFO_ADDR_IPV4, NodesCount] := Router.IPv4Addr + ':' + IntToStr(Router.IPv4Port);
+          if Router.IPv6Addr <> '' then
+            sgCircuitInfo.Cells[CIRC_INFO_ADDR_IPV6, NodesCount] := FormatHost(Router.IPv6Addr, False) + ':' + IntToStr(Router.IPv6Port)
           else
-            sgCircuitInfo.Cells[CIRC_INFO_ADDR_IPV6, NodesCount] := Router.IPv6;
+            sgCircuitInfo.Cells[CIRC_INFO_ADDR_IPV6, NodesCount] := Router.IPv6Addr;
         end
         else
         begin
-          sgCircuitInfo.Cells[CIRC_INFO_ADDR_IPV4, NodesCount] := Router.IPv4;
-          sgCircuitInfo.Cells[CIRC_INFO_ADDR_IPV6, NodesCount] := Router.IPv6;
+          sgCircuitInfo.Cells[CIRC_INFO_ADDR_IPV4, NodesCount] := Router.IPv4Addr;
+          sgCircuitInfo.Cells[CIRC_INFO_ADDR_IPV6, NodesCount] := Router.IPv6Addr;
         end;
         sgCircuitInfo.Cells[CIRC_INFO_COUNTRY_NAME, NodesCount] := TransStr(CountryCodes[CountryCodeIPv4]);
         sgCircuitInfo.Cells[CIRC_INFO_WEIGHT, NodesCount] := BytesFormat(Router.Bandwidth * 1024) + '/' + TransStr('180');
-        if GeoIpDic.TryGetValue(Router.IPv4, GeoIpInfo) then
+        if GeoIpDic.TryGetValue(Router.IPv4Addr, GeoIpInfo) then
         begin
           if GeoIpInfo.ping > PING_NONE then
             PingData := IntToStr(GeoIpInfo.ping) + ' ' + TransStr('379')
@@ -15011,7 +15084,7 @@ begin
     sgCircuitInfo.ColWidths[CIRC_INFO_ADDR_IPV4] := Round(122 * Scale);
     sgCircuitInfo.ColWidths[CIRC_INFO_PING] := Round(44 * Scale);
     CircuitInfoScrollCheck;
-    sgRouters.ColWidths[ROUTER_NAME] := Round(106 * Scale);
+    sgRouters.ColWidths[ROUTER_NAME] := Round(94 * Scale);
     sgRouters.ColWidths[ROUTER_ADDR_IPV4] := Round(88 * Scale);
     sgRouters.ColWidths[ROUTER_PING] := Round(44 * Scale);
     RoutersScrollCheck;
@@ -15022,7 +15095,7 @@ begin
     sgCircuitInfo.ColWidths[CIRC_INFO_ADDR_IPV4] := Round(137 * Scale);
     sgCircuitInfo.ColWidths[CIRC_INFO_PING] := -1;
     CircuitInfoScrollCheck;
-    sgRouters.ColWidths[ROUTER_NAME] := Round(121 * Scale);
+    sgRouters.ColWidths[ROUTER_NAME] := Round(109 * Scale);
     sgRouters.ColWidths[ROUTER_ADDR_IPV4] := Round(98 * Scale);
     sgRouters.ColWidths[ROUTER_PING] := Round(-1 * Scale);
     RoutersScrollCheck;
@@ -17228,7 +17301,7 @@ begin
   if Search <> 0 then
   begin
     case cbxRoutersQuery.ItemIndex of
-      USER_QUERY_PORT: UserQuery := StringReplace(UserQuery, ';', ',', [rfReplaceAll]);
+      USER_QUERY_IPV4_PORT, USER_QUERY_IPV6_PORT: UserQuery := StringReplace(UserQuery, ';', ',', [rfReplaceAll]);
       else
         SetLength(UserQuery, Pred(Search));
     end;
@@ -17771,7 +17844,7 @@ begin
     begin
       if cbxRoutersCountry.Tag <> COUNTRY_TYPE_ALL then
       begin
-        Value := GetCountryValue(Router.IPv4);
+        Value := GetCountryValue(Router.IPv4Addr);
         if cbxRoutersCountry.Tag = COUNTRY_TYPE_FILTER then
           if FilterDic.Items[CountryCodes[Value]].Data <> [] then
             Value := COUNTRY_TYPE_FILTER;
@@ -18040,7 +18113,7 @@ begin
         HashData := ExtractDataCount(ExtractMenu.Items[i].Caption, True);
         RouterID := SeparateLeft(ExtractMenu.Items[i].Caption, ' ');
       end;
-      EXTRACT_IPV4: IpData := ExtractDataCount(ExtractMenu.Items[i].Caption);
+      EXTRACT_IPV4_ADDR: IpData := ExtractDataCount(ExtractMenu.Items[i].Caption);
       EXTRACT_IPV4_SOCKET: SocketData := ExtractDataCount(ExtractMenu.Items[i].Caption);
       EXTRACT_IPV4_BRIDGE: IPv4Bridge := ExtractMenu.Items[i].Caption;
       EXTRACT_IPV6_BRIDGE: IPv6Bridge := ExtractMenu.Items[i].Caption;
@@ -18050,11 +18123,11 @@ begin
   if (HashData = '') and RoutersDic.TryGetValue(RouterID, Router) then
   begin
     if ReachablePortsExists then
-      FindPorts := ReachablePortsMap.Contains(Router.Port)
+      FindPorts := ReachablePortsMap.Contains(Router.IPv4Port)
     else
       FindPorts := True;
     BridgeState := DataState and not aSg.IsMultiRow and (cbxServerMode.ItemIndex = SERVER_MODE_NONE) and
-      (((Router.Params and ROUTER_ALIVE <> 0) and FindPorts and not RouterInNodesList(RouterID, Router.IPv4, ntExclude))
+      (((Router.Params and ROUTER_ALIVE <> 0) and FindPorts and not RouterInNodesList(RouterID, Router.IPv4Addr, ntExclude))
         or not miDisableSelectionUnSuitableAsBridge.Checked);
   end
   else
@@ -18164,12 +18237,12 @@ begin
     if RoutersDic.TryGetValue(NodeID, Router) then
     begin
       FindRouter := True;
-      ls.Append(Router.IPv4);
+      ls.Append(Router.IPv4Addr);
       ls.Append('-');
-      ls.Append(IpToMask(Router.IPv4, 24));
-      ls.Append(IpToMask(Router.IPv4, 16));
-      ls.Append(IpToMask(Router.IPv4, 8));
-      IPv4Cidrs := IPv4CidrNodes.FindAllMatchesIP(Router.IPv4);
+      ls.Append(IpToMask(Router.IPv4Addr, 24));
+      ls.Append(IpToMask(Router.IPv4Addr, 16));
+      ls.Append(IpToMask(Router.IPv4Addr, 8));
+      IPv4Cidrs := IPv4CidrNodes.FindAllMatchesIP(Router.IPv4Addr);
       if IPv4Cidrs <> nil then
       begin
         lr := TStringList.Create;
@@ -18187,11 +18260,11 @@ begin
         end;
       end;
       ls.Append('-');
-      Ipv4CountryCode := CountryCodes[GetCountryValue(Router.IPv4)];
+      Ipv4CountryCode := CountryCodes[GetCountryValue(Router.IPv4Addr)];
       ls.Append('{' + (Ipv4CountryCode) + '} ' + TransStr(Ipv4CountryCode));
-      if Router.IPv6 <> '' then
+      if Router.IPv6Addr <> '' then
       begin
-        Ipv6CountryCode := CountryCodes[GetCountryValue(Router.IPv6)];
+        Ipv6CountryCode := CountryCodes[GetCountryValue(Router.IPv6Addr)];
         if Ipv6CountryCode <> Ipv4CountryCode then
         begin
           DoubleCountry := True;
@@ -18288,8 +18361,8 @@ begin
     ls := TStringList.Create;
     try
       ls.Append(NodeID);
-      ls.Append(Router.IPv4);
-      IPv4Cidrs := IPv4CidrNodes.FindAllMatchesIP(Router.IPv4);
+      ls.Append(Router.IPv4Addr);
+      IPv4Cidrs := IPv4CidrNodes.FindAllMatchesIP(Router.IPv4Addr);
       if IPv4Cidrs <> nil then
       begin
         for i := 0 to High(IPv4Cidrs) do
@@ -18297,11 +18370,11 @@ begin
       end;
       SortNodesList(ls, SORT_DESC);
 
-      Ipv4CountryCode := CountryCodes[GetCountryValue(Router.IPv4)];
+      Ipv4CountryCode := CountryCodes[GetCountryValue(Router.IPv4Addr)];
       ls.Append('{' + (Ipv4CountryCode) + '} ' + TransStr(Ipv4CountryCode));
-      if Router.IPv6 <> '' then
+      if Router.IPv6Addr <> '' then
       begin
-        Ipv6CountryCode := CountryCodes[GetCountryValue(Router.IPv6)];
+        Ipv6CountryCode := CountryCodes[GetCountryValue(Router.IPv6Addr)];
         if Ipv6CountryCode <> Ipv4CountryCode then
         begin
           DoubleCountry := True;
@@ -18420,7 +18493,7 @@ var
       begin
         if not CheckRouterFlags(NodeTypeID, RouterInfo) then
           Exit;
-        if RouterInNodesList(RouterID, RouterInfo.IPv4, ntExclude) then
+        if RouterInNodesList(RouterID, RouterInfo.IPv4Addr, ntExclude) then
           Exit;
       end;
     end;
@@ -18461,17 +18534,17 @@ begin
         case NodeDataType of
           dtIPv4:
           begin
-            if Router.Value.IPv4 = NodeStr then
+            if Router.Value.IPv4Addr = NodeStr then
               AddRouterToNodesList(Router.Key, Router.Value);
           end;
           dtIPv4Cidr:
           begin
-            if TIPv4RadixTree.IPInCIDR(Router.Value.IPv4, IPv4CidrInfo) then
+            if TIPv4RadixTree.IPInCIDR(Router.Value.IPv4Addr, IPv4CidrInfo) then
               AddRouterToNodesList(Router.Key, Router.Value);
           end;
           dtCode:
           begin
-            if CountryCodes[GetCountryValue(Router.Value.IPv4)] = NodeStr then
+            if CountryCodes[GetCountryValue(Router.Value.IPv4Addr)] = NodeStr then
               AddRouterToNodesList(Router.Key, Router.Value);
           end;
         end;
@@ -18654,17 +18727,17 @@ begin
       case Nodes[i].NodeDataType of
         dtIPv4:
         begin
-          if Router.Value.IPv4 = Nodes[i].NodeStr then
+          if Router.Value.IPv4Addr = Nodes[i].NodeStr then
             RemoveRouterFromNodesList(Router.Key);
         end;
         dtIPv4Cidr:
         begin
-          if TIPv4RadixTree.IPInCIDR(Router.Value.IPv4, Nodes[i].CidrInfo) then
+          if TIPv4RadixTree.IPInCIDR(Router.Value.IPv4Addr, Nodes[i].CidrInfo) then
             RemoveRouterFromNodesList(Router.Key);
         end;
         dtCode:
         begin
-          if CountryCodes[GetCountryValue(Router.Value.IPv4)] = Nodes[i].NodeStr then
+          if CountryCodes[GetCountryValue(Router.Value.IPv4Addr)] = Nodes[i].NodeStr then
             RemoveRouterFromNodesList(Router.Key);
         end;
       end;
@@ -18798,7 +18871,7 @@ var
       if (cdWeight or NoLimit) and cdPing then
       begin
         UniqueData.Hash := Router.Key;
-        UniqueData.IP := Router.Value.IPv4;
+        UniqueData.IP := Router.Value.IPv4Addr;
         UniqueData.Country := CountryCode;
         UniqueData.Ping := PingData;
         UniqueData.Params := cDefaultStringPair;
@@ -18876,7 +18949,7 @@ begin
       PingData := MAXWORD;
       FilterNodeTypes := [ntEntry, ntMiddle, ntExit];
 
-      if GeoIpDic.TryGetValue(Router.Value.IPv4, GeoIpInfo) then
+      if GeoIpDic.TryGetValue(Router.Value.IPv4Addr, GeoIpInfo) then
       begin
         CountryCode := CountryCodes[GeoIpInfo.cc];
         if PingNodesCount > 0 then
@@ -18896,7 +18969,7 @@ begin
 
       cdWeight := Router.Value.Bandwidth >= udAutoSelMinWeight.Position * 1024;
 
-      if (rfRelay in Flags) and not RouterInNodesList(Router.Key, Router.Value.IPv4, ntExclude) then
+      if (rfRelay in Flags) and not RouterInNodesList(Router.Key, Router.Value.IPv4Addr, ntExclude) then
       begin
         if cbAutoSelFilterCountriesOnly.Checked and (PingNodesCount > 0) then
         begin
@@ -18910,7 +18983,7 @@ begin
           begin
             if CheckEntryPorts then
             begin
-              if ReachablePortsMap.Contains(Router.Value.Port) then
+              if ReachablePortsMap.Contains(Router.Value.IPv4Port) then
               begin
                 if rfGuard in Flags then
                   AddRouterToList(EntryNodes, ntEntry);
@@ -19000,7 +19073,7 @@ begin
       for i := 0 to High(ParseStr) do
       begin
         if RoutersDic.TryGetValue(ParseStr[i], RouterInfo) then
-          UsedFallbackDirsList.AddOrSetValue(RouterInfo.IPv4 + '|' + IntToStr(RouterInfo.Port), GetFallbackStr(ParseStr[i], RouterInfo));
+          UsedFallbackDirsList.AddOrSetValue(RouterInfo.IPv4Addr + '|' + IntToStr(RouterInfo.IPv4Port), GetFallbackStr(ParseStr[i], RouterInfo));
       end;
       SaveFallbackDirsData(nil, True);
     end;
@@ -19066,7 +19139,7 @@ begin
     if TryParseFallbackDir(Data[i], FallbackDir, False) then
     begin
       if CheckEntryPorts then
-        cdPorts := ReachablePortsMap.Contains(FallbackDir.OrPort)
+        cdPorts := ReachablePortsMap.Contains(FallbackDir.IPv4Port)
       else
         cdPorts := True;
 
@@ -19075,7 +19148,7 @@ begin
       begin
         if RoutersDic.TryGetValue(FallbackDir.Hash, Router) then
         begin
-          if (FallbackDir.IPv4 = Router.IPv4) and (FallbackDir.OrPort = Router.Port) then
+          if (FallbackDir.IPv4Addr = Router.IPv4Addr) and (FallbackDir.IPv4Port = Router.IPv4Port) then
           begin
             if rfRelay in Router.Flags then
               cdSocket := True;
@@ -19091,10 +19164,10 @@ begin
           cdSocket := not CheckRouters;
       end;
 
-      if GeoIpDic.TryGetValue(FallbackDir.IPv4, GeoIpInfo) then
+      if GeoIpDic.TryGetValue(FallbackDir.IPv4Addr, GeoIpInfo) then
       begin
         CountryID := GeoIpInfo.cc;
-        PortData := GetPortsValue(GeoIpInfo.ports, FallbackDir.OrPort);
+        PortData := GetPortsValue(GeoIpInfo.ports, FallbackDir.IPv4Port);
         cdAlive := PortData <> PORT_DEAD;
         NeedAlive := PortData = PORT_NONE;
         NeedCountry := CountryID = DEFAULT_COUNTRY_ID;
@@ -19114,7 +19187,7 @@ begin
 
       CountryCode := CountryCodes[CountryID];
 
-      if cdPorts and cdSocket and (cdAlive or NeedAlive) and not RouterInNodesList(FallbackDir.Hash, FallbackDir.IPv4, ntExclude, NeedCountry and NeedAlive, CountryCode) then
+      if cdPorts and cdSocket and (cdAlive or NeedAlive) and not RouterInNodesList(FallbackDir.Hash, FallbackDir.IPv4Addr, ntExclude, NeedCountry and NeedAlive, CountryCode) then
         Inc(SuitableFallbackDirsCount)
       else
         Data.Delete(i);
@@ -19171,7 +19244,7 @@ begin
       for i := 0 to ls.Count - 1 do
       begin
         if TryParseFallbackDir(ls[i], FallbackDir, False) then
-          UsedFallbackDirsList.AddOrSetValue(FallbackDir.IPv4 + '|' + IntToStr(FallbackDir.OrPort), ls[i]);
+          UsedFallbackDirsList.AddOrSetValue(FallbackDir.IPv4Addr + '|' + IntToStr(FallbackDir.IPv4Port), ls[i]);
       end;
     end;
 
@@ -19466,7 +19539,7 @@ begin
   sgRouters.ColWidths[ROUTER_ID] := -1;
   sgRouters.ColWidths[ROUTER_ADDR_IPV4] := -1;
   sgRouters.ColWidths[ROUTER_WEIGHT] := Round(63 * Scale);
-  sgRouters.ColWidths[ROUTER_PORT] := Round(43 * Scale);
+  sgRouters.ColWidths[ROUTER_PORT] := Round(55 * Scale);
   sgRouters.ColWidths[ROUTER_VERSION] := Round(60 * Scale);
   sgRouters.ColWidths[ROUTER_FLAGS] := Round(96 * Scale);
   sgRouters.ColWidths[ROUTER_ENTRY_NODES] := Round(23 * Scale);
@@ -19712,7 +19785,6 @@ begin
   sgFilter.ColsDataType[FILTER_BRIDGE] := dtInteger;
   sgFilter.ColsDataType[FILTER_ALIVE] := dtInteger;
   sgRouters.ColsDataType[ROUTER_WEIGHT] := dtSize;
-  sgRouters.ColsDataType[ROUTER_PORT] := dtInteger;
   sgRouters.ColsDataType[ROUTER_FLAGS] := dtParams;
   sgCircuits.ColsDataType[CIRC_ID] := dtInteger;
   sgCircuits.ColsDataType[CIRC_FLAGS] := dtFlags;
@@ -20717,8 +20789,8 @@ begin
       begin
         if not (rfRelay in RouterInfo.Flags) then
         begin
-          if GeoIpDic.TryGetValue(RouterInfo.IPv4, GeoIpInfo) then
-            SetPortsValue(RouterInfo.IPv4, RouterInfo.Port, PORT_NONE);
+          if GeoIpDic.TryGetValue(RouterInfo.IPv4Addr, GeoIpInfo) then
+            SetPortsValue(RouterInfo.IPv4Addr, RouterInfo.IPv4Port, PORT_NONE);
           RoutersDic.Remove(Item.Key);
         end;
       end
@@ -20763,9 +20835,9 @@ begin
         end;
         if not Deleted then
         begin
-          if GeoIpDic.TryGetValue(Item.Value.Router.IPv4, GeoIpInfo) then
+          if GeoIpDic.TryGetValue(Item.Value.Router.IPv4Addr, GeoIpInfo) then
           begin
-            if GetPortsValue(GeoIpInfo.ports, Item.Value.Router.Port) = PORT_DEAD then
+            if GetPortsValue(GeoIpInfo.ports, Item.Value.Router.IPv4Port) = PORT_DEAD then
               AddToRemoveList;
           end;
         end;

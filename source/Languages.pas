@@ -467,7 +467,7 @@ begin
     LoadStr('694', 'Выключить режим предпочитаемого моста');
     LoadStr('695', 'Нестабильный');
     LoadLns('697', 'Вы собираетесь выключить режим "Только чтение".\n\nЛюбые изменения списка мостов в программе будут перезаписывать выбранный вами файл.\n\nВы действительно хотите это сделать?');
-    LoadStr('702', 'Показывать IPv6 адрес и флаг');
+    LoadStr('702', 'Показывать IPv6 адрес и страну');
     LoadStr('703', '"Не использовать","Хэш","IP-адрес","CIDR /24","CIDR /16","CIDR /8","Страна"');
 
     TranslateArray(HsHeader, TransStr('230'));
@@ -827,7 +827,7 @@ begin
 
     Tcp.lbSpeed3.Caption := Prefixes[2] + '/' + TransStr('180');
     Tcp.btnShowNodes.Caption := TransStr('547');
-    LoadList(Tcp.cbxRoutersQuery, '548', '"Хэш","Ник","IPv4","IPv6","Порт","Версия","Пинг","Транспорт"');
+    LoadList(Tcp.cbxRoutersQuery, '548', '"Хэш","Ник","IPv4 адрес","IPv6 адрес","IPv4 порт","IPv6 порт","Версия","Пинг","Транспорт"');
     Tcp.edRoutersQuery.TextHint := Load('549', 'Введите запрос');
     Tcp.lbFavoritesTotalSelected.Caption := TransStr('643') + ':';
     Tcp.imFavoritesEntry.Hint := TransStr('288');
@@ -915,6 +915,7 @@ begin
     Tcp.miSortDataAsc.Caption := Load('305', 'По возрастанию');
     Tcp.miSortDataDesc.Caption := Load('306', 'По убыванию');
     Tcp.miSortDataNone.Caption := Load('307', 'Отключена');
+    Tcp.miBridgesOptions.Caption := TransStr('107');
     Tcp.miBridgesFileFormat.Caption := Load('698', 'Формат файла мостов');
     Tcp.miBridgesFileFormatAuto.Caption := Load('699', 'Автоопределение');
     Tcp.miBridgesFileFormatCompat.Caption := Load('700', 'Совмеcтимый с torrc');

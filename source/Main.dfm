@@ -1223,7 +1223,7 @@ object Tcp: TTcp
       Tag = -1
       Left = 320
       Top = 7
-      Width = 75
+      Width = 88
       Height = 21
       AutoDropDown = True
       Style = csDropDownList
@@ -1237,17 +1237,18 @@ object Tcp: TTcp
       Items.Strings = (
         #1061#1101#1096
         #1053#1080#1082
-        'IPv4'
-        'IPv6'
-        #1055#1086#1088#1090
+        'IPv4 '#1072#1076#1088#1077#1089
+        'IPv6 '#1072#1076#1088#1077#1089
+        'IPv4 '#1087#1086#1088#1090
+        'IPv6 '#1087#1086#1088#1090
         #1042#1077#1088#1089#1080#1103
         #1055#1080#1085#1075
         #1058#1088#1072#1085#1089#1087#1086#1088#1090)
     end
     object edRoutersQuery: TEdit
-      Left = 399
+      Left = 412
       Top = 7
-      Width = 203
+      Width = 193
       Height = 21
       PopupMenu = EditMenu
       TabOrder = 6
@@ -6201,26 +6202,30 @@ object Tcp: TTcp
     object miDelimiter11: TMenuItem
       Caption = '-'
     end
-    object miBridgesFileFormat: TMenuItem
-      Caption = #1060#1086#1088#1084#1072#1090' '#1092#1072#1081#1083#1072' '#1084#1086#1089#1090#1086#1074
-      ImageIndex = 19
-      object miBridgesFileFormatAuto: TMenuItem
-        Caption = #1040#1074#1090#1086#1086#1087#1088#1077#1076#1077#1083#1077#1085#1080#1077' '
-        Checked = True
-        RadioItem = True
-        OnClick = SetBridgesFileFormat
-      end
-      object miBridgesFileFormatCompat: TMenuItem
-        Tag = 1
-        Caption = #1057#1086#1074#1084#1077'c'#1090#1080#1084#1099#1081' '#1089' torrc'
-        RadioItem = True
-        OnClick = SetBridgesFileFormat
-      end
-      object miBridgesFileFormatNormal: TMenuItem
-        Tag = 2
-        Caption = #1054#1073#1099#1095#1085#1099#1081
-        RadioItem = True
-        OnClick = SetBridgesFileFormat
+    object miBridgesOptions: TMenuItem
+      Caption = #1053#1072#1089#1090#1088#1086#1081#1082#1080
+      ImageIndex = 11
+      object miBridgesFileFormat: TMenuItem
+        Caption = #1060#1086#1088#1084#1072#1090' '#1092#1072#1081#1083#1072' '#1084#1086#1089#1090#1086#1074
+        ImageIndex = 19
+        object miBridgesFileFormatAuto: TMenuItem
+          Caption = #1040#1074#1090#1086#1086#1087#1088#1077#1076#1077#1083#1077#1085#1080#1077' '
+          Checked = True
+          RadioItem = True
+          OnClick = SetBridgesFileFormat
+        end
+        object miBridgesFileFormatCompat: TMenuItem
+          Tag = 1
+          Caption = #1057#1086#1074#1084#1077'c'#1090#1080#1084#1099#1081' '#1089' torrc'
+          RadioItem = True
+          OnClick = SetBridgesFileFormat
+        end
+        object miBridgesFileFormatNormal: TMenuItem
+          Tag = 2
+          Caption = #1054#1073#1099#1095#1085#1099#1081
+          RadioItem = True
+          OnClick = SetBridgesFileFormat
+        end
       end
     end
     object miDelimiter72: TMenuItem
@@ -6657,7 +6662,7 @@ object Tcp: TTcp
       end
       object miRoutersShowIPv6CountryFlag: TMenuItem
         AutoCheck = True
-        Caption = #1055#1086#1082#1072#1079#1099#1074#1072#1090#1100' IPv6 '#1072#1076#1088#1077#1089' '#1080' '#1092#1083#1072#1075
+        Caption = #1055#1086#1082#1072#1079#1099#1074#1072#1090#1100' IPv6 '#1072#1076#1088#1077#1089' '#1080' '#1089#1090#1088#1072#1085#1091
         Checked = True
         OnClick = miRoutersShowIPv6CountryFlagClick
       end
@@ -7100,7 +7105,7 @@ object Tcp: TTcp
       end
       object miCircuitsShowIPv6CountryFlag: TMenuItem
         AutoCheck = True
-        Caption = #1055#1086#1082#1072#1079#1099#1074#1072#1090#1100' IPv6 '#1072#1076#1088#1077#1089' '#1080' '#1092#1083#1072#1075
+        Caption = #1055#1086#1082#1072#1079#1099#1074#1072#1090#1100' IPv6 '#1072#1076#1088#1077#1089' '#1080' '#1089#1090#1088#1072#1085#1091
         Checked = True
         OnClick = miCircuitsShowIPv6CountryFlagClick
       end
