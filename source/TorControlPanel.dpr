@@ -14,7 +14,7 @@ uses
   ClassData in 'ClassData.pas';
 
 var
-  i: Integer;
+  i, MaxParams: Integer;
   Locker: THandle;
   AppDataDir, DataDir: string;
 
@@ -40,15 +40,16 @@ begin
   ReportMemoryLeaksOnShutdown := True;
 {$ENDIF}
   UserProfile := 'User';
-  if ParamCount > 0 then
+  MaxParams := ParamCount;
+  if MaxParams > 0 then
   begin
     for i := 1 to ParamCount do
     begin
-      if pos('-profile=', ParamStr(i)) <> 0 then
+      if Pos('-profile=', ParamStr(i)) <> 0 then
         UserProfile := SeparateRight(ParamStr(i), '=');
     end;
   end;
-  ProgramDir := ExtractShortPathName(GetCurrentDir + '\');
+  ProgramDir := ExtractShortPathName(ExtractFilePath(ParamStr(0)));
   DataDir := ProgramDir + 'Data\' + UserProfile + '\';
   AppDataDir := GetEnvironmentVariable('appdata') + '\Tcp\' + UserProfile + '\';
 
