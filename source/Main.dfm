@@ -641,6 +641,156 @@ object Tcp: TTcp
       OnMouseDown = pbScanProgressMouseDown
     end
   end
+  object paCircuits: TPanel
+    Left = 3
+    Top = 92
+    Width = 793
+    Height = 508
+    BevelInner = bvLowered
+    Color = clWindow
+    DoubleBuffered = True
+    ParentBackground = False
+    ParentDoubleBuffered = False
+    ShowCaption = False
+    TabOrder = 4
+    Visible = False
+    object lbCircuitInfoTime: TLabel
+      Left = 622
+      Top = 10
+      Width = 160
+      Height = 13
+      Alignment = taRightJustify
+      Caption = #1044#1072#1090#1072' '#1089#1086#1079#1076#1072#1085#1080#1103': '#1053#1077' '#1086#1087#1088#1077#1076#1077#1083#1077#1085#1072
+      Transparent = True
+    end
+    object lbCircuitsCount: TLabel
+      Left = 12
+      Top = 10
+      Width = 80
+      Height = 13
+      Caption = #1062#1077#1087#1086#1095#1077#1082': 0 '#1080#1079' 0'
+      Transparent = True
+    end
+    object lbStreamsCount: TLabel
+      Left = 157
+      Top = 10
+      Width = 75
+      Height = 13
+      Alignment = taRightJustify
+      Caption = #1057#1086#1077#1076#1080#1085#1077#1085#1080#1081': 0'
+      Transparent = True
+    end
+    object lbCircuitPurpose: TLabel
+      Left = 261
+      Top = 10
+      Width = 77
+      Height = 13
+      Caption = #1053#1077' '#1086#1087#1088#1077#1076#1077#1083#1077#1085#1086
+      Transparent = True
+    end
+    object imCircuitPurpose: TImage
+      Left = 242
+      Top = 9
+      Width = 16
+      Height = 16
+      ParentShowHint = False
+      ShowHint = True
+    end
+    object sgStreamsInfo: TStringGrid
+      Tag = 8
+      Left = 243
+      Top = 372
+      Width = 538
+      Height = 125
+      ColCount = 6
+      DefaultRowHeight = 16
+      FixedCols = 0
+      RowCount = 2
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goDrawFocusSelected, goRowSelect, goThumbTracking, goFixedRowClick]
+      ParentShowHint = False
+      PopupMenu = mnStreamsInfo
+      ScrollBars = ssVertical
+      ShowHint = True
+      TabOrder = 3
+      OnDrawCell = sgStreamsInfoDrawCell
+      OnFixedCellClick = sgStreamsInfoFixedCellClick
+      OnKeyDown = sgStreamsInfoKeyDown
+      OnMouseDown = sgStreamsInfoMouseDown
+      OnMouseMove = sgStreamsInfoMouseMove
+      OnSelectCell = sgStreamsInfoSelectCell
+    end
+    object sgStreams: TStringGrid
+      Tag = 4
+      Left = 243
+      Top = 152
+      Width = 538
+      Height = 209
+      ColCount = 6
+      DefaultRowHeight = 16
+      FixedCols = 0
+      RowCount = 2
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goDrawFocusSelected, goRowSelect, goThumbTracking, goFixedRowClick]
+      ParentShowHint = False
+      PopupMenu = mnStreams
+      ScrollBars = ssVertical
+      ShowHint = True
+      TabOrder = 2
+      OnDblClick = sgStreamsDblClick
+      OnDrawCell = sgStreamsDrawCell
+      OnFixedCellClick = sgStreamsFixedCellClick
+      OnKeyDown = sgStreamsKeyDown
+      OnKeyUp = sgStreamsKeyUp
+      OnMouseDown = sgStreamsMouseDown
+      OnMouseMove = sgStreamsMouseMove
+      OnSelectCell = sgStreamsSelectCell
+    end
+    object sgCircuitInfo: TStringGrid
+      Tag = 7
+      Left = 243
+      Top = 33
+      Width = 538
+      Height = 108
+      ColCount = 8
+      DefaultRowHeight = 16
+      FixedCols = 0
+      RowCount = 2
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goDrawFocusSelected, goRowSelect, goThumbTracking]
+      ParentShowHint = False
+      PopupMenu = mnCircuitInfo
+      ScrollBars = ssVertical
+      ShowHint = True
+      TabOrder = 1
+      OnDblClick = sgCircuitInfoDblClick
+      OnDrawCell = sgCircuitInfoDrawCell
+      OnKeyDown = sgCircuitInfoKeyDown
+      OnMouseDown = sgCircuitInfoMouseDown
+      OnMouseMove = sgCircuitInfoMouseMove
+      OnSelectCell = sgCircuitInfoSelectCell
+    end
+    object sgCircuits: TStringGrid
+      Tag = 3
+      Left = 12
+      Top = 33
+      Width = 220
+      Height = 464
+      ColCount = 7
+      DefaultRowHeight = 16
+      FixedCols = 0
+      RowCount = 2
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goDrawFocusSelected, goRowSelect, goThumbTracking, goFixedRowClick]
+      ParentShowHint = False
+      PopupMenu = mnCircuits
+      ScrollBars = ssVertical
+      ShowHint = True
+      TabOrder = 0
+      OnDrawCell = sgCircuitsDrawCell
+      OnFixedCellClick = sgCircuitsFixedCellClick
+      OnKeyDown = sgCircuitsKeyDown
+      OnMouseDown = sgCircuitsMouseDown
+      OnMouseMove = sgCircuitsMouseMove
+      OnSelectCell = sgCircuitsSelectCell
+    end
+  end
   object paLog: TPanel
     Left = 3
     Top = 92
@@ -799,156 +949,6 @@ object Tcp: TTcp
       OnMouseUp = meLogMouseUp
     end
   end
-  object paCircuits: TPanel
-    Left = 3
-    Top = 92
-    Width = 793
-    Height = 508
-    BevelInner = bvLowered
-    Color = clWindow
-    DoubleBuffered = True
-    ParentBackground = False
-    ParentDoubleBuffered = False
-    ShowCaption = False
-    TabOrder = 4
-    Visible = False
-    object lbCircuitInfoTime: TLabel
-      Left = 622
-      Top = 10
-      Width = 160
-      Height = 13
-      Alignment = taRightJustify
-      Caption = #1044#1072#1090#1072' '#1089#1086#1079#1076#1072#1085#1080#1103': '#1053#1077' '#1086#1087#1088#1077#1076#1077#1083#1077#1085#1072
-      Transparent = True
-    end
-    object lbCircuitsCount: TLabel
-      Left = 12
-      Top = 10
-      Width = 80
-      Height = 13
-      Caption = #1062#1077#1087#1086#1095#1077#1082': 0 '#1080#1079' 0'
-      Transparent = True
-    end
-    object lbStreamsCount: TLabel
-      Left = 157
-      Top = 10
-      Width = 75
-      Height = 13
-      Alignment = taRightJustify
-      Caption = #1057#1086#1077#1076#1080#1085#1077#1085#1080#1081': 0'
-      Transparent = True
-    end
-    object lbCircuitPurpose: TLabel
-      Left = 261
-      Top = 10
-      Width = 77
-      Height = 13
-      Caption = #1053#1077' '#1086#1087#1088#1077#1076#1077#1083#1077#1085#1086
-      Transparent = True
-    end
-    object imCircuitPurpose: TImage
-      Left = 242
-      Top = 9
-      Width = 16
-      Height = 16
-      ParentShowHint = False
-      ShowHint = True
-    end
-    object sgStreamsInfo: TStringGrid
-      Tag = 8
-      Left = 243
-      Top = 372
-      Width = 538
-      Height = 125
-      ColCount = 6
-      DefaultRowHeight = 16
-      FixedCols = 0
-      RowCount = 2
-      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goDrawFocusSelected, goRowSelect, goThumbTracking, goFixedRowClick]
-      ParentShowHint = False
-      PopupMenu = mnStreamsInfo
-      ScrollBars = ssVertical
-      ShowHint = True
-      TabOrder = 3
-      OnDrawCell = sgStreamsInfoDrawCell
-      OnFixedCellClick = sgStreamsInfoFixedCellClick
-      OnKeyDown = sgStreamsInfoKeyDown
-      OnMouseDown = sgStreamsInfoMouseDown
-      OnMouseMove = sgStreamsInfoMouseMove
-      OnSelectCell = sgStreamsInfoSelectCell
-    end
-    object sgStreams: TStringGrid
-      Tag = 4
-      Left = 243
-      Top = 152
-      Width = 538
-      Height = 209
-      ColCount = 6
-      DefaultRowHeight = 16
-      FixedCols = 0
-      RowCount = 2
-      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goDrawFocusSelected, goRowSelect, goThumbTracking, goFixedRowClick]
-      ParentShowHint = False
-      PopupMenu = mnStreams
-      ScrollBars = ssVertical
-      ShowHint = True
-      TabOrder = 2
-      OnDblClick = sgStreamsDblClick
-      OnDrawCell = sgStreamsDrawCell
-      OnFixedCellClick = sgStreamsFixedCellClick
-      OnKeyDown = sgStreamsKeyDown
-      OnKeyUp = sgStreamsKeyUp
-      OnMouseDown = sgStreamsMouseDown
-      OnMouseMove = sgStreamsMouseMove
-      OnSelectCell = sgStreamsSelectCell
-    end
-    object sgCircuitInfo: TStringGrid
-      Tag = 7
-      Left = 243
-      Top = 33
-      Width = 538
-      Height = 108
-      ColCount = 8
-      DefaultRowHeight = 16
-      FixedCols = 0
-      RowCount = 2
-      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goDrawFocusSelected, goRowSelect, goThumbTracking]
-      ParentShowHint = False
-      PopupMenu = mnCircuitInfo
-      ScrollBars = ssVertical
-      ShowHint = True
-      TabOrder = 1
-      OnDblClick = sgCircuitInfoDblClick
-      OnDrawCell = sgCircuitInfoDrawCell
-      OnKeyDown = sgCircuitInfoKeyDown
-      OnMouseDown = sgCircuitInfoMouseDown
-      OnMouseMove = sgCircuitInfoMouseMove
-      OnSelectCell = sgCircuitInfoSelectCell
-    end
-    object sgCircuits: TStringGrid
-      Tag = 3
-      Left = 12
-      Top = 33
-      Width = 220
-      Height = 464
-      ColCount = 7
-      DefaultRowHeight = 16
-      FixedCols = 0
-      RowCount = 2
-      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goDrawFocusSelected, goRowSelect, goThumbTracking, goFixedRowClick]
-      ParentShowHint = False
-      PopupMenu = mnCircuits
-      ScrollBars = ssVertical
-      ShowHint = True
-      TabOrder = 0
-      OnDrawCell = sgCircuitsDrawCell
-      OnFixedCellClick = sgCircuitsFixedCellClick
-      OnKeyDown = sgCircuitsKeyDown
-      OnMouseDown = sgCircuitsMouseDown
-      OnMouseMove = sgCircuitsMouseMove
-      OnSelectCell = sgCircuitsSelectCell
-    end
-  end
   object paRouters: TPanel
     Left = 3
     Top = 92
@@ -981,7 +981,7 @@ object Tcp: TTcp
       Transparent = True
     end
     object lbFavoritesEntry: TLabel
-      Left = 145
+      Left = 144
       Top = 486
       Width = 6
       Height = 13
@@ -989,10 +989,10 @@ object Tcp: TTcp
       Hint = '288'
       Caption = '0'
       Transparent = True
-      OnMouseDown = ShowFavoritesRouters
+      OnDblClick = FavoritesRoutersAction
     end
     object lbFavoritesMiddle: TLabel
-      Left = 206
+      Left = 204
       Top = 486
       Width = 6
       Height = 13
@@ -1000,7 +1000,7 @@ object Tcp: TTcp
       Hint = '289'
       Caption = '0'
       Transparent = True
-      OnMouseDown = ShowFavoritesRouters
+      OnDblClick = FavoritesRoutersAction
     end
     object lbFavoritesExit: TLabel
       Left = 264
@@ -1011,10 +1011,10 @@ object Tcp: TTcp
       Hint = '290'
       Caption = '0'
       Transparent = True
-      OnMouseDown = ShowFavoritesRouters
+      OnDblClick = FavoritesRoutersAction
     end
     object lbExcludeNodes: TLabel
-      Left = 378
+      Left = 384
       Top = 486
       Width = 6
       Height = 13
@@ -1022,17 +1022,17 @@ object Tcp: TTcp
       Hint = '287'
       Caption = '0'
       Transparent = True
-      OnMouseDown = ShowFavoritesRouters
+      OnDblClick = FavoritesRoutersAction
     end
     object lbFavoritesTotal: TLabel
-      Left = 322
+      Left = 324
       Top = 486
       Width = 6
       Height = 13
       Cursor = crHandPoint
       Caption = '0'
       Transparent = True
-      OnMouseDown = ShowFavoritesRouters
+      OnDblClick = FavoritesRoutersAction
     end
     object lbFavoritesTotalSelected: TLabel
       Left = 33
@@ -1043,99 +1043,141 @@ object Tcp: TTcp
       Caption = #1042#1089#1077#1075#1086' '#1074#1099#1073#1088#1072#1085#1086':'
       Transparent = True
     end
-    object imFavoritesMiddle: TImage
-      Left = 186
-      Top = 485
-      Width = 16
-      Height = 16
-      ParentShowHint = False
-      ShowHint = True
-    end
-    object imFavoritesExit: TImage
-      Left = 245
-      Top = 485
-      Width = 16
-      Height = 16
-      ParentShowHint = False
-      ShowHint = True
-    end
-    object imFavoritesTotal: TImage
-      Left = 302
-      Top = 485
-      Width = 16
-      Height = 16
-      ParentShowHint = False
-      ShowHint = True
-    end
-    object imExcludeNodes: TImage
-      Left = 358
-      Top = 485
-      Width = 16
-      Height = 16
-      ParentShowHint = False
-      ShowHint = True
-    end
-    object imFavoritesBridges: TImage
-      Left = 411
-      Top = 485
-      Width = 16
-      Height = 16
-      ParentShowHint = False
-      ShowHint = True
-    end
     object lbFavoritesBridges: TLabel
-      Left = 431
+      Left = 444
       Top = 486
       Width = 6
       Height = 13
       Cursor = crHandPoint
       Caption = '0'
       Transparent = True
-      OnMouseDown = ShowFavoritesRouters
-    end
-    object imFavoritesFallbackDirs: TImage
-      Left = 464
-      Top = 484
-      Width = 16
-      Height = 16
-      ParentShowHint = False
-      ShowHint = True
+      OnDblClick = FavoritesRoutersAction
     end
     object lbFavoritesFallbackDirs: TLabel
-      Left = 484
+      Left = 504
       Top = 486
       Width = 6
       Height = 13
       Cursor = crHandPoint
       Caption = '0'
       Transparent = True
-      OnMouseDown = ShowFavoritesRouters
+      OnDblClick = FavoritesRoutersAction
     end
     object imSelectedRouters: TImage
-      Left = 517
-      Top = 485
+      Left = 543
+      Top = 486
       Width = 16
       Height = 16
       ParentShowHint = False
       ShowHint = True
     end
     object lbSelectedRouters: TLabel
-      Left = 537
+      Left = 564
       Top = 486
       Width = 6
       Height = 13
       Cursor = crHandPoint
       Caption = '0'
       Transparent = True
-      OnMouseDown = lbSelectedRoutersMouseDown
+      OnDblClick = lbSelectedRoutersDblClick
     end
-    object imFavoritesEntry: TImage
-      Left = 125
-      Top = 485
-      Width = 16
-      Height = 16
+    object sbFavoritesEntry: TSpeedButton
+      Left = 118
+      Top = 482
+      Width = 24
+      Height = 24
+      AllowAllUp = True
+      GroupIndex = 1
+      ImageIndex = 7
+      Images = lsMain
+      Flat = True
       ParentShowHint = False
       ShowHint = True
+      OnClick = ShowFavoritesRouters
+    end
+    object sbFavoritesMiddle: TSpeedButton
+      Left = 178
+      Top = 482
+      Width = 24
+      Height = 24
+      AllowAllUp = True
+      GroupIndex = 1
+      ImageIndex = 8
+      Images = lsMain
+      Flat = True
+      ParentShowHint = False
+      ShowHint = True
+      OnClick = ShowFavoritesRouters
+    end
+    object sbFavoritesExit: TSpeedButton
+      Left = 238
+      Top = 482
+      Width = 24
+      Height = 24
+      AllowAllUp = True
+      GroupIndex = 1
+      ImageIndex = 9
+      Images = lsMain
+      Flat = True
+      ParentShowHint = False
+      ShowHint = True
+      OnClick = ShowFavoritesRouters
+    end
+    object sbFavoritesTotal: TSpeedButton
+      Left = 298
+      Top = 482
+      Width = 24
+      Height = 24
+      AllowAllUp = True
+      GroupIndex = 1
+      ImageIndex = 46
+      Images = lsMenus
+      Flat = True
+      ParentShowHint = False
+      ShowHint = True
+      OnClick = ShowFavoritesRouters
+    end
+    object sbExcludeNodes: TSpeedButton
+      Left = 358
+      Top = 482
+      Width = 24
+      Height = 24
+      AllowAllUp = True
+      GroupIndex = 1
+      ImageIndex = 10
+      Images = lsMain
+      Flat = True
+      ParentShowHint = False
+      ShowHint = True
+      OnClick = ShowFavoritesRouters
+    end
+    object sbFavoritesBridges: TSpeedButton
+      Left = 418
+      Top = 482
+      Width = 24
+      Height = 24
+      AllowAllUp = True
+      GroupIndex = 1
+      ImageIndex = 28
+      Images = lsMenus
+      Flat = True
+      ParentShowHint = False
+      ShowHint = True
+      OnClick = ShowFavoritesRouters
+    end
+    object sbFavoritesFallbackDirs: TSpeedButton
+      Left = 478
+      Top = 482
+      Width = 24
+      Height = 24
+      AllowAllUp = True
+      GroupIndex = 1
+      ImageIndex = 54
+      Images = lsMenus
+      Flat = True
+      ParentShowHint = False
+      ShowHint = True
+      OnClick = ShowFavoritesRouters
     end
     object sgRouters: TStringGrid
       Tag = 2
@@ -1261,7 +1303,7 @@ object Tcp: TTcp
     Top = 93
     Width = 794
     Height = 506
-    ActivePage = tsNetwork
+    ActivePage = tsMain
     DoubleBuffered = True
     Images = lsMain
     ParentDoubleBuffered = False
@@ -2791,7 +2833,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbFilterMiddle: TLabel
-        Left = 449
+        Left = 450
         Top = 8
         Width = 6
         Height = 13
@@ -2799,7 +2841,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbFilterExit: TLabel
-        Left = 507
+        Left = 508
         Top = 8
         Width = 6
         Height = 13
@@ -2807,7 +2849,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbFilterExclude: TLabel
-        Left = 560
+        Left = 566
         Top = 8
         Width = 6
         Height = 13
@@ -2831,7 +2873,7 @@ object Tcp: TTcp
         ShowHint = True
       end
       object imFilterExit: TImage
-        Left = 486
+        Left = 489
         Top = 7
         Width = 16
         Height = 16
@@ -2839,7 +2881,7 @@ object Tcp: TTcp
         ShowHint = True
       end
       object imFilterExclude: TImage
-        Left = 541
+        Left = 546
         Top = 7
         Width = 16
         Height = 16

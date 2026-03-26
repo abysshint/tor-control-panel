@@ -830,13 +830,13 @@ begin
     LoadList(Tcp.cbxRoutersQuery, '548', '"Хэш","Ник","IPv4 адрес","IPv6 адрес","IPv4 порт","IPv6 порт","Версия","Пинг","Транспорт"');
     Tcp.edRoutersQuery.TextHint := Load('549', 'Введите запрос');
     Tcp.lbFavoritesTotalSelected.Caption := TransStr('643') + ':';
-    Tcp.imFavoritesEntry.Hint := TransStr('288');
-    Tcp.imFavoritesMiddle.Hint := TransStr('289');
-    Tcp.imFavoritesExit.Hint := TransStr('290');
-    Tcp.imFavoritesTotal.Hint := TransStr('584');
-    Tcp.imExcludeNodes.Hint := TransStr('287');
-    Tcp.imFavoritesBridges.Hint := Load('644', 'Используемые мосты');
-    Tcp.imFavoritesFallbackDirs.Hint := Load('649', 'Используемые резервные каталоги');
+    Tcp.sbFavoritesEntry.Hint := TransStr('288');
+    Tcp.sbFavoritesMiddle.Hint := TransStr('289');
+    Tcp.sbFavoritesExit.Hint := TransStr('290');
+    Tcp.sbFavoritesTotal.Hint := TransStr('584');
+    Tcp.sbExcludeNodes.Hint := TransStr('287');
+    Tcp.sbFavoritesBridges.Hint := Load('644', 'Используемые мосты');
+    Tcp.sbFavoritesFallbackDirs.Hint := Load('649', 'Используемые резервные каталоги');
     Tcp.imSelectedRouters.Hint := Load('680', 'Выделено элементов');
 
     Tcp.sbAutoScroll.Hint := Load('294', 'Автоматическая прокрутка');

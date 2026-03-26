@@ -927,14 +927,8 @@ type
     imFilterExclude: TImage;
     lbFilterTotalSelected: TLabel;
     lbFavoritesTotalSelected: TLabel;
-    imFavoritesEntry: TImage;
-    imFavoritesMiddle: TImage;
-    imFavoritesExit: TImage;
-    imFavoritesTotal: TImage;
-    imExcludeNodes: TImage;
     miDelimiter48: TMenuItem;
     miStatCountry: TMenuItem;
-    imFavoritesBridges: TImage;
     lbFavoritesBridges: TLabel;
     lbSocksTimeout: TLabel;
     lbSeconds6: TLabel;
@@ -958,7 +952,6 @@ type
     lbCount6: TLabel;
     edAutoSelFallbackDirCount: TEdit;
     udAutoSelFallbackDirCount: TUpDown;
-    imFavoritesFallbackDirs: TImage;
     lbFavoritesFallbackDirs: TLabel;
     lbSeconds4: TLabel;
     lbTotalHosts: TLabel;
@@ -1065,6 +1058,13 @@ type
     lbBridgesUniqueType: TLabel;
     cbxBridgesUniqueType: TComboBox;
     miBridgesOptions: TMenuItem;
+    sbFavoritesEntry: TSpeedButton;
+    sbFavoritesMiddle: TSpeedButton;
+    sbFavoritesExit: TSpeedButton;
+    sbFavoritesTotal: TSpeedButton;
+    sbExcludeNodes: TSpeedButton;
+    sbFavoritesBridges: TSpeedButton;
+    sbFavoritesFallbackDirs: TSpeedButton;
     function GetGridByIndex(GridIndex: Integer): TStringGrid;
     function GetMemoByIndex(MemoIndex: Integer): TMemo;
     function CheckOperationConfirmation(const OpStr: string; NoCancel: Boolean = True): Boolean;
@@ -1470,7 +1470,8 @@ type
     procedure miRtResetFilterClick(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure miCircuitInfoUpdateIpClick(Sender: TObject);
-    procedure ShowFavoritesRouters(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure ShowFavoritesRouters(Sender: TObject);
+    procedure FavoritesRoutersAction(Sender: TObject);
     procedure cbDirCacheMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure cbUseOpenDNSClick(Sender: TObject);
     procedure cbUseOpenDNSOnlyWhenUnknownClick(Sender: TObject);
@@ -1659,8 +1660,6 @@ type
     procedure cbxFallbackDirsTypeKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
     procedure cbxTrayIconTypeChange(Sender: TObject);
-    procedure lbSelectedRoutersMouseDown(Sender: TObject; Button: TMouseButton;
-      Shift: TShiftState; X, Y: Integer);
     procedure sbShowLogMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
     procedure meServerTransportOptionsChange(Sender: TObject);
@@ -1687,6 +1686,7 @@ type
     procedure miCircuitsShowIPv6CountryFlagClick(Sender: TObject);
     procedure sbStayOnTopClick(Sender: TObject);
     procedure cbxBridgesUniqueTypeChange(Sender: TObject);
+    procedure lbSelectedRoutersDblClick(Sender: TObject);
 
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
@@ -6230,14 +6230,6 @@ begin
   lsMain.GetIcon(8, imFilterMiddle.Picture.Icon);
   lsMain.GetIcon(9, imFilterExit.Picture.Icon);
   lsMain.GetIcon(10, imFilterExclude.Picture.Icon);
-
-  lsMain.GetIcon(7, imFavoritesEntry.Picture.Icon);
-  lsMain.GetIcon(8, imFavoritesMiddle.Picture.Icon);
-  lsMain.GetIcon(9, imFavoritesExit.Picture.Icon);
-  lsMain.GetIcon(10, imExcludeNodes.Picture.Icon);
-  lsMenus.GetIcon(46, imFavoritesTotal.Picture.Icon);
-  lsMenus.GetIcon(28, imFavoritesBridges.Picture.Icon);
-  lsMenus.GetIcon(54, imFavoritesFallbackDirs.Picture.Icon);
   lsMenus.GetIcon(16, imSelectedRouters.Picture.Icon);
 
   btnSwitchTor.ImageIndex := ConnectState;
@@ -12457,11 +12449,9 @@ begin
     if paButtons.CanFocus then paButtons.SetFocus;
 end;
 
-procedure TTcp.lbSelectedRoutersMouseDown(Sender: TObject; Button: TMouseButton;
-  Shift: TShiftState; X, Y: Integer);
+procedure TTcp.lbSelectedRoutersDblClick(Sender: TObject);
 begin
-  if (Button = mbLeft) and (ssDouble in Shift) then
-    sgRouters.SelectAll;
+  sgRouters.SelectAll;
 end;
 
 procedure TTcp.lbServerInfoMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
@@ -16347,8 +16337,8 @@ begin
   meServerTransportOptions.Enabled := TransportState and cbUseServerTransportOptions.Checked;
   meMyFamily.Enabled := FamilyState;
 
-  sbUPnPTest.Enabled := State;
-  sbUPnPTest.ShowHint := State and (ConnectState = 0);
+  sbUPnPTest.Enabled := State and cbUseUPnP.Checked;
+  sbUPnPTest.ShowHint := State and cbUseUPnP.Checked and (ConnectState = 0);
 
   lbNickname.Enabled := State;
   lbContactInfo.Enabled := State;
@@ -17131,16 +17121,16 @@ procedure TTcp.SetCustomFilterStyle(CustomFilterID: Integer);
 begin
   if not FirstLoad then
   begin
-    TFont(lbFavoritesEntry.Font).Style := [];
-    TFont(lbFavoritesMiddle.Font).Style := [];
-    TFont(lbFavoritesExit.Font).Style := [];
-    TFont(lbFavoritesTotal.Font).Style := [];
-    TFont(lbExcludeNodes.Font).Style := [];
-    TFont(lbFavoritesBridges.Font).Style := [];
-    TFont(lbFavoritesFallbackDirs.Font).Style := [];
+    sbFavoritesEntry.Down := False;
+    sbFavoritesMiddle.Down := False;
+    sbFavoritesExit.Down := False;
+    sbFavoritesTotal.Down := False;
+    sbExcludeNodes.Down := False;
+    sbFavoritesBridges.Down := False;
+    sbFavoritesFallbackDirs.Down := False;
   end;
   if CustomFilterID in [ENTRY_ID..FALLBACK_DIR_ID] then
-    TFont(GetFavoritesLabel(CustomFilterID).Font).Style := [fsUnderline];
+    TSpeedButton(FindComponent('sb' + Copy(GetFavoritesLabel(CustomFilterID).Name, 3))).Down := True;
 end;
 
 procedure TTcp.SetRoutersFilter(Sender: TObject);
@@ -19566,14 +19556,6 @@ begin
   UpdateImagesPosition(imFilterExit, lbFilterExit);
   UpdateImagesPosition(imFilterExclude, lbFilterExclude);
   UpdateImagesPosition(imCircuitPurpose, lbCircuitPurpose);
-
-  UpdateImagesPosition(imFavoritesEntry, lbFavoritesEntry);
-  UpdateImagesPosition(imFavoritesMiddle, lbFavoritesMiddle);
-  UpdateImagesPosition(imFavoritesExit, lbFavoritesExit);
-  UpdateImagesPosition(imExcludeNodes, lbExcludeNodes);
-  UpdateImagesPosition(imFavoritesTotal, lbFavoritesTotal);
-  UpdateImagesPosition(imFavoritesBridges, lbFavoritesBridges);
-  UpdateImagesPosition(imFavoritesFallbackDirs, lbFavoritesFallbackDirs);
   UpdateImagesPosition(imSelectedRouters, lbSelectedRouters);
 
   CheckScannerControls;
@@ -19852,6 +19834,7 @@ begin
   lbFavoritesTotal.HelpKeyword := IntToStr(FAVORITES_ID);
   lbFavoritesBridges.HelpKeyword := IntToStr(BRIDGES_ID);
   lbFavoritesFallbackDirs.HelpKeyword := IntToStr(FALLBACK_DIR_ID);
+
   CheckFileEncoding(UserConfigFile, UserBackupFile);
   GetTorVersion(True);
 end;
@@ -20083,55 +20066,57 @@ begin
   mnCircuitInfo.AutoPopup := State and (ExitNodeID <> '');
 end;
 
-procedure TTcp.ShowFavoritesRouters(Sender: TObject; Button: TMouseButton;
-  Shift: TShiftState; X, Y: Integer);
+procedure TTcp.ShowFavoritesRouters(Sender: TObject);
 var
   FavoritesID: Integer;
 begin
-  if (Button = mbLeft) and (ssDouble in Shift) then
+  FavoritesID := StrToInt(TLabel(FindComponent('lb' + Copy(TSpeedButton(Sender).Name, 3))).HelpKeyword);
+  if RoutersCustomFilter = FavoritesID then
   begin
-    FavoritesID := StrToInt(TLabel(Sender).HelpKeyword);
-    if ssCtrl in Shift then
-    begin
-      case FavoritesID of
-        ENTRY_ID..EXCLUDE_ID:
-        begin
-          pcOptions.ActivePage := tsLists;
-          sbShowOptions.Click;
-          cbxNodesListType.ItemIndex := FavoritesToNodes(FavoritesID);
-          LoadNodesList;
-        end;
-        BRIDGES_ID:
-        begin
-          pcOptions.ActivePage := tsNetwork;
-          sbShowOptions.Click;
-        end;
-        FALLBACK_DIR_ID:
-        begin
-          pcOptions.ActivePage := tsLists;
-          sbShowOptions.Click;
-        end;
-      end;
-    end
+    IntToMenu(miRtFilters, RoutersFilters);
+    RoutersCustomFilter := LastRoutersCustomFilter;
+    LastRoutersCustomFilter := NONE_ID;
+  end
+  else
+  begin
+    if RoutersCustomFilter in [ENTRY_ID..FALLBACK_DIR_ID] then
+      LastRoutersCustomFilter := NONE_ID
     else
+      LastRoutersCustomFilter := RoutersCustomFilter;
+    RoutersCustomFilter := FavoritesID;
+  end;
+  CheckShowRouters;
+  ShowRouters;
+  SaveRoutersFilterdata(False, False);
+end;
+
+procedure TTcp.FavoritesRoutersAction(Sender: TObject);
+var
+  FavoritesID: Integer;
+begin
+  FavoritesID := StrToInt(TLabel(Sender).HelpKeyword);
+  case FavoritesID of
+    ENTRY_ID..EXCLUDE_ID:
     begin
-      if RoutersCustomFilter = FavoritesID then
-      begin
-        IntToMenu(miRtFilters, RoutersFilters);
-        RoutersCustomFilter := LastRoutersCustomFilter;
-        LastRoutersCustomFilter := NONE_ID;
-      end
-      else
-      begin
-        if RoutersCustomFilter in [ENTRY_ID..FALLBACK_DIR_ID] then
-          LastRoutersCustomFilter := NONE_ID
-        else
-          LastRoutersCustomFilter := RoutersCustomFilter;
-        RoutersCustomFilter := FavoritesID;
-      end;
-      CheckShowRouters;
-      ShowRouters;
-      SaveRoutersFilterdata(False, False);
+      pcOptions.ActivePage := tsLists;
+      sbShowOptions.Click;
+      cbxNodesListType.ItemIndex := FavoritesToNodes(FavoritesID);
+      LoadNodesList;
+    end;
+    FAVORITES_ID:
+    begin
+      pcOptions.ActivePage := tsLists;
+      sbShowOptions.Click;
+    end;
+    BRIDGES_ID:
+    begin
+      pcOptions.ActivePage := tsNetwork;
+      sbShowOptions.Click;
+    end;
+    FALLBACK_DIR_ID:
+    begin
+      pcOptions.ActivePage := tsLists;
+      sbShowOptions.Click;
     end;
   end;
 end;
