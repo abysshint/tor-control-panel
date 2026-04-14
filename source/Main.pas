@@ -11834,7 +11834,7 @@ begin
 
   miGetBridgesEmail.Enabled := IsBridgeEdit and (RequestBridgesType <> REQUEST_TYPE_WEBTUNNEL) and
     RegistryFileExists(HKEY_CLASSES_ROOT, 'mailto\shell\open\command', '');
-  miGetBridgesTelegram.Enabled := IsBridgeEdit and (RequestBridgesType = REQUEST_TYPE_OBFUSCATED) and
+  miGetBridgesTelegram.Enabled := IsBridgeEdit and (RequestBridgesType in [REQUEST_TYPE_OBFUSCATED, REQUEST_TYPE_WEBTUNNEL]) and
     (RegistryFileExists(HKEY_CLASSES_ROOT, 'tg\shell\open\command', '') or miPreferWebTelegram.Checked);
 
   miPreferWebTelegram.Enabled := RequestBridgesType = REQUEST_TYPE_OBFUSCATED;

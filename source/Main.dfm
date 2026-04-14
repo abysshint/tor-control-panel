@@ -6152,7 +6152,7 @@ object Tcp: TTcp
         OnClick = miGetBridgesTelegramClick
       end
       object miGetBridgesEmail: TMenuItem
-        Caption = #1069#1083#1077#1082#1090#1088#1086#1085#1085#1072#1103' '#1087#1086#1095#1090#1072
+        Caption = #1069#1083#1077#1082#1090#1088#1086#1085#1085#1072#1103' '#1087#1086#1095#1090#1072' (Riseup/Gmail)'
         OnClick = miGetBridgesEmailClick
       end
       object miDelimiter54: TMenuItem
@@ -6160,20 +6160,20 @@ object Tcp: TTcp
       end
       object miRequestObfuscatedBridges: TMenuItem
         Tag = 2
-        Caption = #1054#1073#1092#1091#1089#1094#1080#1088#1091#1102#1097#1080#1077' '#1090#1088#1072#1092#1080#1082
+        Caption = #1054#1073#1092#1091#1089#1094#1080#1088#1091#1102#1097#1080#1077' '#1090#1088#1072#1092#1080#1082' (obfs4)'
         Checked = True
+        RadioItem = True
+        OnClick = SetRequestBridgesType
+      end
+      object miRequestWebTunnelBridges: TMenuItem
+        Tag = 3
+        Caption = #1048#1084#1080#1090#1080#1088#1091#1102#1097#1080#1077' '#1074#1077#1073'-'#1072#1082#1090#1080#1074#1085#1086#1089#1090#1100' (webtunnel)'
         RadioItem = True
         OnClick = SetRequestBridgesType
       end
       object miRequestVanillaBridges: TMenuItem
         Tag = 1
         Caption = #1041#1077#1079' '#1087#1086#1076#1082#1083#1102#1095#1072#1077#1084#1099#1093' '#1090#1088#1072#1085#1089#1087#1086#1088#1090#1086#1074
-        RadioItem = True
-        OnClick = SetRequestBridgesType
-      end
-      object miRequestWebTunnelBridges: TMenuItem
-        Tag = 3
-        Caption = #1048#1084#1080#1090#1080#1088#1091#1102#1097#1080#1077' '#1074#1077#1073'-'#1072#1082#1090#1080#1074#1085#1086#1089#1090#1100
         RadioItem = True
         OnClick = SetRequestBridgesType
       end

@@ -896,9 +896,9 @@ begin
     Tcp.miGetBridgesTelegram.Caption := Load('502', 'Телеграм-канал');
     Tcp.miGetBridgesEmail.Caption := Load('503', 'Электронная почта (Riseup/Gmail)');
     Tcp.miPreferWebTelegram.Caption := Load('504', 'Предпочитать веб-версию Телеграма');
-    Tcp.miRequestObfuscatedBridges.Caption := Load('505', 'Обфусцирующие трафик');
+    Tcp.miRequestObfuscatedBridges.Caption := Load('505', 'Обфусцирующие трафик (obfs4)');
     Tcp.miRequestVanillaBridges.Caption := Load('690', 'Без подключаемых транспортов');
-    Tcp.miRequestWebTunnelBridges.Caption := Load('691', 'Имитирующие веб-активность');
+    Tcp.miRequestWebTunnelBridges.Caption := Load('691', 'Имитирующие веб-активность (webtunnel)');
     Tcp.miRequestIPv6Bridges.Caption := Load('506', 'Запрашивать IPv6-мосты');
     Tcp.miCut.Caption := TransStr('276');
     Tcp.miCopy.Caption := TransStr('274');
