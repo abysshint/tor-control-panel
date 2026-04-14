@@ -19,6 +19,7 @@ Data/
 Tor/
 
 # Other
+*.dll
 *.zip
 TorControlPanel.res
 TorControlPanel.exe

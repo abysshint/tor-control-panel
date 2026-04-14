@@ -989,7 +989,7 @@ object Tcp: TTcp
       Hint = '288'
       Caption = '0'
       Transparent = True
-      OnDblClick = FavoritesRoutersAction
+      OnMouseDown = FavoritesRoutersAction
     end
     object lbFavoritesMiddle: TLabel
       Left = 204
@@ -1000,7 +1000,7 @@ object Tcp: TTcp
       Hint = '289'
       Caption = '0'
       Transparent = True
-      OnDblClick = FavoritesRoutersAction
+      OnMouseDown = FavoritesRoutersAction
     end
     object lbFavoritesExit: TLabel
       Left = 264
@@ -1011,7 +1011,7 @@ object Tcp: TTcp
       Hint = '290'
       Caption = '0'
       Transparent = True
-      OnDblClick = FavoritesRoutersAction
+      OnMouseDown = FavoritesRoutersAction
     end
     object lbExcludeNodes: TLabel
       Left = 384
@@ -1022,7 +1022,7 @@ object Tcp: TTcp
       Hint = '287'
       Caption = '0'
       Transparent = True
-      OnDblClick = FavoritesRoutersAction
+      OnMouseDown = FavoritesRoutersAction
     end
     object lbFavoritesTotal: TLabel
       Left = 324
@@ -1032,7 +1032,7 @@ object Tcp: TTcp
       Cursor = crHandPoint
       Caption = '0'
       Transparent = True
-      OnDblClick = FavoritesRoutersAction
+      OnMouseDown = FavoritesRoutersAction
     end
     object lbFavoritesTotalSelected: TLabel
       Left = 33
@@ -1051,7 +1051,7 @@ object Tcp: TTcp
       Cursor = crHandPoint
       Caption = '0'
       Transparent = True
-      OnDblClick = FavoritesRoutersAction
+      OnMouseDown = FavoritesRoutersAction
     end
     object lbFavoritesFallbackDirs: TLabel
       Left = 504
@@ -1061,7 +1061,7 @@ object Tcp: TTcp
       Cursor = crHandPoint
       Caption = '0'
       Transparent = True
-      OnDblClick = FavoritesRoutersAction
+      OnMouseDown = FavoritesRoutersAction
     end
     object imSelectedRouters: TImage
       Left = 543
@@ -5449,7 +5449,6 @@ object Tcp: TTcp
   end
   object tiTray: TTrayIcon
     Icons = lsTray
-    PopupMenu = mnTray
     OnMouseDown = tiTrayMouseDown
     Left = 721
     Top = 336

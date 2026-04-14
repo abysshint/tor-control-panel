@@ -1225,7 +1225,7 @@ type
     procedure ExcludeUnsuitableBridges(var Data: TStringList; DeleteUnsuitable: Boolean = False; AutoSave: Boolean = False);
     procedure ExcludeUnsuitableFallbackDirs(var Data: TStringList);
     procedure LoadStaticArray(const Data: array of TStaticPair);
-    procedure ResetOptions;
+    function ResetOptions: Integer;
     procedure LoadUserOverrides(var ini: TMemIniFile);
     procedure RestartTor(RestartCode: Byte = 0);
     procedure UpdateSystemInfo;
@@ -1471,7 +1471,7 @@ type
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure miCircuitInfoUpdateIpClick(Sender: TObject);
     procedure ShowFavoritesRouters(Sender: TObject);
-    procedure FavoritesRoutersAction(Sender: TObject);
+    procedure FavoritesRoutersAction(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure cbDirCacheMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure cbUseOpenDNSClick(Sender: TObject);
     procedure cbUseOpenDNSOnlyWhenUnknownClick(Sender: TObject);
@@ -1737,7 +1737,7 @@ var
   hJob: THandle;
   DLSpeed, ULSpeed, MaxDLSpeed, MaxULSpeed, CurrentTrafficPeriod, LogAutoDelHours, RequestBridgesType, BridgesFileFormat: Integer;
   SessionDL, SessionUL, TotalDL, TotalUL: Int64;
-  ConnectState, StopCode, FormSize, LastPlace, InfoStage, GetIpStage, NodesListStage, NewBridgesStage: Byte;
+  ConnectState, StopCode, ExitCode, FormSize, LastPlace, InfoStage, GetIpStage, NodesListStage, NewBridgesStage: Byte;
   EncodingNoBom: TUTF8EncodingNoBOM;
   SearchTimer: Cardinal;
   LastCountriesHash, LastFallbackDirsHash, LastBridgesHash: Integer;
@@ -8413,7 +8413,7 @@ begin
   end;
 end;
 
-procedure TTcp.ResetOptions;
+function TTcp.ResetOptions: Integer;
 var
   i, LogID, AutoSelNodesType: Integer;
   ini, inidef: TMemIniFile;
@@ -8432,6 +8432,7 @@ begin
     if (TrayIconFile <> '') and not FileExists(TrayIconFile) then
       SetSettings('Main', 'TrayIconFile', '', ini);
     UpdateTrayIcon;
+
     cbxLanguage.ItemIndex := cbxLanguage.Items.IndexOfObject(TObject(Integer(GetSettings('Main', 'Language', GetLangList, ini))));
     cbxLanguage.ResetValue := cbxLanguage.Items.IndexOf('Русский');
     if cbxLanguage.ItemIndex = -1 then
@@ -8442,9 +8443,14 @@ begin
     cbxLanguage.Tag := cbxLanguage.ItemIndex;
     if FirstLoad then
       Translate(cbxLanguage.Text);
+
     LoadThemesList(cbxThemes, GetSettings('Main', 'Theme', 'Windows', ini));
     LoadStyle(cbxThemes);
     SetIconsColor;
+
+    Result := GetSettings('Main', 'ConfigVersion', 1, ini);
+    if Result > CURRENT_CONFIG_VERSION then
+      Exit;
     if tc.Data.Count = 0 then
     begin
       tc.Data.Append('# ' + TransStr('271'));
@@ -8916,6 +8922,7 @@ begin
 
     if FirstLoad then
     begin
+      tiTray.PopupMenu := mnTray;
       GetSettings('Main', sbStayOnTop, ini);
       if GetSettings('Main', 'Terminated', False, ini) = True then
       begin
@@ -17121,6 +17128,21 @@ procedure TTcp.SetCustomFilterStyle(CustomFilterID: Integer);
 begin
   if not FirstLoad then
   begin
+    TFont(lbFavoritesEntry.Font).Style := [];
+    TFont(lbFavoritesMiddle.Font).Style := [];
+    TFont(lbFavoritesExit.Font).Style := [];
+    TFont(lbFavoritesTotal.Font).Style := [];
+    TFont(lbExcludeNodes.Font).Style := [];
+    TFont(lbFavoritesBridges.Font).Style := [];
+    TFont(lbFavoritesFallbackDirs.Font).Style := [];
+  end;
+  if CustomFilterID in [ENTRY_ID..FALLBACK_DIR_ID] then
+  begin
+    TSpeedButton(FindComponent('sb' + Copy(GetFavoritesLabel(CustomFilterID).Name, 3))).Down := True;
+    TFont(GetFavoritesLabel(CustomFilterID).Font).Style := [fsUnderline];
+  end
+  else
+  begin
     sbFavoritesEntry.Down := False;
     sbFavoritesMiddle.Down := False;
     sbFavoritesExit.Down := False;
@@ -17129,8 +17151,6 @@ begin
     sbFavoritesBridges.Down := False;
     sbFavoritesFallbackDirs.Down := False;
   end;
-  if CustomFilterID in [ENTRY_ID..FALLBACK_DIR_ID] then
-    TSpeedButton(FindComponent('sb' + Copy(GetFavoritesLabel(CustomFilterID).Name, 3))).Down := True;
 end;
 
 procedure TTcp.SetRoutersFilter(Sender: TObject);
@@ -19580,6 +19600,7 @@ begin
   TorVersionProcess := cDefaultProcessInfo;
   TorMainProcess := cDefaultProcessInfo;
   LastTrayIconType := MAXWORD;
+  ExitCode := EXIT_NORMAL;
   WindowsShutdown := False;
   FirstLoad := True;
   FormSize := 1;
@@ -19867,7 +19888,7 @@ end;
 
 procedure TTcp.LoadOptions(FirstStart: Boolean; Fail: Boolean; StartTimer: Boolean = True);
 var
-  Params: Integer;
+  ProfileVersion, Params: Integer;
 begin
   if FirstStart then
     UpdateConfigVersion;
@@ -19875,7 +19896,13 @@ begin
   SupportVanguardsLite := CheckFileVersion(TorVersion, '0.4.7.1');
   SupportBridgesTesting := SupportVanguardsLite;
   SupportConflux := CheckFileVersion(TorVersion, '0.4.8.1');
-  ResetOptions;
+  ProfileVersion := ResetOptions;
+  if FirstStart and (ProfileVersion > CURRENT_CONFIG_VERSION)  then
+  begin
+    ExitCode := EXIT_INVALID_CONFIG_VERSION;
+    ShowMsg(Format(TransStr('705'), [lbUserDir.Caption, GetFullFileName(UserDir), ProfileVersion, CURRENT_CONFIG_VERSION]), '', mtWarning);
+    Application.Terminate;
+  end;
   if StartTimer and not Assigned(ShowTimer) and not FirstLoad then
   begin
     Params := 0;
@@ -20070,7 +20097,11 @@ procedure TTcp.ShowFavoritesRouters(Sender: TObject);
 var
   FavoritesID: Integer;
 begin
-  FavoritesID := StrToInt(TLabel(FindComponent('lb' + Copy(TSpeedButton(Sender).Name, 3))).HelpKeyword);
+  if Sender is TLabel then
+    FavoritesID := StrToInt(TLabel(Sender).HelpKeyword)
+  else if Sender is TSpeedButton then
+    FavoritesID := StrToInt(TLabel(FindComponent('lb' + Copy(TSpeedButton(Sender).Name, 3))).HelpKeyword)
+  else Exit;
   if RoutersCustomFilter = FavoritesID then
   begin
     IntToMenu(miRtFilters, RoutersFilters);
@@ -20090,34 +20121,43 @@ begin
   SaveRoutersFilterdata(False, False);
 end;
 
-procedure TTcp.FavoritesRoutersAction(Sender: TObject);
+procedure TTcp.FavoritesRoutersAction(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
 var
   FavoritesID: Integer;
 begin
-  FavoritesID := StrToInt(TLabel(Sender).HelpKeyword);
-  case FavoritesID of
-    ENTRY_ID..EXCLUDE_ID:
+  if (Button = mbLeft) and (ssDouble in Shift) then
+  begin
+    if ssCtrl in Shift then
     begin
-      pcOptions.ActivePage := tsLists;
-      sbShowOptions.Click;
-      cbxNodesListType.ItemIndex := FavoritesToNodes(FavoritesID);
-      LoadNodesList;
-    end;
-    FAVORITES_ID:
-    begin
-      pcOptions.ActivePage := tsLists;
-      sbShowOptions.Click;
-    end;
-    BRIDGES_ID:
-    begin
-      pcOptions.ActivePage := tsNetwork;
-      sbShowOptions.Click;
-    end;
-    FALLBACK_DIR_ID:
-    begin
-      pcOptions.ActivePage := tsLists;
-      sbShowOptions.Click;
-    end;
+      FavoritesID := StrToInt(TLabel(Sender).HelpKeyword);
+      case FavoritesID of
+        ENTRY_ID..EXCLUDE_ID:
+        begin
+          pcOptions.ActivePage := tsLists;
+          sbShowOptions.Click;
+          cbxNodesListType.ItemIndex := FavoritesToNodes(FavoritesID);
+          LoadNodesList;
+        end;
+        FAVORITES_ID:
+        begin
+          pcOptions.ActivePage := tsLists;
+          sbShowOptions.Click;
+        end;
+        BRIDGES_ID:
+        begin
+          pcOptions.ActivePage := tsNetwork;
+          sbShowOptions.Click;
+        end;
+        FALLBACK_DIR_ID:
+        begin
+          pcOptions.ActivePage := tsLists;
+          sbShowOptions.Click;
+        end;
+      end;
+    end
+    else
+      ShowFavoritesRouters(Sender);
   end;
 end;
 
@@ -20130,26 +20170,29 @@ procedure TTcp.FormDestroy(Sender: TObject);
 var
   ini: TMemIniFile;
 begin
-  if ConnectState > 0 then
-    StopTor;
-  ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
-  try
-    SetSettings('Main', 'FormPosition', GetFormPositionStr, ini);
-    SetSettings('Main', 'OptionsPage', pcOptions.TabIndex, ini);
-    SetSettings('Main', 'LastPlace', LastPlace, ini);
-    SetSettings('Main', 'Terminated', False, ini);
-    SetSettings('Main', sbStayOnTop, ini);
-    SetSettings('Status', 'TotalDL', TotalDL, ini);
-    SetSettings('Status', 'TotalUL', TotalUL, ini);
-    SetSettings('Routers', 'CurrentFilter', LastRoutersFilter, ini);
-  finally
-    UpdateConfigFile(ini);
-  end;
-  SaveNetworkCache(False);
-  if cbxBridgesType.ItemIndex = BRIDGES_TYPE_FILE then
+  if ExitCode = EXIT_NORMAL then
   begin
-    if (meBridges.Lines.Count > 0) and not FileExists(BridgesFileName) and not OptionsChanged then
-      SaveBridgesFile;
+    if ConnectState > 0 then
+      StopTor;
+    ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
+    try
+      SetSettings('Main', 'FormPosition', GetFormPositionStr, ini);
+      SetSettings('Main', 'OptionsPage', pcOptions.TabIndex, ini);
+      SetSettings('Main', 'LastPlace', LastPlace, ini);
+      SetSettings('Main', 'Terminated', False, ini);
+      SetSettings('Main', sbStayOnTop, ini);
+      SetSettings('Status', 'TotalDL', TotalDL, ini);
+      SetSettings('Status', 'TotalUL', TotalUL, ini);
+      SetSettings('Routers', 'CurrentFilter', LastRoutersFilter, ini);
+    finally
+      UpdateConfigFile(ini);
+    end;
+    SaveNetworkCache(False);
+    if cbxBridgesType.ItemIndex = BRIDGES_TYPE_FILE then
+    begin
+      if (meBridges.Lines.Count > 0) and not FileExists(BridgesFileName) and not OptionsChanged then
+        SaveBridgesFile;
+    end;
   end;
   tiTray.Free;
   StreamsDic.Free;
@@ -20219,6 +20262,8 @@ end;
 procedure TTcp.tiTrayMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
+  if FirstLoad then
+    Exit;
   if Button = mbLeft then
   begin
     if ssShift in Shift then
