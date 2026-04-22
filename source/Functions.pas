@@ -1727,7 +1727,6 @@ var
   PI: PROCESS_INFORMATION;
   CreationFlags: Cardinal;
   ErrorMode: DWORD;
-
 begin
   Result := cDefaultProcessInfo;
   UniqueString(CmdLine);
@@ -1749,16 +1748,14 @@ begin
     SI.wShowWindow := SW_HIDE
   else
     SI.wShowWindow := SW_SHOWDEFAULT;
-  if JobHandle <> 0 then
-    CreationFlags := CREATE_BREAKAWAY_FROM_JOB
-  else
-    CreationFlags := 0;
+  CreationFlags := CREATE_SUSPENDED;
   ErrorMode := SetErrorMode(SEM_FAILCRITICALERRORS);
   SetErrorMode(ErrorMode or SEM_FAILCRITICALERRORS);
   if CreateProcess(nil, PWideChar(CmdLine), nil, nil, True, CreationFlags, nil, nil, SI, PI) then
   begin
     if JobHandle <> 0 then
       AssignProcessToJobObject(JobHandle, PI.hProcess);
+    ResumeThread(PI.hThread);
     if pfReadStdOut in Flags then
       Result.hStdOutput := hStdOutRead;
     Result.hProcess := PI.hProcess;
