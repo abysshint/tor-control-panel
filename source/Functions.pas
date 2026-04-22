@@ -4929,10 +4929,7 @@ begin
           else
             OSBits := -1;
         end;
-        Result.ExecSupport := (OSBits >= PeData.Bits) and not PeData.IsDLL and CheckFileVersion(
-          IntToStr(Win32MajorVersion) + '.' + IntToStr(Win32MinorVersion),
-          IntToStr(PeData.MajorOSVersion) + '.' + IntToStr(PeData.MinorOSVersion)
-        );
+        Result.ExecSupport := (OSBits >= PeData.Bits) and not PeData.IsDLL;
         {$WARN SYMBOL_PLATFORM OFF}
         Result.Data := IntToHex(THashBobJenkins.GetHashValue(IntToStr(F.Size) +
           IntToStr(DateTimeToUnix(F.TimeStamp)) +
