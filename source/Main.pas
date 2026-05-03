@@ -1566,7 +1566,6 @@ type
       Shift: TShiftState);
     procedure cbxNodesListTypeKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
-    procedure cbxBridgesListCloseUp(Sender: TObject);
     procedure miRequestIPv6BridgesClick(Sender: TObject);
     procedure SetRequestBridgesType(Sender: TObject);
     procedure miGetBridgesTelegramClick(Sender: TObject);
@@ -1669,7 +1668,6 @@ type
     procedure miResetFilterCountriesClick(Sender: TObject);
     procedure cbHandlerParamsStateClick(Sender: TObject);
     procedure cbxTransportStateChange(Sender: TObject);
-    procedure cbxBridgesTypeCloseUp(Sender: TObject);
     procedure miHsOpenInBrowserClick(Sender: TObject);
     procedure tiTrayMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
@@ -10840,7 +10838,7 @@ end;
 procedure TTcp.cbxFallbackDirsTypeKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
-  if (Key = VK_RETURN) and (meFallbackDirs.Lines.Count > 0) and meFallbackDirs.CanFocus then
+  if (Key = VK_RETURN) and meFallbackDirs.CanFocus then
     meFallbackDirs.SetFocus;
 end;
 
@@ -15856,16 +15854,10 @@ begin
   UpdateBridgesControls(False, True);
 end;
 
-procedure TTcp.cbxBridgesListCloseUp(Sender: TObject);
-begin
-  if meBridges.CanFocus then
-    meBridges.SetFocus;
-end;
-
 procedure TTcp.cbxBridgesListKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
-  if (Key = VK_RETURN) and (meBridges.Lines.Count > 0) and meBridges.CanFocus then
+  if (Key = VK_RETURN) and meBridges.CanFocus then
     meBridges.SetFocus;
 end;
 
@@ -15941,16 +15933,10 @@ begin
   UpdateBridgesControls(True, True);
 end;
 
-procedure TTcp.cbxBridgesTypeCloseUp(Sender: TObject);
-begin
-  if meBridges.CanFocus then
-    meBridges.SetFocus;
-end;
-
 procedure TTcp.cbxBridgesTypeKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
-  if (Key = VK_RETURN) and (meBridges.Lines.Count > 0) and meBridges.CanFocus then
+  if (Key = VK_RETURN) and meBridges.CanFocus then
     meBridges.SetFocus;
 end;
 

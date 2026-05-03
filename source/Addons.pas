@@ -33,6 +33,11 @@ type
   end;
 
   TEdit = class (Vcl.StdCtrls.TEdit)
+  private
+    procedure WMPaint(var Message: TWMPaint); message WM_PAINT;
+    procedure WMSetFocus(var Message: TWMSetFocus); message WM_SETFOCUS;
+    procedure WMKillFocus(var Message: TWMSetFocus); message WM_KILLFOCUS;
+    procedure DrawTextHint;
   public
     ResetValue: string;
   protected
@@ -55,6 +60,7 @@ type
   protected
     FCanvas: TCanvas;
     procedure CMExit(var Message: TCMExit); message CM_EXIT;
+    procedure CMEnter(var Message: TCMExit); message CM_ENTER;
     procedure WMPaint(var Message: TWMPaint); message WM_PAINT;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
   public
@@ -256,6 +262,45 @@ begin
     end;
   end;
   inherited;
+end;
+
+procedure TEdit.WMPaint(var Message: TWMPaint);
+begin
+  inherited;
+  if (Win32MajorVersion = 5) and (Text = '') and Enabled and not Focused and (TextHint <> '') then
+    DrawTextHint;
+end;
+
+procedure TEdit.WMSetFocus(var Message: TWMSetFocus);
+begin
+  inherited;
+  if Win32MajorVersion = 5 then
+    Invalidate;
+end;
+
+procedure TEdit.WMKillFocus(var Message: TWMSetFocus);
+begin
+  inherited;
+  if (Win32MajorVersion = 5) and (Text = '') then
+    Invalidate;
+end;
+
+procedure TEdit.DrawTextHint;
+var
+  R: TRect;
+  DC: HDC;
+begin
+  DC := GetDC(Handle);
+  try
+    R := ClientRect;
+    SetBkMode(DC, TRANSPARENT);
+    SelectObject(DC, Font.Handle);
+    SetTextColor(DC, ColorToRGB(StyleServices.GetStyleFontColor(sfEditBoxTextDisabled)));
+    InflateRect(R, -2, 0);
+    DrawText(DC, PChar(TextHint), -1, R, DT_LEFT or DT_VCENTER or DT_SINGLELINE);
+  finally
+    ReleaseDC(Handle, DC);
+  end;
 end;
 
 procedure TEdit.DoExit;
@@ -472,10 +517,19 @@ begin
   end;
 end;
 
+procedure TMemo.CMEnter(var Message: TCMEnter);
+begin
+  inherited;
+  if (Win32MajorVersion = 5) and (Text = '') then
+    Invalidate;
+end;
+
 procedure TMemo.CMExit(var Message: TCMExit);
 begin
-  Tcp.FindDialog.CloseDialog;
   Inherited;
+  if Win32MajorVersion = 5 then
+    Invalidate;
+  Tcp.FindDialog.CloseDialog;
 end;
 
 procedure TMemo.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);

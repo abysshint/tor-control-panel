@@ -2485,7 +2485,6 @@ object Tcp: TTcp
         TabOrder = 18
         Text = #1042#1089#1090#1088#1086#1077#1085#1085#1099#1077
         OnChange = cbxBridgesTypeChange
-        OnCloseUp = cbxBridgesTypeCloseUp
         OnKeyDown = cbxBridgesTypeKeyDown
         Items.Strings = (
           #1042#1089#1090#1088#1086#1077#1085#1085#1099#1077
@@ -2776,7 +2775,6 @@ object Tcp: TTcp
         ParentDoubleBuffered = False
         TabOrder = 19
         OnChange = cbxBridgesListChange
-        OnCloseUp = cbxBridgesListCloseUp
         OnKeyDown = cbxBridgesListKeyDown
       end
       object cbxBridgesUniqueType: TComboBox
