@@ -3284,59 +3284,79 @@ function CompareNaturalText(const S1, S2: string; CaseSensitive: Boolean = False
 var
   P1, P2: PChar;
   Num1, Num2: Integer;
-  IsDigit1, IsDigit2: Boolean;
+  Flags: DWORD;
+  Len1, Len2: Integer;
+  CmpResult: Integer;
 begin
+  if CaseSensitive then
+    Flags := 0
+  else
+    Flags := NORM_IGNORECASE;
   P1 := PChar(S1);
   P2 := PChar(S2);
-
   while True do
   begin
     if P1^ = #0 then
       Exit(IfThen(P2^ = #0, 0, -1));
     if P2^ = #0 then
       Exit(1);
-
-    IsDigit1 := (P1^ >= '0') and (P1^ <= '9');
-    IsDigit2 := (P2^ >= '0') and (P2^ <= '9');
-
-    if IsDigit1 and IsDigit2 then
+    if (P1^ >= '0') and (P1^ <= '9') then
     begin
-      Num1 := 0;
-      Num2 := 0;
-
-      while (P1^ >= '0') and (P1^ <= '9') do
+      if (P2^ >= '0') and (P2^ <= '9') then
       begin
-        if Num1 > (MaxInt - 10) div 10 then Break;
-        Num1 := Num1 * 10 + (Ord(P1^) - Ord('0'));
-        Inc(P1);
-      end;
-
-      while (P2^ >= '0') and (P2^ <= '9') do
-      begin
-        if Num2 > (MaxInt - 10) div 10 then Break;
-        Num2 := Num2 * 10 + (Ord(P2^) - Ord('0'));
-        Inc(P2);
-      end;
-
-      if Num1 < Num2 then Exit(-1);
-      if Num1 > Num2 then Exit(1);
-    end
-    else
-    begin
-      if CaseSensitive then
-      begin
-        if P1^ < P2^ then Exit(-1);
-        if P1^ > P2^ then Exit(1);
+        Num1 := 0;
+        Num2 := 0;
+        while (P1^ >= '0') and (P1^ <= '9') do
+        begin
+          if Num1 <= (MaxInt - 10) div 10 then
+            Num1 := Num1 * 10 + (Ord(P1^) - Ord('0'));
+          Inc(P1);
+        end;
+        while (P2^ >= '0') and (P2^ <= '9') do
+        begin
+          if Num2 <= (MaxInt - 10) div 10 then
+            Num2 := Num2 * 10 + (Ord(P2^) - Ord('0'));
+          Inc(P2);
+        end;
+        if Num1 <> Num2 then
+          Exit(IfThen(Num1 < Num2, -1, 1));
       end
       else
       begin
-        if (P1^ <> P2^) and ((Ord(P1^) or $20) <> (Ord(P2^) or $20)) then
+        Exit(-1);
+      end;
+    end
+    else
+    begin
+      if (P2^ >= '0') and (P2^ <= '9') then
+      begin
+        Exit(1);
+      end
+      else
+      begin
+        Len1 := 0;
+        while (P1[Len1] <> #0) and not ((P1[Len1] >= '0') and (P1[Len1] <= '9')) do
+          Inc(Len1);
+        Len2 := 0;
+        while (P2[Len2] <> #0) and not ((P2[Len2] >= '0') and (P2[Len2] <= '9')) do
+          Inc(Len2);
+        if (Len1 = 1) and (Len2 = 1) then
         begin
-          if (Ord(P1^) or $20) < (Ord(P2^) or $20) then Exit(-1) else Exit(1);
+          CmpResult := CompareStringW(LOCALE_USER_DEFAULT, Flags, P1, 1, P2, 1) - 2;
+          if CmpResult <> 0 then
+            Exit(CmpResult);
+          Inc(P1);
+          Inc(P2);
+        end
+        else
+        begin
+          CmpResult := CompareStringW(LOCALE_USER_DEFAULT, Flags, P1, Len1, P2, Len2) - 2;
+          if CmpResult <> 0 then
+            Exit(CmpResult);
+          Inc(P1, Len1);
+          Inc(P2, Len2);
         end;
       end;
-      Inc(P1);
-      Inc(P2);
     end;
   end;
 end;
