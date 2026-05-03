@@ -3676,9 +3676,9 @@ begin
                   Tcp.imExitFlag.Visible := True;
                   CheckLabelEndEllipsis(Tcp.lbExitCountry, 150, epEndEllipsis, True, False);
                   if CountryID = DEFAULT_COUNTRY_ID then
-                    Tcp.ShowBalloon(TransStr('113') + ': ' + Ip, TransStr('258'))
+                    Tcp.ShowBalloon(TransStr('113') + COLONSPACE + Ip, TransStr('258'))
                   else
-                    Tcp.ShowBalloon(TransStr('113') + ': ' + Ip + BR + '  ' + TransStr('114') + ': ' + TransStr(CountryCodes[CountryID]), TransStr('258'));
+                    Tcp.ShowBalloon(TransStr('113') + COLONSPACE + Ip + BR + TransStr('114') + COLONSPACE + TransStr(CountryCodes[CountryID]), TransStr('258'));
                   Tcp.btnChangeCircuit.Enabled := True;
                   Tcp.miChangeCircuit.Enabled := True;
                   Tcp.tmUpdateIp.Interval := Tcp.udMaxCircuitDirtiness.Position * 1000;
@@ -5132,8 +5132,8 @@ begin
       if (RouterInfo.IPv6Addr <> '') and (RouterInfo.IPv4Port <> RouterInfo.IPv6Port) then
       begin
         sgRouters.Hint :=
-          'IPv4: ' + IntToStr(RouterInfo.IPv4Port) + BR +
-          'IPv6: ' + IntToStr(RouterInfo.IPv6Port);
+          'IPv4' + COLONSPACE + IntToStr(RouterInfo.IPv4Port) + BR +
+          'IPv6' + COLONSPACE + IntToStr(RouterInfo.IPv6Port);
         Application.ActivateHint(Mouse.CursorPos);
         Exit;
       end;
@@ -10885,7 +10885,7 @@ begin
   ImmediateApplyOptions := TMenuItem(Sender).Hint = 'ApplyOptions';
   if ImmediateApplyOptions then
   begin
-    if not CheckOperationConfirmation(TransStr('286') + ': ' + TMenuItem(Sender).Caption) then
+    if not CheckOperationConfirmation(TransStr('286') + COLONSPACE + TMenuItem(Sender).Caption) then
       Exit;
   end;
   ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
@@ -14468,7 +14468,7 @@ begin
     sgCircuits.EndUpdateRows;
 
     lbCircuitsCount.Caption := Format(TransStr('349'), [CircuitsCount, CircuitsDic.Count]);
-    lbStreamsCount.Caption := TransStr('350') + ': ' + IntToStr(TotalConnections);
+    lbStreamsCount.Caption := TransStr('350') + COLONSPACE + IntToStr(TotalConnections);
 
     LockCircuits := False;
     CircuitsUpdated := False;
@@ -14552,12 +14552,12 @@ begin
       sgCircuitInfo.Cells[CIRC_INFO_PING, NodesCount] := PingData;
     end;
     lbCircuitPurpose.Caption := sgCircuits.Cells[CIRC_PURPOSE, sgCircuits.SelRow];
-    lbCircuitInfoTime.Caption := TransStr('221') + ': ' + DateTimeToStr(CircuitInfo.Date);
+    lbCircuitInfoTime.Caption := TransStr('221') + COLONSPACE + DateTimeToStr(CircuitInfo.Date);
   end
   else
   begin
     lbCircuitPurpose.Caption := TransStr('662');
-    lbCircuitInfoTime.Caption := TransStr('221') + ': ' + TransStr('110');
+    lbCircuitInfoTime.Caption := TransStr('221') + COLONSPACE + TransStr('110');
     CheckCircuitExists(CircID);
   end;
 
@@ -14615,7 +14615,7 @@ begin
       end;
     end;
     if UpdateStreamsCount and not sgCircuits.IsEmpty then
-      lbStreamsCount.Caption := TransStr('350') + ': ' + IntToStr(StreamsDic.Count);
+      lbStreamsCount.Caption := TransStr('350') + COLONSPACE + IntToStr(StreamsDic.Count);
   end;
 end;
 
@@ -14861,7 +14861,7 @@ begin
     end;
     sgStreams.EndUpdateRows;
     if not sgCircuits.IsEmpty then
-      lbStreamsCount.Caption := TransStr('350') + ': ' + IntToStr(StreamsDic.Count);
+      lbStreamsCount.Caption := TransStr('350') + COLONSPACE + IntToStr(StreamsDic.Count);
   end;
 end;
 
@@ -14901,7 +14901,7 @@ procedure TTcp.btnCreateProfileClick(Sender: TObject);
 var
   Input: string;
 begin
-  Input := InputBox(TransStr('265'), TransStr('266') + ':', '');
+  Input := InputBox(TransStr('265'), TransStr('266') + COLON, '');
   if Trim(Input) <> '' then
   begin
     CreateShortcut(ParamStr(0), '-profile="' + Input + '"', ExtractFileDir(ParamStr(0)),
@@ -15235,7 +15235,7 @@ begin
     lbTotalFallbackDirs.Caption := Format(TransStr('632'), [NumStr, FallbackCount]);
   end
   else
-    lbTotalFallbackDirs.Caption := TransStr('203') + ': ' + IntToStr(FallbackCount);
+    lbTotalFallbackDirs.Caption := TransStr('203') + COLONSPACE + IntToStr(FallbackCount);
   lbFavoritesFallbackDirs.Caption := IntToStr(UsedFallbackDirsCount)
 end;
 
@@ -15254,7 +15254,7 @@ begin
     lbTotalBridges.Caption := Format(TransStr('632'), [NumStr, BridgesCount])
   end
   else
-    lbTotalBridges.Caption := TransStr('203') + ': ' + IntToStr(BridgesCount);
+    lbTotalBridges.Caption := TransStr('203') + COLONSPACE + IntToStr(BridgesCount);
   lbFavoritesBridges.Caption := IntToStr(UsedBridgesCount);
 end;
 
@@ -15416,7 +15416,7 @@ end;
 
 procedure TTcp.UpdateTotalNodesList;
 begin
-  lbTotalNodesList.Caption := TransStr('203') + ': ' + IntToStr(meNodesList.Lines.Count);
+  lbTotalNodesList.Caption := TransStr('203') + COLONSPACE + IntToStr(meNodesList.Lines.Count);
 end;
 
 procedure TTcp.meNodesListChange(Sender: TObject);
@@ -15460,7 +15460,7 @@ end;
 
 procedure TTcp.meMyFamilyChange(Sender: TObject);
 begin
-  lbTotalMyFamily.Caption := TransStr('203') + ': ' + IntToStr(meMyFamily.Lines.Count);
+  lbTotalMyFamily.Caption := TransStr('203') + COLONSPACE + IntToStr(meMyFamily.Lines.Count);
   EnableOptionButtons;
 end;
 
@@ -18073,7 +18073,7 @@ end;
 
 procedure TTcp.meTrackHostExitsChange(Sender: TObject);
 begin
-  lbTotalHosts.Caption := TransStr('203') + ': ' + IntToStr(meTrackHostExits.Lines.Count);
+  lbTotalHosts.Caption := TransStr('203') + COLONSPACE + IntToStr(meTrackHostExits.Lines.Count);
   EnableOptionButtons;
 end;
 
@@ -20254,7 +20254,7 @@ begin
   end
   else
   begin
-    DataStr := TransStr('609') + ': ' + TransStr('226') + BR;
+    DataStr := TransStr('609') + COLONSPACE + TransStr('226') + BR;
   end;
   tiTray.Hint := Format(TransStr('106'), [DataStr, Tcp.lbUserDir.Caption]);
 end;
@@ -20386,7 +20386,7 @@ var
   IPv4Cidrs: TCidrValuePairs;
   i: Integer;
 begin
-  TemplateName := InputBox(TransStr('256'), TransStr('257') + ':', '');
+  TemplateName := InputBox(TransStr('256'), TransStr('257') + COLON, '');
   if Trim(TemplateName) <> '' then
   begin
     if Pos(';', TemplateName) = 0 then

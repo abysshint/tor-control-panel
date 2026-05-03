@@ -30,6 +30,7 @@ var
   LangIniFile: TMemIniFile;
   CurrentTranslate: string;
   CurrentLanguage: Word;
+  COLON, COLONSPACE: string;
 
 implementation
 
@@ -197,6 +198,24 @@ begin
   LangIniFile := TMemIniFile.Create(LangFile, TEncoding.UTF8);
   try
     LoadStr('Locale', '1049');
+    if ValidInt(TransStr('Locale'), 0, 65535) then
+      CurrentLanguage := StrToInt(TransStr('Locale'))
+    else
+      CurrentLanguage := GetSystemDefaultLangID;
+
+    case CurrentLanguage of
+      1028, 2052, 3076:
+      begin
+        COLON := '：';
+        COLONSPACE := '：';
+      end
+      else
+      begin
+        COLON := ':';
+        COLONSPACE := ': ';
+      end;
+    end;
+
     LoadStr('Translator', '');
     LoadStr('100', 'Старт');
     LoadStr('101', 'Запуск...');
@@ -517,8 +536,8 @@ begin
     Tcp.sbDecreaseForm.Hint := TransStr('328');
     Tcp.sbStayOnTop.Hint := Load('145', 'Оставаться поверх всех окон');
 
-    Tcp.lbExitIpCaption.Caption := TransStr('113') + ':';
-    Tcp.lbExitCountryCaption.Caption := TransStr('114') + ':';
+    Tcp.lbExitIpCaption.Caption := TransStr('113') + COLON;
+    Tcp.lbExitCountryCaption.Caption := TransStr('114') + COLON;
     Tcp.btnApplyOptions.Caption := Load('115', 'Применить');
     Tcp.btnCancelOptions.Caption := Load('116', 'Отмена');
     Tcp.UpdateScannerControls;
@@ -627,7 +646,7 @@ begin
     Tcp.sbBridgesFileReadOnly.Hint := Load('696', 'Режим "Только чтение"');
 
     Tcp.lbFilterMode.Caption := Load('162', 'Режим');
-    Tcp.lbFilterTotalSelected.Caption := TransStr('643') + ':';
+    Tcp.lbFilterTotalSelected.Caption := TransStr('643') + COLON;
     Tcp.imFilterEntry.Hint := TransStr('288');
     Tcp.imFilterMiddle.Hint := TransStr('289');
     Tcp.imFilterExit.Hint := TransStr('290');
@@ -676,7 +695,7 @@ begin
     Tcp.cbAssumeReachable.Caption := Load('433', 'Отключить проверку доступности сервера');
     Tcp.cbListenIPv6.Caption := Load('434', 'Прослушивать IPv6-адреса');
     Tcp.cbUseMyFamily.Caption := Load('435', 'Использовать семейство');
-    Tcp.lbTotalMyFamily.Caption := TransStr('203') + ': ' + IntToStr(Tcp.meMyFamily.Lines.Count);
+    Tcp.lbTotalMyFamily.Caption := TransStr('203') + COLONSPACE + IntToStr(Tcp.meMyFamily.Lines.Count);
 
     Tcp.lbHsName.Caption := Load('190', 'Название');
     Tcp.edHsName.TextHint := Load('191', 'Имя каталога');
@@ -693,8 +712,8 @@ begin
     Tcp.cbUseTrackHostExits.Caption := Load('201', 'Сохранять выходной узел для указанных адресов');
     Tcp.lbTrackHostExitsExpire.Caption := Load('202', 'Менять по истечении');
     Tcp.lbSeconds4.Caption := TranslateTime(0, TIME_SECOND, False, True);
-    Tcp.lbTotalHosts.Caption := TransStr('203') + ': ' + IntToStr(Tcp.meTrackHostExits.Lines.Count);
-    Tcp.lbTotalNodesList.Caption := TransStr('203') + ': ' + IntToStr(Tcp.meNodesList.Lines.Count);
+    Tcp.lbTotalHosts.Caption := TransStr('203') + COLONSPACE + IntToStr(Tcp.meTrackHostExits.Lines.Count);
+    Tcp.lbTotalNodesList.Caption := TransStr('203') + COLONSPACE + IntToStr(Tcp.meNodesList.Lines.Count);
     Tcp.meTrackHostExits.TextHint.Text := TransStr('208');
     Tcp.meNodesList.TextHint.Text := TransStr('209');
     Tcp.cbUseHiddenServiceVanguards.Caption := Load('437', 'Использовать авангарды для скрытых сервисов');
@@ -774,49 +793,49 @@ begin
     Tcp.cbAutoSelConfluxOnly.Caption := Load('196', 'Только с поддержкой Conflux');
 
     Tcp.gbTraffic.Caption := Load('211', 'Скорость');
-    Tcp.lbDownloadSpeedCaption.Caption := TransStr('212') + ':';
-    Tcp.lbUploadSpeedCaption.Caption := TransStr('213') + ':';
+    Tcp.lbDownloadSpeedCaption.Caption := TransStr('212') + COLON;
+    Tcp.lbUploadSpeedCaption.Caption := TransStr('213') + COLON;
     Tcp.lbDLSpeed.Caption := BytesFormat(DLSpeed) + '/' + TransStr('180');
     Tcp.lbULSpeed.Caption := BytesFormat(ULSpeed) + '/' + TransStr('180');
 
     Tcp.gbMaxTraffic.Caption := TransStr('175');
-    Tcp.lbMaxDLSpeedCaption.Caption := TransStr('212') + ':';
-    Tcp.lbMaxULSpeedCaption.Caption := TransStr('213') + ':';
+    Tcp.lbMaxDLSpeedCaption.Caption := TransStr('212') + COLON;
+    Tcp.lbMaxULSpeedCaption.Caption := TransStr('213') + COLON;
     Tcp.lbMaxDLSpeed.Caption := BytesFormat(MaxDLSpeed) + '/' + TransStr('180');
     Tcp.lbMaxULSpeed.Caption := BytesFormat(MaxULSpeed) + '/' + TransStr('180');
 
     Tcp.gbSession.Caption := Load('229', 'Итого за сеанс');
-    Tcp.lbSessionDLCaption.Caption := TransStr('214') + ':';
-    Tcp.lbSessionULCaption.Caption := TransStr('215') + ':';
+    Tcp.lbSessionDLCaption.Caption := TransStr('214') + COLON;
+    Tcp.lbSessionULCaption.Caption := TransStr('215') + COLON;
     Tcp.lbSessionDL.Caption := BytesFormat(SessionDL);
     Tcp.lbSessionUL.Caption := BytesFormat(SessionUL);
 
     Tcp.gbTotal.Caption := Load('403', 'Итого за всё время');
-    Tcp.lbTotalDLCaption.Caption := TransStr('214') + ':';
-    Tcp.lbTotalULCaption.Caption := TransStr('215') + ':';
+    Tcp.lbTotalDLCaption.Caption := TransStr('214') + COLON;
+    Tcp.lbTotalULCaption.Caption := TransStr('215') + COLON;
 
     Tcp.gbInfo.Caption := Load('222', 'Сведения');
-    Tcp.lbClientVersionCaption.Caption := Load('223', 'Версия клиента') + ':';
-    Tcp.lbUserDirCaption.Caption := Load('224', 'Профиль') + ':';
+    Tcp.lbClientVersionCaption.Caption := Load('223', 'Версия клиента') + COLON;
+    Tcp.lbUserDirCaption.Caption := Load('224', 'Профиль') + COLON;
     Tcp.lbClientVersion.Hint := Load('325', 'Перейти на страницу загрузки Tor');
     Tcp.lbUserDir.Hint := Load('227', 'Открыть папку профиля');
-    Tcp.lbStatusFilterModeCaption.Caption := Load('599', 'Режим фильтра') + ':';
+    Tcp.lbStatusFilterModeCaption.Caption := Load('599', 'Режим фильтра') + COLON;
     Tcp.lbStatusFilterMode.Hint := Load('600', 'Перейти в настройки фильтра');
-    Tcp.lbStatusSocksAddrCaption.Caption := TransStr('225') + ':';
+    Tcp.lbStatusSocksAddrCaption.Caption := TransStr('225') + COLON;
     Tcp.lbStatusSocksAddr.Hint := TransStr('228');
-    Tcp.lbStatusHttpAddrCaption.Caption := TransStr('593') + ':';
+    Tcp.lbStatusHttpAddrCaption.Caption := TransStr('593') + COLON;
     Tcp.lbStatusHttpAddr.Hint := TransStr('228');
-    Tcp.lbStatusScannerCaption.Caption := TransStr('444') + ':';
+    Tcp.lbStatusScannerCaption.Caption := TransStr('444') + COLON;
 
     Tcp.gbServerInfo.Caption := Load('216', 'Сервер');
-    Tcp.lbServerExternalIpCaption.Caption := Load('217', 'Внешний адрес') + ':';
-    Tcp.lbFingerprintCaption.Caption := Load('218', 'Идентификатор') + ':';
-    Tcp.lbBridgeCaption.Caption := Load('219', 'Адрес моста') + ':';
+    Tcp.lbServerExternalIpCaption.Caption := Load('217', 'Внешний адрес') + COLON;
+    Tcp.lbFingerprintCaption.Caption := Load('218', 'Идентификатор') + COLON;
+    Tcp.lbBridgeCaption.Caption := Load('219', 'Адрес моста') + COLON;
     if AlreadyStarted then
-      Tcp.lbCircuitInfoTime.Caption := TransStr('221') + ': ' + SeparateRight(Tcp.lbCircuitInfoTime.Caption, ': ')
+      Tcp.lbCircuitInfoTime.Caption := TransStr('221') + COLONSPACE + SeparateRight(Tcp.lbCircuitInfoTime.Caption, COLONSPACE)
     else
     begin
-      Tcp.lbCircuitInfoTime.Caption := TransStr('221') + ': ' + TransStr('110');
+      Tcp.lbCircuitInfoTime.Caption := TransStr('221') + COLONSPACE + TransStr('110');
       Tcp.lbClientVersion.Caption := TransStr('110');
       Tcp.lbServerExternalIp.Caption := TransStr('260');
       Tcp.lbFingerprint.Caption := TransStr('260');
@@ -830,7 +849,7 @@ begin
     Tcp.btnShowNodes.Caption := TransStr('547');
     LoadList(Tcp.cbxRoutersQuery, '548', '"Хэш","Ник","IPv4 адрес","IPv6 адрес","IPv4 порт","IPv6 порт","Версия","Пинг","Транспорт"');
     Tcp.edRoutersQuery.TextHint := Load('549', 'Введите запрос');
-    Tcp.lbFavoritesTotalSelected.Caption := TransStr('643') + ':';
+    Tcp.lbFavoritesTotalSelected.Caption := TransStr('643') + COLON;
     Tcp.sbFavoritesEntry.Hint := TransStr('288');
     Tcp.sbFavoritesMiddle.Hint := TransStr('289');
     Tcp.sbFavoritesExit.Hint := TransStr('290');
@@ -988,6 +1007,7 @@ begin
     Tcp.miTplLoadUA.Caption := TransStr('369');
     Tcp.miExcludeBridgesWhenCounting.Caption := Load('607', 'Исключить мосты при подсчёте узлов');
     Tcp.miResetFilterCountries.Caption := Load('685', 'Сбросить выбранные страны');
+    Tcp.miFilterExtractData.Caption := TransStr('669');
 
     Tcp.miChangeCircuit.Caption := TransStr('103');
     Tcp.miShowStatus.Caption := TransStr('282');
@@ -1145,11 +1165,6 @@ begin
     Tcp.miResetTotalsCounter.Caption := Load('487', 'Сбросить счётчик трафика');
     Tcp.miTotalsCounter.Caption := Load('612', 'Счётчик трафика');
     Tcp.miEnableTotalsCounter.Caption := Load('613', 'Включить подсчёт');
-
-    if ValidInt(TransStr('Locale'), 0, 65535) then
-      CurrentLanguage := StrToInt(TransStr('Locale'))
-    else
-      CurrentLanguage := GetSystemDefaultLangID;
 
     Tcp.lbExitCountry.Font.Style := [fsUnderline];
     Tcp.lbExitIp.Font.Style := [fsUnderline];
