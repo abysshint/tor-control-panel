@@ -235,7 +235,8 @@ var
   procedure GridKeyDown(aSg: TStringGrid; Shift: TShiftState; var Key: Word);
   procedure GridCheckAutoPopup(aSg: TStringGrid; ARow: Integer; AllowEmptyRows: Boolean = False);
   procedure GoToInvalidOption(PageID: TTabSheet; const Msg: string = ''; edComponent: TCustomEdit = nil);
-  procedure DeleteDuplicatesFromList(var ls: TStringList; ListType: TListType = ltNone);
+  procedure DeleteDuplicatesFromList(var ls: TStringList);
+  function DeleteDuplicatesFromSortedArray(const Arr: TArray<string>): TArray<string>;
   procedure SortList(var ls: TStringList; ListType: TListType; SortType: Byte);
   procedure SortHostsList(var ls: TStringList; SortType: Byte = SORT_ASC);
   procedure SortNodesList(var ls: TStringList; SortType: Byte = SORT_ASC);
@@ -2606,7 +2607,7 @@ begin
   end;
 end;
 
-procedure DeleteDuplicatesFromList(var ls: TStringList; ListType: TListType = ltNone);
+procedure DeleteDuplicatesFromList(var ls: TStringList);
 var
   Duplicates: THashSet<string>;
   List: TStringList;
@@ -2630,6 +2631,26 @@ begin
     Duplicates.Free;
     List.Free;
   end;
+end;
+
+function DeleteDuplicatesFromSortedArray(const Arr: TArray<string>): TArray<string>;
+var
+  i, j: Integer;
+begin
+  if Length(Arr) <= 1 then
+    Exit(Arr);
+  SetLength(Result, Length(Arr));
+  Result[0] := Arr[0];
+  j := 1;
+  for i := 1 to High(Arr) do
+  begin
+    if Arr[i] <> Result[j - 1] then
+    begin
+      Result[j] := Arr[i];
+      Inc(j);
+    end;
+  end;
+  SetLength(Result, j);
 end;
 
 procedure SortHostsList(var ls: TStringList; SortType: Byte = SORT_ASC);
@@ -2806,7 +2827,7 @@ begin
         end;
       end;
       if RemoveDuplicates then
-        DeleteDuplicatesFromList(ls, ListType);
+        DeleteDuplicatesFromList(ls);
       SortList(ls, ListType, SortType);
     end;
     Memo.SetTextData(ls.Text);
@@ -2869,7 +2890,7 @@ begin
           ls.Delete(i);
       end;
     end;
-    DeleteDuplicatesFromList(ls, ListType);
+    DeleteDuplicatesFromList(ls);
     SortList(ls, ListType, SortType);
     Memo.SetTextData(ls.Text);
   end;

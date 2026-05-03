@@ -6439,7 +6439,7 @@ begin
         if ls <> nil then
         begin
           try
-            DeleteDuplicatesFromList(ls, ltBridge);
+            DeleteDuplicatesFromList(ls);
             ini.EraseSection('Bridges');
             for i := 0 to ls.Count - 1 do
             begin
@@ -8138,6 +8138,7 @@ begin
     end;
   end;
   TArray.Sort<string>(Result, TComparer<string>.Construct(CompTextAsc));
+  Result := DeleteDuplicatesFromSortedArray(Result);
 end;
 
 procedure TTcp.SaveReachableAddresses(ini: TMemIniFile = nil);
