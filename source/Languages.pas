@@ -558,7 +558,7 @@ begin
     Tcp.cbLearnCircuitBuildTimeout.Caption := Load('136', 'Автоматически выбирать время на построение цепочки');
     Tcp.cbEnforceDistinctSubnets.Caption := Load('137', 'Не строить цепочки из узлов одной подсети');
     Tcp.cbAvoidDiskWrites.Caption := Load('138', 'Выполнять меньше операций с диском');
-    Tcp.cbStrictNodes.Caption := Load('318', 'Разрешить запрещённые узлы для внутренних цепочек');
+    Tcp.cbStrictNodes.Caption := Load('318', 'Не использовать запрещённые узлы для внутренних цепочек');
     Tcp.cbUseOpenDNS.Caption := Load('407', 'Определять внешний адрес сервера через OpenDNS');
     Tcp.cbUseOpenDNSOnlyWhenUnknown.Caption := Load('408', 'Только если TOR не может определить его сам');
     Tcp.cbUseNetworkCache.Caption := Load('409', 'Кэшировать IP-cc-запросы и результаты сетевого сканера');
@@ -579,7 +579,7 @@ begin
     Tcp.gbControlAuth.Caption := Load('412', 'Управление');
     Tcp.lbControlPort.Caption := Load('127', 'Порт');
     Tcp.lbAuthMetod.Caption := Load('128', 'Аутентификация');
-    LoadList(Tcp.cbxAuthMetod, '129', '"Cookie-файл","Пароль"');
+    LoadList(Tcp.cbxAuthMethod, '129', '"Cookie-файл","Пароль"');
     Tcp.lbControlPassword.Caption := TransStr('130');
     Tcp.sbGeneratePassword.Hint := Load('131', 'Сгенерировать случайный пароль');
 

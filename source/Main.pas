@@ -361,7 +361,7 @@ type
     udProxyPort: TUpDown;
     edSOCKSPort: TEdit;
     udSOCKSPort: TUpDown;
-    cbEnableSocks: TCheckBox;
+    cbUseSOCKS: TCheckBox;
     tsFilter: TTabSheet;
     lbFilterMode: TLabel;
     cbxFilterMode: TComboBox;
@@ -544,7 +544,7 @@ type
     lbControlPassword: TLabel;
     edControlPort: TEdit;
     udControlPort: TUpDown;
-    cbxAuthMetod: TComboBox;
+    cbxAuthMethod: TComboBox;
     edControlPassword: TEdit;
     gbInterface: TGroupBox;
     cbShowBalloonOnlyWhenHide: TCheckBox;
@@ -846,7 +846,7 @@ type
     tmTraffic: TTimer;
     cbAutoSelMiddleNodesWithoutDir: TCheckBox;
     lbUseBuiltInProxy: TLabel;
-    cbEnableHttp: TCheckBox;
+    cbUseHTTPTunnel: TCheckBox;
     cbxHTTPTunnelHost: TComboBox;
     edHTTPTunnelPort: TEdit;
     udHTTPTunnelPort: TUpDown;
@@ -1143,6 +1143,7 @@ type
     procedure CheckOpenPorts(PortSpin: TUpDown; const IP: string; var PortStr: string);
     procedure CheckServerControls;
     procedure CheckScannerControls;
+    procedure CheckAutoSelAfterScanControls;
     procedure CircuitInfoScrollCheck;
     procedure RoutersScrollCheck;
     procedure CheckShowRouters;
@@ -1212,7 +1213,7 @@ type
     procedure LoadServerTransportOptionsData(Data: TStringList);
     procedure SaveServerTransportOptions(const Key, Value: string; UpdateControls: Boolean = False);
     procedure LoadServerTransportOptions(const Key: string; UpdateControls: Boolean = False);
-    procedure LoadProxyPorts(PortControl: TUpdown; HostControl: TCombobox; EnabledControl: TCheckBox; ini: TMemIniFile);
+    procedure SaveProxyPorts(PortControl: TUpdown; HostControl: TCombobox; EnabledControl: TCheckBox; ini: TMemIniFile; LoadState: Boolean);
     procedure SaveReachableAddresses(ini: TMemIniFile = nil);
     function LoadPortsMapFromStr(const PortsData: string; const PortsMap: THashSet<Word>): TArray<string>;
     procedure SaveProxyData(var ini: TMemIniFile);
@@ -1410,7 +1411,7 @@ type
     procedure miStatAggregateClick(Sender: TObject);
     procedure sgFilterMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure sgFilterSelectCell(Sender: TObject; ACol, ARow: Integer; var CanSelect: Boolean);
-    procedure cbEnableSocksClick(Sender: TObject);
+    procedure cbUseSOCKSClick(Sender: TObject);
     procedure sgRoutersDrawCell(Sender: TObject; ACol, ARow: Integer; Rect: TRect; State: TGridDrawState);
     procedure miShowRoutersClick(Sender: TObject);
     procedure sgRoutersFixedCellClick(Sender: TObject; ACol, ARow: Integer);
@@ -1503,7 +1504,7 @@ type
     procedure edRoutersQueryKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure miAboutClick(Sender: TObject);
     procedure meNodesListExit(Sender: TObject);
-    procedure cbxAuthMetodChange(Sender: TObject);
+    procedure cbxAuthMethodChange(Sender: TObject);
     procedure cbxThemesChange(Sender: TObject);
     procedure cbxRoutersCountryChange(Sender: TObject);
     procedure cbxRoutersQueryChange(Sender: TObject);
@@ -1602,7 +1603,7 @@ type
     procedure miSelectGraphDLClick(Sender: TObject);
     procedure miSelectGraphULClick(Sender: TObject);
     procedure FormPaint(Sender: TObject);
-    procedure cbEnableHttpClick(Sender: TObject);
+    procedure cbUseHTTPTunnelClick(Sender: TObject);
     procedure lbStatusProxyAddrMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure SelectCheckIpProxy(Sender: TObject);
     procedure miOpenLogsFolderClick(Sender: TObject);
@@ -3095,9 +3096,9 @@ begin
 
     repeat
       Sleep(1);
-    until (Terminated = True) or (AuthStageReady(Tcp.cbxAuthMetod.ItemIndex) = True);
+    until (Terminated = True) or (AuthStageReady(Tcp.cbxAuthMethod.ItemIndex) = True);
 
-    case Tcp.cbxAuthMetod.ItemIndex of
+    case Tcp.cbxAuthMethod.ItemIndex of
       CONTROL_AUTH_COOKIE: AuthParam := FileGetString(UserDir + 'control_auth_cookie', True);
       CONTROL_AUTH_PASSWORD: AuthParam := '"' + Decrypt(ControlPassword, 'True') + '"';
     end;
@@ -5724,20 +5725,22 @@ end;
 
 procedure TTcp.CheckStatusControls;
 var
-  ServerIsBridge, ServerEnabled: Boolean;
+  ServerIsBridge, ServerEnabled, UseSocks, UseHttp: Boolean;
 begin
-  if UsedProxyType in [ptSocks, ptBoth] then
+  UseSocks := UsedProxyType in [ptSocks, ptBoth];
+  UseHttp := UsedProxyType in [ptHttp, ptBoth];
+  if UseSocks then
     lbStatusSocksAddr.Caption := FormatHost(GetHost(cbxSOCKSHost.Text)) + ':' + IntToStr(udSOCKSPort.Position)
   else
     lbStatusSocksAddr.Caption := TransStr('226');
-
-  if UsedProxyType in [ptHttp, ptBoth] then
+  if UseHttp then
     lbStatusHttpAddr.Caption := FormatHost(GetHost(cbxHttpTunnelHost.Text)) + ':' + IntToStr(udHttpTunnelPort.Position)
   else
     lbStatusHttpAddr.Caption := TransStr('226');
-
   CheckLabelEndEllipsis(lbStatusSocksAddr, 300, epPathEllipsis, False, True);
   CheckLabelEndEllipsis(lbStatusHttpAddr, 300, epPathEllipsis, False, True);
+  lbStatusSocksAddr.ShowHint := UseSocks;
+  lbStatusHttpAddr.ShowHint := UseHttp;
 
   ServerEnabled := cbxServerMode.ItemIndex > SERVER_MODE_NONE;
   ServerIsBridge := cbxServerMode.ItemIndex = SERVER_MODE_BRIDGE;
@@ -5971,9 +5974,9 @@ begin
       ControlsDisable(tsServer);
       edControlPort.Enabled := False;
       lbControlPort.Enabled := False;
-      cbxAuthMetod.Enabled := False;
+      cbxAuthMethod.Enabled := False;
       lbAuthMetod.Enabled := False;
-      if cbxAuthMetod.ItemIndex = CONTROL_AUTH_PASSWORD then
+      if cbxAuthMethod.ItemIndex = CONTROL_AUTH_PASSWORD then
       begin
         edControlPassword.Enabled := False;
         lbControlPassword.Enabled := False;
@@ -6097,9 +6100,9 @@ begin
       SetOptionsEnable(True);
     edControlPort.Enabled := True;
     lbControlPort.Enabled := True;
-    cbxAuthMetod.Enabled := True;
+    cbxAuthMethod.Enabled := True;
     lbAuthMetod.Enabled := True;
-    if cbxAuthMetod.ItemIndex = CONTROL_AUTH_PASSWORD then
+    if cbxAuthMethod.ItemIndex = CONTROL_AUTH_PASSWORD then
     begin
       edControlPassword.Enabled := True;
       lbControlPassword.Enabled := True;
@@ -6423,7 +6426,7 @@ begin
         else
           DeleteTorConfig(['TrackHostExits'], [cfFindComments]);
 
-        DataStr := GetTorConfig('TrackHostExitsExpire', '1800', [cfFindComments], ptInteger, Tcp.udTrackHostExitsExpire.Min, Tcp.udTrackHostExitsExpire.Max);
+        DataStr := GetTorConfig('TrackHostExitsExpire', '1800', [cfFindComments], ptInteger, udTrackHostExitsExpire.Min, udTrackHostExitsExpire.Max);
         SetSettings('Lists', 'TrackHostExitsExpire', StrToInt(DataStr), ini);
         if GetTorConfig('TrackHostExitsExpire', '0', [cfExistCheck]) = '0' then
           DeleteTorConfig(['TrackHostExitsExpire'], [cfFindComments]);
@@ -6447,25 +6450,19 @@ begin
           finally
             ls.Free;
           end;
-          SetSettings('Network', 'UseBridges', StrToBool(GetTorConfig('UseBridges', '0', [], ptBoolean)), ini);
+          SetSettings('Network', 'UseBridges', GetTorConfig('UseBridges', '0', [], ptBoolean), ini);
           SetSettings('Network', 'BridgesType', 1, ini);
           DeleteTorConfig(['Bridge'], [cfFindComments]);
         end;
 
-        if DataStr <> '' then
-        begin
-          ParseStr := DataStr.Split(['|']);
-
-        end;
-
-        SetSettings('Server', 'UseNumCPUs', StrToBool(GetTorConfig('NumCPUs', '0', [cfExistCheck])), ini);
+        SetSettings('Server', 'UseNumCPUs', GetTorConfig('NumCPUs', '0', [cfExistCheck]), ini);
         SetSettings('Server', 'UseRelayBandwidth', StrToBool(GetTorConfig('RelayBandwidthRate', '0', [cfExistCheck])) or StrToBool(GetTorConfig('RelayBandwidthBurst', '0', [cfExistCheck])) or StrToBool(GetTorConfig('MaxAdvertisedBandwidth', '0', [cfExistCheck])), ini);
-        SetSettings('Server', 'UseMaxMemInQueues', StrToBool(GetTorConfig('MaxMemInQueues', '0', [cfExistCheck])), ini);
-        SetSettings('Server', 'UseDirPort', StrToBool(GetTorConfig('DirPort', '0', [cfExistCheck])), ini);
-        SetSettings('Server', 'PublishServerDescriptor', StrToBool(GetTorConfig('PublishServerDescriptor', '1', [], ptBoolean)), ini);
-        SetSettings('Server', 'DirReqStatistics', StrToBool(GetTorConfig('DirReqStatistics', '1', [], ptBoolean)), ini);
-        SetSettings('Server', 'HiddenServiceStatistics', StrToBool(GetTorConfig('HiddenServiceStatistics', '1', [], ptBoolean)), ini);
-        SetSettings('Server', 'IPv6Exit', StrToBool(GetTorConfig('IPv6Exit', '0', [], ptBoolean)), ini);
+        SetSettings('Server', 'UseMaxMemInQueues', GetTorConfig('MaxMemInQueues', '0', [cfExistCheck]), ini);
+        SetSettings('Server', 'UseDirPort', GetTorConfig('DirPort', '0', [cfExistCheck]), ini);
+        SetSettings('Server', 'PublishServerDescriptor', GetTorConfig('PublishServerDescriptor', '1', [], ptBoolean), ini);
+        SetSettings('Server', 'DirReqStatistics', GetTorConfig('DirReqStatistics', '1', [], ptBoolean), ini);
+        SetSettings('Server', 'HiddenServiceStatistics', GetTorConfig('HiddenServiceStatistics', '1', [], ptBoolean), ini);
+        SetSettings('Server', 'IPv6Exit', GetTorConfig('IPv6Exit', '0', [], ptBoolean), ini);
 
         GetLocalInterfaces(cbxHsAddress);
         GetTorHs;
@@ -6687,6 +6684,25 @@ begin
         UpdateSettingsParsedData('Routers', 'CurrentFilter', ';', RF_QUERY_TYPE, 5, 7, 1, ini);
         UpdateSettingsParsedData('Routers', 'DefaultFilter', ';', RF_QUERY_TYPE, 5, 7, 1, ini);
         ConfigVersion := 16;
+      end;
+      if ConfigVersion = 16 then
+      begin
+        SetSettings('Log', 'LogLevel', GetIntDef(GetArrayIndex(LogLevels, LowerCase(SeparateLeft(GetTorConfig('Log', 'notice stdout'), ' '))), 2, 0, 4), ini);
+        SetSettings('Log', 'SafeLogging', GetTorConfig('SafeLogging', '1', [], ptBoolean), ini);
+        SetSettings('Main', 'AvoidDiskWrites', GetTorConfig('AvoidDiskWrites', '0', [], ptBoolean), ini);
+        SetSettings('Main', 'EnforceDistinctSubnets', GetTorConfig('EnforceDistinctSubnets', '1', [], ptBoolean), ini);
+        SetSettings('Main', 'StrictNodes', GetTorConfig('StrictNodes', '0', [], ptBoolean), ini);
+        SetSettings('Main', 'LearnCircuitBuildTimeout', GetTorConfig('LearnCircuitBuildTimeout', '1', [], ptBoolean), ini);
+        SetSettings('Main', 'CircuitBuildTimeout', GetTorConfig('CircuitBuildTimeout', '60', [], ptInteger, udCircuitBuildTimeout.Min, udCircuitBuildTimeout.Max), ini);
+        SetSettings('Main', 'MaxCircuitDirtiness', GetTorConfig('MaxCircuitDirtiness', '600', [], ptInteger, udMaxCircuitDirtiness.Min, udMaxCircuitDirtiness.Max), ini);
+        SetSettings('Main', 'NewCircuitPeriod', GetTorConfig('NewCircuitPeriod', '30', [], ptInteger, udNewCircuitPeriod.Min, udNewCircuitPeriod.Max), ini);
+        SetSettings('Main', 'SocksTimeout', GetTorConfig('SocksTimeout', '120', [], ptInteger, udSocksTimeout.Min, udSocksTimeout.Max), ini);
+        SetSettings('Main', 'MaxClientCircuitsPending', GetTorConfig('MaxClientCircuitsPending', '32', [], ptInteger, udMaxClientCircuitsPending.Min, udMaxClientCircuitsPending.Max), ini);
+        SetSettings('Main', 'ControlPort', GetTorConfig('ControlPort', '9051', [], ptInteger, udControlPort.Min, udControlPort.Max), ini);
+        SetSettings('Main', 'AuthMethod', BoolToStrDef((not StrToBool(GetTorConfig('CookieAuthentication', '0', [], ptBoolean)))), ini);
+        SetSettings('Network', 'UseSOCKS', BoolToStrDef(not ValidInt(GetTorConfig('SOCKSPort', '9050'), 0, 0)), ini);
+        SetSettings('Network', 'UseHTTPTunnel', BoolToStrDef(not ValidInt(GetTorConfig('HTTPTunnelPort', '9080'), 0, 0)), ini);
+        ConfigVersion := 17;
       end;
     end
     else
@@ -7983,7 +7999,7 @@ begin
     if AutoSave then
     begin
       ScanNewBridges := cbEnableDetectAliveNodes.Checked and cbUseBridges.Checked and cbScanNewBridges.Checked and (NewBridgesCount > 0) and (ConnectState = 0);
-      SetTorConfig('UseBridges', IntToStr(Integer(cbUseBridges.Checked)));
+      SetSettings('Network', cbUseBridges, ini, True);
       if cbUseBridges.Checked then
         AddTorConfig('Bridge', ls);
 
@@ -7996,7 +8012,6 @@ begin
         for i := 0 to meBridges.Lines.Count - 1 do
           SetSettings('Bridges', IntToStr(i), meBridges.Lines[i], ini);
       end;
-      SetSettings('Network', cbUseBridges, ini);
       SetSettings('Network', cbUsePreferredBridge, ini);
       SetSettings('Network', cbxBridgesList, ini, False);
       SetSettings('Network', cbxBridgesType, ini);
@@ -8179,92 +8194,43 @@ begin
   ReachableAddressesUpdated := False;
 end;
 
-procedure TTcp.LoadProxyPorts(PortControl: TUpdown; HostControl: TCombobox; EnabledControl: TCheckBox; ini: TMemIniFile);
+procedure TTcp.SaveProxyPorts(PortControl: TUpdown; HostControl: TCombobox; EnabledControl: TCheckBox; ini: TMemIniFile; LoadState: Boolean);
 var
-  Host, TempHost, Params, ParamStr, Data: string;
-  Port, DataCount, i: Integer;
-  Update: Boolean;
-  ParseStr: TArray<string>;
-  SocketInfo: TSocketInfo;
+  Host, ParamStr: string;
 begin
-  if FirstLoad then
+  if LoadState then
   begin
-    EnabledControl.ResetValue := EnabledControl.Checked;
-    PortControl.ResetValue := PortControl.Position;
-  end;
-  GetLocalInterfaces(HostControl);
-  Update := False;
-
-  ParamStr := StringReplace(PortControl.Name, 'ud', '', [rfIgnoreCase]);
-  Port := GetIntDef(GetSettings('Network', ParamStr, PortControl.ResetValue, ini), PortControl.ResetValue, PortControl.Min, PortControl.Max);
-  Host := RemoveBrackets(GetSettings('Network', StringReplace(HostControl.Name, 'cbx', '', [rfIgnoreCase]), LOOPBACK_ADDRESS, ini), btSquare);
-  if (ValidAddress(Host) = atNone) or (HostControl.Items.IndexOf(Host) = -1) then
-    Host := LOOPBACK_ADDRESS;
-
-  Params := '';
-  ParseStr := GetTorConfig(ParamStr, '').Split([' ']);
-  DataCount := Length(ParseStr);
-
-  if DataCount > 0 then
-    Data := ParseStr[0]
-  else
-    Data := '';
-
-  if DataCount > 1 then
-  begin
-    for i := 1 to High(ParseStr) do
-    begin
-      ParseStr[i] := Trim(ParseStr[i]);
-      if ParseStr[i] <> '' then
-        Params := Params + ' ' + ParseStr[i];
-    end;
-  end;
-  HostControl.Hint := Params;
-
-  if TryParseSocket(Data, SocketInfo) <> soNone then
-  begin
-    EnabledControl.Checked := True;
-    Port := SocketInfo.Port;
-    TempHost := SocketInfo.IpStr;
-    if HostControl.Items.IndexOf(TempHost) <> -1 then
-      Host := TempHost
-    else
-      Update := True;
+    GetSettings('Network', EnabledControl, ini);
+    GetSettings('Network', PortControl, ini);
+    Host := GetSettings('Network', StringReplace(HostControl.Name, 'cbx', '', [rfIgnoreCase]), LOOPBACK_ADDRESS, ini);
   end
   else
-  begin
-    if ValidInt(Data, 0, PortControl.Max) then
-    begin
-      EnabledControl.Checked := StrToBool(Data);
-      if StrToInt(Data) > 0 then
-      begin
-        Port := StrToInt(Data);
-        Host := LOOPBACK_ADDRESS;
-      end;
-    end
-    else
-      Update := True;
-  end;
-  HostControl.ItemIndex := HostControl.Items.IndexOf(Host);
-  PortControl.Position := Port;
-
-  if (Update or CheckSimilarPorts) and ((Data <> '') or EnabledControl.Checked) then
-    SetTorConfig(ParamStr, FormatHost(Host) + ':' + IntToStr(Port) + Params);
+    Host := '';
+  GetLocalInterfaces(HostControl, Host);
+  CheckSimilarPorts;
+  ParamStr := StringReplace(PortControl.Name, 'ud', '', [rfIgnoreCase]);
+  if EnabledControl.Checked then
+    SetTorConfig(ParamStr, FormatHost(HostControl.Text) + ':' + IntToStr(PortControl.Position))
+  else
+    DeleteTorConfig([ParamStr]);
+  SetSettings('Network', EnabledControl, ini);
+  SetSettings('Network', HostControl, ini, False, True);
+  SetSettings('Network', PortControl, ini);
 end;
 
 procedure TTcp.UpdateUsedProxyTypes(var ini: TMemIniFile);
 var
   UpdateControls: Boolean;
 begin
-  if cbEnableSocks.Checked and cbEnableHttp.Checked then
+  if cbUseSOCKS.Checked and cbUseHTTPTunnel.Checked then
     UsedProxyType := ptBoth
   else
   begin
-    if cbEnableSocks.Checked then
+    if cbUseSOCKS.Checked then
       UsedProxyType := ptSocks
     else
     begin
-      if cbEnableHttp.Checked then
+      if cbUseHTTPTunnel.Checked then
         UsedProxyType := ptHttp
       else
         UsedProxyType := ptNone;
@@ -8414,7 +8380,7 @@ end;
 
 function TTcp.ResetOptions: Integer;
 var
-  i, LogID, AutoSelNodesType: Integer;
+  i, AutoSelNodesType: Integer;
   ini, inidef: TMemIniFile;
   ScrollBars, SeparateType, LogAutoDelType: Byte;
   ParseStr: TArray<string>;
@@ -8676,17 +8642,10 @@ begin
       REQUEST_TYPE_WEBTUNNEL: miRequestWebTunnelBridges.Checked := True;
     end;
 
-    if FirstLoad then
-      cbxLogLevel.ResetValue := 2;
-    LogID := GetArrayIndex(LogLevels, LowerCase(SeparateLeft(GetTorConfig('Log', 'notice stdout', [cfAutoAppend]), ' ')));
-    if LogID <> -1 then
-      cbxLogLevel.ItemIndex := LogID
-    else
-    begin
-      cbxLogLevel.ItemIndex := 2;
-      SetTorConfig('Log', 'notice stdout');
-    end;
+    GetSettings('Log', cbxLogLevel, ini, 2);
+    SetTorConfig('Log', LogLevels[cbxLogLevel.ItemIndex] + ' stdout');
 
+    GetSettings('Main', cbxAuthMethod, ini);
     ControlPassword := GetSettings('Main', 'ControlPassword', '', ini);
     DataStr := GetSettings('Main', 'HashedControlPassword', '', ini);
     if DataStr = '' then
@@ -8696,38 +8655,40 @@ begin
     end;
     if (ControlPassword = '')then
     begin
-      SetTorConfig('CookieAuthentication', '1');
+      cbxAuthMethod.ItemIndex := CONTROL_AUTH_COOKIE;
       edControlPassword.Text := '';
     end
     else
       edControlPassword.Text := Decrypt(ControlPassword, 'True');
-    if GetTorConfig('CookieAuthentication', '0') = '1' then
-    begin
-      cbxAuthMetod.ItemIndex := CONTROL_AUTH_COOKIE;
-      DeleteTorConfig(['HashedControlPassword']);
-    end
-    else
-    begin
-      cbxAuthMetod.ItemIndex := CONTROL_AUTH_PASSWORD;
-      SetTorConfig('HashedControlPassword', DataStr);
+    case cbxAuthMethod.ItemIndex of
+      CONTROL_AUTH_COOKIE:
+      begin
+        SetTorConfig('CookieAuthentication', '1');
+        DeleteTorConfig(['HashedControlPassword']);
+      end;
+      CONTROL_AUTH_PASSWORD:
+      begin
+        SetTorConfig('HashedControlPassword', DataStr);
+        DeleteTorConfig(['CookieAuthentication']);
+      end;
     end;
     CheckAuthMetodContols;
 
-    GetSettings(sbSafeLogging);
-    GetSettings(cbLearnCircuitBuildTimeout);
-    GetSettings(cbAvoidDiskWrites);
-    GetSettings(cbStrictNodes, [cfBoolInvert]);
-    GetSettings(cbEnforceDistinctSubnets);
-    GetSettings(udMaxCircuitDirtiness);
-    GetSettings(udSocksTimeout);
-    GetSettings(udCircuitBuildTimeout);
-    GetSettings(udNewCircuitPeriod);
-    GetSettings(udMaxClientCircuitsPending);
-    GetSettings(udControlPort, [cfAutoAppend]);
+    GetSettings('Log', sbSafeLogging, ini, True);
+    GetSettings('Main', cbAvoidDiskWrites, ini, True);
+    GetSettings('Main', cbEnforceDistinctSubnets, ini, True);
+    GetSettings('Main', cbStrictNodes, ini, True);
+    GetSettings('Main', cbLearnCircuitBuildTimeout, ini, True);
+    GetSettings('Main', udCircuitBuildTimeout, ini, True);
+    GetSettings('Main', udMaxCircuitDirtiness, ini, True);
+    GetSettings('Main', udSocksTimeout, ini, True);
+    GetSettings('Main', udNewCircuitPeriod, ini, True);
+    GetSettings('Main', udMaxClientCircuitsPending, ini, True);
+    GetSettings('Main', udControlPort, ini, True);
 
     miCheckIpProxyType.Items[GetIntDef(GetSettings('Network', 'CheckIpProxyType', 0, ini), 0, 0, 2)].Checked := True;
-    LoadProxyPorts(udSOCKSPort, cbxSOCKSHost, cbEnableSocks, ini);
-    LoadProxyPorts(udHttpTunnelPort, cbxHttpTunnelHost, cbEnableHttp, ini);
+    SaveProxyPorts(udSOCKSPort, cbxSOCKSHost, cbUseSOCKS, ini, True);
+    SaveProxyPorts(udHttpTunnelPort, cbxHttpTunnelHost, cbUseHTTPTunnel, ini, True);
     UpdateUsedProxyTypes(ini);
 
     if ini.SectionExists('Transports') then
@@ -9220,7 +9181,7 @@ begin
         IntToStr(Item.Value.Router.Bandwidth) + '|' +
         Item.Value.Router.Version + '|' +
         IntToStr(Item.Value.Kind) + '|' +
-        IntToStr(Integer(rfV2Dir in Item.Value.Router.Flags)) +
+        BoolToStrDef(rfV2Dir in Item.Value.Router.Flags) +
         Transport +
         Params +
         Source
@@ -9343,6 +9304,12 @@ begin
       end;
 
       ParseStr := Transports.Split([',']);
+      if ParseStr = nil then
+      begin
+        ResultCode := 1;
+        Break;
+      end;
+
       for j := 0 to High(ParseStr) do
       begin
         Item := Trim(ParseStr[j]);
@@ -9788,7 +9755,7 @@ var
   IPv4Cidrs: TCidrValuePairs;
 
 begin
-  if (cbxAuthMetod.ItemIndex = CONTROL_AUTH_PASSWORD) and (CheckEditString(edControlPassword.Text, '', True, lbControlPassword.Caption, edControlPassword) <> '') then
+  if (cbxAuthMethod.ItemIndex = CONTROL_AUTH_PASSWORD) and (CheckEditString(edControlPassword.Text, '', True, lbControlPassword.Caption, edControlPassword) <> '') then
     Exit;
   if (cbxServerMode.ItemIndex > SERVER_MODE_NONE) and (CheckEditString(edNickname.Text, '', True, lbNickname.Caption, edNickname) <> '') then
     Exit;
@@ -9896,7 +9863,7 @@ begin
       IntToStr(meFallbackDirs.SortType), ini
     );
     edControlPassword.Hint := GetSettings('Main', 'HashedControlPassword', '', ini);
-    if cbxAuthMetod.ItemIndex = CONTROL_AUTH_PASSWORD then
+    if cbxAuthMethod.ItemIndex = CONTROL_AUTH_PASSWORD then
     begin
       if edControlPassword.Text <> '' then
       begin
@@ -9912,9 +9879,9 @@ begin
           SetTorConfig('HashedControlPassword', edControlPassword.Hint);
       end
       else
-        cbxAuthMetod.ItemIndex := CONTROL_AUTH_COOKIE;
+        cbxAuthMethod.ItemIndex := CONTROL_AUTH_COOKIE;
     end;
-    if cbxAuthMetod.ItemIndex = CONTROL_AUTH_COOKIE then
+    if cbxAuthMethod.ItemIndex = CONTROL_AUTH_COOKIE then
     begin
       SetTorConfig('CookieAuthentication', '1');
       if edControlPassword.Text <> '' then
@@ -9929,38 +9896,26 @@ begin
     else
       DeleteTorConfig(['CookieAuthentication']);
     SetSettings('Main', 'ControlPassword', ControlPassword, ini);
+    SetSettings('Main', cbxAuthMethod, ini);
     CheckAuthMetodContols;
 
     SetTorConfig('Log', LogLevels[cbxLogLevel.ItemIndex] + ' stdout');
+    SetSettings('Log', cbxLogLevel, ini);
 
-    SetTorConfig('SafeLogging', IntToStr(Integer(sbSafeLogging.Down)));
-    SetTorConfig('MaxCircuitDirtiness', IntToStr(udMaxCircuitDirtiness.Position));
-    SetTorConfig('SocksTimeout', IntToStr(udSocksTimeout.Position));
-    SetTorConfig('CircuitBuildTimeout', IntToStr(udCircuitBuildTimeout.Position));
-    SetTorConfig('MaxClientCircuitsPending', IntToStr(udMaxClientCircuitsPending.Position));
-    SetTorConfig('LearnCircuitBuildTimeout', IntToStr(Integer(cbLearnCircuitBuildTimeout.Checked)));
-    SetTorConfig('EnforceDistinctSubnets', IntToStr(Integer(cbEnforceDistinctSubnets.Checked)));
-    SetTorConfig('StrictNodes', IntToStr(Integer(not cbStrictNodes.Checked)));
-    SetTorConfig('NewCircuitPeriod', IntToStr(udNewCircuitPeriod.Position));
-    SetTorConfig('AvoidDiskWrites', IntToStr(Integer(cbAvoidDiskWrites.Checked)));
+    SetSettings('Main', udControlPort, ini, True);
+    SetSettings('Main', udMaxCircuitDirtiness, ini, True);
+    SetSettings('Main', udNewCircuitPeriod, ini, True);
+    SetSettings('Main', udSocksTimeout, ini, True);
+    SetSettings('Main', udCircuitBuildTimeout, ini, True);
+    SetSettings('Main', udMaxClientCircuitsPending, ini, True);
+    SetSettings('Main', cbLearnCircuitBuildTimeout, ini, True);
+    SetSettings('Main', cbEnforceDistinctSubnets, ini, True);
+    SetSettings('Main', cbStrictNodes, ini, True);
+    SetSettings('Main', cbAvoidDiskWrites, ini, True);
 
     UpdateUsedProxyTypes(ini);
-    GetLocalInterfaces(cbxSOCKSHost);
-    GetLocalInterfaces(cbxHTTPTunnelHost);
-    CheckSimilarPorts;
-    if UsedProxyType in [ptSocks, ptBoth] then
-      SetTorConfig('SOCKSPort', FormatHost(cbxSOCKSHost.Text) + ':' + IntToStr(udSOCKSPort.Position) + cbxSOCKSHost.Hint)
-    else
-      SetTorConfig('SOCKSPort', '0' + cbxSOCKSHost.Hint);
-    if UsedProxyType in [ptHttp, ptBoth] then
-      SetTorConfig('HTTPTunnelPort', FormatHost(cbxHTTPTunnelHost.Text) + ':' + IntToStr(udHTTPTunnelPort.Position) + cbxHTTPTunnelHost.Hint)
-    else
-      SetTorConfig('HTTPTunnelPort', '0' + cbxHTTPTunnelHost.Hint);
-    SetSettings('Network', cbxSOCKSHost, ini, False, True);
-    SetSettings('Network', udSOCKSPort, ini);
-    SetSettings('Network', cbxHTTPTunnelHost, ini, False, True);
-    SetSettings('Network', udHTTPTunnelPort, ini);
-    SetTorConfig('ControlPort', IntToStr(udControlPort.Position));
+    SaveProxyPorts(udSOCKSPort, cbxSOCKSHost, cbUseSOCKS, ini, False);
+    SaveProxyPorts(udHttpTunnelPort, cbxHttpTunnelHost, cbUseHTTPTunnel, ini, False);
 
     SaveReachableAddresses(ini);
     SaveProxyData(ini);
@@ -13108,11 +13063,11 @@ begin
       MyFamilyEnable(False);
     end;
 
-    SetTorConfig('PublishServerDescriptor', IntToStr(Integer(cbPublishServerDescriptor.Checked)));
-    SetTorConfig('DirReqStatistics', IntToStr(Integer(cbDirReqStatistics.Checked)));
-    SetTorConfig('HiddenServiceStatistics', IntToStr(Integer(cbHiddenServiceStatistics.Checked)));
-    SetTorConfig('DirCache', IntToStr(Integer(cbDirCache.Checked)));
-    SetTorConfig('AssumeReachable', IntToStr(Integer(cbAssumeReachable.Checked)));
+    SetTorConfig('PublishServerDescriptor', BoolToStrDef(cbPublishServerDescriptor.Checked));
+    SetTorConfig('DirReqStatistics', BoolToStrDef(cbDirReqStatistics.Checked));
+    SetTorConfig('HiddenServiceStatistics', BoolToStrDef(cbHiddenServiceStatistics.Checked));
+    SetTorConfig('DirCache', BoolToStrDef(cbDirCache.Checked));
+    SetTorConfig('AssumeReachable', BoolToStrDef(cbAssumeReachable.Checked));
   end;
   if edAddress.Text = '' then
     cbUseAddress.Checked := False;
@@ -14918,11 +14873,11 @@ begin
     FindInRouters(LastPreferBridgeID);
 end;
 
-procedure TTcp.cbEnableSocksClick(Sender: TObject);
+procedure TTcp.cbUseSOCKSClick(Sender: TObject);
 var
   State: Boolean;
 begin
-  State := cbEnableSocks.Checked;
+  State := cbUseSOCKS.Checked;
   edSOCKSPort.Enabled := State;
   udSOCKSPort.Enabled := State;
   cbxSOCKSHost.Enabled := State;
@@ -14988,6 +14943,16 @@ begin
   EnableOptionButtons;
 end;
 
+procedure TTCP.CheckAutoSelAfterScanControls;
+var
+  State, AutoSelState: Boolean;
+begin
+  State := cbAutoScanNewNodes.Checked and (cbEnablePingMeasure.Checked or cbEnableDetectAliveNodes.Checked);
+  AutoSelState := cbAutoSelEntryEnabled.Checked or cbAutoSelMiddleEnabled.Checked or cbAutoSelExitEnabled.Checked or cbAutoSelFallbackDirEnabled.Checked;
+  cbxAutoSelRoutersAfterScanType.Enabled := AutoSelState and State;
+  lbAutoSelRoutersAfterScanType.Enabled := AutoSelState and State;
+end;
+
 procedure TTcp.CheckScannerControls;
 var
   PingState, AliveState, State, AutoState, TypeState: Boolean;
@@ -14997,7 +14962,6 @@ begin
   State := PingState or AliveState;
   AutoState := State and cbAutoScanNewNodes.Checked;
   TypeState := cbxAutoScanType.ItemIndex <> AUTOSCAN_NEW;
-
   edFullScanInterval.Enabled := AutoState;
   edPartialScanInterval.Enabled := AutoState and TypeState;
   edPartialScansCounts.Enabled := AutoState and TypeState;
@@ -15037,11 +15001,10 @@ begin
   lbScanPortionTimeout.Enabled := State;
   lbMiliseconds4.Enabled := State;
   lbScanPortionSize.Enabled := State;
-  lbAutoSelRoutersAfterScanType.Enabled := AutoState;
   lbAutoScanType.Enabled := AutoState;
-  cbxAutoSelRoutersAfterScanType.Enabled := AutoState;
   cbxAutoScanType.Enabled := AutoState;
   cbAutoScanNewNodes.Enabled := State;
+  CheckAutoSelAfterScanControls;
 
   if PingState and AliveState then
   begin
@@ -15190,11 +15153,11 @@ begin
   end;
 end;
 
-procedure TTcp.cbEnableHttpClick(Sender: TObject);
+procedure TTcp.cbUseHTTPTunnelClick(Sender: TObject);
 var
   State: Boolean;
 begin
-  State := cbEnableHttp.Checked;
+  State := cbUseHTTPTunnel.Checked;
   edHTTPTunnelPort.Enabled := State;
   udHTTPTunnelPort.Enabled := State;
   cbxHTTPTunnelHost.Enabled := State;
@@ -15764,7 +15727,7 @@ procedure TTcp.CheckAuthMetodContols;
 var
   State: Boolean;
 begin
-  State := cbxAuthMetod.ItemIndex = CONTROL_AUTH_PASSWORD;
+  State := cbxAuthMethod.ItemIndex = CONTROL_AUTH_PASSWORD;
   edControlPassword.PasswordChar := '*';
   edControlPassword.Enabled := State;
   lbControlPassword.Enabled := State;
@@ -15784,7 +15747,7 @@ begin
   EnableOptionButtons;
 end;
 
-procedure TTcp.cbxAuthMetodChange(Sender: TObject);
+procedure TTcp.cbxAuthMethodChange(Sender: TObject);
 begin
   CheckAuthMetodContols;
   EnableOptionButtons;
@@ -15827,7 +15790,6 @@ begin
   udAutoSelMaxPing.Enabled := State;
   cbxAutoSelPriority.Enabled := State;
   cbxAutoSelUniqueType.Enabled := State;
-  cbxAutoSelRoutersAfterScanType.Enabled := State and cbAutoScanNewNodes.Checked;
   sbAutoSelUniqueByNodeType.Enabled := UniqueState;
   sbAutoSelUniqueByNodeType.ShowHint := UniqueState;
   cbAutoSelConfluxOnly.Enabled := ExitState and SupportConflux and (cbxUseConflux.ItemIndex <> CONFLUX_TYPE_DISABLED);
@@ -15846,7 +15808,7 @@ begin
   lbMiliseconds5.Enabled := State;
   lbAutoSelMinWeight.Enabled := State;
   lbAutoSelMaxPing.Enabled := State;
-  lbAutoSelRoutersAfterScanType.Enabled := State and cbAutoScanNewNodes.Checked;
+  CheckAutoSelAfterScanControls
 end;
 
 procedure TTcp.cbxBridgesListChange(Sender: TObject);
@@ -16006,13 +15968,11 @@ var
 begin
   if not cbxLogLevel.Focused then
     Exit;
-  if cbxLogLevel.ItemIndex in [0..Length(LogLevels) - 1] then
-  begin
-    DataStr := LogLevels[cbxLogLevel.ItemIndex];
-    ResetFocus;
-    SendCommand('SETCONF Log=' + DataStr);
-    SetTorConfig('Log', DataStr + ' stdout', [cfAutoSave]);
-  end;
+  ResetFocus;
+  DataStr := LogLevels[cbxLogLevel.ItemIndex];
+  SendCommand('SETCONF Log=' + DataStr);
+  SetTorConfig('Log', DataStr + ' stdout', [cfAutoSave]);
+  SetConfigInteger('Log', 'LogLevel', cbxLogLevel.ItemIndex);
 end;
 
 procedure TTcp.MyFamilyEnable(State: Boolean);
@@ -16764,9 +16724,10 @@ procedure TTcp.sbSafeLoggingClick(Sender: TObject);
 var
   DataStr: string;
 begin
-  DataStr := IntToStr(Integer(sbSafeLogging.Down));
-  SetTorConfig('SafeLogging', DataStr, [cfAutoSave]);
+  DataStr := BoolToStrDef(sbSafeLogging.Down);
   SendCommand('SETCONF SafeLogging=' + DataStr);
+  SetTorConfig('SafeLogging', DataStr, [cfAutoSave]);
+  SetConfigBoolean('Log', 'SafeLogging', sbSafeLogging.Down);
 end;
 
 procedure TTcp.sbShowCircuitsClick(Sender: TObject);

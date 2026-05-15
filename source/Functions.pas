@@ -253,23 +253,19 @@ var
   procedure ShellOpen(const Url: string);
   procedure SetMaskData(var Mask: Integer; CheckBoxControl: TCheckBox);
   procedure GetMaskData(var Mask: Integer; CheckBoxControl: TCheckBox);
-  procedure GetSettings(const Section: string; UpDownControl: TUpDown; ini: TMemIniFile); overload;
-  procedure GetSettings(const Section: string; CheckBoxControl: TCheckBox; ini: TMemIniFile); overload;
+  procedure GetSettings(const Section: string; UpDownControl: TUpDown; ini: TMemIniFile; SaveTor: Boolean = False); overload;
+  procedure GetSettings(const Section: string; CheckBoxControl: TCheckBox; ini: TMemIniFile; SaveTor: Boolean = False); overload;
   procedure GetSettings(const Section: string; MenuControl: TMenuItem; ini: TMemIniFile; Default: Boolean = True); overload;
   procedure GetSettings(const Section: string; ComboBoxControl: TComboBox; ini: TMemIniFile; Default: Integer = 0); overload;
   procedure GetSettings(const Section: string; EditControl: TEdit; ini: TMemIniFile); overload;
-  procedure GetSettings(const Section: string; SpeedButtonControl: TSpeedButton; ini: TMemIniFile); overload;
-  procedure GetSettings(UpDownControl: TUpDown; Flags: TConfigFlags = []); overload;
-  procedure GetSettings(CheckBoxControl: TCheckBox; Flags: TConfigFlags = []); overload;
-  procedure GetSettings(SpeedButtonControl: TSpeedButton; Flags: TConfigFlags = []); overload;
-  procedure GetSettings(MenuControl: TMenuItem; Flags: TConfigFlags = []; Default: Boolean = True); overload;
-  procedure SetSettings(const Section: string; UpDownControl: TUpDown; ini: TMemIniFile); overload;
-  procedure SetSettings(const Section: string; CheckBoxControl: TCheckBox; ini: TMemIniFile); overload;
+  procedure GetSettings(const Section: string; SpeedButtonControl: TSpeedButton; ini: TMemIniFile; SaveTor: Boolean = False); overload;
+  procedure SetSettings(const Section: string; UpDownControl: TUpDown; ini: TMemIniFile; SaveTor: Boolean = False); overload;
+  procedure SetSettings(const Section: string; CheckBoxControl: TCheckBox; ini: TMemIniFile; SaveTor: Boolean = False); overload;
   procedure SetSettings(const Section: string; SpeedButtonControl: TSpeedButton; ini: TMemIniFile); overload;
   procedure SetSettings(const Section: string; MenuControl: TMenuItem; ini: TMemIniFile); overload;
   procedure SetSettings(const Section: string; ComboBoxControl: TComboBox; ini: TMemIniFile; SaveIndex: Boolean = True; UseFormatHost: Boolean = False); overload;
   procedure SetSettings(const Section: string; EditControl: TEdit; ini: TMemIniFile); overload;
-  procedure SetSettings(const Section, Ident, Value: string; ini: TMemIniFile); overload;
+  procedure SetSettings(const Section, Ident, Value: string; ini: TMemIniFile; SaveTor: Boolean = False); overload;
   procedure SetSettings(const Section, Ident: string; Value: Integer; ini: TMemIniFile); overload;
   procedure SetSettings(const Section, Ident: string; Value: Int64; ini: TMemIniFile); overload;
   procedure SetSettings(const Section, Ident: string; Value: Boolean; ini: TMemIniFile); overload;
@@ -1965,7 +1961,7 @@ begin
   end;
 end;
 
-procedure GetSettings(const Section: string; UpDownControl: TUpDown; ini: TMemIniFile);
+procedure GetSettings(const Section: string; UpDownControl: TUpDown; ini: TMemIniFile; SaveTor: Boolean = False);
 var
   Value: Integer;
   Ident: string;
@@ -1973,36 +1969,45 @@ begin
   if FirstLoad then
     UpDownControl.ResetValue := UpDownControl.Position;
   Ident := StringReplace(UpDownControl.Name, 'ud', '', [rfIgnoreCase]);
-
   Value := ini.ReadInteger(Section, Ident, UpDownControl.ResetValue);
   if InRange(Value, UpDownControl.Min, UpDownControl.Max) then
     UpDownControl.Position := Value
   else
     UpDownControl.Position := UpDownControl.ResetValue;
+  if SaveTor then
+    SetTorConfig(Ident, IntToStr(UpDownControl.Position));
 end;
 
-procedure SetSettings(const Section: string; UpDownControl: TUpDown; ini: TMemIniFile); overload;
+procedure SetSettings(const Section: string; UpDownControl: TUpDown; ini: TMemIniFile; SaveTor: Boolean = False); overload;
+var
+  Ident: string;
 begin
-  ini.WriteInteger(Section, StringReplace(UpDownControl.Name, 'ud', '', [rfIgnoreCase]), UpDownControl.Position)
+  Ident := StringReplace(UpDownControl.Name, 'ud', '', [rfIgnoreCase]);
+  ini.WriteInteger(Section, Ident, UpDownControl.Position);
+  if SaveTor then
+    SetTorConfig(Ident, IntToStr(UpDownControl.Position));
 end;
 
-procedure GetSettings(UpDownControl: TUpDown; Flags: TConfigFlags = []);
-begin
-  if FirstLoad then
-    UpDownControl.ResetValue := UpDownControl.Position;
-  UpDownControl.Position := StrToInt(GetTorConfig(StringReplace(UpDownControl.Name, 'ud', '', [rfIgnoreCase]), IntToStr(UpDownControl.ResetValue), Flags, ptInteger, UpDownControl.Min, UpDownControl.Max));
-end;
-
-procedure GetSettings(const Section: string; CheckBoxControl: TCheckBox; ini: TMemIniFile);
+procedure GetSettings(const Section: string; CheckBoxControl: TCheckBox; ini: TMemIniFile; SaveTor: Boolean = False);
+var
+  Ident: string;
 begin
   if FirstLoad then
     CheckBoxControl.ResetValue := CheckBoxControl.Checked;
-  CheckBoxControl.Checked := ini.ReadBool(Section, StringReplace(CheckBoxControl.Name, 'cb', '', [rfIgnoreCase]), CheckBoxControl.ResetValue)
+  Ident := StringReplace(CheckBoxControl.Name, 'cb', '', [rfIgnoreCase]);
+  CheckBoxControl.Checked := ini.ReadBool(Section, Ident, CheckBoxControl.ResetValue);
+  if SaveTor then
+    SetTorConfig(Ident, BoolToStrDef(CheckBoxControl.Checked));
 end;
 
-procedure SetSettings(const Section: string; CheckBoxControl: TCheckBox; ini: TMemIniFile);
+procedure SetSettings(const Section: string; CheckBoxControl: TCheckBox; ini: TMemIniFile; SaveTor: Boolean = False);
+var
+  Ident: string;
 begin
-  ini.WriteBool(Section, StringReplace(CheckBoxControl.Name, 'cb', '', [rfIgnoreCase]), CheckBoxControl.Checked);
+  Ident := StringReplace(CheckBoxControl.Name, 'cb', '', [rfIgnoreCase]);
+  ini.WriteBool(Section, Ident, CheckBoxControl.Checked);
+  if SaveTor then
+    SetTorConfig(Ident, BoolToStrDef(CheckBoxControl.Checked));
 end;
 
 procedure SetSettings(const Section: string; SpeedButtonControl: TSpeedButton; ini: TMemIniFile);
@@ -2010,25 +2015,16 @@ begin
   ini.WriteBool(Section, StringReplace(SpeedButtonControl.Name, 'sb', '', [rfIgnoreCase]), SpeedButtonControl.Down);
 end;
 
-procedure GetSettings(CheckBoxControl: TCheckBox; Flags: TConfigFlags = []);
-begin
-  if FirstLoad then
-    CheckBoxControl.ResetValue := CheckBoxControl.Checked;
-  CheckBoxControl.Checked := StrToBool(GetTorConfig(StringReplace(CheckBoxControl.Name, 'cb', '', [rfIgnoreCase]), BoolToStrDef(CheckBoxControl.ResetValue), Flags, ptBoolean));
-end;
-
-procedure GetSettings(SpeedButtonControl: TSpeedButton; Flags: TConfigFlags = []); overload;
+procedure GetSettings(const Section: string; SpeedButtonControl: TSpeedButton; ini: TMemIniFile; SaveTor: Boolean = False);
+var
+  Ident: string;
 begin
   if FirstLoad then
     SpeedButtonControl.ResetValue := SpeedButtonControl.Down;
-  SpeedButtonControl.Down := StrToBool(GetTorConfig(StringReplace(SpeedButtonControl.Name, 'sb', '', [rfIgnoreCase]), BoolToStrDef(SpeedButtonControl.ResetValue), Flags, ptBoolean));
-end;
-
-procedure GetSettings(const Section: string; SpeedButtonControl: TSpeedButton; ini: TMemIniFile);
-begin
-  if FirstLoad then
-    SpeedButtonControl.ResetValue := SpeedButtonControl.Down;
-  SpeedButtonControl.Down := ini.ReadBool(Section, StringReplace(SpeedButtonControl.Name, 'sb', '', [rfIgnoreCase]), SpeedButtonControl.ResetValue)
+  Ident := StringReplace(SpeedButtonControl.Name, 'sb', '', [rfIgnoreCase]);
+  SpeedButtonControl.Down := ini.ReadBool(Section, Ident, SpeedButtonControl.ResetValue);
+  if SaveTor then
+    SetTorConfig(Ident, BoolToStrDef(SpeedButtonControl.Down));
 end;
 
 procedure GetSettings(const Section: string; MenuControl: TMenuItem; ini: TMemIniFile; Default: Boolean = True);
@@ -2041,14 +2037,11 @@ begin
   ini.WriteBool(Section, StringReplace(MenuControl.Name, 'cb', '', [rfIgnoreCase]), MenuControl.Checked);
 end;
 
-procedure GetSettings(MenuControl: TMenuItem; Flags: TConfigFlags = []; Default: Boolean = True);
+procedure SetSettings(const Section, Ident, Value: string; ini: TMemIniFile; SaveTor: Boolean = False);
 begin
-  MenuControl.Checked := StrToBool(GetTorConfig(StringReplace(MenuControl.Name, 'mi', '', [rfIgnoreCase]), BoolToStrDef(Default), Flags, ptBoolean));
-end;
-
-procedure SetSettings(const Section, Ident, Value: string; ini: TMemIniFile);
-begin
-  ini.WriteString(Section, Ident, Value)
+  ini.WriteString(Section, Ident, Value);
+  if SaveTor then
+    SetTorConfig(Ident, Value);
 end;
 
 procedure SetSettings(const Section, Ident: string; Value: Integer; ini: TMemIniFile);
@@ -2341,15 +2334,8 @@ begin
               if not ValidInt(Result, MinValue, MaxValue) then
                 Reset;
             ptBoolean:
-            begin
               if not ValidInt(Result, 0, 1) then
-                Reset
-              else
-              begin
-                if cfBoolInvert in Flags then
-                  Result := BoolToStrDef(not StrToBool(Result));
-              end;
-            end;
+                Reset;
           end;
           Break;
         end;
@@ -2358,11 +2344,7 @@ begin
   end;
 
   if not Search then
-  begin
     Result := Default;
-    if cfAutoAppend in Flags then
-      AddOptionToIndex(Config, InsensParam, Config.Data.Add(Param + ' ' + Default), False);
-  end;
   if cfAutoSave in Flags then
     SaveConfig(Config);
 end;
@@ -4078,6 +4060,8 @@ var
   IpStr: string;
 begin
   Result := atNone;
+  if AddrStr = '' then
+    Exit;
   Search := Pos('/', AddrStr);
   if Search = 0 then
   begin

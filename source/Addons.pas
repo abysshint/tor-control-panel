@@ -17,6 +17,7 @@ type
   TSpeedButton = class(Vcl.Buttons.TSpeedButton)
   public
     ResetValue: Boolean;
+    procedure MouseDown(Button: TMouseButton; Shift: TShiftState;X, Y: Integer); override;
   end;
 
   TUpDown = class (Vcl.ComCtrls.TUpDown)
@@ -262,6 +263,19 @@ begin
     end;
   end;
   inherited;
+end;
+
+procedure TSpeedButton.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited;
+  if Button = mbMiddle then
+  begin
+    if (Down <> ResetValue) and AllowAllUp then
+    begin
+      Down := ResetValue;
+      Click;
+    end;
+  end;
 end;
 
 procedure TEdit.WMPaint(var Message: TWMPaint);

@@ -1411,7 +1411,7 @@ object Tcp: TTcp
           Thousands = False
           OnChanging = SpinChanging
         end
-        object cbxAuthMetod: TComboBox
+        object cbxAuthMethod: TComboBox
           Left = 284
           Top = 12
           Width = 116
@@ -1423,7 +1423,7 @@ object Tcp: TTcp
           ParentDoubleBuffered = False
           TabOrder = 2
           Text = 'Cookie-'#1092#1072#1081#1083
-          OnChange = cbxAuthMetodChange
+          OnChange = cbxAuthMethodChange
           Items.Strings = (
             'Cookie-'#1092#1072#1081#1083
             #1055#1072#1088#1086#1083#1100)
@@ -1855,9 +1855,7 @@ object Tcp: TTcp
           Top = 177
           Width = 385
           Height = 17
-          Caption = #1056#1072#1079#1088#1077#1096#1080#1090#1100' '#1079#1072#1087#1088#1077#1097#1105#1085#1085#1099#1077' '#1091#1079#1083#1099' '#1076#1083#1103' '#1074#1085#1091#1090#1088#1077#1085#1085#1080#1093' '#1094#1077#1087#1086#1095#1077#1082
-          Checked = True
-          State = cbChecked
+          Caption = #1053#1077' '#1080#1089#1087#1086#1083#1100#1079#1086#1074#1072#1090#1100' '#1079#1072#1087#1088#1077#1097#1105#1085#1085#1099#1077' '#1091#1079#1083#1099' '#1076#1083#1103' '#1074#1085#1091#1090#1088#1077#1085#1085#1080#1093' '#1094#1077#1087#1086#1095#1077#1082
           TabOrder = 12
           OnClick = OptionsChange
         end
@@ -2460,7 +2458,7 @@ object Tcp: TTcp
         Thousands = False
         OnChanging = SpinChanging
       end
-      object cbEnableSocks: TCheckBox
+      object cbUseSOCKS: TCheckBox
         Left = 535
         Top = 31
         Width = 50
@@ -2469,7 +2467,7 @@ object Tcp: TTcp
         Checked = True
         State = cbChecked
         TabOrder = 2
-        OnClick = cbEnableSocksClick
+        OnClick = cbUseSOCKSClick
       end
       object cbxBridgesType: TComboBox
         Left = 49
@@ -2526,14 +2524,14 @@ object Tcp: TTcp
         TabOrder = 37
         OnClick = btnFindPreferredBridgeClick
       end
-      object cbEnableHttp: TCheckBox
+      object cbUseHTTPTunnel: TCheckBox
         Left = 535
         Top = 55
         Width = 50
         Height = 17
         Caption = 'HTTP'
         TabOrder = 6
-        OnClick = cbEnableHttpClick
+        OnClick = cbUseHTTPTunnelClick
       end
       object cbxHTTPTunnelHost: TComboBox
         Left = 588
@@ -5746,6 +5744,7 @@ object Tcp: TTcp
     Top = 1
     object miCacheOperations: TMenuItem
       Caption = #1054#1087#1077#1088#1072#1094#1080#1080' '#1089' '#1082#1101#1096#1077#1084
+      ImageIndex = 50
       object miClearDNSCache: TMenuItem
         Caption = #1054#1095#1080#1089#1090#1080#1090#1100' DNS-'#1082#1101#1096
         OnClick = miClearDNSCacheClick
@@ -5793,6 +5792,7 @@ object Tcp: TTcp
     end
     object miStartScan: TMenuItem
       Caption = #1047#1072#1087#1091#1089#1090#1080#1090#1100' '#1089#1082#1072#1085#1080#1088#1086#1074#1072#1085#1080#1077
+      ImageIndex = 56
       object miScanNewNodes: TMenuItem
         Tag = 1
         Caption = #1053#1086#1074#1099#1077' '#1091#1079#1083#1099
@@ -5848,6 +5848,7 @@ object Tcp: TTcp
     end
     object miResetGuards: TMenuItem
       Caption = #1057#1073#1088#1086#1089#1080#1090#1100' '#1089#1090#1086#1088#1086#1078#1077#1074#1099#1077' '#1091#1079#1083#1099
+      ImageIndex = 40
       object miResetGuardsAll: TMenuItem
         Tag = 4
         Caption = #1042#1089#1077' '#1089#1090#1086#1088#1086#1078#1077#1074#1099#1077' '#1091#1079#1083#1099
@@ -5877,6 +5878,7 @@ object Tcp: TTcp
     end
     object miCheckIpProxyType: TMenuItem
       Caption = #1055#1088#1086#1082#1089#1080' '#1076#1083#1103' '#1087#1088#1086#1074#1077#1088#1082#1080' IP-'#1072#1076#1088#1077#1089#1072
+      ImageIndex = 25
       object miCheckIpProxyAuto: TMenuItem
         Caption = #1042#1099#1073#1080#1088#1072#1090#1100' '#1072#1074#1090#1086#1084#1072#1090#1080#1095#1077#1089#1082#1080
         Checked = True
@@ -7394,6 +7396,7 @@ object Tcp: TTcp
     Top = 1
     object miTrafficPeriod: TMenuItem
       Caption = #1055#1077#1088#1080#1086#1076
+      ImageIndex = 58
       object miPeriod1m: TMenuItem
         Caption = '1 '#1084#1080#1085'.'
         RadioItem = True
@@ -7451,6 +7454,7 @@ object Tcp: TTcp
     end
     object miSelectGraph: TMenuItem
       Caption = #1055#1086#1082#1072#1079#1099#1074#1072#1090#1100' '#1075#1088#1072#1092#1080#1082#1080
+      ImageIndex = 24
       object miSelectGraphDL: TMenuItem
         AutoCheck = True
         Caption = #1047#1072#1075#1088#1091#1079#1082#1072
@@ -7469,6 +7473,7 @@ object Tcp: TTcp
     end
     object miTotalsCounter: TMenuItem
       Caption = #1057#1095#1105#1090#1095#1080#1082' '#1090#1088#1072#1092#1080#1082#1072
+      ImageIndex = 69
       object miEnableTotalsCounter: TMenuItem
         AutoCheck = True
         Caption = #1042#1082#1083#1102#1095#1080#1090#1100' '#1087#1086#1076#1089#1095#1105#1090

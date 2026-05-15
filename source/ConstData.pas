@@ -35,7 +35,7 @@ const
 
   LOOPBACK_ADDRESS = '127.0.0.1';
 
-  CURRENT_CONFIG_VERSION = 16;
+  CURRENT_CONFIG_VERSION = 17;
   MAX_SPEED_DATA_LENGTH = 24 * 60 * 60;
   BUFSIZE = 1024 * 1024;
 
@@ -487,7 +487,7 @@ type
   TScanPurpose = (spNone, spNew, spFailed, spUserBridges, spUserFallbackDirs, spAll, spNewAndFailed, spNewAndAlive, spNewAndBridges, spBridges, spGuards, spAlive, spNewBridges, spAuto, spSelected);
   TProxyType = (ptNone, ptSocks, ptHttp, ptBoth);
   TBracketsType = (btCurly, btSquare, btRound);
-  TConfigFlag = (cfAutoAppend, cfAutoSave, cfFindComments, cfExistCheck, cfBoolInvert, cfDeleteBlankLines, cfParamWithSpace);
+  TConfigFlag = (cfAutoSave, cfFindComments, cfExistCheck, cfDeleteBlankLines, cfParamWithSpace);
   TConfigFlags = set of TConfigFlag;
   TRouterFlag = (rfAuthority, rfBadExit, rfExit, rfFast, rfGuard, rfHSDir, rfStable, rfV2Dir, rfBridge, rfRelay, rfMiddleOnly, rfNoBridgeRelay);
   TRouterFlags = set of TRouterFlag;
