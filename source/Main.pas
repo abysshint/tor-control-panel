@@ -1104,7 +1104,8 @@ type
     function CloseCircuitInternal(const CircuitID: string): Boolean;
     procedure CloseCircuit(const CircuitID: string; AutoUpdate: Boolean = True);
     procedure CloseStreams(const CircuitID: string; CloseType: TCloseType);
-    function CheckFilesChanged: Boolean;
+    function CheckFilesAndOptionsChanged: Boolean;
+    function CheckNetIntChanged: Boolean;
     procedure LoadNetworkCache;
     procedure SaveNetworkCache(AutoSave: Boolean = True);
     procedure LoadBridgesCache;
@@ -1172,6 +1173,7 @@ type
     procedure IncreaseFormSize;
     procedure SetDownState;
     procedure InitPortForwarding(Test: Boolean);
+    procedure UpdateNetworkInterfaces(ComboBox: TComboBox; UseGlobalInterface: Boolean = True; const RecentHost: string = '');
     procedure ResetFocus;
     procedure ScanStart(ScanType: TScanType; ScanPurpose: TScanPurpose);
     procedure ScanNetwork(ScanType: TScanType; ScanPurpose: TScanPurpose);
@@ -2632,7 +2634,7 @@ begin
       end;
       if ls[i].StartsWith('a ') then
       begin
-        if TryParseSocket(Copy(ls[i], 3), SocketInfo) = soIPv6 then
+        if TryParseSocket(Copy(ls[i], 3), SocketInfo) = atIPv6 then
         begin
           Router.IPv6Addr := SocketInfo.IpStr;
           Router.IPv6Port := SocketInfo.Port;
@@ -2791,6 +2793,7 @@ var
   BridgeRelay, UpdateFromDesc, DifferSource: Boolean;
   GeoIpInfo: TGeoIpInfo;
   SocketInfo: TSocketInfo;
+  SourceAddrType: TAddressType;
 
   procedure LoadDesc(const FileName: string);
   var
@@ -2881,11 +2884,12 @@ var
       end;
     end;
     DifferSource := False;
-    case ValidAddress(SourceAddr) of
+    SourceAddrType := ValidAddress(SourceAddr);
+    case SourceAddrType of
       atIPv4: DifferSource := SourceAddr <> RouterInfo.IPv4Addr;
       atIPv6: DifferSource := SourceAddr <> RouterInfo.IPv6Addr;
     end;
-    if DifferSource and IpInReservedRanges(SourceAddr, rtDoc) then
+    if DifferSource and IpInReservedRanges(SourceAddr, rtDoc, SourceAddrType) then
     begin
       BridgeInfo.Source := SourceAddr;
       CompBridgesDic.AddOrSetValue(SourceAddr, RouterID);
@@ -2975,7 +2979,7 @@ begin
         end;
         if ls[i].StartsWith('or-address ') then
         begin
-          if TryParseSocket(Copy(ls[i], 12), SocketInfo) = soIPv6 then
+          if TryParseSocket(Copy(ls[i], 12), SocketInfo) = atIPv6 then
           begin
             DescRouter.IPv6Addr := SocketInfo.IpStr;
             DescRouter.IPv6Port := SocketInfo.Port;
@@ -5639,25 +5643,52 @@ begin
   end;
 end;
 
+procedure TTcp.UpdateNetworkInterfaces(ComboBox: TComboBox; UseGlobalInterface: Boolean = True; const RecentHost: string = '');
+var
+  NetInt: TStringList;
+  Host: string;
+begin
+  NetInt := TStringList.Create;
+  try
+    GetLocalInterfaces(NetInt, UseGlobalInterface, cbHideIPv6Addreses.Checked);
+    if RecentHost = '' then
+      Host := Combobox.Text
+    else
+      Host := RemoveBrackets(RecentHost, btSquare);
+    ComboBox.items := NetInt;
+    ComboBox.ItemIndex := ComboBox.Items.IndexOf(Host);
+    if ComboBox.ItemIndex = -1 then
+      ComboBox.ItemIndex := 0;
+  finally
+    NetInt.Free;
+  end;
+end;
+
 procedure TTcp.InitPortForwarding(Test: Boolean);
 var
   i: Integer;
+  ls: TStringList;
 begin
-  UPnPMsg := '';
-  GetLocalInterfaces(cbxSOCKSHost);
   if (cbxServerMode.ItemIndex > SERVER_MODE_NONE) and (cbUseUPnP.Checked) then
   begin
-    for i := 0 to cbxSOCKSHost.items.Count - 1 do
-    begin
-      if not IpInReservedRanges(cbxSOCKSHost.Items[i], rtPrivate) then
-        Continue;
-      AddUPnPEntry(udORPort.Position, 'ORPort', cbxSOCKSHost.Items[i], Test, UPnPMsg);
-      udORPort.Tag := udORPort.Position;
-      if (cbxServerMode.ItemIndex = SERVER_MODE_BRIDGE) and (cbxBridgeType.ItemIndex > 0) then
+    UPnPMsg := '';
+    ls := TStringList.Create;
+    try
+      GetLocalInterfaces(ls, False, cbHideIPv6Addreses.Checked);
+      for i := 0 to ls.Count - 1 do
       begin
-        AddUPnPEntry(udTransportPort.Position, 'PTPort', cbxSOCKSHost.Items[i], Test, UPnPMsg);
-        udTransportPort.Tag := udTransportPort.Position;
+        if not IpInReservedRanges(ls[i], rtPrivate) then
+          Continue;
+        AddUPnPEntry(udORPort.Position, 'ORPort', ls[i], Test, UPnPMsg);
+        udORPort.Tag := udORPort.Position;
+        if (cbxServerMode.ItemIndex = SERVER_MODE_BRIDGE) and (cbxBridgeType.ItemIndex > 0) then
+        begin
+          AddUPnPEntry(udTransportPort.Position, 'PTPort', ls[i], Test, UPnPMsg);
+          udTransportPort.Tag := udTransportPort.Position;
+        end;
       end;
+    finally
+      ls.Free;
     end;
   end;
 end;
@@ -5806,12 +5837,42 @@ begin
   end;
 end;
 
-function TTcp.CheckFilesChanged: Boolean;
+function TTcp.CheckNetIntChanged: Boolean;
+var
+  ls: TStringList;
+  ParseStr, ParsePort: TArray<string>;
+  i, j: Integer;
+begin
+  ls := TStringList.Create;
+  try
+    GetLocalInterfaces(ls, True, cbHideIPv6Addreses.Checked);
+    if ls.IndexOf(cbxSOCKSHost.Text) < 0 then
+      Exit(True);
+    if ls.IndexOf(cbxHTTPTunnelHost.Text) < 0 then
+      Exit(True);
+    for i := 1 to sgHs.RowCount - 1 do
+    begin
+      ParseStr := sgHs.Cells[HS_PORTS_DATA, i].Split(['|']);
+      for j := 0 to High(ParseStr) do
+      begin
+        ParsePort := ParseStr[j].Split([',']);
+        if (ls.IndexOf(ParsePort[0]) < 0) then
+          Exit(True);
+      end;
+    end;
+    Result := False;
+  finally
+    ls.Free;
+  end;
+end;
+
+function TTcp.CheckFilesAndOptionsChanged: Boolean;
 var
   TorrcChanged, PathChanged, DefaultsChanged,
   BridgesChanged, FallbackDirsChanged, TransportsChanged,
-  NeedReset: Boolean;
+  NetIntChanged, NeedReset: Boolean;
 begin
+  NetIntChanged := CheckNetIntChanged;
   DefaultsChanged := DefaultsFileID <> GetFileID(DefaultsFile).Data;
   TorrcChanged := TorrcFileID <> GetFileID(TorConfigFile).Data;
   PathChanged := not CheckRequiredFiles;
@@ -5820,7 +5881,7 @@ begin
   BridgesChanged := (FailedBridgesCount > 0) or (AlreadyStarted and (NewBridgesCount > 0)) or
      ((cbxBridgesType.ItemIndex = BRIDGES_TYPE_FILE) and (BridgeFileID <> GetFileID(BridgesFileName).Data)) or NeedUpdateBridges;
 
-  NeedReset := TorrcChanged or PathChanged or BridgesChanged or DefaultsChanged or FallbackDirsChanged or TransportsChanged;
+  NeedReset := TorrcChanged or PathChanged or BridgesChanged or DefaultsChanged or FallbackDirsChanged or TransportsChanged or NetIntChanged;
   if OptionsChanged or NeedReset then
   begin
     if Restarting or NeedReset then
@@ -5875,7 +5936,7 @@ begin
 
   if StartMsg = 0 then
   begin
-    if not CheckFilesChanged then
+    if not CheckFilesAndOptionsChanged then
       Exit;
     PortStr := '';
     OptionsLocked := True;
@@ -6464,7 +6525,7 @@ begin
         SetSettings('Server', 'HiddenServiceStatistics', GetTorConfig('HiddenServiceStatistics', '1', [], ptBoolean), ini);
         SetSettings('Server', 'IPv6Exit', GetTorConfig('IPv6Exit', '0', [], ptBoolean), ini);
 
-        GetLocalInterfaces(cbxHsAddress);
+        UpdateNetworkInterfaces(cbxHsAddress, False);
         GetTorHs;
         SaveHiddenServices(ini);
 
@@ -6798,7 +6859,7 @@ begin
       end;
       if Length(ParseStr) > 1 then
       begin
-        if TryParseSocket(ParseStr[1], SocketInfo) <> soNone then
+        if TryParseSocket(ParseStr[1], SocketInfo) <> atNone then
         begin
           Address := SocketInfo.IpStr;
           RealPort := IntToStr(SocketInfo.Port);
@@ -7642,9 +7703,9 @@ begin
         begin
           if rfRelay in RouterInfo.Flags then
           begin
-            case Bridge.SocketType of
-              soIPv4: cdRelay := (RouterInfo.IPv4Port = Bridge.Port) and (Bridge.Ip = RouterInfo.IPv4Addr);
-              soIPv6: cdRelay := (RouterInfo.IPv6Port = Bridge.Port) and (Bridge.Ip = RouterInfo.IPv6Addr);
+            case Bridge.AddressType of
+              atIPv4: cdRelay := (RouterInfo.IPv4Port = Bridge.Port) and (Bridge.Ip = RouterInfo.IPv4Addr);
+              atIPv6: cdRelay := (RouterInfo.IPv6Port = Bridge.Port) and (Bridge.Ip = RouterInfo.IPv6Addr);
               else
                 cdRelay := False;
             end;
@@ -7680,9 +7741,9 @@ begin
           Inc(SuitableBridgesCount);
           if cdAlive and (Cached or ConsensusNode) and not SpecialAddr then
           begin
-            case Bridge.SocketType of
-              soIPv4: IPv4Bridges.AddOrSetValue(HashStr, Bridge);
-              soIPv6:
+            case Bridge.AddressType of
+              atIPv4: IPv4Bridges.AddOrSetValue(HashStr, Bridge);
+              atIPv6:
               begin
                 BridgeData.Data := Bridge;
                 BridgeData.DataStr := Data[i];
@@ -8206,7 +8267,7 @@ begin
   end
   else
     Host := '';
-  GetLocalInterfaces(HostControl, Host);
+  UpdateNetworkInterfaces(HostControl, True, Host);
   CheckSimilarPorts;
   ParamStr := StringReplace(PortControl.Name, 'ud', '', [rfIgnoreCase]);
   if EnabledControl.Checked then
@@ -8864,7 +8925,7 @@ begin
     HsToDelete := nil;
     sgHs.Clear;
     sgHsPorts.Clear;
-    GetLocalInterfaces(cbxHsAddress);
+    UpdateNetworkInterfaces(cbxHsAddress, False);
     if LoadHiddenServices(ini) = 0 then
       UpdateHs
     else
@@ -9753,7 +9814,6 @@ var
   sbFilterEntry, sbFilterMiddle, sbFilterExit,
   sbFavoritesEntry, sbFavoritesMiddle, sbFavoritesExit, sbExcludeNodes: TStringBuilder;
   IPv4Cidrs: TCidrValuePairs;
-
 begin
   if (cbxAuthMethod.ItemIndex = CONTROL_AUTH_PASSWORD) and (CheckEditString(edControlPassword.Text, '', True, lbControlPassword.Caption, edControlPassword) <> '') then
     Exit;
@@ -10047,7 +10107,7 @@ begin
     SavePaddingOptions(ini);
     SaveConfluxOptions(ini);
 
-    GetLocalInterfaces(cbxHsAddress);
+    UpdateNetworkInterfaces(cbxHsAddress, False);
     SaveHiddenServices(ini);
     SaveTrackHostExits(ini);
 
@@ -11345,7 +11405,7 @@ begin
         begin
           PortStr := IntToStr(BridgeInfo.Router.IPv4Port);
         end;
-      atIPv6:
+        atIPv6:
         begin
           IpStr := FormatHost(BridgeInfo.Source, False);
           PortStr := IntToStr(BridgeInfo.Router.IPv6Port);
@@ -12142,7 +12202,7 @@ begin
                     PortData := IntToStr(Bridge.Port);
                     if Bridge.Hash <> '' then
                       FormatData(HashStr, HashCount, Bridge.Hash, EXTRACT_HASH);
-                    if Bridge.SocketType = soIPv4 then
+                    if Bridge.AddressType = atIPv4 then
                     begin
                       FormatData(IPv4PortStr, IPv4PortCount, PortData, EXTRACT_IPV4_PORT);
                       FormatData(IPv4CountryCodeStr, IPv4CountryCodeCount, CountryCodes[GetCountryValue(Bridge.Ip)], EXTRACT_IPV4_COUNTRY_CODE);
@@ -12441,7 +12501,7 @@ end;
 procedure TTcp.lbStatusProxyAddrMouseMove(Sender: TObject; Shift: TShiftState;
   X, Y: Integer);
 begin
-  if ValidSocket(TLabel(Sender).Caption) <> soNone then
+  if ValidSocket(TLabel(Sender).Caption) <> atNone then
     TLabel(Sender).Cursor := crHandPoint
   else
     TLabel(Sender).Cursor := crDefault;
@@ -12456,7 +12516,7 @@ procedure TTcp.paButtonsDblClick(Sender: TObject);
 begin
   if FormSize = 1 then
   begin
-    if CheckFilesChanged then
+    if CheckFilesAndOptionsChanged then
       DecreaseFormSize;
   end
   else
@@ -15928,7 +15988,7 @@ end;
 
 procedure TTcp.cbxHsAddressDropDown(Sender: TObject);
 begin
-  GetLocalInterfaces(cbxHsAddress);
+  UpdateNetworkInterfaces(cbxHsAddress, False);
 end;
 
 procedure TTcp.CheckHsVersion;
@@ -16323,7 +16383,7 @@ end;
 
 procedure TTcp.cbxProxyHostDropDown(Sender: TObject);
 begin
-  GetLocalInterfaces(TComboBox(Sender));
+  UpdateNetworkInterfaces(TComboBox(Sender));
 end;
 
 procedure TTcp.cbxThemesChange(Sender: TObject);
@@ -16683,7 +16743,7 @@ end;
 
 procedure TTcp.sbDecreaseFormClick(Sender: TObject);
 begin
-  if CheckFilesChanged then
+  if CheckFilesAndOptionsChanged then
     DecreaseFormSize;
 end;
 

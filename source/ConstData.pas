@@ -464,7 +464,6 @@ type
   TGeoIpType = (gitNone, gitIPv4, gitIPv6, gitBoth);
   TCloseType = (ctCircuit, ctTarget, ctStream);
   TAddressType = (atNone, atIPv4, atIPv6, atIPv4Cidr, atIPv6Cidr);
-  TSocketType = (soNone, soIPv4, soIPv6);
   TTargetType = (ttNone, ttNormal, ttExit, ttOnion);
   THostType = (htNone, htDomain, htIPv4, htIPv6, htRoot);
   TEditMenuType = (emCopy, emCut, emPaste, emSelectAll, emClear, emDelete, emFind);
@@ -491,7 +490,7 @@ type
     hStdOutput: THandle;
   end;
 
-  TIPRangeType = (rtNone, rtAny, rtLoopback, rtPrivate, rtDoc);
+  TIPRangeType = (rtNone, rtAny, rtLoopback, rtPrivate, rtDoc, rtLinkLocal, rtBenchmark);
   TIPRangeTypes = set of TIPRangeType;
   TStaticRanges = record
     Cidr: string;
@@ -570,24 +569,26 @@ var
     '%ProgramDir%\Tor\PluggableTransports\'
   );
 
-  ReservedRanges: array [0..17] of TStaticRanges = (
+  ReservedRanges: array [0..19] of TStaticRanges = (
     (Cidr: '0.0.0.0/8'; AddrType: atIPv4Cidr; Group: rtAny),
     (Cidr: '10.0.0.0/8'; AddrType: atIPv4Cidr; Group: rtPrivate),
     (Cidr: '127.0.0.0/8'; AddrType: atIPv4Cidr; Group: rtLoopback),
     (Cidr: '100.64.0.0/10'; AddrType: atIPv4Cidr; Group: rtPrivate),
-    (Cidr: '169.254.0.0/16'; AddrType: atIPv4Cidr; Group: rtPrivate),
+    (Cidr: '169.254.0.0/16'; AddrType: atIPv4Cidr; Group: rtLinkLocal),
     (Cidr: '172.16.0.0/12'; AddrType: atIPv4Cidr; Group: rtPrivate),
     (Cidr: '192.168.0.0/16'; AddrType: atIPv4Cidr; Group: rtPrivate),
     (Cidr: '192.0.2.0/24'; AddrType: atIPv4Cidr; Group: rtDoc),
+    (Cidr: '198.18.0.0/15'; AddrType: atIPv4Cidr; Group: rtBenchmark),
     (Cidr: '198.51.100.0/24'; AddrType: atIPv4Cidr; Group: rtDoc),
     (Cidr: '203.0.113.0/24'; AddrType: atIPv4Cidr; Group: rtDoc),
     (Cidr: '233.252.0.0/24'; AddrType: atIPv4Cidr; Group: rtDoc),
     (Cidr: '::/128'; AddrType: atIPv6Cidr; Group: rtAny),
     (Cidr: '::1/128'; AddrType: atIPv6Cidr; Group: rtLoopback),
+    (Cidr: '2001:2::/48'; AddrType: atIPv6Cidr; Group: rtBenchmark),
     (Cidr: '2001:db8::/32'; AddrType: atIPv6Cidr; Group: rtDoc),
     (Cidr: '3fff::/20'; AddrType: atIPv6Cidr; Group: rtDoc),
     (Cidr: 'fc00::/7'; AddrType: atIPv6Cidr; Group: rtPrivate),
-    (Cidr: 'fe80::/10'; AddrType: atIPv6Cidr; Group: rtPrivate),
+    (Cidr: 'fe80::/10'; AddrType: atIPv6Cidr; Group: rtLinkLocal),
     (Cidr: 'fec0::/10'; AddrType: atIPv6Cidr; Group: rtPrivate)
   );
 

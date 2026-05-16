@@ -38,7 +38,7 @@ type
     Ip: string;
     Port: Word;
     Hash: string;
-    SocketType: TSocketType;
+    AddressType: TAddressType;
     Transport: string;
     Params: string;
   end;
@@ -133,8 +133,9 @@ var
   function GetBridgeCert: string;
   function InsensPosEx(const SubStr, S: string; Offset: Integer = 1): Integer;
   function HasBrackets(const Str: string; BracketsType: TBracketsType): Boolean;
-  function GetAddressType(const IpStr: string; UseCidr: Boolean = False): TAddressType;
-  function IpInReservedRanges(const IpStr: string; RangeType: TIPRangeType): Boolean;
+  function GetAddressType(const IpStr: string): TAddressType;
+  function IpInReservedRanges(const IpStr: string; RangeType: TIPRangeType): Boolean; overload;
+  function IpInReservedRanges(const IpStr: string; RangeType: TIPRangeType; AddressType: TAddressType): Boolean; overload;
   function IpToMask(const IpStr: string; Mask: Byte): string;
   function IsIPv4(const IpStr: string): Boolean;
   function IsIPv6(const IpStr: string): Boolean;
@@ -151,11 +152,11 @@ var
   function ValidHost(const HostStr: string; AllowRootDomain: Boolean = False; AllowIp: Boolean = True; ReqBrackets: Boolean = False; DenySpecialDomains: Boolean = True): THostType;
   function ValidBridge(const BridgeStr: string; StrictTransport: Boolean = False): Boolean;
   function ValidTransport(const TransportStr: string; StrictTransport: Boolean = False): Boolean;
-  function ValidSocket(const SocketStr: string): TSocketType;
+  function ValidSocket(const SocketStr: string): TAddressType;
   function ValidPolicy(const PolicyStr: string): Boolean;
   function ValidFallbackDir(const FallbackStr: string): Boolean;
   function GetMsgCaption(const Caption: string; MsgType: TMsgType): string;
-  function TryParseSocket(const SocketStr: string; out SocketInfo: TSocketInfo): TSocketType;
+  function TryParseSocket(const SocketStr: string; out SocketInfo: TSocketInfo): TAddressType;
   function TryParseBridge(const BridgeStr: string; out Bridge: TBridge; Validate: Boolean = True): Boolean;
   function TryParseFallbackDir(const FallbackStr: string; out FallbackDir: TFallbackDir; Validate: Boolean = True): Boolean;
   function TryParseTarget(const TargetStr: string; out Target: TTarget): Boolean;
@@ -220,7 +221,7 @@ var
   procedure UpdateConfigFile(ini: TMemIniFile);
   procedure CheckLabelEndEllipsis(lbComponent: TLabel; MaxWidth: Integer; EllipsisType: TEllipsisPosition; UseHint: Boolean; IgnoreFormSize: Boolean);
   procedure sgSort(aSg: TStringGrid; aCol: Integer; aCompare: TStringListSortCompare);
-  procedure GetLocalInterfaces(ComboBox: TComboBox; const RecentHost: string = '');
+  procedure GetLocalInterfaces(out ls: TStringList; UseGlobalInterface: Boolean = True; HideIPv6: Boolean = False);
   procedure GridDrawIcon(aSg: TStringGrid; Rect: TRect; ls: TImageList; Index: Integer; W: Integer = 16; H: Integer = 16);
   procedure GridDrawSortArrows(aSg: TStringGrid; Rect: TRect);
   procedure GridSetKeyboardLayout(aSg: TStringGrid; ACol: Integer);
@@ -447,11 +448,11 @@ begin
     CompBridgesDic.TryGetValue(Bridge.Ip, BridgeID);
   if BridgesDic.TryGetValue(BridgeID, BridgeInfo) then
   begin
-    case Bridge.SocketType of
-    soIPv4:
+    case Bridge.AddressType of
+    atIPv4:
       if Bridge.Port = BridgeInfo.Router.IPv4Port then
         Result := BridgeInfo.Router.IPv4Addr;
-    soIPv6:
+    atIPv6:
       if Bridge.Port = BridgeInfo.Router.IPv6Port then
         Result := BridgeInfo.Router.IPv6Addr;
     end;
@@ -464,11 +465,11 @@ begin
     begin
       if rfRelay in RouterInfo.Flags then
       begin
-        case Bridge.SocketType of
-        soIPv4:
+        case Bridge.AddressType of
+        atIPv4:
           if Bridge.Port = RouterInfo.IPv4Port then
             Result := RouterInfo.IPv4Addr;
-        soIPv6:
+        atIPv6:
           if Bridge.Port = RouterInfo.IPv6Port then
             Result := RouterInfo.IPv6Addr;
         end;
@@ -483,7 +484,7 @@ begin
     if GetPortsValue(GeoIpInfo.ports, Bridge.Port) < PORT_DEAD then
       Exit;
   end;
-  if IpInReservedRanges(Bridge.Ip, rtDoc) then
+  if IpInReservedRanges(Bridge.Ip, rtDoc, Bridge.AddressType) then
     Result := '';
 end;
 
@@ -2146,6 +2147,8 @@ begin
       Config.Data.Delete(i);
 
   Config.Data.SaveToFile(Config.FileName, Config.Encoding);
+  if Config.FileName = tc.FileName then
+    TorrcFileID := GetFileID(tc.FileName, True).Data;
   FreeAndNil(Config.Data);
   FreeAndNil(Config.Idx);
 end;
@@ -2153,7 +2156,6 @@ end;
 procedure SaveTorConfig;
 begin
   SaveConfig(tc, [cfDeleteBlankLines]);
-  TorrcFileID := GetFileID(tc.FileName, True).Data;
 end;
 
 function GetOptionName(const Line: string; out IsComment: Boolean; FindComments: Boolean = False): string;
@@ -2741,7 +2743,7 @@ begin
     ltPolicy: Result := ValidPolicy(Str);
     ltBridge: Result := ValidBridge(Str);
     ltNode: Result := ValidNode(Str, Validate) <> dtNone;
-    ltSocket: Result := ValidSocket(Str) <> soNone;
+    ltSocket: Result := ValidSocket(Str) <> atNone;
     ltTransport: Result := ValidTransport(Str);
     ltFallbackDir: Result := ValidFallbackDir(Str);
     else
@@ -3580,13 +3582,12 @@ begin
   end;
 end;
 
-procedure GetLocalInterfaces(ComboBox: TComboBox; const RecentHost: string = '');
+procedure GetLocalInterfaces(out ls: TStringList; UseGlobalInterface: Boolean = True; HideIPv6: Boolean = False);
 var
-  i, Index: Integer;
-  ls: TStringList;
   TcpSock: TTCPBlockSocket;
-  FindIPv6, ShowIPv6, ShowMask: Boolean;
-  Host: string;
+  i, Index: Integer;
+  FindIPv6, ShowIPv6: Boolean;
+  AddressType: TAddressType;
 
   procedure AddToList(const Str: string);
   var
@@ -3600,47 +3601,29 @@ var
   end;
 
 begin
-  if RecentHost = '' then
-    Host := Combobox.Text
-  else
-    Host := RemoveBrackets(RecentHost, btSquare);
-  ShowMask := ComboBox <> Tcp.cbxHsAddress;
   FindIPv6 := False;
-
-  ls := TStringList.Create;
+  TcpSock := TTCPBlockSocket.create;
   try
-    TcpSock := TTCPBlockSocket.create;
-    try
-      TcpSock.ResolveNameToIP(TcpSock.LocalName, ls);
-    finally
-      TcpSock.Free;
-    end;
-
+    TcpSock.ResolveNameToIP(TcpSock.LocalName, ls);
     for i := ls.Count - 1 downto 0 do
     begin
-      if not IsIPv4(ls[i]) then
-      begin
+      AddressType := GetAddressType(ls[i]);
+      if AddressType = atIPv6 then
         FindIPv6 := True;
-        if Tcp.cbHideIPv6Addreses.Checked or (Pos('%', ls[i]) <> 0) then
-          ls.Delete(i);
-      end;
+      if IpInReservedRanges(ls[i], rtLinkLocal, AddressType) or ((AddressType = atIPv6) and HideIPv6) then
+        ls.Delete(i);
     end;
-    ShowIPv6 := FindIPv6 and not Tcp.cbHideIPv6Addreses.Checked;
+    ShowIPv6 := FindIPv6 and not HideIPv6;
     Index := -1;
     AddToList('127.0.0.1');
     if ShowIPv6 then
       AddToList('::1');
-    if ShowMask then
+    if UseGlobalInterface then
       AddToList('0.0.0.0');
-    if ShowMask and ShowIPv6 then
+    if UseGlobalInterface and ShowIPv6 then
       AddToList('::');
-
-    ComboBox.items := ls;
-    ComboBox.ItemIndex := ComboBox.Items.IndexOf(Host);
-    if ComboBox.ItemIndex = -1 then
-      ComboBox.ItemIndex := 0;
   finally
-    ls.Free;
+    TcpSock.Free;
   end;
 end;
 
@@ -3721,16 +3704,16 @@ function GetRouterBySocket(const SocketStr: string): string;
 var
   RoutersItem: TPair<string, TRouterInfo>;
   BridgesItem: TPair<string, TBridgeInfo>;
-  SocketType: TSocketType;
+  AddressType: TAddressType;
   IpStr: string;
   Port: Word;
   SocketInfo: TSocketInfo;
 
   function FindData(const RouterInfo: TRouterInfo): Boolean;
   begin
-    case SocketType of
-      soIPv4: Result := (RouterInfo.IPv4Port = Port) and (RouterInfo.IPv4Addr = IpStr);
-      soIPv6: Result :=  (RouterInfo.IPv6Port = Port) and (RouterInfo.IPv6Addr = IpStr);
+    case AddressType of
+      atIPv4: Result := (RouterInfo.IPv4Port = Port) and (RouterInfo.IPv4Addr = IpStr);
+      atIPv6: Result :=  (RouterInfo.IPv6Port = Port) and (RouterInfo.IPv6Addr = IpStr);
       else
         Result := False;
     end;
@@ -3738,8 +3721,8 @@ var
 
 begin
   Result := '';
-  SocketType := TryParseSocket(SocketStr, SocketInfo);
-  if SocketType <> soNone then
+  AddressType := TryParseSocket(SocketStr, SocketInfo);
+  if AddressType <> atNone then
   begin
     IpStr := SocketInfo.IpStr;
     Port := SocketInfo.Port;
@@ -3841,32 +3824,23 @@ begin
   Result := True;
 end;
 
-function GetAddressType(const IpStr: string; UseCidr: Boolean = False): TAddressType;
+function GetAddressType(const IpStr: string): TAddressType;
 begin
   if Pos(':', IpStr) = 0 then
-  begin
-    if UseCidr then
-      Result := atIPv4Cidr
-    else
-      Result := atIPv4;
-  end
+    Result := atIPv4
   else
-  begin
-    if UseCidr then
-      Result := atIPv6Cidr
-    else
-      Result := atIPv6;
-  end;
+    Result := atIPv6;
 end;
 
-function IpInReservedRanges(const IpStr: string; RangeType: TIPRangeType): Boolean;
+function IpInReservedRanges(const IpStr: string; RangeType: TIPRangeType; AddressType: TAddressType): Boolean;
 var
   Value: TValueSet;
 begin
-  Result := False;
-  case GetAddressType(IpStr, True) of
-    atIPv4Cidr: Result := IPv4ReservedRanges.FindBestMatchIP(IpStr, Value);
-    atIPv6Cidr: Result := IPv6ReservedRanges.FindBestMatchIP(IpStr, Value);
+  case AddressType of
+    atIPv4: Result := IPv4ReservedRanges.FindBestMatchIP(IpStr, Value);
+    atIPv6: Result := IPv6ReservedRanges.FindBestMatchIP(IpStr, Value);
+    else
+      Result := False;
   end;
   if Result then
   begin
@@ -3874,6 +3848,11 @@ begin
       Exit(True);
     Exit(RangeType in TIPRangeTypes(Value));
   end;
+end;
+
+function IpInReservedRanges(const IpStr: string; RangeType: TIPRangeType): Boolean;
+begin
+  Result := IpInReservedRanges(IpStr, RangeType, GetAddressType(IpStr));
 end;
 
 function IpToMask(const IpStr: string; Mask: Byte): string;
@@ -4175,55 +4154,45 @@ begin
     Result := htDomain;
 end;
 
-function ValidSocket(const SocketStr: string): TSocketType;
+function ValidSocket(const SocketStr: string): TAddressType;
 var
   Search: Integer;
 begin
-  Result := soNone;
+  Result := atNone;
   Search := RPos(':', SocketStr);
   if Search = 0 then
     Exit;
-  case ValidAddress(Copy(SocketStr, 1, Search - 1), False, True) of
-    atIPv4: Result := soIPv4;
-    atIPv6: Result := soIPv6;
-  end;
-  if Result <> soNone then
+  Result := ValidAddress(Copy(SocketStr, 1, Search - 1), False, True);
+  if Result <> atNone then
   begin
     if not ValidInt(Copy(SocketStr, Search + 1), 1, 65535) then
-      Result := soNone;
+      Result := atNone;
   end;
 end;
 
-function TryParseSocket(const SocketStr: string; out SocketInfo: TSocketInfo): TSocketType;
+function TryParseSocket(const SocketStr: string; out SocketInfo: TSocketInfo): TAddressType;
 var
   Search, Port: Integer;
   IpStr: string;
 begin
-  Result := soNone;
+  Result := atNone;
   SocketInfo.IpStr := '';
   SocketInfo.Port := 0;
   Search := RPos(':', SocketStr);
   if Search = 0 then
     Exit;
   IpStr := Copy(SocketStr, 1, Search - 1);
-  case ValidAddress(IpStr, False, True) of
-    atIPv4:
-    begin
-      Result := soIPv4;
-      SocketInfo.IpStr := IpStr;
-    end;
-    atIPv6:
-    begin
-      Result := soIPv6;
-      SocketInfo.IpStr := RemoveBrackets(IpStr, btSquare);
-    end;
+  Result := ValidAddress(IpStr, False, True);
+  case Result of
+    atIPv4: SocketInfo.IpStr := IpStr;
+    atIPv6: SocketInfo.IpStr := RemoveBrackets(IpStr, btSquare);
   end;
-  if Result <> soNone then
+  if Result <> atNone then
   begin
     if ValidInt(Copy(SocketStr, Search + 1), 1, 65535, Port) then
       SocketInfo.Port := Port
     else
-      Result := soNone;
+      Result := atNone;
   end;
 end;
 
@@ -4277,7 +4246,7 @@ begin
           begin
             if FindIPv6 and (Key = 'ipv6') then
             begin
-              if TryParseSocket(Data, SocketInfo) = soIPv6 then
+              if TryParseSocket(Data, SocketInfo) = atIPv6 then
               begin
                 FallbackDir.IPv6Addr := SocketInfo.IpStr;
                 FallbackDir.IPv6Port := SocketInfo.Port;
@@ -4351,7 +4320,7 @@ begin
         begin
           if FindIPv6 and (Key = 'ipv6') then
           begin
-            if ValidSocket(Data) <> soIPv6 then
+            if ValidSocket(Data) <> atIPv6 then
               Exit;
             FindIPv6 := False;
           end
@@ -4376,7 +4345,7 @@ begin
         Data := ParseStr[i];
         if not IsIPv4(Data) then
         begin
-          if ValidSocket(Data) <> soIPv4 then
+          if ValidSocket(Data) <> atIPv4 then
             Exit;
         end;
         FindIPv4 := False;
@@ -4489,7 +4458,7 @@ function TryParseBridge(const BridgeStr: string; out Bridge: TBridge; Validate: 
 var
   ParseStr: TArray<string>;
   ParamsState: Byte;
-  SocketType: TSocketType;
+  AddressType: TAddressType;
   SocketInfo: TSocketInfo;
   ParamsStr: string;
   i: Integer;
@@ -4499,7 +4468,7 @@ begin
   Bridge.Hash := '';
   Bridge.Transport := '';
   Bridge.Params := '';
-  Bridge.SocketType := soNone;
+  Bridge.AddressType := atNone;
   if Validate then
     Result := ValidBridge(BridgeStr)
   else
@@ -4527,14 +4496,14 @@ begin
           Continue;
         end;
       end;
-      SocketType := TryParseSocket(ParseStr[i], SocketInfo);
-      if SocketType <> soNone then
+      AddressType := TryParseSocket(ParseStr[i], SocketInfo);
+      if AddressType <> atNone then
       begin
         if i = 1 then
           Bridge.Transport := ParseStr[0];
         Bridge.Ip := SocketInfo.IpStr;
         Bridge.Port := SocketInfo.Port;
-        Bridge.SocketType := SocketType;
+        Bridge.AddressType := AddressType;
         ParamsState := 1;
         Continue;
       end;
@@ -4570,7 +4539,7 @@ begin
   begin
     if ValidTransport(ParseStr[0], StrictTransport) then
     begin
-      if ValidSocket(ParseStr[1]) <> soNone then
+      if ValidSocket(ParseStr[1]) <> atNone then
       begin
         if ParamCount > 2 then
           Result := ValidHash(ParseStr[2]) or ValidKeyValue(ParseStr[2])
@@ -4580,12 +4549,12 @@ begin
     end
     else
     begin
-      if ValidSocket(ParseStr[0]) <> soNone then
+      if ValidSocket(ParseStr[0]) <> atNone then
         Result := ValidHash(ParseStr[1])
     end;
   end
   else
-    Result := ValidSocket(ParseStr[0]) <> soNone;
+    Result := ValidSocket(ParseStr[0]) <> atNone;
 end;
 
 procedure GridScrollCheck(aSg: TStringGrid; ACol, ColWidth: Integer);
