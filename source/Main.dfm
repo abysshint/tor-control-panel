@@ -3575,13 +3575,13 @@ object Tcp: TTcp
         ItemIndex = 0
         ParentDoubleBuffered = False
         TabOrder = 4
-        Text = #1051#1102#1073#1086#1077
+        Text = #1040#1074#1090#1086
         OnChange = OptionsChange
         Items.Strings = (
-          #1051#1102#1073#1086#1077
-          'https'
-          'e-mail'
-          'Moat'
+          #1040#1074#1090#1086
+          #1057#1072#1081#1090
+          'E-mail'
+          'Tor Browser'
           #1053#1077' '#1088#1072#1089#1087#1088#1086#1089#1090#1088#1072#1085#1103#1090#1100)
       end
       object edMaxAdvertisedBandwidth: TEdit

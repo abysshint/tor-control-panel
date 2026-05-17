@@ -10178,8 +10178,6 @@ begin
       RenameFile(UserDir + 'cached-consensus.tmp', UserDir + 'cached-consensus');
       RenameFile(UserDir + 'cached-descriptors.tmp', UserDir + 'cached-descriptors');
       RenameFile(UserDir + 'cached-descriptors.new.tmp', UserDir + 'cached-descriptors.new');
-      if (RoutersDic.Count > 0) and not FirstLoad then
-        ConsensusUpdated := True;
     end;
   end;
 end;
@@ -13025,7 +13023,7 @@ end;
 
 procedure TTcp.SaveServerOptions(var ini: TMemIniFile);
 var
-  ExitPolicy, MyFamily, Address: string;
+  ExitPolicy, MyFamily, Address, BridgeDistribution: string;
   ParseStr: TArray<string>;
   i: Integer;
 begin
@@ -13106,8 +13104,11 @@ begin
     end;
     if cbxServerMode.ItemIndex = SERVER_MODE_BRIDGE then
     begin
+      BridgeDistribution := BridgeDistributions[cbxBridgeDistribution.ItemIndex];
+      if (BridgeDistribution = 'settings') and not CheckFileVersion(TorVersion, '0.4.9.1') then
+        BridgeDistribution := 'moat';
       SetTorConfig('BridgeRelay', '1');
-      SetTorConfig('BridgeDistribution', BridgeDistributions[cbxBridgeDistribution.ItemIndex]);
+      SetTorConfig('BridgeDistribution', BridgeDistribution);
     end;
     if cbxServerMode.ItemIndex = SERVER_MODE_RELAY then
       SetTorConfig('ExitRelay', '0');

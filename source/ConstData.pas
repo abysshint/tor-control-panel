@@ -546,7 +546,7 @@ var
     60, 300, 900, 1800, 3600, 10800, 21600, 43200, 86400
   );
   BridgeDistributions: array [0..4] of string = (
-    'any', 'https', 'email', 'moat', 'none'
+    'any', 'https', 'email', 'settings', 'none'
   );
   LogLevels: array [0..4] of string = (
     'debug', 'info', 'notice', 'warn', 'err'

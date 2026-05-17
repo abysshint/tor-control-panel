@@ -738,7 +738,7 @@ begin
     LoadList(Tcp.cbxExitPolicyType, '207', 'По умолчанию,Ограниченная,Настраиваемая');
     Tcp.meMyFamily.TextHint.Text := TransStr('322');
     Tcp.lbBridgeDistribution.Caption := Load('425', 'Распространение');
-    LoadList(Tcp.cbxBridgeDistribution, '426', 'Любое,Https,E-mail,Moat,Не распространять');
+    LoadList(Tcp.cbxBridgeDistribution, '426',  'Авто,Сайт,E-mail,Tor Browser,Не распространять');
     Tcp.cbUseServerTransportOptions.Caption :=  Load('681', 'Задать опции транспорта');
     Tcp.meServerTransportOptions.TextHint.Text := TransStr('682');
     Tcp.cbUseAddress.Caption := Load('427', 'Задать внешний адрес вручную');
