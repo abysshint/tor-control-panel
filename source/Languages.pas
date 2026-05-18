@@ -708,6 +708,7 @@ begin
     Tcp.imFilterExit.Hint := TransStr('290');
     Tcp.imFilterExclude.Hint := TransStr('287');
     LoadList(Tcp.cbxFilterMode, '165', 'Без фильтрации,Выбранные страны,Избранные узлы');
+    Tcp.edFilterQuery.TextHint := Load('706', 'Быстрый поиск');
 
     Tcp.lbServerMode.Caption := Load('166', 'Режим работы');
     Tcp.lbNickname.Caption := Load('167', 'Ник');

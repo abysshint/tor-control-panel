@@ -1065,6 +1065,7 @@ type
     sbExcludeNodes: TSpeedButton;
     sbFavoritesBridges: TSpeedButton;
     sbFavoritesFallbackDirs: TSpeedButton;
+    edFilterQuery: TEdit;
     function GetGridByIndex(GridIndex: Integer): TStringGrid;
     function GetMemoByIndex(MemoIndex: Integer): TMemo;
     function CheckOperationConfirmation(const OpStr: string; NoCancel: Boolean = True): Boolean;
@@ -1688,7 +1689,7 @@ type
     procedure sbStayOnTopClick(Sender: TObject);
     procedure cbxBridgesUniqueTypeChange(Sender: TObject);
     procedure lbSelectedRoutersDblClick(Sender: TObject);
-
+    procedure edFilterQueryChange(Sender: TObject);
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
     procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -4341,7 +4342,8 @@ end;
 procedure TTcp.sgFilterMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
 begin
   sgFilter.MouseToCell(X, Y, sgFilter.MovCol, sgFilter.MovRow);
-  GridSetFocus(sgFilter);
+  if not (edFilterQuery.Focused) then
+    GridSetFocus(sgFilter);
   GridShowHints(sgFilter);
   GridCheckAutoPopup(sgFilter, sgFilter.MovRow);
   if (sgFilter.MovCol in [FILTER_TOTAL..FILTER_ALIVE]) and (sgFilter.MovRow > 0) and (sgFilter.Cells[sgFilter.MovCol, sgFilter.MovRow] <> NONE_CHAR) then
@@ -8181,7 +8183,7 @@ var
   i, j, x, PortOne, PortTwo: Integer;
 begin
   PortsMap.Clear;
-  ParseStr := PortsData.Split([',']);
+  ParseStr := PortsData.Split([',', ' ']);
   for i := 0 to High(ParseStr) do
   begin
     ParseStr[i] := Trim(ParseStr[i]);
@@ -10853,6 +10855,11 @@ procedure TTcp.cbxFallbackDirsTypeKeyDown(Sender: TObject; var Key: Word;
 begin
   if (Key = VK_RETURN) and meFallbackDirs.CanFocus then
     meFallbackDirs.SetFocus;
+end;
+
+procedure TTcp.edFilterQueryChange(Sender: TObject);
+begin
+  ShowFilter;
 end;
 
 procedure TTcp.miWriteLogFileClick(Sender: TObject);
@@ -13706,9 +13713,12 @@ procedure TTcp.ShowFilter;
 var
   FilterCount: Integer;
   Item: TPair<string, TFilterInfo>;
-  cdTotal, cdUser, HideRow, IsExclude: Boolean;
+  cdSearch, cdTotal, cdUser, HideRow, IsExclude, UseSearch: Boolean;
   NodeTypes: TNodeTypes;
   CountryID: Byte;
+  ParseStr: TArray<string>;
+  SearchStr, CountryName: string;
+  i: Integer;
 begin
   FilterCount := 0;
   if sgFilter.SelRow = 0 then
@@ -13720,6 +13730,15 @@ begin
     HideRow := False
   else
     HideRow := miFilterHideUnused.Checked;
+
+  SearchStr := Trim(edFilterQuery.Text);
+  UseSearch := SearchStr <> '';
+  if UseSearch  then
+  begin
+    ParseStr := SearchStr.Split([',', ' ']);
+    for i := 0 to High(ParseStr) do
+      ParseStr[i] := Trim(RemoveBrackets(ParseStr[i], btCurly));
+  end;
   for Item in FilterDic do
   begin
     CountryID := Item.Value.cc;
@@ -13745,11 +13764,26 @@ begin
       cdTotal := True;
       cdUser := True;
     end;
-    if cdTotal or cdUser then
+
+    CountryName := TransStr(Item.Key);
+    if UseSearch then
+    begin
+      cdSearch := False;
+      for i := 0 to High(ParseStr) do
+      begin
+        cdSearch := Item.Key.StartsWith(ParseStr[i], True) or FindStr(ParseStr[i], CountryName);
+        if cdSearch then
+          Break;
+      end;
+    end
+    else
+      cdSearch := True;
+
+    if cdSearch and (UseSearch or (cdTotal or cdUser)) then
     begin
       Inc(FilterCount);
       sgFilter.Cells[FILTER_ID, FilterCount] := UpperCase(Item.Key);
-      sgFilter.Cells[FILTER_NAME, FilterCount] := TransStr(Item.Key);
+      sgFilter.Cells[FILTER_NAME, FilterCount] := CountryName;
 
       if CountryTotals[TOTAL_RELAYS][CountryID] > 0 then
         sgFilter.Cells[FILTER_TOTAL, FilterCount] := IntToStr(CountryTotals[TOTAL_RELAYS][CountryID])
@@ -13932,6 +13966,10 @@ begin
   WrongQuery := False;
   PortsMap := nil;
   TransportsMap := nil;
+  if cbxRoutersQuery.ItemIndex in [USER_QUERY_IPV4_PORT, USER_QUERY_IPV6_PORT] then
+    PortsMap := THashSet<Word>.Create;
+  if cbxRoutersQuery.ItemIndex = USER_QUERY_TRANSPORT then
+    TransportsMap := THashSet<string>.Create;
   Query := StringReplace(Trim(edRoutersQuery.Text), ';', '', [rfReplaceAll]);
   try
     if miRtFiltersQuery.Checked and (Query <> '') then
@@ -13939,9 +13977,7 @@ begin
       case cbxRoutersQuery.ItemIndex of
         USER_QUERY_IPV4_PORT, USER_QUERY_IPV6_PORT:
         begin
-          if PortsMap = nil then
-            PortsMap := THashSet<Word>.Create;
-           Query := TArray.ToString<string>(LoadPortsMapFromStr(Query, PortsMap), ',');
+          Query := TArray.ToString<string>(LoadPortsMapFromStr(Query, PortsMap), ',');
         end;
         USER_QUERY_PING:
         begin
@@ -13953,8 +13989,6 @@ begin
           if Query <> NONE_CHAR then
           begin
             WrongQuery := True;
-            if TransportsMap = nil then
-              TransportsMap := THashSet<string>.Create;
             for Transport in TransportsDic do
             begin
               if FindStr(Query, Transport.Key) then
@@ -16920,7 +16954,7 @@ end;
 procedure TTcp.edReachableAddressesKeyPress(Sender: TObject;
   var Key: Char);
 begin
-  if not CharInSet(Key, ['0'..'9', #8, #44, #45]) then
+  if not CharInSet(Key, ['0'..'9', #8, #32, #44, #45]) then
     Key := #0;
 end;
 
@@ -17800,19 +17834,23 @@ end;
 
 procedure TTcp.FindInFilter(const IpAddr: string);
 var
-  Index: Integer;
-  GeoIpInfo: TGeoIpInfo;
-  IpStr: string;
+  Index, i: Integer;
+  IpStr, CountryCode: string;
 begin
   IpStr := ExtractDomain(IpAddr);
   if ValidAddress(IpStr) <> atNone then
   begin
     pcOptions.ActivePage := tsFilter;
     sbShowOptions.Click;
-    if GeoIpDic.TryGetValue(IpStr, GeoIpInfo) then
-      Index := sgFilter.Cols[FILTER_ID].IndexOf(CountryCodes[GeoIpInfo.cc])
-    else
-      Index := sgFilter.Cols[FILTER_ID].IndexOf('??');
+    CountryCode := CountryCodes[GetCountryValue(IpStr)];
+    for i := 0 to 1 do
+    begin
+      Index := sgFilter.Cols[FILTER_ID].IndexOf(CountryCode);
+      if (Index <> -1) then
+        Break;
+      if Trim(edFilterQuery.Text) <> '' then
+        edFilterQuery.Text := '';
+    end;
     SetGridLastCell(sgFilter, True, False, False, Index, FILTER_NAME);
   end;
 end;

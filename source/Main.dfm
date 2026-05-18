@@ -601,12 +601,10 @@ object Tcp: TTcp
       Width = 119
       Height = 48
       Caption = #1057#1084#1077#1085#1080#1090#1100' '#1094#1077#1087#1086#1095#1082#1091
-      DoubleBuffered = False
       DropDownMenu = mnChangeCircuit
       ImageIndex = 3
       ImageMargins.Left = 5
       Images = lsButtons
-      ParentDoubleBuffered = False
       Style = bsSplitButton
       TabOrder = 1
       WordWrap = True
@@ -618,12 +616,10 @@ object Tcp: TTcp
       Width = 119
       Height = 35
       Caption = #1057#1090#1072#1088#1090
-      DoubleBuffered = False
       ImageIndex = 0
       ImageMargins.Left = 8
       ImageMargins.Right = -8
       Images = lsButtons
-      ParentDoubleBuffered = False
       TabOrder = 0
       OnClick = btnSwitchTorClick
     end
@@ -1290,7 +1286,7 @@ object Tcp: TTcp
     object edRoutersQuery: TEdit
       Left = 412
       Top = 7
-      Width = 193
+      Width = 191
       Height = 21
       PopupMenu = EditMenu
       TabOrder = 6
@@ -1383,7 +1379,6 @@ object Tcp: TTcp
           ImageIndex = 21
           Images = lsMain
           Flat = True
-          Transparent = False
           OnClick = sbGeneratePasswordClick
         end
         object edControlPort: TEdit
@@ -2251,7 +2246,6 @@ object Tcp: TTcp
         ImageIndex = 15
         Images = lsMenus
         Flat = True
-        Transparent = False
         OnClick = sbBridgesFileClick
       end
       object lbBridgesUniqueType: TLabel
@@ -2518,9 +2512,7 @@ object Tcp: TTcp
         Width = 77
         Height = 22
         Caption = #1053#1072#1081#1090#1080'..'
-        DoubleBuffered = True
         Enabled = False
-        ParentDoubleBuffered = False
         TabOrder = 37
         OnClick = btnFindPreferredBridgeClick
       end
@@ -2803,7 +2795,7 @@ object Tcp: TTcp
       Caption = #1060#1080#1083#1100#1090#1088
       ImageIndex = 2
       object lbFilterMode: TLabel
-        Left = 52
+        Left = 31
         Top = 8
         Width = 32
         Height = 13
@@ -2821,7 +2813,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbFilterEntry: TLabel
-        Left = 392
+        Left = 504
         Top = 8
         Width = 6
         Height = 13
@@ -2829,7 +2821,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbFilterMiddle: TLabel
-        Left = 450
+        Left = 552
         Top = 8
         Width = 6
         Height = 13
@@ -2837,7 +2829,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbFilterExit: TLabel
-        Left = 508
+        Left = 600
         Top = 8
         Width = 6
         Height = 13
@@ -2845,7 +2837,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object lbFilterExclude: TLabel
-        Left = 566
+        Left = 648
         Top = 8
         Width = 6
         Height = 13
@@ -2853,7 +2845,7 @@ object Tcp: TTcp
         Transparent = True
       end
       object imFilterEntry: TImage
-        Left = 373
+        Left = 485
         Top = 7
         Width = 16
         Height = 16
@@ -2861,7 +2853,7 @@ object Tcp: TTcp
         ShowHint = True
       end
       object imFilterMiddle: TImage
-        Left = 430
+        Left = 532
         Top = 7
         Width = 16
         Height = 16
@@ -2869,7 +2861,7 @@ object Tcp: TTcp
         ShowHint = True
       end
       object imFilterExit: TImage
-        Left = 489
+        Left = 581
         Top = 7
         Width = 16
         Height = 16
@@ -2877,7 +2869,7 @@ object Tcp: TTcp
         ShowHint = True
       end
       object imFilterExclude: TImage
-        Left = 546
+        Left = 628
         Top = 7
         Width = 16
         Height = 16
@@ -2885,7 +2877,7 @@ object Tcp: TTcp
         ShowHint = True
       end
       object lbFilterTotalSelected: TLabel
-        Left = 280
+        Left = 397
         Top = 8
         Width = 79
         Height = 13
@@ -2894,9 +2886,9 @@ object Tcp: TTcp
         Transparent = True
       end
       object cbxFilterMode: TComboBox
-        Left = 87
+        Left = 66
         Top = 5
-        Width = 150
+        Width = 125
         Height = 21
         AutoDropDown = True
         Style = csDropDownList
@@ -2949,6 +2941,14 @@ object Tcp: TTcp
           64
           64
           64)
+      end
+      object edFilterQuery: TEdit
+        Left = 196
+        Top = 5
+        Width = 163
+        Height = 21
+        TabOrder = 2
+        OnChange = edFilterQueryChange
       end
     end
     object tsServer: TTabSheet
@@ -3156,7 +3156,6 @@ object Tcp: TTcp
         ImageIndex = 20
         Images = lsMain
         Flat = True
-        Transparent = False
         OnClick = sbUPnPTestClick
       end
       object edNickname: TEdit
@@ -5427,8 +5426,6 @@ object Tcp: TTcp
     Width = 72
     Height = 19
     Caption = #1055#1088#1080#1084#1077#1085#1080#1090#1100
-    DoubleBuffered = True
-    ParentDoubleBuffered = False
     TabOrder = 6
     OnClick = btnApplyOptionsClick
   end
@@ -5438,8 +5435,6 @@ object Tcp: TTcp
     Width = 72
     Height = 19
     Caption = #1054#1090#1084#1077#1085#1072
-    DoubleBuffered = True
-    ParentDoubleBuffered = False
     TabOrder = 7
     OnClick = btnCancelOptionsClick
   end
