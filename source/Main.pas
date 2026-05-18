@@ -1695,6 +1695,7 @@ type
     procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
     procedure WMQueryEndSession(var Message: TWMQueryEndSession); message WM_QUERYENDSESSION;
     procedure WMEndSession(var Message: TWMEndSession); message WM_ENDSESSION;
+    procedure WMUpdateUIState(var Message: TMessage); message WM_UPDATEUISTATE;
   end;
 
 var
@@ -1786,6 +1787,11 @@ implementation
 
 {$R *.dfm}
 {$R TorControlPanel.icons.res}
+
+procedure TTcp.WMUpdateUIState(var Message: TMessage);
+begin
+  Message.Result := 0;
+end;
 
 procedure TTcp.WMQueryEndSession(var Message: TWMQueryEndSession);
 begin
