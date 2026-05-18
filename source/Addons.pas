@@ -35,6 +35,7 @@ type
 
   TEdit = class (Vcl.StdCtrls.TEdit)
   private
+    function NeedCustomTextHint: Boolean;
     procedure WMPaint(var Message: TWMPaint); message WM_PAINT;
     procedure WMSetFocus(var Message: TWMSetFocus); message WM_SETFOCUS;
     procedure WMKillFocus(var Message: TWMSetFocus); message WM_KILLFOCUS;
@@ -278,24 +279,29 @@ begin
   end;
 end;
 
+function TEdit.NeedCustomTextHint: Boolean;
+begin
+  Result := (Win32MajorVersion = 5) or not TStyleManager.Enabled;
+end;
+
 procedure TEdit.WMPaint(var Message: TWMPaint);
 begin
   inherited;
-  if (Win32MajorVersion = 5) and (Text = '') and Enabled and not Focused and (TextHint <> '') then
+  if NeedCustomTextHint and (Text = '') and Enabled and not Focused and (TextHint <> '') then
     DrawTextHint;
 end;
 
 procedure TEdit.WMSetFocus(var Message: TWMSetFocus);
 begin
   inherited;
-  if Win32MajorVersion = 5 then
+  if NeedCustomTextHint then
     Invalidate;
 end;
 
 procedure TEdit.WMKillFocus(var Message: TWMSetFocus);
 begin
   inherited;
-  if (Win32MajorVersion = 5) and (Text = '') then
+  if NeedCustomTextHint and (Text = '') then
     Invalidate;
 end;
 
