@@ -499,6 +499,7 @@ begin
     LoadStr('643', 'Всего выбрано');
     LoadStr('645', 'Мост (Узел консенсуса)');
     LoadStr('647', 'Имя файла');
+    LoadStr('648', 'Открыть файл');
     LoadStr('652', 'Каталоги');
     LoadLns('654', '\n  Щёлкните здесь для добавления каталогов\n\n  Примеры:\n\n   8.8.8.8 orport=80 id=ABCD1234CDEF5..\n   8.8.8.8 orport=80 id=ABCD1234CDEF5.. ipv6=[::1]:80\n   8.8.8.8:80 orport=443 id=ABCD1234CDEF5.. weight=1.0');
     LoadStr('655', 'Мост (Неактивный узел консенсуса)');
@@ -537,6 +538,7 @@ begin
     LoadStr('702', 'Показывать IPv6 адрес и страну');
     LoadStr('703', 'Не использовать,Хэш,IP-адрес,CIDR /24,CIDR /16,CIDR /8,Страна');
     LoadLns('705', 'Загружаемый профиль был создан в более новой версии программы и не может быть загружен в более старой.\n\nПрофиль: %s\nПуть: %s\n\nВерсия профиля:\n - текущая: %d\n - требуется: %d и ниже\n\nОбновите программу до более новой версии!');
+    LoadStr('707', 'Исполняемые файлы|*.exe|Все файлы|*.*');
 
     TranslateArray(FilterHeader, Load('233'), DEFAULT_HEADER_FILTER);
     TranslateArray(RoutersHeader, Load('320'), DEFAULT_HEADER_ROUTERS);
@@ -698,7 +700,7 @@ begin
     Tcp.lbBridgesQueueSize.Caption := Load('641', 'Размер очереди');
     Tcp.lbCount5.Caption := TransStr('470');
     Tcp.cbScanNewBridges.Caption := Load('642', 'Сначала сканировать порты');
-    Tcp.sbBridgesFile.Hint := Load('648', 'Открыть файл');
+    Tcp.sbBridgesFile.Hint := TransStr('648');
     Tcp.sbBridgesFileReadOnly.Hint := Load('696', 'Режим "Только чтение"');
 
     Tcp.lbFilterMode.Caption := Load('162', 'Режим');
@@ -822,6 +824,7 @@ begin
     LoadList(Tcp.cbxTransportState, '689', 'Авто,Включено,Выключено');
     Tcp.lbTransportType.Caption := TransStr('151');
     LoadList(Tcp.cbxTransportType, '466', 'Клиент,Сервер,Совмещённый');
+    Tcp.sbOpenTransportHandler.Hint := TransStr('648');
 
     Tcp.gbAutoSelectRouters.Caption := Load('467', 'Автоподбор роутеров');
     Tcp.cbAutoSelEntryEnabled.Caption := TransStr('288');
@@ -1202,7 +1205,7 @@ begin
     Tcp.miRtRelayOperations.Caption := TransStr('310');
 
     Tcp.miTransportsInsert.Caption := TransStr('279');
-    Tcp.miTransportsOpenDir.Caption := Load('587', 'Каталог транспортов');
+    Tcp.miTransportsOpenDir.Caption := Load('587', 'Каталог транспорта');
     Tcp.miTransportsReset.Caption := Load('588', 'Настройки по умолчанию');
     Tcp.miTransportsClear.Caption := TransStr('278');
 

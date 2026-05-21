@@ -1066,6 +1066,7 @@ type
     sbFavoritesBridges: TSpeedButton;
     sbFavoritesFallbackDirs: TSpeedButton;
     edFilterQuery: TEdit;
+    sbOpenTransportHandler: TSpeedButton;
     function GetGridByIndex(GridIndex: Integer): TStringGrid;
     function GetMemoByIndex(MemoIndex: Integer): TMemo;
     function CheckOperationConfirmation(const OpStr: string; NoCancel: Boolean = True): Boolean;
@@ -1116,6 +1117,7 @@ type
     procedure ShowFilter;
     procedure ApplyOptions(AutoResolveErrors: Boolean = False);
     function GetTransportFilesID: string;
+    function GetSelTransportFile: string;
     function InsertExtractMenu(ParentMenu: TMenuItem; ControlType, ControlID, ExtractType: Integer): Boolean;
     procedure InsertNodesMenu(ParentMenu: TMenuItem; const NodeID: string; aSg: TStringGrid; AutoSave: Boolean);
     procedure InsertNodesListMenu(ParentMenu: TmenuItem; const NodeID: string; NodeTypeID: Integer; aSg: TStringGrid; AutoSave: Boolean = True);
@@ -1690,6 +1692,7 @@ type
     procedure cbxBridgesUniqueTypeChange(Sender: TObject);
     procedure lbSelectedRoutersDblClick(Sender: TObject);
     procedure edFilterQueryChange(Sender: TObject);
+    procedure sbOpenTransportHandlerClick(Sender: TObject);
   private
     procedure WMExitSizeMove(var msg: TMessage); message WM_EXITSIZEMOVE;
     procedure WMDpiChanged(var msg: TWMDpi); message WM_DPICHANGED;
@@ -1728,7 +1731,7 @@ var
   IPv4ReservedRanges, IPv4CidrNodes: TIPv4RadixTree;
   IPv6ReservedRanges: TIPv6RadixTree;
 
-  ProgramDir, UserDir, HsDir, ThemesDir, TransportsDir, OnionAuthDir, LogsDir: string;
+  ProgramFile, ProgramDir, UserDir, HsDir, ThemesDir, OnionAuthDir, LogsDir: string;
   DefaultsFile, UserConfigFile, UserBackupFile, TorConfigFile, TorStateFile, TorLogFile,
   TorExeFile, GeoIPv4File, GeoIPv6File, NetworkCacheFile, BridgesCacheFile, BridgesFileName,
   UserProfile, LangFile, ConsensusFile, DescriptorsFile, NewDescriptorsFile, TrayIconFile: string;
@@ -1877,20 +1880,26 @@ procedure TReadPipeThread.UpdateVersionInfo;
 var
   ParseStr: TArray<string>;
   ini: TMemIniFile;
+  Fail: Boolean;
 begin
+  Fail := True;
   ParseStr := Data.Split([BR]);
-  TorVersion := SeparateLeft(SeparateRight(ParseStr[0], 'Tor version ').Trim(['.']), ' ');
-  if ValidAddress(SeparateLeft(TorVersion, '-')) = atIPv4 then
+  if ParseStr <> nil then
   begin
-    ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
-    try
-      TorFileID := GetFileID(TorExeFile, True, TorVersion).Data;
-      SetSettings('Main', 'TorFileID', TorFileID, ini);
-    finally
-      UpdateConfigFile(ini);
+    TorVersion := SeparateLeft(SeparateRight(ParseStr[0], 'Tor version ').Trim(['.']), ' ');
+    if ValidAddress(SeparateLeft(TorVersion, '-')) = atIPv4 then
+    begin
+      Fail := False;
+      ini := TMemIniFile.Create(UserConfigFile, TEncoding.UTF8);
+      try
+        TorFileID := GetFileID(TorExeFile, True, TorVersion).Data;
+        SetSettings('Main', 'TorFileID', TorFileID, ini);
+      finally
+        UpdateConfigFile(ini);
+      end;
     end;
-  end
-  else
+  end;
+  if Fail then
     TorVersion := '0.0.0.0';
   Tcp.LoadOptions(FirstStart, TorVersion = '0.0.0.0');
   Terminate;
@@ -4375,8 +4384,6 @@ begin
           DrawText(sgHs.Canvas.Handle, PChar(HsHeader[ACol]), Length(HsHeader[ACol]), Rect, DT_CENTER);
     end;
   end;
-  GridScrollCheck(sgHs, HS_NAME, 208);
-
   if ACol = sgHs.SelCol then
   begin
     if sgHs.IsMultiRow then
@@ -4417,7 +4424,6 @@ procedure TTcp.sgHsPortsDrawCell(Sender: TObject; ACol, ARow: Integer;
 begin
   if ARow = 0 then
     DrawText(sgHsPorts.Canvas.Handle, PChar(HsPortsHeader[ACol]), Length(HsPortsHeader[ACol]), Rect, DT_CENTER);
-  GridScrollCheck(sgHsPorts, HSP_INTERFACE, 163);
   if ACol = sgHsPorts.SelCol then
   begin
     if sgHsPorts.IsMultiRow then
@@ -5334,7 +5340,6 @@ begin
           DrawText(sgTransports.Canvas.Handle, PChar(TransportsHeader[ACol]), Length(TransportsHeader[ACol]), Rect, DT_CENTER);
     end;
   end;
-  GridScrollCheck(sgTransports, PT_TRANSPORTS, 194);
   if ACol = sgTransports.SelCol then
   begin
     if sgTransports.IsMultiRow then
@@ -5428,6 +5433,7 @@ begin
       sgHsPorts.Cells[HSP_REAL_PORT, i + 1] := ParseStr[1];
       sgHsPorts.Cells[HSP_VIRTUAL_PORT, i + 1] := ParseStr[2];
     end;
+    GridScrollCheck(sgHsPorts, HSP_INTERFACE, 163);
     SelectHsPorts;
     HsPortsEnable(True);
   end
@@ -5841,7 +5847,7 @@ begin
   if not sgTransports.IsEmpty then
   begin
     for i := 1 to sgTransports.RowCount - 1 do
-      Result := Result + GetFileID(TransportsDir + sgTransports.Cells[PT_HANDLER, i]).Data;
+      Result := Result + GetFileID(sgTransports.Cells[PT_FILENAME, i]).Data;
   end;
 end;
 
@@ -5883,12 +5889,14 @@ begin
   NetIntChanged := CheckNetIntChanged;
   DefaultsChanged := DefaultsFileID <> GetFileID(DefaultsFile).Data;
   TorrcChanged := TorrcFileID <> GetFileID(TorConfigFile).Data;
-  PathChanged := not CheckRequiredFiles;
+  PathChanged := CheckRequiredFiles;
   FallbackDirsChanged := (MissingFallbackDirCount > 0) or NeedUpdateFallbackDirs;
   TransportsChanged := TransportFilesID <> GetTransportFilesID;
   BridgesChanged := (FailedBridgesCount > 0) or (AlreadyStarted and (NewBridgesCount > 0)) or
      ((cbxBridgesType.ItemIndex = BRIDGES_TYPE_FILE) and (BridgeFileID <> GetFileID(BridgesFileName).Data)) or NeedUpdateBridges;
 
+  if TransportsChanged then
+    meLog.Lines.Add(TransportFilesID + ' <> ' + GetTransportFilesID);
   NeedReset := TorrcChanged or PathChanged or BridgesChanged or DefaultsChanged or FallbackDirsChanged or TransportsChanged or NetIntChanged;
   if OptionsChanged or NeedReset then
   begin
@@ -5918,7 +5926,7 @@ var
 begin
   GeoIpUpdateType := gitNone;
   StartMsg := 0;
-  TorFileExists := FileExists(TorExeFile);
+  TorFileExists := FindFileStatic('tor.exe', TorExeFile, TorDirs);
   TorFileData := GetFileID(TorExeFile, TorFileExists, TorVersion);
   TorFileChanged := TorFileID <> TorFileData.Data;
 
@@ -6228,19 +6236,23 @@ begin
 end;
 
 function TTcp.CheckRequiredFiles(AutoSave: Boolean = False): Boolean;
-  procedure CheckPathChanges(var PathVar: string; const PathStr: string);
+var
+  LastGeoIPv4File, LastGeoIPv6File: string;
+
+  procedure CheckPathChanges(const PathVar, PathStr: string);
   begin
     if (PathVar <> '') and (PathVar <> PathStr) then
-      Result := False;
-    PathVar := PathStr;
+      Result := True;
   end;
+
 begin
-  Result := True;
-  CheckPathChanges(GeoIPv4File, GetDirFromArray(GeoIpDirs, 'geoip', True));
-  CheckPathChanges(GeoIPv6File, GetDirFromArray(GeoIpDirs, 'geoip6', True));
-  CheckPathChanges(TransportsDir, GetDirFromArray(TransportDirs));
-  GeoIPv4Exists := FileExists(GeoIPv4File);
-  GeoIPv6Exists := FileExists(GeoIPv6File);
+  Result := False;
+  LastGeoIPv4File := GeoIPv4File;
+  LastGeoIPv6File := GeoIPv6File;
+  GeoIPv4Exists := FindFileStatic('geoip', GeoIPv4File, GeoIpDirs);
+  GeoIPv6Exists := FindFileStatic('geoip6', GeoIPv6File, GeoIpDirs);
+  CheckPathChanges(LastGeoIPv4File, GeoIPv4File);
+  CheckPathChanges(LastGeoIPv6File, GeoIPv6File);
 
   if AutoSave then
   begin
@@ -6967,7 +6979,7 @@ begin
       if ValidInt(SeparateLeft(HsList[i], '='), 0, MAXINT) then
       begin
         ParseStr := SeparateRight(HsList[i], '=').Split([';']);
-        if Length(ParseStr) = 6 then
+        if Length(ParseStr) > 5 then
         begin
           Name := ParseStr[0];
           Version := ParseStr[1];
@@ -7031,6 +7043,7 @@ begin
       sgHs.RowCount := Result + 1
     else
       sgHs.RowCount := 2;
+    GridScrollCheck(sgHs, HS_NAME, 208);
     sgHs.EndUpdateRows;
   finally
     HsList.Free;
@@ -7228,7 +7241,7 @@ var
   i, j, TotalTransports, DataCount, TransportState: Integer;
   TransportID: Byte;
   ParseStr, TransList: TArray<string>;
-  Transports, Handler, Params, StrType, Item, FilesID: string;
+  Transports, Handler, Params, StrType, Item, FilesID, TransportFile: string;
   T: TTransportInfo;
   IsValid, ParamsState, FindTransport, State: Boolean;
   TransportFileData: TFileID;
@@ -7244,7 +7257,7 @@ begin
   begin
     ParseStr := SeparateRight(Data[i], '=').Split(['|']);
     DataCount := Length(ParseStr);
-    if InRange(DataCount, 2, 6) then
+    if DataCount > 1 then
     begin
       Transports := Trim(ParseStr[0]);
       Handler := Trim(ParseStr[1]);
@@ -7270,8 +7283,8 @@ begin
       else
         ParamsState := False;
 
-      FindTransport := FileExists(TransportsDir + Handler);
-      TransportFileData := GetFileID(TransportsDir + Handler, FindTransport);
+      FindTransport := FindFileStatic(Handler, TransportFile, TransportDirs);
+      TransportFileData := GetFileID(TransportFile, FindTransport);
       State := GetTransportState(TransportState, FindTransport, TransportFileData, True);
 
       TransList := Transports.Split([',']);
@@ -7322,6 +7335,7 @@ begin
         sgTransports.Cells[PT_PARAMS, TotalTransports] := Params;
         sgTransports.Cells[PT_PARAMS_STATE, TotalTransports] := BoolToStrDef(ParamsState);
         sgTransports.Cells[PT_STATE, TotalTransports] := GetTransportStateChar(TransportState);
+        sgTransports.Cells[PT_FILENAME, TotalTransports] := TransportFile;
         FilesID := FilesID + TransportFileData.Data;
       end;
     end;
@@ -7335,6 +7349,7 @@ begin
   end
   else
     UpdateTransports;
+  GridScrollCheck(sgTransports, PT_TRANSPORTS, 194);
   SetGridLastCell(sgTransports);
   sgTransports.EndUpdateRows;
 end;
@@ -7342,7 +7357,7 @@ end;
 procedure TTcp.SaveTransportsData(var ini: TMemIniFile; ReloadServerTransport: Boolean);
 var
   i, j, TransportID, TransportState: Integer;
-  Transports, UsedTransports, Handler, Params, StrType, ServerTransport, ParamsData: string;
+  Transports, UsedTransports, Handler, Params, StrType, ServerTransport, ParamsData, TransportFile: string;
   ParseStr: TArray<string>;
   State, InBridges, ParamsState: Boolean;
   T: TTransportInfo;
@@ -7372,6 +7387,7 @@ begin
       Params := sgTransports.Cells[PT_PARAMS, i];
       ParamsState := StrToBoolDef(sgTransports.Cells[PT_PARAMS_STATE, i], False) and (Params <> '');
       TransportState := GetTransportStateID(sgTransports.Cells[PT_STATE, i]);
+      TransportFile := sgTransports.Cells[PT_FILENAME, i];
 
       TransportID := GetTransportID(StrType);
       ParseStr := Transports.Split([',']);
@@ -7402,7 +7418,7 @@ begin
             begin
               if (cbxServerMode.ItemIndex = SERVER_MODE_BRIDGE) and T.State then
               begin
-                SetTorConfig('ServerTransportPlugin', Trim(ServerTransport + ' exec ' + TransportsDir + Handler + ' ' + Params));
+                SetTorConfig('ServerTransportPlugin', Trim(ServerTransport + ' exec ' + TransportFile + ' ' + Params));
                 if cbUseServerTransportOptions.Checked and (T.ServerOptions <> '') then
                   SetTorConfig('ServerTransportOptions', ServerTransport + ' ' + T.ServerOptions);
                 SetTorConfig('ServerTransportListenAddr', ServerTransport + ' 0.0.0.0:' + IntToStr(udTransportPort.Position));
@@ -7423,7 +7439,7 @@ begin
         ParamsData := '';
 
       if cbUseBridges.Checked and State then
-        AddTorConfig('ClientTransportPlugin', UsedTransports + ' exec ' + TransportsDir + Handler + ParamsData);
+        AddTorConfig('ClientTransportPlugin', UsedTransports + ' exec ' + TransportFile + ParamsData);
 
       if Params <> '' then
         ParamsData := '|' + Params + '|' + BoolToStrDef(ParamsState)
@@ -9315,7 +9331,7 @@ function TTcp.CheckTransports: Boolean;
 var
   i, j, ResultCode, TransportState, TransportID: Integer;
   T, TransportInfo: TTransportInfo;
-  Transports, Item, Handler, Params, Msg, MsgData, ResultMsg, FilesID: string;
+  Transports, Item, Handler, Params, Msg, MsgData, ResultMsg, FilesID, TransportFile: string;
   ParseStr: TArray<string>;
   TransportsList: TDictionary<string, TTransportInfo>;
   TransportItem: TPair<string, TTransportInfo>;
@@ -9343,11 +9359,12 @@ begin
       ParamsState := StrToBoolDef(sgTransports.Cells[PT_PARAMS_STATE, i], False);
       TransportState := GetTransportStateID(sgTransports.Cells[PT_STATE, i]);
 
-      FindTransport := FileExists(TransportsDir + Handler);
-      TransportFileData := GetFileID(TransportsDir + Handler, FindTransport);
+      FindTransport := FindFileStatic(Handler, TransportFile, TransportDirs);
+      TransportFileData := GetFileID(TransportFile, FindTransport);
       State := GetTransportState(TransportState, FindTransport, TransportFileData, False);
       if ParamsState and (Params = '') then
         sgTransports.Cells[PT_PARAMS_STATE, i] := '0';
+      sgTransports.Cells[PT_FILENAME, i] := TransportFile;
 
       if TransportState = PT_STATE_ENABLED then
       begin
@@ -11767,13 +11784,23 @@ begin
   MenuItem.Caption := Str;
 end;
 
+function TTcp.GetSelTransportFile: string;
+var
+  TransportFile: string;
+begin
+  TransportFile := sgTransports.Cells[PT_FILENAME, sgTransports.SelRow];
+  if FileExists(TransportFile) then
+    Exit(TransportFile);
+  Result := '';
+end;
+
 procedure TTcp.mnTransportsPopup(Sender: TObject);
 var
   State: Boolean;
 begin
   SelectRowPopup(sgTransports, mnTransports);
   SetCaptionByDataCount(TransStr('280'), miTransportsDelete, sgTransports);
-  miTransportsOpenDir.Enabled := DirectoryExists(TransportsDir);
+  miTransportsOpenDir.Enabled := GetSelTransportFile <> '';
   miTransportsReset.Enabled := FileExists(DefaultsFile);
   State := not sgTransports.IsEmpty;
   miTransportsDelete.Enabled := State;
@@ -14959,8 +14986,8 @@ begin
   Input := InputBox(TransStr('265'), TransStr('266') + COLON, '');
   if Trim(Input) <> '' then
   begin
-    CreateShortcut(ParamStr(0), '-profile="' + Input + '"', ExtractFileDir(ParamStr(0)),
-      GetSystemDir(CSIDL_DESKTOPDIRECTORY) + '\TCP (' + Input + ').lnk', ParamStr(0));
+    CreateShortcut(ProgramFile, '-profile="' + Input + '"',
+      GetSystemDir(CSIDL_DESKTOPDIRECTORY) + '\TCP (' + Input + ').lnk');
   end;
 end;
 
@@ -16495,7 +16522,7 @@ begin
   end
   else
   begin
-    OpenDialog.InitialDir := '';
+    OpenDialog.InitialDir := ProgramDir;
     OpenDialog.FileName := '';
   end;
 end;
@@ -16526,10 +16553,18 @@ begin
 end;
 
 procedure TTcp.ChangeTransportTable(Param: Integer);
+var
+  Handler, TransportFile: string;
 begin
   case Param of
     1: sgTransports.Cells[PT_TRANSPORTS, sgTransports.SelRow] := StringReplace(edTransports.Text, ' ', '', [rfReplaceAll]);
-    2: sgTransports.Cells[PT_HANDLER, sgTransports.SelRow] := StringReplace(edTransportsHandler.Text, ' ', '', [rfReplaceAll]);
+    2:
+    begin
+      Handler := Trim(edTransportsHandler.Text);
+      FindFileStatic(Handler, TransportFile, TransportDirs);
+      sgTransports.Cells[PT_HANDLER, sgTransports.SelRow] := Handler;
+      sgTransports.Cells[PT_FILENAME, sgTransports.SelRow] := TransportFile;
+    end;
     3: sgTransports.Cells[PT_PARAMS, sgTransports.SelRow] := Trim(meHandlerParams.Text);
   end;
   EnableOptionButtons;
@@ -16872,6 +16907,18 @@ procedure TTcp.sbGeneratePasswordClick(Sender: TObject);
 begin
   edControlPassword.Text := RandomString(15);
   EnableOptionButtons;
+end;
+
+procedure TTcp.sbOpenTransportHandlerClick(Sender: TObject);
+begin
+  PrepareOpenDialog(GetSelTransportFile, TransStr('707'));
+  if OpenDialog.Execute then
+  begin
+    if edTransportsHandler.CanFocus then
+      edTransportsHandler.SetFocus;
+    edTransportsHandler.Text := ExtractFileName(OpenDialog.FileName);
+    EnableOptionButtons;
+  end;
 end;
 
 procedure TTcp.SpinChanging(Sender: TObject; var AllowChange: Boolean);
@@ -17397,6 +17444,7 @@ end;
 procedure TTcp.miTransportsClearClick(Sender: TObject);
 begin
   sgTransports.Clear;
+  GridScrollCheck(sgTransports, PT_TRANSPORTS, 194);
   UpdateTransports;
   EnableOptionButtons;
 end;
@@ -17409,6 +17457,7 @@ begin
   sgTransports.BeginUpdateRows;
   for i := sgTransports.Selection.Bottom downto sgTransports.Selection.Top do
     sgTransports.DeleteARow(i);
+  GridScrollCheck(sgTransports, PT_TRANSPORTS, 194);
   SetGridLastCell(sgTransports);
   sgTransports.EndUpdateRows;
   UpdateTransports;
@@ -17430,13 +17479,15 @@ begin
   sgTransports.Cells[PT_PARAMS, sgTransports.SelRow] := '';
   sgTransports.Cells[PT_PARAMS_STATE, sgTransports.SelRow] := '0';
   sgTransports.Cells[PT_STATE, sgTransports.SelRow] := GetTransportStateChar(PT_STATE_AUTO);
+  sgTransports.Cells[PT_FILENAME, sgTransports.SelRow] := '';
+  GridScrollCheck(sgTransports, PT_TRANSPORTS, 194);
   SelectTransports;
   EnableOptionButtons;
 end;
 
 procedure TTcp.miTransportsOpenDirClick(Sender: TObject);
 begin
-  ShellOpen(GetFullFileName(TransportsDir));
+  ShellOpen(GetSelTransportFile, True);
 end;
 
 procedure TTcp.miTransportsResetClick(Sender: TObject);
@@ -17960,6 +18011,8 @@ end;
 
 procedure TTcp.TransportsEnable(State: Boolean; SkipHandler: Boolean = False);
 begin
+  sbOpenTransportHandler.Enabled := State;
+  sbOpenTransportHandler.ShowHint := State;
   edTransports.Enabled := State;
   edTransportsHandler.Enabled := State;
   cbxTRansportState.Enabled := State;
@@ -18024,6 +18077,7 @@ begin
           TArrayHelper.AddToArray<string>(HsToDelete, sgHs.Cells[HS_PREVIOUS_NAME, i]);
       end;
       sgHs.Clear;
+      GridScrollCheck(sgHs, HS_NAME, 208);
       UpdateHs;
       EnableOptionButtons;
     end;
@@ -18032,6 +18086,7 @@ begin
   if tsHs.Tag = 2 then
   begin
     sgHsPorts.Clear;
+    GridScrollCheck(sgHsPorts, HSP_INTERFACE, 163);
     UpdateHsPorts;
     EnableOptionButtons;
   end;
@@ -18060,6 +18115,7 @@ begin
           TArrayHelper.AddToArray<string>(HsToDelete, sgHs.Cells[HS_PREVIOUS_NAME, i]);
         sgHs.DeleteARow(i);
       end;
+      GridScrollCheck(sgHs, HS_NAME, 208);
       SetGridLastCell(sgHs);
       sgHs.EndUpdateRows;
       UpdateHs;
@@ -18073,6 +18129,7 @@ begin
     sgHsPorts.BeginUpdateRows;
     for i := sgHsPorts.Selection.Bottom downto sgHsPorts.Selection.Top do
       sgHsPorts.DeleteARow(i);
+    GridScrollCheck(sgHsPorts, HSP_INTERFACE, 163);
     SetGridLastCell(sgHsPorts);
     sgHsPorts.EndUpdateRows;
     UpdateHsPorts;
@@ -18101,6 +18158,7 @@ begin
     sgHs.Cells[HS_MAX_STREAMS, sgHs.SelRow] := NONE_CHAR;
     sgHs.Cells[HS_STATE, sgHs.SelRow] := GetHsStateChar(HS_STATE_ENABLED);
     sgHs.Cells[HS_PORTS_DATA, sgHs.SelRow] := LOOPBACK_ADDRESS + ',' + DEFAULT_PORT + ',' + DEFAULT_PORT;
+    GridScrollCheck(sgHs, HS_NAME, 208);
     sgHsPorts.Clear;
     SelectHs;
   end;
@@ -18117,6 +18175,7 @@ begin
     sgHsPorts.Cells[HSP_INTERFACE, sgHsPorts.SelRow] := LOOPBACK_ADDRESS;
     sgHsPorts.Cells[HSP_REAL_PORT, sgHsPorts.SelRow] := DEFAULT_PORT;
     sgHsPorts.Cells[HSP_VIRTUAL_PORT, sgHsPorts.SelRow] := DEFAULT_PORT;
+    GridScrollCheck(sgHsPorts, HSP_INTERFACE, 163);
     UpdateHsPorts;
     SelectHsPorts;
   end;
@@ -19361,7 +19420,7 @@ var
   Data: TPeData;
   BitStr, Translator: string;
 begin
-  GetPeData(Paramstr(0), Data);
+  GetPeData(ProgramFile, Data);
   if Data.Bits <> 0 then
     BitStr := ' (' + IntToStr(Data.Bits) + ' bit)'
   else
@@ -19372,7 +19431,7 @@ begin
   if ShowMsg(Format(TransStr('356'),
   [
     'Tor Control Panel',
-    GetFileVersionStr(Paramstr(0)) + BitStr,
+    GetFileVersionStr(ProgramFile) + BitStr,
     'Copyright © 2020-2026, abysshint & contributors' + Translator,
     TransStr('357')
   ]), TransStr('355'), mtInfo, True) then
@@ -19623,6 +19682,7 @@ begin
   sgTransports.ColWidths[PT_PARAMS] := -1;
   sgTransports.ColWidths[PT_PARAMS_STATE] := -1;
   sgTransports.ColWidths[PT_STATE] := Round(24 * Scale);
+  sgTransports.ColWidths[PT_FILENAME] := -1;
 
   UpdateImagesPosition(imFilterEntry, lbFilterEntry);
   UpdateImagesPosition(imFilterMiddle, lbFilterMiddle);
@@ -19687,7 +19747,7 @@ begin
   ThemesDir := ProgramDir + 'Skins\';
   HsDir := UserDir + 'services\';
   OnionAuthDir := UserDir + 'onion-auth\';
-  LogsDir := UserDir + 'logs\';
+  LogsDir := GetFullFileName(UserDir) + '\logs\';
   ConsensusFile:= UserDir + 'cached-microdesc-consensus';
   DescriptorsFile := UserDir + 'cached-descriptors';
   NewDescriptorsFile := UserDir + 'cached-descriptors.new';
@@ -19697,7 +19757,6 @@ begin
   DefaultsFile := ProgramDir + 'Defaults.ini';
   TorConfigFile := UserDir + 'torrc';
   TorStateFile := UserDir + 'state';
-  TorExeFile := ProgramDir + 'Tor\tor.exe';
   NetworkCacheFile := UserDir + 'network-cache';
   BridgesCacheFile := UserDir + 'bridges-cache';
 
@@ -19985,7 +20044,7 @@ begin
   Fail := True;
   TorVersion := '';
   TempVersion := '';
-  TorFileExists := FileExists(TorExeFile);
+  TorFileExists :=  FindFileStatic('tor.exe', TorExeFile, TorDirs);
   if TorFileExists and FileExists(TorStateFile) and FileExists(UserConfigFile) then
   begin
     ls := TStringList.Create;
@@ -20038,7 +20097,6 @@ begin
       Fail := False;
       CheckVersionStart(TorVersionProcess.hStdOutput, FirstStart);
     end;
-
   end;
   if Fail then
   begin
@@ -20588,7 +20646,10 @@ end;
 
 procedure TTcp.miOpenLogsFolderClick(Sender: TObject);
 begin
-  ShellOpen(GetFullFileName(LogsDir));
+  if FileExists(TorLogFile) then
+    ShellOpen(TorLogFile, True)
+  else
+    ShellOpen(LogsDir);
 end;
 
 procedure TTcp.SelectTrafficPeriod(Sender: TObject);

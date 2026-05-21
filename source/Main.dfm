@@ -2225,16 +2225,17 @@ object Tcp: TTcp
         Transparent = True
       end
       object sbBridgesFileReadOnly: TSpeedButton
-        Left = 612
+        Left = 613
         Top = 124
         Width = 22
         Height = 22
         AllowAllUp = True
-        GroupIndex = 2
+        GroupIndex = 1
         Down = True
         ImageIndex = 11
         Images = lsMain
         Flat = True
+        Transparent = False
         Visible = False
         OnClick = sbBridgesFileReadOnlyClick
       end
@@ -2246,6 +2247,8 @@ object Tcp: TTcp
         ImageIndex = 15
         Images = lsMenus
         Flat = True
+        Transparent = False
+        Visible = False
         OnClick = sbBridgesFileClick
       end
       object lbBridgesUniqueType: TLabel
@@ -2261,7 +2264,7 @@ object Tcp: TTcp
       object edBridgesFile: TEdit
         Left = 240
         Top = 124
-        Width = 348
+        Width = 346
         Height = 21
         AutoSelect = False
         Enabled = False
@@ -2455,7 +2458,7 @@ object Tcp: TTcp
       object cbUseSOCKS: TCheckBox
         Left = 535
         Top = 31
-        Width = 50
+        Width = 53
         Height = 17
         Caption = 'SOCKS'
         Checked = True
@@ -2519,7 +2522,7 @@ object Tcp: TTcp
       object cbUseHTTPTunnel: TCheckBox
         Left = 535
         Top = 55
-        Width = 50
+        Width = 53
         Height = 17
         Caption = 'HTTP'
         TabOrder = 6
@@ -3156,6 +3159,7 @@ object Tcp: TTcp
         ImageIndex = 20
         Images = lsMain
         Flat = True
+        Transparent = False
         OnClick = sbUPnPTestClick
       end
       object edNickname: TEdit
@@ -4874,13 +4878,24 @@ object Tcp: TTcp
           Enabled = False
           Transparent = True
         end
+        object sbOpenTransportHandler: TSpeedButton
+          Left = 211
+          Top = 154
+          Width = 22
+          Height = 22
+          ImageIndex = 15
+          Images = lsMenus
+          Flat = True
+          Transparent = False
+          OnClick = sbOpenTransportHandlerClick
+        end
         object sgTransports: TStringGrid
           Tag = 6
           Left = 12
           Top = 18
           Width = 381
           Height = 109
-          ColCount = 6
+          ColCount = 7
           DefaultRowHeight = 16
           FixedCols = 0
           RowCount = 2
@@ -4910,7 +4925,7 @@ object Tcp: TTcp
         object edTransportsHandler: TEdit
           Left = 87
           Top = 154
-          Width = 146
+          Width = 122
           Height = 21
           HelpType = htKeyword
           HelpContext = 2
@@ -5082,12 +5097,10 @@ object Tcp: TTcp
           Width = 21
           Height = 22
           AllowAllUp = True
-          GroupIndex = 3
+          GroupIndex = 1
           ImageIndex = 31
           Images = lsMenus
           Flat = True
-          ParentShowHint = False
-          ShowHint = True
           OnClick = OptionsChange
         end
         object edAutoSelExitCount: TEdit

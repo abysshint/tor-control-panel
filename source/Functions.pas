@@ -81,6 +81,7 @@ var
   function CreateJob(lpJobAttributes: PSecurityAttributes; lpName: LPCSTR): THandle; stdcall;
     external 'kernel32.dll' name 'CreateJobObjectA';
 
+  function FindFileStatic(const FileName: string; out FullFileName: string; const Dirs: array of string): Boolean;
   function BoolToStrDef(Value: Boolean): string;
   function GetCommandLineFileName(const CommandLine: string): string;
   function CheckSplitButton(Button: TButton; DirectClick: Boolean): Boolean;
@@ -97,7 +98,7 @@ var
   function GetSystemDir(CSIDL: Integer): string;
   function RegistryFileExists(Root: HKEY; const Key, Param: string): Boolean;
   function RegistryGetValue(Root: HKEY; const Key, Param: string): string;
-  function CreateShortcut(const CmdLine, Args, WorkDir, LinkFile, IconFile: string): IPersistFile;
+  function CreateShortcut(const ExePath, Args, ShortcutPath: string): Boolean;
   function GetFullFileName(const FileName: string): string;
   function GetHost(const Host: string): string;
   function GetAddressFromSocket(const SocketStr: string; UseFormatHost: Boolean = False): string;
@@ -118,7 +119,7 @@ var
   function RandomString(StrLen: Integer): string;
   function GetPasswordHash(const password: string): string;
   function CheckFileVersion(const FileVersion, StaticVersion: string): Boolean;
-  function GetDirFromArray(const Data: array of string; const FileName: string = ''; ShowFileName: Boolean = False): string;
+  function GetRealDir(const StaticDir: string): string;
   function GetLogFileName(SeparateType: Integer): string;
   function GetRoutersParamsCount(Mask: Integer): Integer;
   function GetCircuitsParamsCount(PurposeID: Integer): Integer;
@@ -251,7 +252,7 @@ var
   procedure EditMenuHandle(MenuType: TEditMenuType);
   procedure EditMenuEnableCheck(MenuItem: TMenuItem; MenuType: TEditMenuType);
   procedure MenuSelectPrepare(SelMenu: TMenuItem = nil; UnSelMenu: TMenuItem = nil; HandleDisabled: Boolean = False);
-  procedure ShellOpen(const Url: string);
+  procedure ShellOpen(const Url: string; SelectFile: Boolean = False);
   procedure SetMaskData(var Mask: Integer; CheckBoxControl: TCheckBox);
   procedure GetMaskData(var Mask: Integer; CheckBoxControl: TCheckBox);
   procedure GetSettings(const Section: string; UpDownControl: TUpDown; ini: TMemIniFile; SaveTor: Boolean = False); overload;
@@ -297,6 +298,20 @@ implementation
 
 uses
   Main, Languages;
+
+function FindFileStatic(const FileName: string; out FullFileName: string; const Dirs: array of string): Boolean;
+var
+  i: Integer;
+begin
+  for i := 0 to High(Dirs) do
+  begin
+    FullFileName := GetRealDir(Dirs[i] + FileName);
+    if FileExists(FullFileName) then
+      Exit(True);
+  end;
+  Result := False;
+  FullFileName := '';
+end;
 
 function TryGetStrFromIndex(const Data: TArray<string>; out Str: string; Index: Integer): Boolean;
 begin
@@ -549,22 +564,42 @@ begin
     Result := MatchesMask(Str, Mask);
 end;
 
-procedure ShellOpen(const Url: string);
+function OpenFolderAndSelectFile(const FullFileName: string): Boolean;
+var
+  pidl: PItemIDList;
+begin
+  Result := False;
+  if not FileExists(FullFileName) then Exit;
+  pidl := ILCreateFromPath(PChar(FullFileName));
+  if pidl <> nil then
+  try
+    Result := SHOpenFolderAndSelectItems(pidl, 0, nil, 0) = S_OK;
+  finally
+    ILFree(pidl);
+  end;
+end;
+
+procedure ShellOpen(const Url: string; SelectFile: Boolean = False);
 var
   Port: Word;
   Address: string;
 begin
   if Url = '' then
     Exit;
-  if (Pos('://', Url) <> 0) or (Pos(':\', Url) <> 0) or Url.StartsWith('mailto:') then
-    ShellExecute(Application.Handle, 'open', PChar(Url), nil, nil, SW_NORMAL)
+  if SelectFile then
+    OpenFolderAndSelectFile(GetFullFileName(Url))
   else
   begin
-    Port := GetPortFromSocket(Url);
-    if Port = 0 then
-      Port := 80;
-    Address := ExtractDomain(Url, True);
-    ShellExecute(Application.Handle, 'open', PChar(GetPortProtocol(Port) + '://' + FormatHost(Address) + ':' + IntToStr(Port)), nil, nil, SW_NORMAL);
+    if (Pos('://', Url) <> 0) or (Pos(':\', Url) <> 0) or Url.StartsWith('mailto:') then
+      ShellExecute(Application.Handle, 'open', PChar(Url), nil, nil, SW_NORMAL)
+    else
+    begin
+      Port := GetPortFromSocket(Url);
+      if Port = 0 then
+        Port := 80;
+      Address := ExtractDomain(Url, True);
+      ShellExecute(Application.Handle, 'open', PChar(GetPortProtocol(Port) + '://' + FormatHost(Address) + ':' + IntToStr(Port)), nil, nil, SW_NORMAL);
+    end;
   end;
 end;
 
@@ -1804,35 +1839,12 @@ begin
   Result := '16:' + StrToHex(salt) + (UpperCase(THashSHA1.GetHashString(hash)));
 end;
 
-function GetDirFromArray(const Data: array of string; const FileName: string = ''; ShowFileName: Boolean = False): string;
-var
-  i, DataLength: Integer;
-  Dir: string;
-  Found: Boolean;
+function GetRealDir(const StaticDir: string): string;
 begin
-  Result := '';
-  DataLength := Length(Data);
-  for i := 0 to DataLength - 1 do
-  begin
-    Dir := Data[i];
-    Dir := StringReplace(Dir, '%UserDir%', UserDir, [rfReplaceAll, rfIgnoreCase]);
-    Dir := StringReplace(Dir, '%ProgramDir%', ProgramDir, [rfReplaceAll, rfIgnoreCase]);
-    Dir := StringReplace(Dir, '\\', '\', [rfReplaceAll]);
-    if FileName <> '' then
-      Found := FileExists(Dir + FileName)
-    else
-      Found := DirectoryExists(Dir);
-    if Found then
-    begin
-      Result := Dir;
-      Break;
-    end;
-  end;
-  if (Result = '') and (DataLength > 0) then
-    Result := Data[DataLength - 1];
-
-  if ShowFileName then
-    Result := Result + FileName;
+  Result := StaticDir;
+  Result := StringReplace(Result, '%UserDir%', UserDir, [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, '%ProgramDir%', ProgramDir, [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, '\\', '\', [rfReplaceAll]);
 end;
 
 function GetLogFileName(SeparateType: Integer): string;
@@ -3005,26 +3017,20 @@ begin
    SetString(Result, s, StrLen(s));
 end;
 
-function CreateShortcut(const CmdLine, Args, WorkDir, LinkFile, IconFile: string): IPersistFile;
+function CreateShortcut(const ExePath, Args, ShortcutPath: string): Boolean;
 var
-  MyObject: IUnknown;
-  MySLink: IShellLink;
-  MyPFile: IPersistFile;
-  WideFile: WideString;
+  ShellLink: IShellLink;
+  PersistFile: IPersistFile;
 begin
-   MyObject := CreateComObject(CLSID_ShellLink);
-   MySLink := MyObject as IShellLink;
-   MyPFile := MyObject as IPersistFile;
-   with MySLink do
-   begin
-      SetPath(PChar(CmdLine));
-      SetIconLocation(PChar(IconFile), 0 );
-      SetArguments(PChar(Args));
-      SetWorkingDirectory(PChar(WorkDir));
-   end;
-   WideFile := LinkFile;
-   MyPFile.Save(PWideChar(WideFile), false);
-   Result := MyPFile;
+  if not FileExists(ExePath) then
+    Exit(False);
+  ShellLink := CreateComObject(CLSID_ShellLink) as IShellLink;
+  PersistFile := ShellLink as IPersistFile;
+  ShellLink.SetPath(PChar(ExePath));
+  if Args <> '' then
+    ShellLink.SetArguments(PChar(Args));
+  ShellLink.SetWorkingDirectory(PChar(ExtractFileDir(ExePath)));
+  Result := PersistFile.Save(PWideChar(ShortcutPath), False) = S_OK;
 end;
 
 function GetSystemDir(CSIDL: Integer): string;

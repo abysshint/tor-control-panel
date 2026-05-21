@@ -324,6 +324,7 @@ const
   PT_PARAMS_STATE = 3;
   PT_TYPE = 4;
   PT_STATE = 5;
+  PT_FILENAME = 6;
 
   ROUTER_MIDDLE_ONLY = 1;
   ROUTER_BAD_EXIT = 2;
@@ -558,15 +559,23 @@ var
     '*', '*4', '*6', 'private'
   );
 
-  GeoIpDirs: array [0..2] of string = (
+  GeoIpDirs: array [0..3] of string = (
     '%UserDir%',
     '%ProgramDir%\Data\',
-    '%ProgramDir%\Data\Tor\'
+    '%ProgramDir%\Data\Tor\',
+    '%ProgramDir%\'
   );
 
-  TransportDirs: array [0..1] of string = (
+  TransportDirs: array [0..3] of string = (
     '%ProgramDir%\Tor\Pluggable_Transports\',
-    '%ProgramDir%\Tor\PluggableTransports\'
+    '%ProgramDir%\Tor\PluggableTransports\',
+    '%ProgramDir%\Tor\',
+    '%ProgramDir%\'
+  );
+
+  TorDirs: array [0..1] of string = (
+    '%ProgramDir%\Tor\',
+    '%ProgramDir%\'
   );
 
   ReservedRanges: array [0..19] of TStaticRanges = (

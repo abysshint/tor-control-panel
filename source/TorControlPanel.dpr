@@ -49,7 +49,8 @@ begin
         UserProfile := SeparateRight(ParamStr(i), '=');
     end;
   end;
-  ProgramDir := ExtractShortPathName(ExtractFilePath(ParamStr(0)));
+  ProgramFile := ParamStr(0);
+  ProgramDir := ExtractShortPathName(ExtractFilePath(ProgramFile));
   DataDir := ProgramDir + 'Data\' + UserProfile + '\';
   AppDataDir := GetEnvironmentVariable('appdata') + '\Tcp\' + UserProfile + '\';
 
